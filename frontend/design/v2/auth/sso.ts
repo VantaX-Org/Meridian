@@ -14,6 +14,8 @@ export const SSO_ERROR_SENTENCES: Record<string, () => string> = {
   domain_not_allowed: () => t("Your email domain is not allowed to sign in here. Ask an administrator."),
   suspended: () => t("This account is suspended. Ask an administrator to reactivate it."),
   subject_conflict: () => t("This account is already linked to a different identity. Ask an administrator."),
+  email_unverified: () =>
+    t("Your identity provider has not confirmed this email address, so it cannot be linked to an existing account. Ask an administrator."),
   seats_full: () => t("Licence seats are full, so a new account could not be created. Ask an administrator."),
   failed: () => t("Single sign-on failed. Try again, or use your email and password."),
 };

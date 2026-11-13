@@ -214,7 +214,7 @@ def test_code_pkce_happy_path_maps_by_email_then_subject(world: dict[str, Any], 
     uid, email = w["ids"]["viewer"], w["emails"]["viewer"]
     with owner.begin() as c:  # a locked account: SSO clears the lockout
         c.execute(text("UPDATE users SET failed_login_count = 7, locked_until = now() + interval '10 minutes' WHERE id = :u"), {"u": uid})
-    r = _signin(w, idp, "sub-viewer", email)
+    r = _signin(w, idp, "sub-viewer", email, email_verified=True)
     assert r.status_code == 302 and not idp.errors, idp.errors
     token = _fragment_token(r)
     assert token and token not in r.headers["location"]
@@ -323,6 +323,23 @@ def test_disallowed_domain_and_suspended_users_are_refused(world: dict[str, Any]
     with owner.begin() as c:  # a linked identity cannot be taken over by a different subject with the same email
         c.execute(text("UPDATE users SET is_active = true, external_subject = 'sub-original' WHERE id = :u"), {"u": w["ids"]["viewer"]})
     assert _error(_signin(w, idp, "sub-other", w["emails"]["viewer"])) == "subject_conflict"
+
+
+@pytest.mark.parametrize("verified", [None, "false", "yes"])
+def test_unverified_email_never_links_an_existing_admin(world: dict[str, Any], idp: MockIdp, verified: Any) -> None:
+    """An IdP that does not explicitly assert email_verified (claim absent or anything but true) cannot take over an
+    existing account, an administrator's included, by its email: refused, no link written, refusal audited.
+    (email_verified=False is refused earlier as email_missing.)"""
+    w, owner = world, world["owner"]
+    assert _put(w).status_code == 200
+    claims = {} if verified is None else {"email_verified": verified}
+    r = _signin(w, idp, "sub-attacker", w["emails"]["admin"], **claims)
+    assert _error(r) == "email_unverified"
+    assert "mn_auth_token=" not in r.headers.get("set-cookie", "")
+    assert _rows(owner, "SELECT external_subject FROM users WHERE id = :u", u=w["ids"]["admin"])[0][0] is None
+    assert "auth.sso_refused" in _audit_actions(owner)
+    from api.routes.auth_oidc import ERROR_SENTENCES
+    assert "cannot be linked" in ERROR_SENTENCES["email_unverified"]
 
 
 def test_enforce_blocks_password_login_except_administrators(world: dict[str, Any], idp: MockIdp) -> None:
