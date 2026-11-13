@@ -331,8 +331,14 @@ class RejectBody(BaseModel):
     reason: str = Field(..., min_length=1, max_length=1000)
 
 
+class WriteBackRejectResponse(BaseModel):
+    id: str
+    status: str
+
+
 @router.post(
     "/writeback/reject/{approval_id}",
+    response_model=WriteBackRejectResponse,
     dependencies=[Depends(require_permission("approve"))],
 )
 async def reject_writeback(
@@ -387,7 +393,7 @@ async def reject_writeback(
             await create_notification(tenant_id, uid, "writeback_rejected", "Write-back rejected",
                                       f"Your write-back request was rejected: {reason}", "/work", db)
     await db.commit()
-    return {"id": approval_id, "status": "rejected"}
+    return WriteBackRejectResponse(id=approval_id, status="rejected")
 
 
 @router.post(
