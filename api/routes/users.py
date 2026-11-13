@@ -121,6 +121,12 @@ class SetPasswordBody(BaseModel):
     generate: bool = False
 
 
+class SetPasswordOut(BaseModel):
+    id: str
+    must_change_password: bool
+    password: Optional[str] = None  # the generated password, returned once; None when the admin typed one
+
+
 class BulkBody(BaseModel):
     ids: list[uuid.UUID] = Field(min_length=1, max_length=BULK_MAX_IDS)
     action: Literal["suspend", "reactivate", "resend", "reset"]
@@ -656,7 +662,7 @@ async def reset_user_password(db: AsyncSession, tenant: Tenant, request: Request
     return out
 
 
-@router.post("/users/{user_id}/set-password", dependencies=[Depends(_set_rate_limit)])
+@router.post("/users/{user_id}/set-password", response_model=SetPasswordOut, dependencies=[Depends(_set_rate_limit)])
 async def set_password_route(user_id: uuid.UUID, body: SetPasswordBody, request: Request,
                              db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
                              _role: str = Depends(require_permission("manage_users"))):
