@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { ConnectSteps } from "../ConnectSteps";
 import { InviteSteps } from "../InviteSteps";
-import { ApproveFlow } from "../ApproveFlow";
+import { FixApproveFlow } from "../FixApproveFlow";
 import { AnalysisFlow } from "../AnalysisFlow";
 import { NotifySteps } from "../NotifySteps";
 
@@ -59,10 +59,10 @@ describe("approve flow", () => {
   it("blocks the raiser, then approves batch and write-back in order", async () => {
     const order: string[] = [];
     const api = { batch: vi.fn(async () => void order.push("batch")), writeback: vi.fn(async () => void order.push("wb")) };
-    const { unmount } = renderWithQuery(<ApproveFlow id="b1" summary="12 fixes" ownBatch api={api} />);
+    const { unmount } = renderWithQuery(<FixApproveFlow id="b1" summary="12 fixes" ownBatch api={api} />);
     expect(screen.getAllByText("A second person must approve this batch.")[0]).toBeTruthy();
     unmount();
-    renderWithQuery(<ApproveFlow id="b1" summary="12 fixes" api={api} />);
+    renderWithQuery(<FixApproveFlow id="b1" summary="12 fixes" api={api} />);
     next();
     await screen.findByTestId("flow-step-batch");
     next("Approve batch");
