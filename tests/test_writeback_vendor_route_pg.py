@@ -4,6 +4,7 @@ export, and a classic release without CVI sends nothing for the vendor, with the
 import os
 import uuid
 
+import pandas as pd
 import pytest
 from sqlalchemy import create_engine, text
 
@@ -100,7 +101,9 @@ async def test_send_writes_the_vendor_name_through_the_business_partner(ap_batch
     tid, bid = ap_batch
     patch_tenant(monkeypatch, tid)
     monkeypatch.setattr(settings, "live_writeback_enabled", True)
-    fake = _fake(monkeypatch)
+    # SAP still holds the blank name the item was based on (current_value ''), so the record is not stale
+    lfa1 = pd.DataFrame([{"LIFNR": LIFNR, "ADRNR": "0000022222", "NAME1": ""}])
+    fake = _fake(monkeypatch, tables={**CVI_TABLES, "LFA1": lfa1})
     _, run = await send_and_drive(monkeypatch, tid, bid)
     assert (run["counts"]["committed"], run["counts"]["failed"], run["export_only_fields"]) == (1, 0, 1)
     with create_engine(os.environ["MERIDIAN_TEST_DB_URL"]).begin() as c:

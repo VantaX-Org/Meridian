@@ -13,7 +13,7 @@ from api.config import settings
 from api.main import app
 from sap.base import SAPConnectorError
 from tests.route_auth import patch_tenant
-from tests.test_bapi_writeback import FakeRFC
+from tests.test_writeback_safety import ReadRFC
 from tests.test_writeback_batch_route_pg import HEADERS, ME, drive
 from workers.db import tenant_session
 from workers.tasks import run_batch_writeback as worker
@@ -66,7 +66,7 @@ def env(monkeypatch):
 
 def _sap(monkeypatch, fake=None, fail_connect=False):
     """A fake connector; ``opened`` counts connections (one per chunk)."""
-    fake = fake or FakeRFC(testrun=True)
+    fake = fake or ReadRFC({})  # SAP still holds the blank each item was based on
     opened: list = []
 
     class _Conn:
@@ -135,11 +135,11 @@ async def test_crash_mid_chunk_leaves_the_record_in_doubt_and_resume_does_not_re
 
     orig, calls = bw.write_record, []
 
-    def flaky(conn, module, key, changes, apply, cache):
+    def flaky(conn, module, key, changes, apply, cache, based_on=None):
         calls.append(key)
         if len(calls) == 2:
             raise RuntimeError("worker killed")
-        return orig(conn, module, key, changes, apply=apply, cache=cache)
+        return orig(conn, module, key, changes, apply=apply, cache=cache, based_on=based_on)
 
     monkeypatch.setattr(bw, "write_record", flaky)
     run = await _send(env)
@@ -184,7 +184,7 @@ async def test_repeated_connection_failures_pause_and_leave_the_rest_unsent(env,
     drive(tid, run["id"])
     got = (await _call("GET", f"/api/v1/writeback/batches/{bid}/run")).json()
     assert got["status"] == "paused" and "3 connection failures" in got["pause_reason"]
-    assert got["counts"] == {"pending": N, "sending": 0, "committed": 0, "failed": 0, "needs_check": 0, "export_only": 0}
+    assert got["counts"] == {"pending": N, "sending": 0, "committed": 0, "failed": 0, "needs_check": 0, "export_only": 0, "stale": 0}
     assert len(opened) == 3
     assert q(env, "SELECT status FROM remediation_batches WHERE id = :b", b=bid)[0][0] == "approved"
 
@@ -262,7 +262,7 @@ async def test_the_batch_creator_cannot_resume_or_retry(env, monkeypatch):
 async def test_retry_failed_requeues_only_failed_records(env, monkeypatch):
     engine, tid, bid, sid, queued = env
     bad = {"TYPE": "E", "ID": "M3", "NUMBER": "100", "MESSAGE": "plant not maintained"}
-    fake, _ = _sap(monkeypatch, FakeRFC(testrun=True, sim_return=bad))
+    fake, _ = _sap(monkeypatch, ReadRFC({}, sim_return=bad))
     run = await _send(env)
     drive(tid, run["id"])
     got = (await _call("GET", f"/api/v1/writeback/batches/{bid}/run")).json()
