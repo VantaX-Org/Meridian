@@ -10,6 +10,7 @@ import { NextPalette } from "../CommandPalette";
 import { Button } from "../kit/Button";
 import { ConnectCanvas } from "@/design/v2/screens/system/ConnectCanvas";
 import { popSheet, pushSheet, sheetsOf, stepOf, withSheets, type SheetRef } from "@/lib/next/sheet";
+import { registry, registerSheet } from "./registry";
 import "./sheets";
 
 export interface SheetCtx {
@@ -23,12 +24,7 @@ export interface SheetCtx {
   under: boolean;
 }
 export type SheetRenderer = (ctx: SheetCtx) => ReactNode;
-
-const registry = new Map<string, SheetRenderer>();
-/** Adds a sheet kind. The renderer returns a kit `Sheet` (open is the renderer's to set to true). */
-export function registerSheet(kind: string, render: SheetRenderer): void {
-  registry.set(kind, render);
-}
+export { registerSheet };
 
 /**
  * A history entry this host pushed for a sheet carries `nxSheet`, so Close steps back to the page under it and

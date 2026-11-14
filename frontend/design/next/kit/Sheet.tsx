@@ -43,7 +43,7 @@ export const closingSheet = (): void => {
 export interface SheetProps {
   open: boolean;
   onClose: () => void;
-  title: string;
+  title: ReactNode;
   /** Right of the title: a chip, a run sentence. */
   meta?: ReactNode;
   size?: SheetSize;
@@ -61,6 +61,12 @@ export interface SheetProps {
   secondary?: ReactNode;
   /** True for the lower sheet of a stack: it stays mounted but cannot take focus. */
   under?: boolean;
+  /** The dialog's id, for a skip link or an F6 stop. */
+  id?: string;
+  /** The close button's accessible name; "Close" by default. */
+  closeLabel?: string;
+  /** Focus the close button on open instead of the sheet itself. */
+  focusClose?: boolean;
   children: ReactNode;
 }
 
@@ -68,7 +74,7 @@ export interface SheetProps {
  * The one container for every deeper task. A panel from the right on a desktop, a bottom sheet on a phone, over a
  * solid scrim. Focus stays inside and returns to the opener. Solid surface, no glass.
  */
-export function Sheet({ open, onClose, title, meta, size = "medium", variant = "side", steps, step = 1, onStep, dirty, primary, secondary, under, children }: SheetProps) {
+export function Sheet({ open, onClose, title, meta, size = "medium", variant = "side", steps, step = 1, onStep, dirty, primary, secondary, under, id, closeLabel, focusClose, children }: SheetProps) {
   const box = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const [ask, setAsk] = useState(false);
@@ -87,9 +93,9 @@ export function Sheet({ open, onClose, title, meta, size = "medium", variant = "
     if (!open) return;
     opener.current = document.activeElement as HTMLElement | null;
     const el = box.current;
-    (el?.querySelector<HTMLElement>("[data-autofocus]") ?? el)?.focus();
+    (el?.querySelector<HTMLElement>(focusClose ? ".nx-sheet-close" : "[data-autofocus]") ?? el)?.focus();
     return () => opener.current?.focus?.();
-  }, [open]);
+  }, [open, focusClose]);
 
   // Unsaved edits survive Back (it asks first, in the app) and a reload or tab close (the browser asks).
   useEffect(() => {
@@ -152,6 +158,7 @@ export function Sheet({ open, onClose, title, meta, size = "medium", variant = "
     >
       <div
         ref={box}
+        id={id}
         role="dialog"
         aria-modal="true"
         aria-labelledby={tid}
@@ -165,7 +172,7 @@ export function Sheet({ open, onClose, title, meta, size = "medium", variant = "
         <header className="nx-sheet-head">
           <h2 id={tid} className="nx-sheet-title">{title}</h2>
           {meta ? <div className="nx-sheet-meta">{meta}</div> : null}
-          <button type="button" className="nx-icon-btn nx-sheet-close" aria-label={t("Close")} onClick={request}>
+          <button type="button" className="nx-icon-btn nx-sheet-close" aria-label={closeLabel ?? t("Close")} onClick={request}>
             <Icon name="x" />
           </button>
         </header>
