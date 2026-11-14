@@ -1,7 +1,7 @@
 """audit_log hash chain: chain_seq, prev_hash, row_hash per tenant, append-only guard, checkpoint-aware purge
 
 Revision ID: 175
-Revises: 166
+Revises: 168
 Create Date: 2026-11-13
 
 Every audit_log row of a tenant is linked to the one before it. A BEFORE INSERT trigger takes the tenant's
@@ -25,7 +25,7 @@ from typing import Sequence, Union
 from alembic import op
 
 revision: str = "175"
-down_revision: Union[str, None] = "166"
+down_revision: Union[str, None] = "168"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
