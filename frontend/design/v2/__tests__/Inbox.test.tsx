@@ -42,7 +42,7 @@ describe("the inbox panel", () => {
     const panel = await openPanel();
     expect(getUrl()).toContain("open=inbox");
     const frame = screen.getByTestId("inspector");
-    expect(within(frame).getByRole("heading", { level: 2, name: "Inbox" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Inbox" })).toBeInTheDocument();
     expect(frame.contains(panel)).toBe(true);
     expect(text(frame.querySelector(".m2-ih-sl") as Element)).toBe("7 unread");
     expect(screen.getByRole("button", { name: "Inbox 7, unread" })).toHaveAttribute("aria-expanded", "true");

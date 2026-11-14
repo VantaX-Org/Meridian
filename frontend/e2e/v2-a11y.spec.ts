@@ -274,8 +274,13 @@ test.describe("keyboard only", () => {
     await prepare(page, "light", null);
     await open(page, "/?fixture=1&open=rule:MM142");
     // The inspector took focus when it opened; start from the top of the page, as a fresh visit would.
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    await page.mouse.click(2, 2);
+    // A click would land on the sheet's scrim and close it, so move focus to the document start instead.
+    await page.evaluate(() => {
+      (document.activeElement as HTMLElement | null)?.blur();
+      document.body.tabIndex = -1;
+      document.body.focus();
+      document.body.removeAttribute("tabindex");
+    });
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
     await expect(page.getByRole("link", { name: "Skip to content" })).toBeVisible();
@@ -369,6 +374,8 @@ test.describe("keyboard only", () => {
     await page.keyboard.press("Enter");
     const picker = ecc.getByTestId("extract-picker");
     await expect(picker).toBeVisible();
+    // The object list loads after the picker opens; tab only once its checkboxes are there.
+    await expect(picker.getByRole("checkbox").first()).toBeVisible(NAV);
     await tabTo(page, /Material master/, 60);
     await page.keyboard.press("Space");
     await tabTo(page, /^Extract \d+ objects?$/, 60);
