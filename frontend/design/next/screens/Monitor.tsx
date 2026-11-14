@@ -39,7 +39,7 @@ function Run({ g, open, onToggle }: { g: RunGroup; open: boolean; onToggle: () =
         {g.regressedCount ? <Chip tone="regressed" count={g.regressedCount}>{t("regressed")}</Chip> : null}
         {g.resolvedCount ? <Chip tone="resolved" count={g.resolvedCount}>{t("resolved")}</Chip> : null}
         <span className="nx-mon-end">
-          <Link className="nx-link" href={href(`/run/${g.version_id}/vs/${g.baseline_version_id}`)}>{t("Open all in Compare")}</Link>
+          <Link className="nx-link" href={href(`/next/run/${g.version_id}/vs/${g.baseline_version_id}`)}>{t("Open all in Compare")}</Link>
         </span>
       </div>
       <ul className="nx-mon-find">
@@ -166,18 +166,17 @@ function Feed() {
   );
 }
 
-/** What changed, across every object and run. The feed groups findings by run; learned monitors is the second tab. */
-export function Monitor() {
+/** The feed and the learned monitors under one strip of tabs; Work mounts this as its Monitor segment. */
+export function MonitorBody() {
   const router = useRouter();
   const path = usePathname();
   const tab = useSearchParams().get("tab") === "learned" ? "learned" : "feed";
   const go = (id: string) => router.replace(id === "feed" ? path : `${path}?tab=${id}`);
   return (
-    <div className="nx-monitor">
-      <header className="nx-strip">
-        <h1>{t("Monitor")}</h1>
+    <>
+      <div className="nx-mon-tabs">
         <Tabs items={[{ id: "feed", label: t("Feed") }, { id: "learned", label: t("Learned monitors") }]} value={tab} onChange={go} label={t("Monitor")} idBase="nx-mon" />
-      </header>
+      </div>
       {tab === "feed" ? (
         <Feed />
       ) : (
@@ -185,6 +184,18 @@ export function Monitor() {
           <LegacyMount><LearnedMonitors /></LegacyMount>
         </div>
       )}
+    </>
+  );
+}
+
+/** What changed, across every object and run: the stand-alone page. */
+export function Monitor() {
+  return (
+    <div className="nx-monitor">
+      <header className="nx-strip">
+        <h1>{t("Monitor")}</h1>
+      </header>
+      <MonitorBody />
     </div>
   );
 }
