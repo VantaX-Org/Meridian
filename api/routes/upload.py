@@ -325,6 +325,9 @@ class RoundTripResponse(UploadResponse):
     notes: dict[str, int] = {}
     # the edits that matched nothing: {sheet, row, table, key, field, reason}, at most 200
     unmatched_rows: list[dict] = []
+    # cells another upload changed after this file was exported: left as that upload set them
+    conflicts: list[dict] = []
+    conflicts_total: int = 0
 
 
 # A newer extraction of the same lineage holding the file's object: the file's edits would overwrite newer data.
@@ -349,7 +352,31 @@ _TIP_SQL = """
      ORDER BY run_at DESC LIMIT 1
 """
 
-MAX_OVERLAY_EDITS = 5000
+# The cells a cleaned copy changed (169); a copy made before 169 kept them in metadata.cleaned_overlay.edits.
+_CELLS_SQL = "SELECT grain, record_key, field FROM roundtrip_edits WHERE tenant_id = :t AND version_id = CAST(:v AS uuid)"
+_CELLS_INSERT_SQL = """
+    INSERT INTO roundtrip_edits (tenant_id, version_id, grain, record_key, field)
+    SELECT :t, CAST(:v AS uuid), g, k, f
+      FROM unnest(CAST(:g AS text[]), CAST(:k AS text[]), CAST(:f AS text[])) AS x(g, k, f)
+    ON CONFLICT DO NOTHING"""
+CELL_CHUNK = 5000
+
+
+async def _cells(db: AsyncSession, tenant_id, version_id: str, meta: dict) -> set[tuple[str, str, str]]:
+    """(table, record key, field) of every cell a cleaned copy changed."""
+    legacy = (meta.get("cleaned_overlay") or {}).get("edits") or []
+    cells = {(e["table"], e["key"], e.get("field") or "") for e in legacy if e.get("table") and e.get("key")}
+    rows = (await db.execute(text(_CELLS_SQL), {"t": tenant_id, "v": version_id})).fetchall()
+    return cells | {(r[0], r[1], r[2]) for r in rows}
+
+
+async def _save_cells(db: AsyncSession, tenant_id, version_id: str, cells) -> None:
+    """All of a copy's cells, in chunks, so no cap applies."""
+    ordered = sorted(cells)
+    for i in range(0, len(ordered), CELL_CHUNK):
+        part = ordered[i:i + CELL_CHUNK]
+        await db.execute(text(_CELLS_INSERT_SQL), {"t": tenant_id, "v": version_id, "g": [c[0] for c in part],
+                                                   "k": [c[1] for c in part], "f": [c[2] for c in part]})
 
 
 @asynccontextmanager
@@ -439,11 +466,13 @@ async def _apply_notes(db: AsyncSession, tenant_id, request: Request, role: str,
 
 
 def _roundtrip_edits(tenant_id, parent_id: str, system_id: Optional[str], parent_modules: list[str], parsed: dict,
-                     filename: str, data: bytes) -> tuple[str, list[dict], dict]:
-    """Which kind of file this is, its edits, and what could not be mapped (blocking; run in a thread)."""
+                     filename: str, data: bytes, dictionary=None) -> tuple[str, list[dict], dict]:
+    """Which kind of file this is, its edits, and what could not be mapped (blocking; run in a thread).
+    ``dictionary`` names each table's key fields: a value typed into one is refused."""
     from api.services import sf_roundtrip as rt
-    from api.services.source_design import dictionary_for
-    from workers.db import get_sync_engine, tenant_session
+
+    def keys_of(table: str) -> list[str]:
+        return list(dictionary.keys(table)) if dictionary is not None else []
 
     sheets, marker = parsed["sheets"], parsed["marker"]
     from api.services.cycle_limits import is_record_sheet, rename_by_header
@@ -452,17 +481,15 @@ def _roundtrip_edits(tenant_id, parent_id: str, system_id: Optional[str], parent
     if kind not in rt.KINDS:
         raise rt.RoundTripError("The marker in this file is damaged. Choose the run it came from.")
     if kind == "cleaning":
-        edits, blank = rt.cleaning_edits(sheets)
+        edits, blank = rt.cleaning_edits(sheets, keys_of)
         return kind, edits, {"unmapped": {}, "skipped": {}, "blank": blank, "notes": rt.cleaning_notes(sheets)}
     maps = marker.get("map")
     if not maps:  # no marker, or a CSV export: map the columns the way the export did
         from api.routes.migration import _fill_workbook
         maps = {r["name"]: r for r in _fill_workbook(tenant_id, parent_id, data, filename)[2]["sheets"]}
-    with tenant_session(get_sync_engine(), tenant_id) as s:
-        dictionary = dictionary_for(s, system_id)
     parsed["sheets"] = sheets = rename_by_header(sheets, maps)
     parsed["maps"] = maps
-    edits, report = rt.template_edits(sheets, maps, lambda t: list(dictionary.keys(t)))
+    edits, report = rt.template_edits(sheets, maps, keys_of)
     return kind, edits, report
 
 
@@ -597,9 +624,13 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
     system_id = meta.get("system_id")
     if system_id:
         await _require_attach_right(request, db, tenant, system_id)
+    dictionary = await run_in_threadpool(_dictionary, tenant.id, system_id)
     try:
         kind, edits, report = await run_in_threadpool(_roundtrip_edits, tenant.id, parent, system_id, modules, parsed,
-                                                      file.filename or "", data)
+                                                      file.filename or "", data, dictionary)
+    except rt.InvalidValues as e:
+        raise HTTPException(status_code=422, detail={"error": "invalid_values", "detail": str(e),
+                                                     "rows": e.rows[:50], "total": len(e.rows)})
     except rt.RoundTripError as e:
         raise HTTPException(status_code=422, detail=str(e))
     notes = report.pop("notes", [])
@@ -616,13 +647,17 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
             "A newer extraction of this object has finished since this file was exported. Download the workbook "
             "from the latest run and make the changes there; this file would overwrite newer data."})
 
-    note_counts: dict[str, int] = {}
-    if notes and module:
-        note_counts = await _apply_notes(db, tenant.id, request, role, scope_of(meta), module, notes)
+    async def save_notes() -> dict[str, int]:
+        if not (notes and module):
+            return {}
+        counts = await _apply_notes(db, tenant.id, request, role, scope_of(meta), module, notes)
         await write_audit(db, tenant.id, request, "upload.roundtrip_notes", "analysis_version", parent, None,
-                          {"module": module, **note_counts})
-        await db.commit()
+                          {"module": module, **counts})
+        return counts
+
     if not edits:
+        note_counts = await save_notes()
+        await db.commit()
         return RoundTripResponse(
             version_id=parent, job_id="", status="notes_saved", parent_version_id=parent, kind=kind, applied=0,
             unchanged=0, unmatched=0, unmapped=report["unmapped"], skipped=report["skipped"], no_table=[],
@@ -632,6 +667,12 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
         tip = (await db.execute(text(_TIP_SQL), {"t": tenant.id, "b": base})).fetchone()
         source_id, source_meta = (str(tip[0]), dict(tip[1] or {})) if tip else (parent, meta)
         prior = (source_meta.get("cleaned_overlay") or {}) if source_id != base else {}
+        prior_cells = await _cells(db, tenant.id, source_id, source_meta) if source_id != base else set()
+        # the file was exported from an older copy: a cell another upload changed since then is a conflict
+        stale: set = set()
+        if source_id != parent:
+            seen = await _cells(db, tenant.id, parent, meta) if parent != base else set()
+            stale = prior_cells - seen
 
         new_meta = {k: v for k, v in meta.items() if k not in ("error", "scoring", "cleaned_overlay", "monitor")}
         new_meta.update({"source": "roundtrip", "trigger": "roundtrip", "file_name": file.filename,
@@ -642,25 +683,34 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
         prefix = f"staging/{tenant.id}/{version.id}/"
         try:
             result = await run_in_threadpool(rt.apply_edits, source_meta["dataset_path"], prefix, edits,
-                                             await run_in_threadpool(_dictionary, tenant.id, system_id))
+                                             dictionary, frozenset(stale))
         except Exception as e:  # noqa: BLE001 - the version row must not linger pending
+            await run_in_threadpool(rt.drop_staging, prefix)
             await versions.mark_version_failed(db, tenant.id, version.id, f"Could not apply the edits: {type(e).__name__}")
             if isinstance(e, rt.RoundTripError):
                 raise HTTPException(status_code=422, detail=str(e))
             raise
-        rows, rejected = await run_in_threadpool(_rejected, parsed, kind, tenant.id, system_id, edits, result)
+        rows, rejected = await run_in_threadpool(_rejected, parsed, kind, dictionary, edits, result)
         if not result["applied"]:
+            await run_in_threadpool(rt.drop_staging, prefix)
             reason, detail, fix = cl.nothing_applied(result, rejected, already=source_id != base)
             await versions.mark_version_failed(db, tenant.id, version.id, detail)
+            # nothing is saved, notes included: the file is fixed and uploaded again as a whole
             raise HTTPException(status_code=422, detail={"error": "nothing_applied", "reason": reason, "detail": detail,
                                 "fix": fix, "unmatched": result["unmatched_total"], "rejected": rejected,
-                                "unmatched_rows": rows, "unchanged": result["unchanged"], "notes": note_counts})
+                                "unmatched_rows": rows, "unchanged": result["unchanged"],
+                                "conflicts": result.get("conflicts", []),
+                                "conflicts_total": result.get("conflicts_total", 0), "notes": {}})
         # the cleaned copy is a forecast: a later real extraction that still fails on these records is not a
         # regression of the source, it is a fix not yet made there (workers/tasks/run_checks.py)
+        cells = prior_cells | {(e["table"], e["key"], e["field"]) for e in result.get("edited", [])}
         overlay = {"base_version_id": base,
                    "modules": sorted({*(prior.get("modules") or []), *([module] if module else [])}),
-                   "edits": ((prior.get("edits") or []) + result.get("edited", []))[:MAX_OVERLAY_EDITS]}
+                   "edit_count": len(cells)}
+        # one transaction from here: the copy, every changed cell, the notes and the audit commit together
         await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
+        await _save_cells(db, tenant.id, str(version.id), cells)
+        note_counts = await save_notes()
         await db.execute(text(
             "UPDATE analysis_versions SET parent_version_id = CAST(:p AS uuid), "
             "metadata = metadata || jsonb_build_object('dataset_path', CAST(:d AS text), "
@@ -680,16 +730,17 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
             version_id=str(version.id), job_id=job_id, status="pending", parent_version_id=source_id, kind=kind,
             applied=result["applied"], unchanged=result["unchanged"], unmatched=result["unmatched_total"],
             unmapped=report["unmapped"], skipped=report["skipped"], no_table=result["no_table"], no_field=result["no_field"],
-            notes=note_counts, unmatched_rows=rows)
+            notes=note_counts, unmatched_rows=rows, conflicts=result.get("conflicts", []),
+            conflicts_total=result.get("conflicts_total", 0))
 
 
-def _rejected(parsed: dict, kind: str, tenant_id, system_id, edits: list[dict], result: dict) -> tuple[list[dict], int]:
+def _rejected(parsed: dict, kind: str, dictionary, edits: list[dict], result: dict) -> tuple[list[dict], int]:
     """The rows that matched nothing, with sheet and row number (blocking; run in a thread)."""
     from api.services.cycle_limits import rejected_rows
 
     if not (result.get("unmatched_total") or result.get("no_table") or result.get("no_field")):
         return [], 0
-    keys_of = (lambda t: []) if kind == "cleaning" else (lambda t: list(_dictionary(tenant_id, system_id).keys(t)))
+    keys_of = (lambda t: []) if kind == "cleaning" or dictionary is None else (lambda t: list(dictionary.keys(t)))
     return rejected_rows(parsed["sheets"], kind, parsed.get("maps"), keys_of, edits, result)
 
 

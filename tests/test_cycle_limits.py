@@ -71,6 +71,7 @@ def test_rejected_rows_name_the_sheet_and_excel_row():
 def test_nothing_applied_says_why():
     assert cl.nothing_applied({"unchanged": 3}, 0, already=True)[0] == "already_applied"
     assert cl.nothing_applied({"unchanged": 3}, 0, already=False)[0] == "no_changes"
+    assert cl.nothing_applied({"unchanged": 0, "conflicts_total": 2}, 0, already=True)[0] == "conflicts"
     reason, detail, fix = cl.nothing_applied({"unchanged": 0}, 4, already=False)
     assert reason == "no_match" and "4 rows" in detail and "rejected rows" in fix
 

@@ -140,6 +140,10 @@ def nothing_applied(result: dict, rejected: int, already: bool) -> tuple[str, st
                     "Nothing to do. To make more changes, download the workbook from the latest run.")
         return ("no_changes", f"Every corrected value equals the value in the run ({result['unchanged']:,} rows).",
                 "Type a different value in Corrected value, or #CLEAR to empty a field, then upload again.")
+    if result.get("conflicts_total") and not rejected:
+        return ("conflicts", f"Another upload changed these cells after this file was exported "
+                f"({result['conflicts_total']:,} cells); they were left as that upload set them.",
+                "Download the workbook from the latest run and make the changes there.")
     return ("no_match", f"No edit matched a record of the run ({rejected:,} rows were rejected).",
             "Download the rejected rows, check the Table, Record key and Field columns against the run, "
             "and upload again.")
