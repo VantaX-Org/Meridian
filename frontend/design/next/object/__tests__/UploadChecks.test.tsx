@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { ToastProvider } from "@/design/next/kit";
-import { ObjectPage } from "@/design/next/screens/ObjectPage";
+import { CycleTab } from "../CycleTab";
+import { useObjectRun } from "../useObjectRun";
 import { setUrl } from "@/design/v2/__tests__/nav-store";
 import { CheckList } from "../cycle/UploadStep";
 import { RunSwitcher, type RunOption } from "@/design/next/kit";
@@ -16,11 +17,16 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+// The object page opens the cycle as a sheet now; the steps are mounted directly.
+function Cycle() {
+  return <CycleTab o={useObjectRun("ecc-production", "material-master")} />;
+}
+
 const IDS = ["fingerprint", "run", "template", "columns", "rows", "keys", "values", "formulas"] as const;
 
 async function addFile(name: string) {
   setUrl("/next/o/ecc-production/material-master/cycle?fixture=1&step=upload");
-  renderWithQuery(<ToastProvider><ObjectPage system="ecc-production" module="material-master" tab="cycle" /></ToastProvider>);
+  renderWithQuery(<ToastProvider><Cycle /></ToastProvider>);
   const step = await screen.findByTestId("upload-step");
   const input = step.querySelector("input[type=file]") as HTMLInputElement;
   fireEvent.change(input, { target: { files: [new File(["x"], name)] } });
