@@ -21,6 +21,7 @@ import { StoryTabs } from "./StoryTabs";
 import { JobHairline } from "./JobHairline";
 import { Banners } from "./Banners";
 import { SheetHost, useSheets } from "./SheetHost";
+import { SessionExpired } from "./SessionExpired";
 import "./shell.css";
 
 /** g then a letter goes to a place. Nothing here collides with a v2 key: the old `g` chords are not mounted in this shell. */
@@ -163,6 +164,7 @@ function Frame({ children }: { children: ReactNode }) {
         </div>
       ) : null}
       {sheet ? <KeysDialog onClose={() => setSheet(false)} /> : null}
+      <SessionExpired />
     </div>
   );
 }
