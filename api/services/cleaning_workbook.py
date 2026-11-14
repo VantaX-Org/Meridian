@@ -313,6 +313,11 @@ def _guide(module: str) -> list[dict]:
         ("Type the corrected value", "Where a field has a fixed list, Corrected value offers it as a drop-down and "
                                      "the Allowed values sheet lists it. The Examples sheet shows worked values. "
                                      "A blank cell changes nothing. To empty a field on purpose, type " + CLEAR + "."),
+        ("Type values, not formulas", "Corrected value is a Text cell, so codes keep their leading zeros and long "
+                                      "numbers keep every digit. Type a date the way Current value shows it, or as "
+                                      "YYYY-MM-DD. A formula or an error such as #N/A is refused with its row number, "
+                                      "and so is a change to a key field (the fields that name the record). Give each "
+                                      "field of a record one value only."),
         ("Mark the status", "Pick Open, In progress, Needs owner, Fixed or Not an error from the list in Status. "
                             "If a record is right as it is, choose Not an error and say why in Comment: once an "
                             "approver uploads it, the issue stops showing on later runs. Owner and Comment are "
@@ -320,7 +325,9 @@ def _guide(module: str) -> list[dict]:
         ("Upload the file back", "Save the file and upload it on the {module} Fixes tab with Upload cleaned file. "
                                  "Meridian writes your corrected values into a cleaned copy of this run and scores it "
                                  "again, so you see the new score at once. Upload the file against the run it came "
-                                 "from; a file from an older run is refused."),
+                                 "from; a file from an older run is refused. If someone else uploaded a file for the same "
+                                 "records after you downloaded yours, a cell they changed is kept as they set it and "
+                                 "shown to you as a conflict: download the workbook again to see their value."),
         ("Fix the source system", "The cleaned copy is a forecast, not a change in SAP. Make the same changes in the "
                                   "source system. The next extraction shows which fixes are in the source and which "
                                   "are still waiting (Fix not yet in source)."),
