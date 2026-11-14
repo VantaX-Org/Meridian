@@ -618,11 +618,56 @@ class RecordResult:
     error: Optional[str] = None
     export: list[dict] = field(default_factory=list)   # fields not sent, each {field, reason}: they go by export
     connector_error: bool = False                      # error is a lost or refused RFC connection, not SAP's answer
+    stale: list[dict] = field(default_factory=list)    # fields changed in SAP since the fix: {field, expected, found}
 
     def as_dict(self) -> dict:
         return {"record_key": self.record_key, "bapis": self.bapi_calls, "fields": self.fields,
                 "simulated": self.simulated, "simulate_messages": self.simulate_messages, "applied": self.applied,
-                "committed": self.committed, "messages": self.messages, "error": self.error, "export": self.export}
+                "committed": self.committed, "messages": self.messages, "error": self.error, "export": self.export,
+                "stale": self.stale}
+
+
+# Key fields of each table a write-back changes, used to read the field's current value before it is changed.
+_TABLE_KEYS: dict[str, tuple[str, ...]] = {
+    "MARA": ("MATNR",), "MARC": ("MATNR", "WERKS"), "MBEW": ("MATNR", "BWKEY", "BWTAR"),
+    "MVKE": ("MATNR", "VKORG", "VTWEG"), "MAKT": ("MATNR", "SPRAS"), "MARM": ("MATNR", "MEINH"),
+    "BUT000": ("PARTNER",), "ADRC": ("ADDRNUMBER",), "KNA1": ("KUNNR",), "KNVV": ("KUNNR", "VKORG", "VTWEG", "SPART"),
+    "LFA1": ("LIFNR",), "LFBK": ("LIFNR", "BANKS", "BANKL", "BANKN"),
+}
+
+
+def _norm(v: Any) -> str:
+    s = str("" if v is None else v).strip()
+    if s in ("00000000", "0000-00-00"):
+        return ""
+    if len(s) == 10 and s[4] == "-" and s[7] == "-":
+        s = s.replace("-", "")
+    try:
+        return repr(float(s.replace(",", ""))) if s else s
+    except ValueError:
+        return s
+
+
+def check_stale(conn: Any, keys: dict[str, str], based_on: dict[str, Any]) -> list[dict]:
+    """Fields whose current SAP value differs from the value the fix was based on ([] = all unchanged).
+
+    A field that cannot be read back, or whose key matches no single row, is reported too (found None): it is not
+    sent, because Meridian never overwrites a value it could not compare."""
+    out: list[dict] = []
+    for f, expected in sorted(based_on.items()):
+        table, _, col = _full(f).partition(".")
+        cols = [k for k in _TABLE_KEYS.get(table, ()) if k in keys]
+        found: Optional[str] = None
+        if cols and cols[0] == _TABLE_KEYS[table][0]:
+            try:
+                rows = _rows(conn, table, [col], " AND ".join(f"{k} = {_lit(keys[k])}" for k in cols))
+            except _ReadFailed:
+                rows = []
+            if len(rows) == 1:
+                found = rows[0].get(col, "")
+        if found is None or _norm(found) != _norm(expected):
+            out.append({"field": _full(f), "expected": "" if expected is None else str(expected), "found": found})
+    return out
 
 
 def _call(conn: Any, bapi: str, params: dict) -> dict:
@@ -631,10 +676,14 @@ def _call(conn: Any, bapi: str, params: dict) -> dict:
 
 
 def write_record(conn: Any, module: str, record_key: str, changes: dict[str, Any], apply: bool,
-                 cache: Optional[dict[str, Any]] = None) -> RecordResult:
+                 cache: Optional[dict[str, Any]] = None,
+                 based_on: Optional[dict[str, Any]] = None) -> RecordResult:
     """Simulate, then (``apply``) write one record's supported changes. See the module docstring for the steps.
 
     ``changes`` maps "TABLE.FIELD" to the new value; fields without a BAPI mapping must be planned out first.
+    ``based_on`` maps "TABLE.FIELD" to the value the fix was computed from. Before anything is simulated or sent,
+    each of those fields is read from SAP; if any differs (or cannot be read) the record is skipped as stale and
+    nothing is sent, so a change made in SAP since the extraction is never overwritten.
     """
     cache = {} if cache is None else cache
     spec = OBJECTS[module]
@@ -658,6 +707,16 @@ def write_record(conn: Any, module: str, record_key: str, changes: dict[str, Any
             res.error = f"No BAPI mapping or record key field for {e}"
             return res
         res.bapi_calls = sorted(calls)
+        base = {f: v for f, v in (based_on or {}).items() if f in changes or _full(f) in {_full(c) for c in changes}}
+        if base:
+            res.stale = check_stale(conn, {**parse_key(record_key), **parse_key(call_key)}, base)
+            if res.stale:
+                res.error = "Changed in SAP since the fix was proposed; not sent: " + "; ".join(
+                    f"{s['field']} expected {s['expected']!r}, "
+                    + ("could not be read back" if s["found"] is None else f"SAP has {s['found']!r}")
+                    for s in res.stale)
+                logger.info("write-back %s: skipped as stale (%d field(s))", record_key, len(res.stale))
+                return res
         for bapi, params in calls.items():
             problems = verify_params(conn, bapi, params, cache)
             if problems:

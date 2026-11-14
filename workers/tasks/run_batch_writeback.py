@@ -5,7 +5,10 @@ batch items) and enqueues this task. Each invocation is a bounded slice: it clai
 pending records in chunks, one RFC connection per chunk and system, and commits to Postgres after every record. Before
 a record goes to SAP it is marked 'sending' and committed, so a crash leaves at most that one record in doubt.
 
-Restart safety. sap/bapi_writeback.py write_record writes absolute proposed values, re-reads nothing, and its last step
+Staleness. Each record carries based_on (the value each field had when the fix was proposed). write_record reads the
+current SAP value first and skips the record as 'stale' when it differs, so a later change in SAP is never overwritten.
+
+Restart safety. sap/bapi_writeback.py write_record writes absolute proposed values, and its last step
 (BAPI_TRANSACTION_COMMIT) can be lost with the answer. A record left 'sending' therefore may be committed in SAP or not,
 and a resend could overwrite a later change. It is never resent: it becomes 'needs_check' (an operator looks in SAP and
 may requeue it on purpose). Records still 'pending' are untouched by a crash and go on at resume.
@@ -100,7 +103,10 @@ def _export_once(session: Any, tenant_id: str, run_id: str, batch_id: str, user:
 
 def classify(res: Any) -> tuple[str, Optional[str]]:
     """(state, error) of one write_record result. Anything SAP may have changed without a confirmed commit is
-    needs_check; only a record SAP never saw or that SAP clearly refused is failed."""
+    needs_check; only a record SAP never saw or that SAP clearly refused is failed. A record whose field changed in
+    SAP since the fix was proposed is stale: nothing was sent."""
+    if getattr(res, "stale", None):
+        return "stale", res.error or "Changed in SAP since the fix was proposed; not sent"
     if res.committed:
         return "committed", None
     if res.applied or (res.error and res.simulated):
@@ -179,13 +185,13 @@ def run(session: Any, tenant_id: str, run_id: str, enqueue: Callable[[float], No
                 return {"requeued": True}
             continue  # cancelled while we looked: the next pass finishes it
         rows = session.execute(text(
-            "SELECT id, system_id, module, record_key, changes FROM writeback_run_records "
+            "SELECT id, system_id, module, record_key, changes, based_on FROM writeback_run_records "
             "WHERE run_id = :r AND tenant_id = :t AND state = 'pending' ORDER BY seq LIMIT :n"),
             {"r": run_id, "t": tenant_id, "n": settings.writeback_chunk_size}).fetchall()
         session.commit()
         if not rows:
             c = counts(session, tenant_id, run_id)
-            bad = c.get("failed", 0) + c.get("needs_check", 0)
+            bad = c.get("failed", 0) + c.get("needs_check", 0) + c.get("stale", 0)
             return stop("completed_with_errors" if bad else "completed", None, "writeback_run.completed")
         groups: dict[tuple[str, str], list] = {}
         for r in rows:
@@ -203,7 +209,7 @@ def run(session: Any, tenant_id: str, run_id: str, enqueue: Callable[[float], No
                 with get_connector() as conn:
                     conn.connect(params)
                     cache: dict = {}
-                    for rid, _, _, key, changes in recs:
+                    for rid, _, _, key, changes, based_on in recs:
                         if clock() >= deadline:
                             break
                         claimed = session.execute(text(
@@ -216,7 +222,8 @@ def run(session: Any, tenant_id: str, run_id: str, enqueue: Callable[[float], No
                                         {"id": run_id})
                         session.commit()  # from here SAP may change; a crash leaves this one record 'sending'
                         try:
-                            res = write_record(conn, module, key, dict(changes), apply=True, cache=cache)
+                            res = write_record(conn, module, key, dict(changes), apply=True, cache=cache,
+                                               based_on=dict(based_on or {}))
                         except Exception as e:  # noqa: BLE001 - unknown outcome: never resend, pause for a person
                             session.rollback()
                             session.execute(text("UPDATE writeback_run_records SET state = 'needs_check', error = :e, "
