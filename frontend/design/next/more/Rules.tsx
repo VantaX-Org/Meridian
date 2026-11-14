@@ -10,6 +10,7 @@ import { Chip, SegmentedControl } from "../kit";
 import { useSheets } from "../shell/SheetHost";
 import { LegacyMount } from "../shell/LegacyMount";
 import { LongText, ListSearch, QueryView, VirtualList } from "./states";
+import { PassRateCard, RulesCard } from "./cards";
 
 type Seg = "active" | "drafts" | "promotion" | "learned" | "packs";
 const TONE = { critical: "bad", high: "bad", medium: "warn", low: "neutral", info: "neutral" } as const;
@@ -57,6 +58,7 @@ export function Rules() {
   const rules = list.data?.rules ?? [];
   return (
     <div className="nx-body">
+      <div className="nx-chartcards"><RulesCard /><PassRateCard /></div>
       <SegmentedControl
         label={t("Rules")}
         value={seg}

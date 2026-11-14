@@ -39,6 +39,7 @@ export const REDIRECTS: Readonly<Record<string, string>> = {
   "/s": "/more/systems",
   "/s/new": "/more/systems?sheet=connect",
   "/reports": "/more/reports",
+  "/admin": "/more/admin",
   // Preview interface
   "/portfolio": "/",
   "/next/objects": "/",
@@ -50,6 +51,7 @@ export const REDIRECTS: Readonly<Record<string, string>> = {
 /** Old address families: prefix, then the new prefix. The rest of the path carries over. */
 const PREFIXES: readonly (readonly [string, string])[] = [
   ["/r/", "/more/rules/"],
+  ["/admin/", "/more/admin/"],
   ["/s/", "/more/systems/"],
   ["/next/work/", "/work/"],
   ["/load/", "/load?tab="],

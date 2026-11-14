@@ -100,6 +100,55 @@ describe("the user inspector", () => {
     expect(await within(dialog).findByTestId("action-result")).toHaveTextContent("Reset email sent to aisha.khan@demo-corp.example");
   });
 
+  it("sets a generated password, shows it once with Copy, and forgets it on close", async () => {
+    const spy = vi.spyOn(adminApi, "setUserPassword");
+    open("u-3");
+    const dialog = await screen.findByRole("dialog", { name: "Aisha Khan" });
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Set a password" }));
+    const set = await screen.findByRole("dialog", { name: "Set a password for Aisha Khan" });
+    fireEvent.click(within(set).getByRole("button", { name: "Set the password" }));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith("u-3", { generate: true }));
+    const shown = await within(set).findByTestId("shown-password");
+    expect(shown.textContent?.length).toBeGreaterThanOrEqual(12);
+    expect(within(set).getByRole("button", { name: "Copy the password" })).toBeInTheDocument();
+    fireEvent.click(within(set).getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(screen.queryByTestId("shown-password")).toBeNull());
+    fireEvent.click(within(dialog).getByRole("button", { name: "Set a password" }));
+    expect(await screen.findByRole("dialog", { name: "Set a password for Aisha Khan" })).toBeInTheDocument();
+    expect(screen.queryByTestId("shown-password")).toBeNull();
+  });
+
+  it("checks a typed password locally, and shows a weak or rate-limited refusal from the server", async () => {
+    const spy = vi.spyOn(adminApi, "setUserPassword");
+    open("u-3");
+    const dialog = await screen.findByRole("dialog", { name: "Aisha Khan" });
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Set a password" }));
+    const set = await screen.findByRole("dialog", { name: "Set a password for Aisha Khan" });
+    fireEvent.click(within(set).getByLabelText("Type one"));
+    fireEvent.change(within(set).getByLabelText("New password"), { target: { value: "synthetic-pass-one" } });
+    fireEvent.change(within(set).getByLabelText("Confirm new password"), { target: { value: "synthetic-pass-two" } });
+    fireEvent.click(within(set).getByRole("button", { name: "Set the password" }));
+    expect(await within(set).findByText("The new password and its confirmation do not match.")).toBeInTheDocument();
+    expect(spy).not.toHaveBeenCalled();
+    const { AxiosError, AxiosHeaders } = await import("axios");
+    const refuse = (status: number, detail: string) => new AxiosError("x", "ERR", undefined, undefined, { status, data: { detail }, statusText: "", headers: {}, config: { headers: new AxiosHeaders() } });
+    spy.mockRejectedValueOnce(refuse(422, "That password is too common. Choose another one.")).mockRejectedValueOnce(refuse(429, "slow down"));
+    fireEvent.change(within(set).getByLabelText("Confirm new password"), { target: { value: "synthetic-pass-one" } });
+    fireEvent.click(within(set).getByRole("button", { name: "Set the password" }));
+    expect(await within(set).findByText("That password cannot be used")).toBeInTheDocument();
+    fireEvent.click(within(set).getByRole("button", { name: "Set the password" }));
+    expect(await within(set).findByText("Too many password changes")).toBeInTheDocument();
+    expect(spy).toHaveBeenCalledWith("u-3", { password: "synthetic-pass-one" });
+  });
+
+  it("explains why the password actions are off for the last admin and without permission", async () => {
+    open("u-1");
+    const dialog = await screen.findByRole("dialog", { name: "Nomsa Dlamini" });
+    expect(await within(dialog).findByText("This is the last admin. Add another admin before setting or resetting this password.")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Set a password" })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "Reset the password" })).toBeDisabled();
+  });
+
   it("removes a user only after a confirmation", async () => {
     const spy = vi.spyOn(adminApi, "removeUser");
     open("u-8");

@@ -4,7 +4,8 @@ import { renderWithQuery } from "@/__tests__/render";
 import { push, replace, setUrl } from "@/design/v2/__tests__/nav-store";
 import { stubLayout } from "@/design/v2/__tests__/layout-stub";
 import { ToastProvider } from "../../kit";
-import { EmptyViz, Ring, SegBar } from "../../kit/viz/Viz";
+import { ChartCard, cardState, compact } from "../ChartCard";
+import { PassRateCard, RulesCard, filesPerWeek } from "../cards";
 import { SheetHost, useSheets, type SheetsApi } from "../../shell/SheetHost";
 import { MORE_SHEETS } from "../../shell/sheets";
 import { redirectFor } from "@/lib/next/nav-defaults";
@@ -41,7 +42,7 @@ vi.mock("@/lib/v2/admin-queries", () => ({
   useUsers: () => Q.st({ users: [] }),
   useRoles: () => ({ data: [] }),
   useGrants: () => ({ data: [] }),
-  useLicence: () => ({ data: undefined }),
+  useLicence: () => Q.st(undefined),
 }));
 vi.mock("@/lib/v2/runs-queries", () => ({ useSystemsExtended: () => Q.systems, useSystemObjectList: () => Q.st([]), useSystemProfiles: () => Q.st([]), useSystemExtractions: () => Q.st([]), useSystemConfigLoad: () => Q.st(undefined) }));
 vi.mock("@/lib/v2/approvals-queries", () => ({ usePeople: () => Q.people }));
@@ -93,26 +94,64 @@ describe("sheet registry", () => {
   it("sends the old /s/new address to the connect sheet", () => {
     expect(redirectFor("/s/new")).toBe("/more/systems?sheet=connect");
   });
+
+  it("sends /admin and its sections under More", () => {
+    expect(redirectFor("/admin")).toBe("/more/admin");
+    expect(redirectFor("/admin/users")).toBe("/more/admin/users");
+  });
 });
 
-describe("viz kit", () => {
-  it("Ring renders a labelled figure with the caption as text", () => {
-    render(<Ring value={3} max={10} label="Seats" caption="3 of 10 seats used" />);
-    expect(screen.getByRole("figure", { name: /Seats: 3 of 10/ })).toBeInTheDocument();
-    expect(screen.getByText("3 of 10 seats used", { selector: "figcaption" })).toBeInTheDocument();
+describe("chart cards", () => {
+  const forbidden = Object.assign(new Error("403"), { isAxiosError: true, response: { status: 403 } });
+  it("cardState covers every state", () => {
+    const q = (o: object) => ({ isLoading: false, error: null, data: {}, ...o });
+    expect(cardState(q({ isLoading: true, data: undefined }), false)).toBe("loading");
+    expect(cardState(q({}), false)).toBe("ready");
+    expect(cardState(q({}), true)).toBe("empty");
+    expect(cardState(q({ error: new Error("x"), data: undefined }), false)).toBe("failed");
+    expect(cardState(q({ error: new Error("x") }), false)).toBe("stale");
+    expect(cardState(q({ error: forbidden }), false)).toBe("denied");
+    expect(cardState(q({}), false, false)).toBe("denied");
   });
-  it("SegBar lists every part as text and tips each segment", () => {
-    const { container } = render(<SegBar label="Users" parts={[{ label: "Active", value: 4 }, { label: "Invited", value: 1 }]} />);
-    expect(screen.getByRole("img", { name: "Active 4, Invited 1" })).toBeInTheDocument();
-    expect(container.querySelectorAll("[title]")).toHaveLength(2);
+  it("compact keeps small counts exact and shortens huge ones", () => {
+    expect(compact(999)).toBe("999");
+    expect(compact(1234567)).toMatch(/^1\.2\s?M$/);
   });
-  it("SegBar with nothing says so instead of drawing numbers", () => {
-    render(<SegBar label="Users" parts={[{ label: "Active", value: 0 }]} />);
-    expect(screen.getByText("Nothing to show yet.")).toBeInTheDocument();
+  it("filesPerWeek buckets eight weeks, oldest first, and drops dates outside them", () => {
+    const now = Date.parse("2026-11-13T12:00:00Z");
+    const day = 86_400_000;
+    const pts = filesPerWeek([new Date(now - day).toISOString(), new Date(now - 2 * day).toISOString(), new Date(now - 50 * day).toISOString(), new Date(now - 90 * day).toISOString(), "not a date"], now);
+    expect(pts).toHaveLength(8);
+    expect(pts[7].value).toBe(2);
+    expect(pts[0].value).toBe(1);
+    expect(pts.reduce((a, p) => a + p.value, 0)).toBe(3);
   });
-  it("EmptyViz carries its one line", () => {
-    render(<EmptyViz line="No usage figures for this group yet." />);
-    expect(screen.getByLabelText("No usage figures for this group yet.")).toBeInTheDocument();
+  it("a stale card keeps its chart, says the refresh failed and offers Try again", () => {
+    const retry = vi.fn();
+    render(<ChartCard title="Rules" state="stale" chart={<svg data-testid="chart" />} emptyLine="none" onRetry={retry} />);
+    expect(screen.getByTestId("chart")).toBeInTheDocument();
+    expect(screen.getByTestId("stale")).toHaveTextContent("The latest refresh failed.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(retry).toHaveBeenCalled();
+  });
+  it("empty, failed and denied draw the shape with one line, never the chart", () => {
+    for (const [state, line] of [["empty", "Nothing yet."], ["failed", "These figures could not be loaded."], ["denied", "You do not have access to these figures."]] as const) {
+      const { unmount } = render(<ChartCard title="T" state={state} chart={<svg data-testid="chart" />} emptyLine="Nothing yet." />);
+      expect(screen.queryByTestId("chart")).toBeNull();
+      expect(screen.getByLabelText(line)).toBeInTheDocument();
+      unmount();
+    }
+  });
+  it("rules and pass rate cards read partial data honestly", () => {
+    Q.rules = Q.st({ rules: [
+      { id: "a", enabled: true, severity: "critical", last_pass_rate: 80 },
+      { id: "b", enabled: true, severity: "high", last_pass_rate: 60 },
+      { id: "c", enabled: false, severity: "low" },
+    ] });
+    wrap(<><RulesCard /><PassRateCard /></>);
+    expect(screen.getByTestId("card-rules")).toHaveTextContent("2 of 3 rules are on");
+    expect(screen.getByTestId("card-pass")).toHaveTextContent("70%");
+    expect(screen.getByTestId("card-pass")).toHaveTextContent("From 2 of 3 rules; the rest have not run yet.");
   });
 });
 
@@ -135,7 +174,7 @@ describe("shared states", () => {
     expect(screen.getByText("Loading it")).toBeInTheDocument();
     a.unmount();
     const b = render(<QueryView {...base} loading={false} error={new Error("x")} empty={false}>content</QueryView>);
-    expect(screen.getByRole("button", { name: /retry|try again/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /retry|try again/i }).length).toBeGreaterThan(0);
     b.unmount();
     const c = render(<QueryView {...base} loading={false} error={null} empty>content</QueryView>);
     expect(screen.getByText("None")).toBeInTheDocument();
@@ -165,7 +204,7 @@ describe("More screens: loading, error, empty", () => {
     a.unmount();
     Q.rules = Q.st(undefined, { error: new Error("x") });
     const b = wrap(<Rules />);
-    expect(screen.getByRole("button", { name: /retry|try again/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /retry|try again/i }).length).toBeGreaterThan(0);
     b.unmount();
     Q.rules = Q.st({ rules: [] });
     wrap(<Rules />);
@@ -178,7 +217,7 @@ describe("More screens: loading, error, empty", () => {
     a.unmount();
     Q.reports = Q.st(undefined, { error: new Error("x") });
     const b = wrap(<Reports />);
-    expect(screen.getByRole("button", { name: /retry|try again/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /retry|try again/i }).length).toBeGreaterThan(0);
     b.unmount();
     Q.reports = Q.st({ items: [] });
     wrap(<Reports />);
@@ -191,7 +230,7 @@ describe("More screens: loading, error, empty", () => {
     a.unmount();
     Q.systems = Q.st(undefined, { error: new Error("x") });
     const b = wrap(<Systems />);
-    expect(screen.getByRole("button", { name: /retry|try again/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /retry|try again/i }).length).toBeGreaterThan(0);
     b.unmount();
     Q.systems = Q.st([]);
     wrap(<Systems />);
@@ -213,7 +252,7 @@ describe("More screens: loading, error, empty", () => {
     a.unmount();
     Q.people = Q.st(undefined, { error: new Error("x") });
     const b = wrap(<People />);
-    expect(screen.getByRole("button", { name: /retry|try again/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /retry|try again/i }).length).toBeGreaterThan(0);
     b.unmount();
     Q.people = Q.st({ people: [] });
     wrap(<People />);
@@ -251,6 +290,7 @@ describe("More home and routing", () => {
   it("shows tiles and hides the admin tile from a non-admin", () => {
     const a = wrap(<More slug={[]} />);
     expect(screen.getByTestId("more-tiles")).toBeInTheDocument();
+    expect(screen.getByTestId("more-cards")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Administration/ })).toBeInTheDocument();
     a.unmount();
     Q.can = () => false;

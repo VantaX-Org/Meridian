@@ -804,6 +804,11 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     const email = b.send_email === true;
     return { id, must_change_password: true, emailed: email, link: email ? null : `https://meridian.demo-corp.example/reset?token=demo-${id}` };
   }
+  const setPw = /^\/users\/([^/]+)\/set-password$/.exec(path);
+  if (setPw && method === "POST") {
+    // Fixture only: a made-up value so the shown-once panel can be seen; the live API generates its own.
+    return { id: decodeURIComponent(setPw[1]), must_change_password: true, password: b.generate === true ? "demo-Kq7vR2mXp9Lt4sWz" : null };
+  }
   if (method === "POST" && path === "/users/bulk") {
     const ids = (b.ids as string[]) ?? [];
     const action = text(b.action) as "suspend" | "reactivate" | "resend" | "reset";
