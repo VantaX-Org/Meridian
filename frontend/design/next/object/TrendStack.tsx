@@ -24,15 +24,28 @@ export function TrendStack({ o }: { o: ObjectRun }) {
           const r = d?.resolved ?? 0;
           return (
             <li key={p.b.id} className="nx-trend-col" aria-label={d ? t("Run {n}: {new} new, {resolved} resolved", { n: p.b.run_number ?? "", new: int(n), resolved: int(r) }) : t("Run {n}: loading", { n: p.b.run_number ?? "" })}>
-              <span className="nx-trend-stack" aria-hidden="true">
-                <span className="nx-trend-new" style={{ blockSize: `${(n / max) * 100}%` }} />
-                <span className="nx-trend-res" style={{ blockSize: `${(r / max) * 100}%` }} />
+              <span className="nx-trend-stack">
+                <span className="nx-trend-new" style={{ blockSize: `${(n / max) * 100}%` }} title={t("Run {n}: {count} new", { n: p.b.run_number ?? "", count: int(n) })} />
+                <span className="nx-trend-res" style={{ blockSize: `${(r / max) * 100}%` }} title={t("Run {n}: {count} resolved", { n: p.b.run_number ?? "", count: int(r) })} />
               </span>
               <span className="nx-trend-label nx-num" aria-hidden="true">{p.b.run_number}</span>
             </li>
           );
         })}
       </ol>
+      <details className="nx-trend-figures">
+        <summary>{t("Show the figures")}</summary>
+        <table className="nx-table">
+          <caption className="nx-sr">{t("New and resolved by run")}</caption>
+          <thead><tr><th scope="col">{t("Run")}</th><th scope="col" className="nx-r">{t("New")}</th><th scope="col" className="nx-r">{t("Resolved")}</th></tr></thead>
+          <tbody>
+            {pairs.map((p, i) => {
+              const d = qs[i]?.data?.totals;
+              return <tr key={p.b.id}><td className="nx-num">{p.b.run_number}</td><td className="nx-r nx-num">{d ? int(d.new) : "—"}</td><td className="nx-r nx-num">{d ? int(d.resolved) : "—"}</td></tr>;
+            })}
+          </tbody>
+        </table>
+      </details>
       <p className="nx-muted nx-trend-key"><span className="nx-trend-swatch nx-trend-new" /> {t("New")} <span className="nx-trend-swatch nx-trend-res" /> {t("Resolved")}</p>
     </section>
   );
