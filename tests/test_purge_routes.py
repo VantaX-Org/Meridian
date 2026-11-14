@@ -394,6 +394,7 @@ def test_tenant_purge_sweeps_the_tenant_prefixes_and_counts_them(monkeypatch):
 
     swept, removed = [], []
     monkeypatch.setattr(routes, "_sync_session", lambda t: _Session())
+    monkeypatch.setattr("api.services.audit_chain.purge_prefix", lambda s, t, c, a: 3)
     monkeypatch.setattr("api.services.storage.object_size", lambda b, n: 10)
     monkeypatch.setattr("api.services.storage.delete_file", lambda b, n: removed.append(n))
 

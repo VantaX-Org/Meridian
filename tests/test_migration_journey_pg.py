@@ -49,6 +49,7 @@ def seeded():
                   {"i": str(uuid.uuid4()), "t": tid, "r": run, "u": _USER})
     yield SimpleNamespace(owner=owner, tid=tid, src=src, sv=sv, failed_v=failed_v, foreign_v=foreign_v, run=run)
     with owner.begin() as c:
+        c.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard
         for t in (tid, other_tid):
             for table in ("audit_log", "migration_reconciliations", "migration_export_files", "migration_runs",
                           "migration_waves", "analysis_versions", "users", "sap_systems", "tenants"):

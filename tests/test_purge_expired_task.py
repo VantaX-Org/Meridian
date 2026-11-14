@@ -12,8 +12,9 @@ TENANT = str(uuid.uuid4())
 
 
 class _Result:
-    def __init__(self, rows):
+    def __init__(self, rows, rowcount=0):
         self._rows = rows
+        self.rowcount = rowcount
 
     def fetchall(self):
         return self._rows
@@ -35,6 +36,7 @@ class _Session:
         self.deletes: list[str] = []
         self.params: list[dict] = []
         self.logs: list[dict] = []
+        self.audits: list[dict] = []
         self.commits = 0
 
     def execute(self, stmt, params=None):
@@ -49,11 +51,25 @@ class _Session:
             return _Result(self.old_reports)
         if sql.startswith("SELECT count(*) FROM audit_log"):
             return _Result([(self.old_audit,)])
+        if sql.startswith("SELECT last_seq FROM audit_chain_head"):  # the chain: old_audit rows, then 3 kept
+            return _Result([(self.old_audit + 3,)])
+        if sql.startswith("SELECT min(chain_seq) FROM audit_log"):
+            return _Result([(self.old_audit + 1,)])
+        if sql.startswith("SELECT row_hash FROM audit_log"):
+            return _Result([("h" * 64,)])
+        if sql.startswith("SET LOCAL app.audit_purge"):
+            self.deletes.append(sql)
+            return _Result([])
         if sql.startswith("INSERT INTO purge_log"):
             self.logs.append(params)
             return _Result([])
         if sql.startswith("INSERT INTO audit_log"):
+            self.audits.append(params)
             return _Result([])
+        if sql.startswith("DELETE FROM audit_log"):
+            self.deletes.append(sql)
+            self.params.append(params)
+            return _Result([], rowcount=self.old_audit)
         if sql.startswith("DELETE FROM") or sql.startswith("UPDATE purge_log"):
             self.deletes.append(sql)
             self.params.append(params)
@@ -152,7 +168,10 @@ def test_after_the_window_with_the_flag_the_task_deletes(monkeypatch):
     assert summary["dry_run"] is False
     assert calls == [{"version_id": str(s.versions[1][0]), "dry_run": False, "source": "nightly"}]
     assert any(d.startswith("DELETE FROM reports") for d in s.deletes)
-    assert any(d.startswith("DELETE FROM audit_log") for d in s.deletes)
+    i = s.deletes.index("DELETE FROM audit_log WHERE tenant_id = :t AND chain_seq <= :s")
+    assert s.deletes[i - 1] == "SET LOCAL app.audit_purge = 'on'" and s.deletes[i + 1] == "SET LOCAL app.audit_purge = 'off'"
+    cp = [a for a in s.audits if a["a"] == "audit.checkpoint"]
+    assert len(cp) == 1 and '"through_seq": 7' in cp[0]["af"] and '"deleted": 7' in cp[0]["af"]
     assert removed == ["reports/t/a.pdf"]
     assert [(l["k"], l["d"], l["src"]) for l in s.logs] == [("reports", False, "nightly"), ("audit", False, "nightly")]
 

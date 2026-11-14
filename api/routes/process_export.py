@@ -80,6 +80,7 @@ async def _respond(request: Request, tenant: Tenant, doc: ProcessModelDocument, 
         "before_json": {"format": "signavio-bpmn", "version": version_no,
                         "overlay_version_id": (overlay or {}).get("version_id")},
         "after_json": None})
+    request.state.audit_written = True  # the middleware need not write a second row
     return Response(content=data, media_type="application/zip",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
@@ -122,6 +123,7 @@ async def _respond_pptx(request: Request, tenant: Tenant, doc: ProcessModelDocum
         "user_agent": request.headers.get("user-agent"),
         "before_json": {"format": "pptx", "version": version_no},
         "after_json": None})
+    request.state.audit_written = True  # the middleware need not write a second row
     return Response(content=data,
                     media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})

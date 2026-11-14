@@ -22,7 +22,9 @@ from api.services.local_auth import (
     create_access_token,
     decode_access_token,
     MIN_PASSWORD_LENGTH,
+    SESSION_ABSOLUTE_HOURS,
     generate_jwt_secret,
+    token_version_claim,
     validate_password,
     verify_password,
 )
@@ -362,6 +364,47 @@ def me(request: Request, response: Response):
                               home=home_for(row[3])),
             must_change_password=bool(row[5]) if len(row) > 5 else False,
         )
+
+
+@router.post("/refresh", status_code=204)
+def refresh(request: Request, response: Response) -> None:
+    """Slide the browser's session: a fresh 24h cookie for the same user, while the page is in use.
+
+    LocalAuthMiddleware has already checked the cookie, its CSRF token and that the session was not revoked. The
+    new token keeps the sign-in time (``auth_time``; ``iat`` for older tokens), and a session older than
+    SESSION_ABSOLUTE_HOURS is refused, so an idle tab expires after 24h and an active one after a week at most.
+    The CSRF cookie keeps its value (requests already in flight still match) and gets the new lifetime."""
+    token = request.cookies.get(AUTH_COOKIE, "")
+    if not token or request.headers.get("authorization", "").startswith("Bearer "):
+        raise HTTPException(status_code=400, detail="Only a browser session can be refreshed")
+    engine = get_sync_engine_or_create()
+    with engine.connect() as conn:
+        secret = conn.execute(text("SELECT jwt_secret FROM tenants WHERE id = :tid"),
+                              {"tid": DEV_TENANT_ID}).scalar()
+        payload = decode_access_token(token, secret) if secret else None
+        if not payload or payload.get("purpose"):
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        signed_in = payload.get("auth_time", payload.get("iat"))
+        if not isinstance(signed_in, int) or isinstance(signed_in, bool) or \
+                datetime.now(timezone.utc).timestamp() - signed_in > SESSION_ABSOLUTE_HOURS * 3600:
+            raise HTTPException(status_code=401, detail="Your session has ended. Sign in again.")
+        conn.execute(text(f"SET app.tenant_id = \'{str(DEV_TENANT_ID)}\'"))
+        row = conn.execute(text("SELECT email, role, is_active, token_version FROM users "
+                                "WHERE id = :uid AND tenant_id = :tid"),
+                           {"uid": payload["sub"], "tid": DEV_TENANT_ID}).fetchone()
+        # The middleware's token_version cache can be seconds stale; a refresh never outlives a revocation.
+        if not row or not row[2] or token_version_claim(payload) < int(row[3] or 0):
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        fresh = create_access_token(user_id=str(payload["sub"]), tenant_id=DEV_TENANT_ID, email=row[0], role=row[1],
+                                    secret=secret, token_version=int(row[3] or 0), auth_time=signed_in)
+    response.set_cookie(key=AUTH_COOKIE, value=fresh, max_age=_COOKIE_MAX_AGE, path="/", samesite="lax",
+                        httponly=True, secure=cookie_secure(request))
+    csrf = request.cookies.get(CSRF_COOKIE)
+    if csrf:
+        response.set_cookie(key=CSRF_COOKIE, value=csrf, max_age=_COOKIE_MAX_AGE, path="/", samesite="lax",
+                            httponly=False, secure=cookie_secure(request))
+    else:
+        _set_csrf_cookie(response, request)
 
 
 # ── Password rotation ────────────────────────────────────────────────────────
