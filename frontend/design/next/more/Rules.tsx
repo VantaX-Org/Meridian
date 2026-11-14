@@ -36,7 +36,7 @@ function RuleRows({ rules, label, empty }: { rules: Rule[]; label: string; empty
           rowKey={(r) => r.id}
           label={label}
           render={(r) => (
-            <button type="button" className="nx-row nx-row-main nx-link" onClick={() => sheets.open({ kind: "rule", id: r.id })}>
+            <button type="button" className="nx-row nx-row-main nx-link" onClick={() => sheets.open({ kind: "library-rule", id: r.id })}>
               <LongText text={r.name} className="nx-row-main" />
               <span className="nx-sub">{r.module}</span>
               <Chip tone={TONE[r.severity]}>{sev[r.severity]}</Chip>

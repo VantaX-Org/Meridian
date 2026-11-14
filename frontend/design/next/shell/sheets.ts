@@ -7,18 +7,20 @@ import { UpdateFlow } from "../flows/UpdateFlow";
 import { PersonSheet } from "../admin/PersonSheet";
 import { ReportSheet } from "../more/ReportSheet";
 import { RuleSheet } from "../more/RuleSheet";
+// story-feed: object
+import "../object/register";
 
 /** Later batches register their sheet kinds here: `registerSheet("connect", (ctx) => ...)`. Imported once by SheetHost. */
 
 // story-feed: more
 // SheetHost imports this file before it creates its registry, so a direct call here would hit the temporal dead zone.
 // A dynamic import settles only once SheetHost has finished evaluating, and long before any sheet can open.
-export const MORE_SHEETS = ["connect", "invite", "person", "rule", "report", "licence", "notify", "update"] as const;
+export const MORE_SHEETS = ["connect", "invite", "person", "library-rule", "report", "licence", "notify", "update"] as const;
 function registerAll(registerSheet: typeof import("./SheetHost").registerSheet) {
   registerSheet("connect", (ctx) => createElement(ConnectFlow, { ctx }));
   registerSheet("invite", (ctx) => createElement(InviteFlow, { ctx }));
   registerSheet("person", (ctx) => createElement(PersonSheet, { ctx }));
-  registerSheet("rule", (ctx) => createElement(RuleSheet, { ctx }));
+  registerSheet("library-rule", (ctx) => createElement(RuleSheet, { ctx }));
   registerSheet("report", (ctx) => createElement(ReportSheet, { ctx }));
   registerSheet("licence", (ctx) => createElement(LicenceFlow, { ctx }));
   registerSheet("notify", (ctx) => createElement(NotifyFlow, { ctx }));
@@ -37,3 +39,4 @@ function boot(tries = 0): void {
   });
 }
 boot();
+
