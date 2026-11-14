@@ -49,6 +49,7 @@ vi.mock("@/design/v2/screens/Runs", async () => (await import("./stub")).stub("R
 vi.mock("@/design/v2/screens/system/SystemsCanvas", async () => (await import("./stub")).stub("SystemsCanvas"));
 vi.mock("@/design/v2/screens/Reports", async () => (await import("./stub")).stub("ReportsCanvas"));
 vi.mock("@/design/v2/screens/Atlas", async () => (await import("./stub")).stub("Atlas"));
+vi.mock("../admin/Admin", () => ({ AdminHome: () => <div data-testid="mounted">AdminHome</div>, AdminSectionView: ({ slug }: { slug: string }) => <div data-testid="mounted">Admin {slug}</div> }));
 vi.mock("@/design/v2/admin/Admin", () => ({ AdminHome: () => <div data-testid="mounted">AdminHome</div>, AdminCanvas: ({ section }: { section: string }) => <div data-testid="mounted">Admin {section}</div> }));
 
 const prefs = { value: { ui_next: true } as Record<string, unknown> };
@@ -110,13 +111,13 @@ describe("More", () => {
   });
 
   it("mounts the tab named in the address and defaults to the first", () => {
-    setUrl("/more/rules?tab=dry-run&fixture=1");
-    const a = renderWithQuery(<More slug={["rules"]} />);
-    expect(screen.getByTestId("mounted")).toHaveTextContent("RuleDryRun");
+    setUrl("/more/insights?tab=forecast&fixture=1");
+    const a = renderWithQuery(<More slug={["insights"]} />);
+    expect(screen.getByTestId("mounted")).toHaveTextContent("Forecast");
     a.unmount();
-    setUrl("/more/rules?fixture=1");
-    renderWithQuery(<More slug={["rules"]} />);
-    expect(screen.getByTestId("mounted")).toHaveTextContent("RulesLibrary");
+    setUrl("/more/insights?fixture=1");
+    renderWithQuery(<More slug={["insights"]} />);
+    expect(screen.getByTestId("mounted")).toHaveTextContent("ScoreLens");
   });
 
   it("mounts all eight master data tabs", () => {
