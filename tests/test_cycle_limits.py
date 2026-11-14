@@ -9,6 +9,7 @@ import pytest
 from api.services import cleaning_workbook as cw
 from api.services import cycle_limits as cl
 from api.services import sf_roundtrip as rt
+from api.services import upload_checks as uc
 from api.services.migration.workbook_formats import WorkbookError, read_source, too_many_rows
 from tests.test_cleaning_workbook import RECS, RULES, _data
 from tests.test_upload_roundtrip_route import HEAD, PARENT, _good, _post, _row, _xlsx, env  # noqa: F401
@@ -82,22 +83,29 @@ def test_run_of_several_objects_needs_the_object_when_the_file_has_no_marker(env
     d = r.json()["detail"]
     assert r.status_code == 422 and d["error"] == "module_required"
     assert d["modules"] == ["employee_central", "benefits"] and d["fix"]
-    r = _post(env, _good(version_id=None), parent_version_id=str(PARENT), module="employee_central")
+    r = _post(env, _good(version_id=None), parent_version_id=str(PARENT), module="employee_central",
+              confirm_warnings="true")
     assert r.status_code == 200, r.text
     r = _post(env, _good(version_id=None), parent_version_id=str(PARENT), module="payroll")
     assert r.status_code == 422 and r.json()["detail"]["error"] == "module_mismatch"
 
 
-def test_nothing_applied_lists_rejected_rows(env):  # noqa: F811
+def test_nothing_applied_lists_rejected_rows(env, monkeypatch):  # noqa: F811
+    # the pre-upload keys check (dry run) finds the record; the real apply then matches nothing
+    real = rt.apply_edits
+    monkeypatch.setattr(rt, "apply_edits", lambda *a, dry=False, **k: (
+        {"applied": 1, "unchanged": 0, "unmatched": [], "unmatched_total": 0, "no_table": [], "no_field": [],
+         "total": len(a[2])} if dry else real(*a, **k)))
     env.result.update(applied=0, unmatched=[{"table": "EmpJob", "key": "userId=u1", "field": "jobTitle"}],
                       unmatched_total=1)
-    d = _post(env, _good()).json()["detail"]
+    d = _post(env, _good(), confirm_warnings="true").json()["detail"]
     assert d["reason"] == "no_match" and d["rejected"] == 1
     assert d["unmatched_rows"][0]["row"] == 2 and d["unmatched_rows"][0]["sheet"] == "Records to clean"
 
 
 def test_big_cleaning_workbook_comes_as_a_zip_of_parts(monkeypatch):
-    data = {**_data(RECS), "run": {"id": str(uuid.uuid4()), "label": "Run 1"}, "tenant_name": "Tenant"}
+    data = {**_data(RECS), "run": {"id": str(uuid.uuid4()), "label": "Run 1", "status": "completed"},
+            "tenant_name": "Tenant"}
     monkeypatch.setattr(cw, "load", lambda *a: data)
     monkeypatch.setattr(cw, "rule_meta", lambda m: RULES)
     monkeypatch.setattr(cw, "aletheia_plan_sheet", lambda *a: None)
@@ -109,5 +117,8 @@ def test_big_cleaning_workbook_comes_as_a_zip_of_parts(monkeypatch):
         names = z.namelist()
         assert len(names) == 2 and names[0].endswith("-part-1-of-2.xlsx")
         assert all(rt.read_upload(z.read(n), n)["marker"]["kind"] == "cleaning" for n in names)
+        for n in names:  # each part's fingerprint counts the records that part holds
+            up = rt.read_upload(z.read(n), n)
+            assert uc.check_rows(up["sheets"], up["marker"], "cleaning")["status"] == "pass", n
     monkeypatch.setattr(cw, "PART_ROWS", 50)
     assert cw.build(None, "t", "v", "employee_central")[1].endswith(".xlsx")

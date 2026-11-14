@@ -47,6 +47,7 @@ export function toOption(h: VersionHead, module: string, parentNumber: number | 
     parentNumber: parentNumber ?? undefined,
     dateLabel: shortDate(h.run_at),
     dqs: d === null ? undefined : score(d),
+    records: h.metadata?.module_rows?.[module] === undefined ? undefined : h.metadata.module_rows[module].toLocaleString("en"),
     chips,
   };
 }

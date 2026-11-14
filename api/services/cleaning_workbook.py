@@ -31,6 +31,7 @@ from api.services.branded_xlsx import ROW_CAP, ColumnSpec, ConditionalRule, Shee
 from api.services.pdf_reports import _all, fmt_module
 from api.services.cycle_limits import zip_parts
 from api.services.sf_roundtrip import MARKER, MAX_UPLOAD_BYTES, marker_rows
+from api.services.upload_checks import fingerprint
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 STATUSES = ("Open", "In progress", "Needs owner", "Fixed", "Not an error")
@@ -85,8 +86,29 @@ def rule_meta(module: str) -> dict[str, dict]:
     return out
 
 
+class DownloadRefused(ValueError):
+    """The chosen run cannot make a workbook for this object (message safe to show)."""
+
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = status
+
+
+def refuse_download(run: dict, module: str) -> None:
+    """The run must be finished and hold the object, or the workbook would not match what is uploaded back."""
+    if "complete" not in str(run.get("status") or ""):
+        raise DownloadRefused(409, "That run has not finished. Wait for it, or choose a finished run.")
+    mods = run.get("modules")
+    if isinstance(mods, str):
+        mods = json.loads(mods)
+    if mods and module not in mods:
+        raise DownloadRefused(422, f"That run does not hold {module}. Choose the run that does.")
+
+
 def load(s: Session, tid: str, vid: str, module: str) -> Optional[dict]:
-    run = _all(s, "SELECT id, label, run_at FROM analysis_versions WHERE id = CAST(:v AS uuid) AND tenant_id = :t",
+    run = _all(s, "SELECT id, label, run_at, status, metadata->>'system_id' AS system_id, "
+                  "COALESCE(metadata->'modules', '[]'::jsonb) AS modules FROM analysis_versions "
+                  "WHERE id = CAST(:v AS uuid) AND tenant_id = :t",
                v=vid, t=tid)
     if not run:
         return None
@@ -368,6 +390,31 @@ def _extras(data: dict, rows: list[dict], rules: dict[str, dict], summary: list[
     ]
 
 
+def _template(rows: list[dict], rules: dict[str, dict]) -> SheetSpec:
+    """Fix template: one row per field to fix, its code with description beside it, required flag and accepted values."""
+    by: dict[str, dict] = {}
+    for x in rows:
+        t = by.setdefault(x["field"], {"rules": set(), "n": 0, "req": False, "vals": []})
+        t["rules"].add(x["rule"])
+        t["n"] += 1
+        t["req"] = t["req"] or bool(x["required"])
+        t["vals"] += [v for v in allowed_values(rules.get(x["rule"]) or {}) if v not in t["vals"]]
+    out = []
+    for f, t in sorted(by.items()):
+        code, _, desc = f.partition(" (")  # row fields are "CODE (description)"
+        out.append({"field": code, "description": desc.rstrip(")"),
+                    "required": "Yes" if t["req"] else "", "allowed": ", ".join(t["vals"][:30]),
+                    "rules": ", ".join(sorted(t["rules"])), "records": t["n"]})
+    return SheetSpec("Fix template", [
+        ColumnSpec("field", "Field", "mono", width=40, help="The field code, as in Records to clean."),
+        ColumnSpec("description", "Description", width=40, help="What the field means."),
+        ColumnSpec("required", "Required", width=10, fill_by_value={"Yes": "F8D7DA"}, help="Yes when the field is mandatory."),
+        ColumnSpec("allowed", "Allowed values", "mono", width=50, help="Codes the field accepts, where the rules list them."),
+        ColumnSpec("rules", "Rules", "mono", width=24, help="The rules that check this field."),
+        ColumnSpec("records", "Rows to fix", "int", width=10)], out,
+        note="The fields you will edit: code, meaning, whether it is mandatory and the values it accepts.")
+
+
 def cleaning_context(data: dict, rules: dict[str, dict], rows: Optional[list[dict]] = None) -> tuple[list[SheetSpec], dict]:
     """The sheets plus counts ``{rules, records, suggested, required_empty}`` for the caller. ``rows`` (from
     ``_rows``) builds one part of a split download."""
@@ -500,6 +547,7 @@ def cleaning_context(data: dict, rules: dict[str, dict], rows: Optional[list[dic
             note += f" Part {i + 1} of {len(chunks)}."
         sheets.append(SheetSpec(title, rec_cols, chunk, note=note, protect=True))
     sheets[:0] = _extras(data, rows, rules, summary, len(miss))
+    sheets.insert(len(sheets) - len(chunks), _template(rows, rules))
     counts = {"rules": len(summary), "records": len(rows), "suggested": sum(1 for x in rows if x["suggested"]),
               "required_empty": len(miss)}
     return sheets, counts
@@ -528,6 +576,7 @@ def build(s: Session, tid: str, vid: str, module: str,
     data = load(s, tid, vid, module)
     if data is None:
         return None
+    refuse_download(data["run"], module)
     generated_at = generated_at or datetime.now(timezone.utc)
     rules = rule_meta(module)
     rows = _rows(data["findings"], data["records"], rules)
@@ -537,13 +586,17 @@ def build(s: Session, tid: str, vid: str, module: str,
     name = xlsx_filename(f"cleaning-{module.replace('_', '-')}", label, generated_at)
 
     def part(chunk: list[dict], i: int, n: int) -> bytes:
-        sheets, _ = cleaning_context(data, rules, rows=chunk)
+        sheets, counts = cleaning_context(data, rules, rows=chunk)
         if plan_sheet is not None:
             sheets.insert(next((j for j, sh in enumerate(sheets) if sh.title.startswith("Records to clean")),
                                len(sheets)), plan_sheet)
+        # each part carries its own fingerprint: its record count is what its upload is checked against
+        recs = [sh for sh in sheets if sh.title.startswith("Records to clean")]
+        fp = fingerprint("cleaning", tid, run.get("system_id"), [c.header for c in recs[0].columns] if recs else [],
+                         counts["records"])
         # hidden and last: tells the upload-back which run and object this file came from (api/services/sf_roundtrip.py)
         sheets.append(SheetSpec(MARKER, [ColumnSpec("key", "key"), ColumnSpec("value", "value")],
-                                marker_rows(str(run["id"]), module, "cleaning"), hidden=True))
+                                marker_rows(str(run["id"]), module, "cleaning", None, fp), hidden=True))
         title = f"Cleaning workbook: {fmt_module(module)}" + (f", part {i} of {n}" if n > 1 else "")
         return build_workbook(tenant_name=data["tenant_name"], run_label=label, run_id=str(run["id"]), title=title,
                               sheets=sheets, generated_at=generated_at)
