@@ -3,11 +3,14 @@
  *   POST /upload/roundtrip  multipart: file (.xlsx or .csv), parent_version_id (only when the file carries no marker)
  *        The edited migration template or cleaning workbook becomes the next run of the same lineage and is analysed at
  *        once. 422 {error: "parent_required"} means the file does not say which run it came from.
+ *        module (optional) names the object when the run holds several and the file carries no marker.
+ *        A 422 detail may carry `fix` (what to do) and `unmatched_rows` (rows with sheet, row number and reason).
  */
 import { uploadApiClient } from "@/lib/api/client";
 import { fixtureActive } from "./fixture";
 import { getVersionsPage } from "./runs";
 import { v2Download } from "./download";
+import { tableCsv } from "@/lib/v2/grid-export";
 
 /** GET /reports/{run}/cleaning/{module}.xlsx: the cleaning workbook for one object of one run, ready to edit and upload back. */
 export const downloadCleaningWorkbook = (runId: string, module: string) =>
@@ -28,7 +31,22 @@ export interface RoundTripResult {
   skipped: Record<string, string>;
   no_table: string[];
   no_field: string[];
+  /** The rows that changed nothing because they matched nothing, with sheet, Excel row number and reason (at most 200). */
+  unmatched_rows?: RejectedRow[];
 }
+
+/** One rejected row of an uploaded workbook. `row` is the Excel row number; 0 when the row could not be located. */
+export interface RejectedRow {
+  sheet: string;
+  row: number;
+  table: string;
+  key: string;
+  field: string;
+  reason: string;
+}
+
+type Detail = { error?: string; detail?: unknown; fix?: unknown; unmatched_rows?: unknown };
+const detailOf = (err: unknown) => (err as { response?: { data?: { detail?: unknown } } } | null)?.response?.data?.detail;
 
 /** True when the API says the file names no parent run, so the person must choose one. */
 export function needsParent(err: unknown): boolean {
@@ -43,6 +61,30 @@ export function uploadSentence(err: unknown, fallback: string): string {
   const inner = (detail as { detail?: unknown } | null)?.detail;
   return typeof inner === "string" && inner.trim() ? inner : fallback;
 }
+
+/** What to do about a rejected upload, when the API says. */
+export function uploadFix(err: unknown): string | undefined {
+  const fix = (detailOf(err) as Detail | null)?.fix;
+  return typeof fix === "string" && fix.trim() ? fix : undefined;
+}
+
+/** The rows a rejected upload could not match, when the API lists them. */
+export function uploadRows(err: unknown): RejectedRow[] {
+  const rows = (detailOf(err) as Detail | null)?.unmatched_rows;
+  return Array.isArray(rows) ? (rows as RejectedRow[]) : [];
+}
+
+const REJECTED_COLUMNS = [
+  { key: "sheet", header: "Sheet" },
+  { key: "row", header: "Row" },
+  { key: "table", header: "Table" },
+  { key: "key", header: "Record key" },
+  { key: "field", header: "Field" },
+  { key: "reason", header: "Reason" },
+];
+
+/** The rejected rows as CSV, for the person to download and fix. */
+export const rejectedCsv = (rows: RejectedRow[]): string => tableCsv(REJECTED_COLUMNS, rows.map((r) => ({ ...r, row: r.row || null })));
 
 export type CheckStatus = "pass" | "warn" | "fail";
 export type CheckId = "fingerprint" | "run" | "template" | "columns" | "rows" | "keys" | "values" | "formulas";
@@ -66,16 +108,17 @@ export function fixtureChecks(name: string, parent: string): UploadChecks {
 }
 
 /** POST /upload/roundtrip/check: run every check on the file and change nothing. */
-export async function checkCleaned(file: File, parentVersionId?: string): Promise<UploadChecks> {
+export async function checkCleaned(file: File, parentVersionId?: string, module?: string): Promise<UploadChecks> {
   if (fixtureActive()) return fixtureChecks(file.name, parentVersionId ?? "");
   const form = new FormData();
   form.append("file", file);
   if (parentVersionId) form.append("parent_version_id", parentVersionId);
+  if (module) form.append("module", module);
   const { data } = await uploadApiClient.post<UploadChecks>("/api/v1/upload/roundtrip/check", form, { headers: { "Content-Type": "multipart/form-data" } });
   return data;
 }
 
-export async function uploadCleaned(file: File, parentVersionId?: string, confirmWarnings = false): Promise<RoundTripResult> {
+export async function uploadCleaned(file: File, parentVersionId?: string, module?: string, confirmWarnings = false): Promise<RoundTripResult> {
   if (fixtureActive()) {
     const [after, before] = (await getVersionsPage({ limit: 2 })).versions;
     return { version_id: after.id, job_id: null, status: "pending", parent_version_id: parentVersionId ?? before.id, kind: "template", applied: 42, unchanged: 3, unmatched: 0, unmapped: {}, skipped: {}, no_table: [], no_field: [] };
@@ -83,6 +126,7 @@ export async function uploadCleaned(file: File, parentVersionId?: string, confir
   const form = new FormData();
   form.append("file", file);
   if (parentVersionId) form.append("parent_version_id", parentVersionId);
+  if (module) form.append("module", module);
   if (confirmWarnings) form.append("confirm_warnings", "true");
   const { data } = await uploadApiClient.post<RoundTripResult>("/api/v1/upload/roundtrip", form, { headers: { "Content-Type": "multipart/form-data" } });
   return data;

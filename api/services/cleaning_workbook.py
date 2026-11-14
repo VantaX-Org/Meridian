@@ -29,11 +29,16 @@ from sqlalchemy.orm import Session
 
 from api.services.branded_xlsx import ROW_CAP, ColumnSpec, ConditionalRule, SheetSpec, build_workbook, xlsx_filename
 from api.services.pdf_reports import _all, fmt_module
-from api.services.sf_roundtrip import MARKER, marker_rows
+from api.services.cycle_limits import zip_parts
+from api.services.sf_roundtrip import MARKER, MAX_UPLOAD_BYTES, marker_rows
 from api.services.upload_checks import fingerprint
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 STATUSES = ("Open", "In progress", "Needs owner", "Fixed", "Not an error")
+
+# one download part: at most this many rows, halved until each part fits the upload limit
+PART_ROWS = 50_000
+MIN_PART_ROWS = 5_000
 
 
 # ── loaders ──────────────────────────────────────────────────────────────────
@@ -410,10 +415,11 @@ def _template(rows: list[dict], rules: dict[str, dict]) -> SheetSpec:
         note="The fields you will edit: code, meaning, whether it is mandatory and the values it accepts.")
 
 
-def cleaning_context(data: dict, rules: dict[str, dict]) -> tuple[list[SheetSpec], dict]:
-    """The sheets plus counts ``{rules, records, suggested, required_empty}`` for the caller."""
+def cleaning_context(data: dict, rules: dict[str, dict], rows: Optional[list[dict]] = None) -> tuple[list[SheetSpec], dict]:
+    """The sheets plus counts ``{rules, records, suggested, required_empty}`` for the caller. ``rows`` (from
+    ``_rows``) builds one part of a split download."""
     findings = data["findings"]
-    rows = _rows(findings, data["records"], rules)
+    rows = _rows(findings, data["records"], rules) if rows is None else rows
     per_rule: dict[str, int] = {}
     req_rule: dict[str, int] = {}
     for x in rows:
@@ -572,19 +578,38 @@ def build(s: Session, tid: str, vid: str, module: str,
         return None
     refuse_download(data["run"], module)
     generated_at = generated_at or datetime.now(timezone.utc)
-    sheets, counts = cleaning_context(data, rule_meta(module))
+    rules = rule_meta(module)
+    rows = _rows(data["findings"], data["records"], rules)
     plan_sheet = aletheia_plan_sheet(s, tid, vid, module)
-    if plan_sheet is not None:
-        sheets.insert(next((i for i, sh in enumerate(sheets) if sh.title.startswith("Records to clean")), len(sheets)),
-                      plan_sheet)
     run = data["run"]
-    recs = [sh for sh in sheets if sh.title.startswith("Records to clean")]
-    fp = fingerprint("cleaning", tid, run.get("system_id"), [c.header for c in recs[0].columns] if recs else [],
-                     counts["records"])
-    # hidden and last: tells the upload-back which run and object this file came from (api/services/sf_roundtrip.py)
-    sheets.append(SheetSpec(MARKER, [ColumnSpec("key", "key"), ColumnSpec("value", "value")],
-                            marker_rows(str(run["id"]), module, "cleaning", None, fp), hidden=True))
     label = run.get("label") or str(run["id"])[:8]
-    body = build_workbook(tenant_name=data["tenant_name"], run_label=label, run_id=str(run["id"]),
-                          title=f"Cleaning workbook: {fmt_module(module)}", sheets=sheets, generated_at=generated_at)
-    return body, xlsx_filename(f"cleaning-{module.replace('_', '-')}", label, generated_at)
+    name = xlsx_filename(f"cleaning-{module.replace('_', '-')}", label, generated_at)
+
+    def part(chunk: list[dict], i: int, n: int) -> bytes:
+        sheets, counts = cleaning_context(data, rules, rows=chunk)
+        if plan_sheet is not None:
+            sheets.insert(next((j for j, sh in enumerate(sheets) if sh.title.startswith("Records to clean")),
+                               len(sheets)), plan_sheet)
+        # each part carries its own fingerprint: its record count is what its upload is checked against
+        recs = [sh for sh in sheets if sh.title.startswith("Records to clean")]
+        fp = fingerprint("cleaning", tid, run.get("system_id"), [c.header for c in recs[0].columns] if recs else [],
+                         counts["records"])
+        # hidden and last: tells the upload-back which run and object this file came from (api/services/sf_roundtrip.py)
+        sheets.append(SheetSpec(MARKER, [ColumnSpec("key", "key"), ColumnSpec("value", "value")],
+                                marker_rows(str(run["id"]), module, "cleaning", None, fp), hidden=True))
+        title = f"Cleaning workbook: {fmt_module(module)}" + (f", part {i} of {n}" if n > 1 else "")
+        return build_workbook(tenant_name=data["tenant_name"], run_label=label, run_id=str(run["id"]), title=title,
+                              sheets=sheets, generated_at=generated_at)
+
+    # every file must fit the upload limit, so a big run comes as a zip of parts that each upload on their own
+    size = PART_ROWS
+    while True:
+        chunks = [rows[i:i + size] for i in range(0, len(rows), size)] or [[]]
+        bodies = [part(c, i + 1, len(chunks)) for i, c in enumerate(chunks)]
+        if all(len(b) <= MAX_UPLOAD_BYTES for b in bodies) or size <= MIN_PART_ROWS:
+            break
+        size //= 2
+    if len(bodies) == 1:
+        return bodies[0], name
+    stem = name.rsplit(".", 1)[0]
+    return zip_parts([(b, f"{stem}-part-{i + 1}-of-{len(bodies)}.xlsx") for i, b in enumerate(bodies)], stem), f"{stem}.zip"

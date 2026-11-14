@@ -31,4 +31,32 @@ describe("uploadCleaned", () => {
     expect(uploadSentence(err({ error: "module_mismatch", detail: "Wrong object." }), "x")).toBe("Wrong object.");
     expect(uploadSentence(null, "fallback")).toBe("fallback");
   });
+
+  it("sends the object when one is named", async () => {
+    const { uploadCleaned } = await import("./roundtrip");
+    await uploadCleaned(new File(["x"], "fixed.xlsx"), undefined, "material_master");
+    expect((post.mock.calls[0] as unknown as [string, FormData])[1].get("module")).toBe("material_master");
+  });
+
+  it("reads the fix and the rejected rows of a structured error", async () => {
+    const { uploadFix, uploadRows } = await import("./roundtrip");
+    const row = { sheet: "Records to clean", row: 7, table: "MARA", key: "MATNR=1", field: "MTART", reason: "No record." };
+    const err = { response: { data: { detail: { error: "nothing_applied", detail: "No edit matched.", fix: "Download the rejected rows.", unmatched_rows: [row] } } } };
+    expect(uploadFix(err)).toBe("Download the rejected rows.");
+    expect(uploadRows(err)).toEqual([row]);
+    expect(uploadFix({ response: { data: { detail: "plain" } } })).toBeUndefined();
+    expect(uploadRows(null)).toEqual([]);
+  });
+
+  it("writes the rejected rows as CSV with row numbers, quoting commas", async () => {
+    const { rejectedCsv } = await import("./roundtrip");
+    const csv = rejectedCsv([
+      { sheet: "Records to clean", row: 7, table: "MARA", key: "MATNR=1", field: "MTART", reason: "No record, key changed." },
+      { sheet: "", row: 0, table: "MARC", key: "MATNR=2|WERKS=1", field: "", reason: "No table." },
+    ]);
+    const lines = csv.split("\n");
+    expect(lines[0]).toBe("Sheet,Row,Table,Record key,Field,Reason");
+    expect(lines[1]).toBe('Records to clean,7,MARA,MATNR=1,MTART,"No record, key changed."');
+    expect(lines[2].startsWith(",,MARC,")).toBe(true);
+  });
 });

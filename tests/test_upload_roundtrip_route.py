@@ -256,7 +256,8 @@ def test_missing_required_columns_are_reported(env):
 
 def test_file_with_no_filled_corrections_is_refused(env):
     r = _post(env, _xlsx({"Records to clean": [HEAD, ["EmpJob", "userId=u1", "jobTitle", ""]]}))
-    assert r.status_code == 422 and "no edits" in r.json()["detail"]
+    d = r.json()["detail"]
+    assert r.status_code == 422 and d["error"] == "no_edits" and "Corrected value" in d["fix"]
 
 
 def test_nothing_matching_marks_the_new_run_failed(env):
