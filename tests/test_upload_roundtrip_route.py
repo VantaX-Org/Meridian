@@ -53,16 +53,20 @@ def _good(**kw) -> bytes:
 class _Result:
     rowcount = 0
 
-    def __init__(self, row):
-        self._row = row
+    def __init__(self, row, rows=()):
+        self._row, self._rows = row, list(rows)
 
     def fetchone(self):
         return self._row
+
+    def fetchall(self):
+        return self._rows
 
 
 class _DB:
     def __init__(self, row):
         self.row, self.calls, self.newer, self.tip = row, [], None, None
+        self.cells: dict[str, list] = {}  # version id -> roundtrip_edits rows
 
     async def execute(self, stmt, params=None):
         sql = " ".join(str(stmt).split())
@@ -71,6 +75,8 @@ class _DB:
             return _Result(self.newer)
         if "metadata->>'source' = 'roundtrip'" in sql:  # _TIP_SQL
             return _Result(self.tip)
+        if sql.startswith("SELECT grain, record_key, field FROM roundtrip_edits"):
+            return _Result(None, self.cells.get(params["v"], []))
         return _Result(self.row)
 
     async def commit(self):
@@ -87,7 +93,7 @@ def env(monkeypatch):
     monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
     state = SimpleNamespace(db=_DB(_row()), result={"applied": 1, "unchanged": 0, "unmatched": [], "unmatched_total": 0,
                                                      "no_table": [], "no_field": []},
-                            applied_with=[], failed=[], audits=[], enqueued=[])
+                            applied_with=[], failed=[], audits=[], enqueued=[], conflicts=[], dropped=[])
 
     async def create_version(db, tenant_id, meta, label=None):
         state.meta = meta
@@ -103,8 +109,9 @@ def env(monkeypatch):
         state.enqueued.append(prefix)
         return "job-1"
 
-    def apply_edits(parent, prefix, edits, dictionary):
+    def apply_edits(parent, prefix, edits, dictionary, conflicts=frozenset()):
         state.applied_with.append((parent, prefix, edits))
+        state.conflicts.append(conflicts)
         return dict(state.result)
 
     from db.queries import versions
@@ -113,6 +120,7 @@ def env(monkeypatch):
     monkeypatch.setattr(versions, "mark_version_failed", mark_failed)
     monkeypatch.setattr(rbac, "write_audit", write_audit)
     monkeypatch.setattr(rt, "apply_edits", apply_edits)
+    monkeypatch.setattr(rt, "drop_staging", state.dropped.append)
     monkeypatch.setattr(upload, "_enqueue_checks", enqueue)
     monkeypatch.setattr(upload, "_dictionary", lambda t, s: None)
     monkeypatch.setattr(upload.jobs, "start_job", lambda *a, **k: None)
@@ -196,7 +204,11 @@ def test_edits_build_on_the_newest_cleaned_copy_of_the_same_extraction(env):
     assert env.meta["roundtrip"]["base_version_id"] == str(PARENT)
     update = next(p for sql, p in env.db.calls if sql.startswith("UPDATE analysis_versions SET parent_version_id"))
     overlay = __import__("json").loads(update["o"])
-    assert overlay["modules"] == ["compensation", "employee_central"] and len(overlay["edits"]) == 2
+    assert overlay["modules"] == ["compensation", "employee_central"] and overlay["edit_count"] == 2
+    assert "edits" not in overlay  # the cells are rows of roundtrip_edits now, not a capped list
+    ins = next(p for sql, p in env.db.calls if sql.startswith("INSERT INTO roundtrip_edits"))
+    assert sorted(zip(ins["g"], ins["k"], ins["f"])) == [("EmpCompensation", "userId=u9", "payGroup"),
+                                                         ("EmpJob", "userId=u1", "jobTitle")]
 
 
 def test_status_and_comment_only_file_saves_notes_without_a_new_run(env):
@@ -244,6 +256,7 @@ def test_nothing_matching_marks_the_new_run_failed(env):
     r = _post(env, _good())
     assert r.status_code == 422 and r.json()["detail"]["error"] == "nothing_applied"
     assert env.failed and env.enqueued == []
+    assert env.dropped == [f"staging/{TID}/{NEW}/"]  # the half-written copy is removed
 
 
 def test_run_that_has_not_finished_or_is_not_an_extraction_is_refused(env):
