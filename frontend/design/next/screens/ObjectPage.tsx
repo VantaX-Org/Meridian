@@ -12,6 +12,7 @@ import { V2Link } from "@/design/v2/parts";
 import { Inspector } from "@/design/v2/Inspector";
 import { t } from "@/lib/v2/i18n";
 import { useObjectCycle } from "@/lib/api/next/runs";
+import { DownloadsMenu } from "../object/DownloadsMenu";
 import { ObjectBar } from "../object/ObjectBar";
 import { useObjectRun } from "../object/useObjectRun";
 import { MORE, SEGMENTS, renderTab, tabLabel, type TabId } from "../object/tabs";
@@ -40,6 +41,24 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
     },
     [params, router, system, module, tab],
   );
+
+  const [menu, setMenu] = useState(false);
+  const { heads, runId, setRun } = o;
+  // Batch 3 turns the keys `[`, `]`, `u` and `d` into these window events; this page answers them.
+  useEffect(() => {
+    const step = (e: Event) => {
+      const by = Number((e as CustomEvent<number>).detail) < 0 ? 1 : -1; // heads are newest first
+      const i = heads.findIndex((h) => h.id === runId);
+      const next = heads[i + by];
+      if (i >= 0 && next) setRun(next.id);
+    };
+    const up = () => go("cycle", { step: "upload" });
+    const down = () => setMenu(true);
+    window.addEventListener("nx:run-step", step);
+    window.addEventListener("nx:upload", up);
+    window.addEventListener("nx:download", down);
+    return () => { window.removeEventListener("nx:run-step", step); window.removeEventListener("nx:upload", up); window.removeEventListener("nx:download", down); };
+  }, [heads, runId, setRun, go]);
 
   const inMore = MORE.includes(tab);
 
@@ -70,7 +89,7 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
 
   return (
     <div className="nx-object" data-testid="object-page">
-      <ObjectBar o={o} cycle={cycle} />
+      <ObjectBar o={o} cycle={cycle} downloads={<DownloadsMenu o={o} open={menu} onOpen={setMenu} />} />
       <div className="nx-segs" role="tablist" aria-label={t("Object views")}>
         {SEGMENTS.map((id) => (
           <button key={id} type="button" role="tab" id={`${ID}-tab-${id}`} aria-selected={tab === id} aria-controls={`${ID}-panel-${tab}`} className="nx-seg" onClick={() => go(id)}>{tabLabel(id)}</button>

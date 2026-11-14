@@ -1,0 +1,50 @@
+{
+  "clean": {
+    "verdict": "pass",
+    "checks": [
+      { "id": "fingerprint", "status": "pass", "detail": "" },
+      { "id": "run", "status": "pass", "detail": "" },
+      { "id": "template", "status": "pass", "detail": "" },
+      { "id": "columns", "status": "pass", "detail": "" },
+      { "id": "rows", "status": "pass", "detail": "" },
+      { "id": "keys", "status": "pass", "detail": "" },
+      { "id": "values", "status": "pass", "detail": "" },
+      { "id": "formulas", "status": "pass", "detail": "" }
+    ],
+    "parent_version_id": "",
+    "latest_version_id": "",
+    "edits": 42
+  },
+  "bad": {
+    "verdict": "fail",
+    "checks": [
+      { "id": "fingerprint", "status": "fail", "detail": "The hidden marker sheet is missing or was changed." },
+      { "id": "run", "status": "pass", "detail": "" },
+      { "id": "template", "status": "pass", "detail": "" },
+      { "id": "columns", "status": "pass", "detail": "" },
+      { "id": "rows", "status": "pass", "detail": "" },
+      { "id": "keys", "status": "pass", "detail": "" },
+      { "id": "values", "status": "pass", "detail": "" },
+      { "id": "formulas", "status": "pass", "detail": "" }
+    ],
+    "parent_version_id": "",
+    "latest_version_id": "",
+    "edits": 0
+  },
+  "warn": {
+    "verdict": "warn",
+    "checks": [
+      { "id": "fingerprint", "status": "pass", "detail": "" },
+      { "id": "run", "status": "pass", "detail": "" },
+      { "id": "template", "status": "warn", "detail": "The workbook is one template version behind." },
+      { "id": "columns", "status": "pass", "detail": "" },
+      { "id": "rows", "status": "pass", "detail": "" },
+      { "id": "keys", "status": "pass", "detail": "" },
+      { "id": "values", "status": "pass", "detail": "" },
+      { "id": "formulas", "status": "pass", "detail": "" }
+    ],
+    "parent_version_id": "",
+    "latest_version_id": "",
+    "edits": 42
+  }
+}

@@ -161,7 +161,7 @@ def _store_queue_total(where: str, params: dict, total: int) -> None:
 # ── GET /api/v1/cleaning/queue ────────────────────────────────────────────────
 
 
-@router.get("/cleaning/queue")
+@router.get("/cleaning/queue", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_cleaning_queue(
     object_type: Optional[str] = None,
     status: Optional[str] = None,
@@ -458,7 +458,7 @@ async def cleaning_queue_safety(
 # ── GET /api/v1/cleaning/queue/{id} ──────────────────────────────────────────
 
 
-@router.get("/cleaning/queue/{item_id}")
+@router.get("/cleaning/queue/{item_id}", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_cleaning_item(
     item_id: str,
     db: AsyncSession = Depends(get_db),
@@ -1004,7 +1004,7 @@ async def export_cleaning_data(
 # ── GET /api/v1/cleaning/metrics ─────────────────────────────────────────────
 
 
-@router.get("/cleaning/metrics")
+@router.get("/cleaning/metrics", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_cleaning_metrics(
     period_type: str = "daily",
     db: AsyncSession = Depends(get_db),
@@ -1101,7 +1101,7 @@ async def list_cleaning_audit(
 # ── GET /api/v1/dedup/candidates ─────────────────────────────────────────────
 
 
-@router.get("/dedup/candidates")
+@router.get("/dedup/candidates", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_all_dedup_candidates(
     object_type: Optional[str] = None,
     min_score: int = Query(default=60, ge=0, le=100),
@@ -1145,7 +1145,7 @@ class DedupCandidatesOut(BaseModel):
     total: int
 
 
-@router.get("/dedup/candidates/{object_type}", response_model=DedupCandidatesOut)
+@router.get("/dedup/candidates/{object_type}", response_model=DedupCandidatesOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_dedup_candidates(
     object_type: str,
     min_score: int = Query(default=60, ge=0, le=100),

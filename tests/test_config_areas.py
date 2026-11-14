@@ -4,6 +4,7 @@ import asyncio
 import uuid
 
 import pandas as pd
+import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
@@ -174,6 +175,13 @@ class _Db:
         return _Res([])
 
 
+@pytest.fixture
+def _dev_roles(monkeypatch):
+    # The routes are guarded by require_permission("view"); the dev role
+    # header lets a viewer pass without a DB role lookup.
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+
+
 def _get(router, db, url):
     app = FastAPI()
     app.include_router(router)
@@ -181,12 +189,13 @@ def _get(router, db, url):
     app.dependency_overrides[get_tenant] = lambda: Tenant(TID, "T", [])
 
     async def go():
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t",
+                               headers={"X-User-Role": "viewer"}) as c:
             return await c.get(url)
     return asyncio.run(go())
 
 
-def test_landscape_config_status_route(monkeypatch):
+def test_landscape_config_status_route(monkeypatch, _dev_roles):
     from api.routes import connectivity
 
     monkeypatch.setattr(connectivity.jobs, "get_job", lambda t, j: None)
@@ -202,7 +211,7 @@ def test_landscape_config_status_route(monkeypatch):
     assert all(p.get("tid") == str(TID) for s, p in db.calls if "sap_systems" in s)
 
 
-def test_rule_applicability_route():
+def test_rule_applicability_route(_dev_roles):
     from api.routes import findings
 
     db = _Db([("FROM sap_systems", [("s1", "A ECC", "ecc"), ("s2", "C BTP", "btp")]),

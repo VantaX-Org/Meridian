@@ -169,12 +169,12 @@ def _node(g: svc.Graph, ref: str) -> str:
         raise HTTPException(status_code=404, detail="node not in lineage model")
 
 
-@router.get("/model", response_model=ModelSummary)
+@router.get("/model", response_model=ModelSummary, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_model() -> dict:
     return svc.model_summary(svc.graph())
 
 
-@router.get("/graph", response_model=LineageResponse)
+@router.get("/graph", response_model=LineageResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_lineage(
     node: str = Query(..., description="field:T.F, T.F, check id, table, kpi:x ... or finding:<uuid>"),
     direction: Literal["up", "down", "both"] = "both",
@@ -201,7 +201,7 @@ async def _has_cost_column(db: AsyncSession) -> bool:
         "WHERE table_name = 'findings' AND column_name = 'cost_at_risk'"))).first() is not None
 
 
-@router.get("/impact/{version_id}", response_model=ImpactResponse)
+@router.get("/impact/{version_id}", response_model=ImpactResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_impact(
     version_id: str,
     db: AsyncSession = Depends(get_db),
@@ -219,7 +219,7 @@ async def get_impact(
     return {"version_id": vid, "cost_available": cost, **out}
 
 
-@router.get("/blast-radius/{version_id}/{check_id}", response_model=BlastResponse)
+@router.get("/blast-radius/{version_id}/{check_id}", response_model=BlastResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_blast_radius(
     version_id: str,
     check_id: str,
@@ -284,7 +284,7 @@ async def get_blast_radius(
     return {**base, "targets": targets, "steps_touched": steps, "processes_touched": sorted(procs)}
 
 
-@router.get("/guards", response_model=GuardsResponse)
+@router.get("/guards", response_model=GuardsResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_guards(
     node: str = Query(..., description="kpi:x, feature:x, process:x or step:x"),
     version_id: str | None = None,
@@ -308,7 +308,7 @@ async def get_guards(
     return {**svc.guards(g, ref, results), "version_id": vid}
 
 
-@router.get("/rule/{check_id}")
+@router.get("/rule/{check_id}", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_rule_lineage(
     check_id: str,
     db: AsyncSession = Depends(get_db),

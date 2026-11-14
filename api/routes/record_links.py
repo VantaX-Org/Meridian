@@ -32,8 +32,9 @@ from api.routes.record_issues import _rls
 from api.services.rbac import require_permission
 from api.services.receipt_math import rule_names
 from api.services.run_context import latest_run
+from api.middleware.licence import licensed_module
 
-router = APIRouter(prefix="/api/v1/records", tags=["records"])
+router = APIRouter(prefix="/api/v1/records", tags=["records"], dependencies=[Depends(licensed_module())])
 
 # Parts of a record key that say where a record lives, not which record it is.
 ORG_PARTS = frozenset({"BUKRS", "WERKS", "VKORG", "VTWEG", "SPART", "EKORG", "LGORT", "LGNUM", "LGTYP", "BWKEY", "KOKRS",

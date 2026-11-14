@@ -12,7 +12,7 @@ import type { ObjectRun } from "../useObjectRun";
 
 type Scope = "failing" | "critical" | "required" | "new";
 
-export function CleanStep({ o }: { o: ObjectRun }) {
+export function CleanStep({ o, onDownloaded }: { o: ObjectRun; onDownloaded?: () => void }) {
   const can = useV2Session().can("export");
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -30,6 +30,7 @@ export function CleanStep({ o }: { o: ObjectRun }) {
     setBusy(true);
     try {
       await downloadCleaningWorkbook(o.runId, o.module);
+      onDownloaded?.();
       toast({ text: t("The cleaning workbook of run {n} is downloading.", { n: o.run?.run_number ?? "" }), tone: "good" });
     } catch (e) {
       toast({ text: uploadSentence(e, t("The workbook could not be made.")), tone: "bad" });
@@ -50,7 +51,7 @@ export function CleanStep({ o }: { o: ObjectRun }) {
         <p className="nx-muted">{t("Choosing a smaller workbook or one per owner is not offered by the server yet; the workbook holds every failing record.")}</p>
       </fieldset>
       {can ? (
-        <Button variant="primary" icon="download" loading={busy} loadingLabel={t("Making the workbook")} disabled={!o.runId} reason={o.runId ? undefined : t("Pull a run first.")} onClick={() => void download()}>
+        <Button variant="secondary" icon="download" loading={busy} loadingLabel={t("Making the workbook")} disabled={!o.runId} reason={o.runId ? undefined : t("Pull a run first.")} onClick={() => void download()}>
           {t("Download cleaning workbook")}
         </Button>
       ) : (

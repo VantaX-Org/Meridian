@@ -8,6 +8,11 @@
 #   sudo bash scripts/update.sh --version 2.4.1    # update to (or reinstall) one release
 #   sudo bash scripts/update.sh --rollback         # roll back to the previous release
 #   sudo bash scripts/update.sh --no-verify        # skip the /health probe
+#   sudo bash scripts/update.sh --force            # update even while the worker
+#                                                   # is running a task (or does
+#                                                   # not answer): the task is
+#                                                   # killed. Same as
+#                                                   # MERIDIAN_UPDATE_FORCE=1.
 #   sudo bash scripts/update.sh --include-updater  # also upgrade the updater
 #                                                   # sidecar's own image, as
 #                                                   # the very last step,
@@ -74,6 +79,7 @@ ORIGINAL_ARGS=("$@")
 ACTION=update
 VERIFY=true
 INCLUDE_UPDATER=false
+FORCE=false
 REQUESTED_VERSION="${MERIDIAN_TARGET_VERSION:-}"
 
 while [[ $# -gt 0 ]]; do
@@ -84,6 +90,7 @@ while [[ $# -gt 0 ]]; do
         --version=*)        REQUESTED_VERSION="${1#--version=}"; shift ;;
         --no-verify)        VERIFY=false; shift ;;
         --include-updater)  INCLUDE_UPDATER=true; shift ;;
+        --force)            FORCE=true; shift ;;
         -h|--help)          grep '^# ' "$0" | sed 's/^# //'; exit 0 ;;
         *)                  echo "Unknown flag: $1" >&2; exit 2 ;;
     esac
@@ -589,8 +596,8 @@ write_status "pulling" "Resolving the release and pulling its images..."
 #
 # Refuse to deploy over a live run unless somebody explicitly insists.
 assert_no_active_run() {
-    if [[ "${MERIDIAN_UPDATE_FORCE:-0}" == "1" ]]; then
-        warn "MERIDIAN_UPDATE_FORCE=1 — updating even if a run is active"
+    if [[ "${FORCE:-false}" == "true" || "${MERIDIAN_UPDATE_FORCE:-0}" == "1" ]]; then
+        warn "--force: updating without checking the worker; any task it is running will be killed"
         return 0
     fi
     # The worker's own task list is authoritative: a run can only make progress on a worker, so
@@ -598,14 +605,23 @@ assert_no_active_run() {
     # deploy or the OOM killer leaves its version at 'running' forever, and refusing on that row
     # alone would block every future update (it did, immediately: the first update after this
     # guard was added was refused by a version from a run that had died an hour earlier).
-    local busy
-    busy="$(dc exec -T worker celery -A workers.celery_app inspect active --timeout 10 2>/dev/null \
-        | grep -cE "run_extraction|run_checks" || true)"
-    busy="${busy//[^0-9]/}"
-    if [[ -n "$busy" && "$busy" -gt 0 ]]; then
-        error "Refusing to update: the worker is executing a run right now."
-        error "Recreating it would kill the run and lose the work."
-        error "Wait for it to finish, or re-run with MERIDIAN_UPDATE_FORCE=1 to override."
+    #
+    # ANY active task refuses (extraction, sync, cleaning, analysis, migration, comparison,
+    # reconciliation, write-back...): recreating the worker kills it. Only forced_update_check is
+    # ignored, since it is the task that asked the updater sidecar to run this script.
+    # No answer fails closed: a worker too busy (or too broken) to reply may still be mid-run.
+    # Uses only the celery CLI, so it works against the old image that is still running.
+    local out names
+    if ! out="$(dc exec -T worker celery -A workers.celery_app inspect active --json --timeout 10 2>/dev/null)" \
+        || [[ "$out" != *"{"* ]]; then
+        error "Refusing to update: the worker did not answer 'celery inspect active', so a run may be in progress.
+        Check the worker (docker compose logs worker), or re-run with --force to update anyway."
+    fi
+    names="$(grep -oE '"name": *"[^"]+"' <<<"$out" | sed -E 's/.*"([^"]+)"$/\1/' \
+        | grep -vx forced_update_check | sort -u | paste -sd, - || true)"
+    if [[ -n "$names" ]]; then
+        error "Refusing to update: the worker is executing ${names}.
+        Recreating it would kill that work. Wait for it to finish, or re-run with --force to override."
     fi
     local queued
     queued="$(dc exec -T redis redis-cli LLEN celery 2>/dev/null || echo 0)"
@@ -621,7 +637,7 @@ assert_no_active_run() {
     if [[ -n "$queued" && "$queued" -gt 0 ]]; then
         warn "the celery queue holds $queued pending task(s); the worker will pick them up after the restart"
     fi
-    info "No analysis or extraction is executing — safe to update."
+    info "The worker is idle — safe to update."
 }
 
 assert_no_active_run
