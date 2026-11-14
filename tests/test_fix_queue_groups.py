@@ -59,6 +59,8 @@ def seeded():
                       {"t": tid, "a": f"A{i}", "b": f"B{i}", "s": 90 - i})
     yield tid, vid
     with engine.begin() as c:
+        c.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard: test cleanup only
+        c.execute(text("DELETE FROM audit_log WHERE tenant_id = :t"), {"t": tid})
         for t in ("remediation_events", "remediation_items"):
             c.execute(text(f"DELETE FROM {t} WHERE batch_id IN (SELECT id FROM remediation_batches WHERE tenant_id = :t)"), {"t": tid})
         for t in ("remediation_batches", "cleaning_audit", "cleaning_queue", "dedup_candidates", "analysis_versions"):

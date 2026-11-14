@@ -62,6 +62,7 @@ def seeded():
                   {"t": tid, "r": r2})
     yield {"tid": tid, "wid": wid, "vid": vid, "r2": r2, "engine": engine, "prd": prd, "s4d": s4d}
     with engine.begin() as c:
+        c.execute(text("SET LOCAL app.audit_purge = 'on'"))  # audit_log is append-only (migration 175)
         c.execute(text("DELETE FROM audit_log WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM record_issues WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM migration_reconciliations WHERE tenant_id = :t"), {"t": tid})

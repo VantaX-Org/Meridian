@@ -23,6 +23,8 @@ def tenant_row():
         conn.execute(text("INSERT INTO tenants (id, name) VALUES (:id, :id)"), {"id": t})
     yield t
     with engine.begin() as conn:
+        conn.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard: test cleanup only
+        conn.execute(text("DELETE FROM audit_log WHERE tenant_id = :id"), {"id": t})
         conn.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": t})
 
 

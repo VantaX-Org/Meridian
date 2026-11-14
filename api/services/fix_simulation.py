@@ -16,6 +16,7 @@ Pure functions only — the Celery task (workers/tasks/run_simulation.py) does t
 from __future__ import annotations
 
 import copy
+from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable, Optional
 
 import pandas as pd
@@ -90,11 +91,26 @@ def _map_column(s: pd.Series, mapping: dict[str, str]) -> tuple[pd.Series, int]:
     return out, int(changed.sum())
 
 
+def _same_value(a: str, b: str) -> bool:
+    """Equal after stripping whitespace; numerically equal when both parse as Decimal ("10.0" == "10")."""
+    a, b = str(a).strip(), str(b).strip()
+    if a == b:
+        return True
+    try:
+        return Decimal(a.replace(",", "")) == Decimal(b.replace(",", ""))
+    except (InvalidOperation, ValueError):
+        return False
+
+
 def _patch_records(df: pd.DataFrame, table: str, field: str, fixes: dict[str, str],
-                   key_names: list[str]) -> tuple[pd.DataFrame, int, int]:
+                   key_names: list[str], expected: Optional[dict[str, str]] = None,
+                   stale: Optional[list[dict]] = None) -> tuple[pd.DataFrame, int, int]:
     """Set ``field`` on the rows whose ``table`` key matches. Returns (df, cells changed, unmatched fixes).
 
-    A record key at a child grain (LFB1: LIFNR|BUKRS) narrows to the parent's key (LFA1: LIFNR)."""
+    A record key at a child grain (LFB1: LIFNR|BUKRS) narrows to the parent's key (LFA1: LIFNR).
+
+    ``expected`` maps a record key to the value the fix was approved against. A row whose value has since changed
+    is stale: it is left alone and appended to ``stale`` (newer SAP data is never overwritten)."""
     cols = [f"{table}.{k}" for k in key_names]
     want: dict[str, str] = {}
     narrowed: list[Optional[str]] = []
@@ -112,7 +128,15 @@ def _patch_records(df: pd.DataFrame, table: str, field: str, fixes: dict[str, st
     found = set(rk[hit])
     unmatched = sum(1 for k in narrowed if k not in found)  # row:i keys or keys with no record
     new = rk[hit].map(want)
-    idx = new[new != df.loc[hit, field].astype("string").str.strip().fillna("")].index
+    current = df.loc[hit, field].astype("string").str.strip().fillna("")
+    if expected:
+        was = rk[hit].map({k: v for k, v in expected.items() if k in want})
+        changed = was.notna() & ~pd.Series([_same_value(w, c) for w, c in zip(was.fillna(''), current)], index=was.index)
+        for k in rk[hit][changed]:
+            if stale is not None:
+                stale.append({"field": field, "record_key": k})
+        new, current = new[~changed], current[~changed]
+    idx = new[new != current].index
     if not len(idx):
         return df, 0, unmatched
     df = df.copy()
@@ -155,21 +179,25 @@ def apply_fixes(frames: TableFrames, value_maps: dict[str, dict[str, str]] | Non
                     bump(field, n)  # flat-only table; split tables already counted
 
     grouped: dict[str, dict[str, str]] = {}
+    expects: dict[str, dict[str, str]] = {}
+    stale: list[dict] = []
     for f in record_fixes or []:
         grouped.setdefault(f["field"], {})[f["record_key"]] = str(f["new_value"])
+        if "expected" in f:  # the value the fix was approved against; a changed cell is never overwritten
+            expects.setdefault(f["field"], {})[f["record_key"]] = str(f["expected"] or "").strip()
     for field, fixes in grouped.items():
         table = field.split(".")[0]
         names = list(out.dictionary.keys(table))
         if table in out.frames:
-            out.frames[table], n, miss = _patch_records(out.frames[table], table, field, fixes, names)
+            out.frames[table], n, miss = _patch_records(out.frames[table], table, field, fixes, names, expects.get(field), stale)
         elif out.flat is not None:
-            out.flat, n, miss = _patch_records(out.flat, table, field, fixes, names)
+            out.flat, n, miss = _patch_records(out.flat, table, field, fixes, names, expects.get(field), stale)
         else:
             n, miss = 0, len(fixes)
         bump(field, n)
         unmatched += miss
     return out, {"cells_changed": sum(by_field.values()), "by_field": by_field,
-                 "unmatched_records": unmatched, "tables": sorted(touched)}
+                 "unmatched_records": unmatched, "stale_records": stale, "tables": sorted(touched)}
 
 
 # ── before / after ───────────────────────────────────────────────────────────

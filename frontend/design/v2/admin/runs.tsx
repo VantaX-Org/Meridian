@@ -24,6 +24,8 @@ import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
 import { RunForecast } from "../screens/step10/Prediction";
+import { ExtractTargetStep } from "./ExtractTargetStep";
+import type { ExtractTargetChoice } from "@/lib/api/v2/extract-target";
 import { getTriggerModules, triggerModules, type ModuleStatus } from "@/lib/api/v2/syncTrigger";
 import { moduleText } from "@/lib/v2/labels";
 import { TableExport } from "@/design/v2/TableExport";
@@ -61,6 +63,7 @@ function Extraction({ system }: { system: string }) {
   const [picked, setPicked] = useState<string[]>([]);
   const [analyse, setAnalyse] = useState(true);
   const [delta, setDelta] = useState(false);
+  const [target, setTarget] = useState<ExtractTargetChoice | undefined>();
   const [codes, setCodes] = useState("");
   const [plants, setPlants] = useState("");
   const [from, setFrom] = useState("");
@@ -111,6 +114,7 @@ function Extraction({ system }: { system: string }) {
           <small>{t("Re-reads only the records whose SAP change date is after the last full download of the same objects and scope; tables without change dates are read in full. With no earlier download, everything is read.")}</small>
         </span>
       </label>
+      <ExtractTargetStep system={system} modules={picked} disabled={!can} onChange={setTarget} />
       {picked.length ? <RunForecast systemId={system || null} modules={picked} delta={delta} what="extraction" /> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       <div className="m2-adm-acts">
@@ -120,7 +124,7 @@ function Extraction({ system }: { system: string }) {
           disabled={!can || picked.length === 0 || pending !== null}
           onClick={() =>
             void run("extract", async () => {
-              const r = await api.startExtraction(system, picked, analyse && canAnalyse, { company_codes: list(codes), plants: list(plants), date_from: from || undefined, date_to: to || undefined }, delta);
+              const r = await api.startExtraction(system, picked, analyse && canAnalyse, { company_codes: list(codes), plants: list(plants), date_from: from || undefined, date_to: to || undefined }, delta, target);
               void qc.invalidateQueries({ queryKey: ["v2"] });
               void qc.invalidateQueries({ queryKey: ["jobs"] });
               return { tone: "ok", title: delta ? t("Extraction of changes started") : t("Extraction started"), detail: t("{pickedCount} {pickedCount, plural, one {object} other {objects}}{value}.", { pickedCount: picked.length, value: `${delta ? t(", changes only since the last full download") : ""}${analyse && canAnalyse ? t(", analysed straight after") : ""}` }), job: r.job_id };

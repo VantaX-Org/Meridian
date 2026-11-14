@@ -40,6 +40,8 @@ def seeded():
                   {"r": rid, "t": tid, "s": sid})
     yield {"tid": tid, "sid": sid, "rid": rid, "vid": vid, "engine": engine}
     with engine.begin() as c:
+        c.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard: test cleanup only
+        c.execute(text("DELETE FROM audit_log WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM migration_gap_findings WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM transfer_field_mappings WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM migration_runs WHERE tenant_id = :t"), {"t": tid})
@@ -156,6 +158,8 @@ def analysed_dry_run():
         """), {"t": t1, "r": rid})
     yield {"t1": t1, "t2": t2, "rid": rid, "sid": sid, "vid": vid}
     with engine.begin() as c:
+        c.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard: test cleanup only
+        c.execute(text("DELETE FROM audit_log WHERE tenant_id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
         c.execute(text("DELETE FROM migration_gap_findings WHERE tenant_id = :t"), {"t": t1})
         c.execute(text("DELETE FROM migration_runs WHERE tenant_id = :t"), {"t": t1})
         c.execute(text("DELETE FROM analysis_versions WHERE tenant_id = :t"), {"t": t1})

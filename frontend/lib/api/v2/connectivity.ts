@@ -4,6 +4,7 @@
  * configuration pull and a module extraction. Each write answers with the job it queued.
  */
 import { v2Get, v2Send } from "./client";
+import type { ExtractTarget, ExtractTargetChoice } from "./extract-target";
 
 export interface SystemModule {
   module: string;
@@ -48,5 +49,13 @@ export const syncConfig = (systemId: string, modules: string[]): Promise<{ job_i
 export const extractModules = (
   systemId: string,
   modules: string[],
-): Promise<{ job_id: string; version_id: string; status: string; modules: string[] }> =>
-  v2Send("POST", "/connectivity/extract", { system_id: systemId, modules, include_config: true, sync_type: "both" });
+  target?: ExtractTargetChoice,
+): Promise<{ job_id: string; version_id: string; status: string; modules: string[]; extract_target?: ExtractTarget | null }> =>
+  v2Send("POST", "/connectivity/extract", {
+    system_id: systemId,
+    modules,
+    include_config: true,
+    sync_type: "both",
+    ...(target?.target_system_id ? { target_system_id: target.target_system_id } : {}),
+    ...(target?.target_template_ids ? { target_template_ids: target.target_template_ids } : {}),
+  });

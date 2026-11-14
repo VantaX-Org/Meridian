@@ -42,6 +42,7 @@ def pending():
                   {"w": wid, "t": tid, "f": fid, "v": vid, "r": requester})
     yield tid, wid, requester
     with engine.begin() as c:
+        c.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard: test cleanup only
         for t in ("notifications", "audit_log", "write_back_log", "findings", "analysis_versions", "users"):
             c.execute(text(f"DELETE FROM {t} WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM tenants WHERE id = :t"), {"t": tid})

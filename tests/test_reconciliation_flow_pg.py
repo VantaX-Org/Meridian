@@ -108,6 +108,7 @@ def seeded(engines):
                   {"i": str(uuid.uuid4()), "t": tid, "r": run})
     yield SimpleNamespace(tid=tid, run=run, dst=dst, tv=tv)
     with owner.begin() as c:
+        c.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard
         for table in ("audit_log", "migration_reconciliations", "migration_export_files", "transfer_field_mappings", "migration_runs", "migration_waves",
                       "analysis_versions", "users", "sap_systems", "tenants"):
             col = "id" if table == "tenants" else "tenant_id"

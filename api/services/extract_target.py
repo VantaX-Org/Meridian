@@ -1,0 +1,193 @@
+"""Extraction targets: the target system and per-object target templates chosen when an extraction starts,
+and the automatic fill of each template once the run is stored.
+
+The fill itself is the on-demand one (api/routes/migration._export_workbook); this module only chooses what to
+fill, stores the outcome on the run (analysis_versions.extract_target) and mirrors it on the job.
+"""
+from __future__ import annotations
+
+import logging
+import re
+from typing import Any, Optional
+
+from fastapi import HTTPException
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import text
+
+logger = logging.getLogger("meridian.extract_target")
+BUCKET_PREFIX = "autofill"
+
+
+class TemplateFillOut(BaseModel):
+    """One assigned template and, once the run has been stored, how its automatic fill went."""
+    model_config = ConfigDict(extra="allow")
+    module: str
+    template_id: str
+    template_name: Optional[str] = None
+    status: str = "pending"  # pending | filled | failed | skipped (delta run)
+    error: Optional[str] = None
+    filled_at: Optional[str] = None
+    format: Optional[str] = None
+    summary: Optional[dict[str, Any]] = None
+    download_url: Optional[str] = None
+    source_version_id: Optional[str] = None  # the run whose data filled it: this run, or the one a refill read
+
+
+class ExtractTargetOut(BaseModel):
+    """The target chosen for an extraction: a target system, templates per module, or both."""
+    model_config = ConfigDict(extra="allow")
+    target_system_id: Optional[str] = None
+    templates: list[TemplateFillOut] = []
+
+
+def choose_target(source_id: str, source_paired: Optional[str], modules: list[str], target_system_id: Optional[str],
+                  template_ids: Optional[dict[str, str]], systems: dict[str, dict], templates: dict[str, dict],
+                  latest: dict[str, str]) -> dict:
+    """Validate and default the chosen target. Raises 422 with a message on a bad choice.
+
+    ``systems``: id to {role} for the tenant's systems; ``templates``: id to {module, name} for the tenant's
+    templates; ``latest``: module to the id of its newest template."""
+    tid = target_system_id or source_paired
+    if target_system_id:
+        s = systems.get(target_system_id)
+        if s is None:
+            raise HTTPException(422, "The target system is not one of this tenant's systems.")
+        if s["role"] != "target" and target_system_id != source_paired:
+            raise HTTPException(422, "The target system must have the target role or be the system paired to this source.")
+    chosen: dict[str, str] = {}
+    none: set[str] = set()  # an empty template id opts the module out of the default newest template
+    for module, tpl in (template_ids or {}).items():
+        if module not in modules:
+            raise HTTPException(422, f"Template given for {module}, which is not among the requested modules.")
+        if not tpl:
+            none.add(module)
+            continue
+        t = templates.get(str(tpl).lower())
+        if t is None:
+            raise HTTPException(422, f"Template {tpl} is not one of this tenant's templates.")
+        if t["module"] != module:
+            raise HTTPException(422, f"Template {tpl} belongs to {t['module']}, not {module}.")
+        chosen[module] = str(tpl).lower()
+    for m in modules:
+        if m not in chosen and m not in none and m in latest:
+            chosen[m] = latest[m]
+    return {"target_system_id": tid, "templates": [
+        {"module": m, "template_id": chosen[m], "template_name": templates.get(chosen[m], {}).get("name"),
+         "status": "pending"} for m in modules if m in chosen]}
+
+
+async def resolve_target(db: Any, tenant_id: str, source_id: str, modules: list[str],
+                         target_system_id: Optional[str], template_ids: Optional[dict[str, str]]) -> Optional[dict]:
+    """``choose_target`` over the tenant's rows. None when nothing is assigned (no target, no template)."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": str(tenant_id)})
+    rows = (await db.execute(text("SELECT CAST(id AS text), role, CAST(target_system_id AS text) FROM sap_systems "
+                                  "WHERE tenant_id = :t"), {"t": str(tenant_id)})).fetchall()
+    systems = {r[0]: {"role": r[1]} for r in rows}
+    paired = next((r[2] for r in rows if r[0] == str(source_id)), None)
+    trows = (await db.execute(text("SELECT CAST(id AS text), module, name, version FROM target_templates "
+                                   "WHERE tenant_id = :t ORDER BY name, version DESC"), {"t": str(tenant_id)})).fetchall()
+    templates = {r[0]: {"module": r[1], "name": r[2], "version": r[3]} for r in trows}
+    latest: dict[str, str] = {}
+    created = (await db.execute(text("SELECT CAST(id AS text), module FROM target_templates WHERE tenant_id = :t "
+                                     "ORDER BY created_at DESC"), {"t": str(tenant_id)})).fetchall()
+    for tid, module in created:  # newest upload per module wins
+        latest.setdefault(module, tid)
+    out = choose_target(str(source_id), paired, modules, target_system_id, template_ids, systems, templates, latest)
+    return out if out["target_system_id"] or out["templates"] else None
+
+
+def file_key(tenant_id: str, version_id: str, module: str, ext: str) -> str:
+    return f"{BUCKET_PREFIX}/{tenant_id}/{version_id}/{module}.{ext}"
+
+
+def download_url(version_id: str, module: str) -> str:
+    return f"/api/v1/versions/{version_id}/extract-target/{module}/file"
+
+
+def _save(session: Any, tenant_id: str, version_id: str, target: dict) -> None:
+    import json
+    session.execute(text("UPDATE analysis_versions SET extract_target = CAST(:x AS jsonb) "
+                         "WHERE id = CAST(:v AS uuid) AND tenant_id = CAST(:t AS uuid)"),
+                    {"x": json.dumps(target), "v": version_id, "t": str(tenant_id)})
+    session.commit()
+
+
+DELTA_SKIP = "delta run; refill from full version"
+
+
+def autofill(session: Any, tenant_id: str, version_id: str, target: dict, delta: bool = False, *,
+             only: Optional[str] = None, source_version_id: Optional[str] = None, audit: bool = True) -> dict:
+    """Fill each assigned template from the stored run with the on-demand export, store the file, set
+    last_fill_version_id and audit it. A failed fill is recorded on its entry and never raised.
+
+    ``delta`` is true only for a run that stored partial data (not a delta that fell back to a full read): a
+    load file built from it would be a partial load, so each entry is marked skipped instead.
+    A refill passes ``only`` (one module), ``source_version_id`` (the run whose data fills it; the file and the
+    entry stay on ``version_id``) and ``audit=False`` (the route audits with the person who asked)."""
+    import datetime
+
+    from api.config import settings
+    from api.routes.migration import _export_workbook
+    from api.services import storage
+    from api.services.purge import write_audit_row
+
+    data_vid = source_version_id or version_id
+    for entry in target.get("templates", []):
+        if only and entry["module"] != only:
+            continue
+        if delta:
+            entry.update(status="skipped", error=DELTA_SKIP)
+            _save(session, tenant_id, version_id, target)
+            continue
+        try:
+            row = session.execute(text("SELECT name, version, filename, column_map, content FROM target_templates "
+                                       "WHERE CAST(id AS text) = :i AND module = :m AND tenant_id = CAST(:t AS uuid)"),
+                                  {"i": entry["template_id"], "m": entry["module"], "t": str(tenant_id)}).fetchone()
+            if row is None:
+                raise ValueError("Template no longer exists.")
+            content, ext, summary = _export_workbook(tenant_id, data_vid, bytes(row[4]), row[2], "xlsx",
+                                                     row[3] or {}, True, fresh=True)
+            key = file_key(tenant_id, version_id, entry["module"], ext)
+            storage.upload_file(settings.minio_bucket_reports, key, content, suppress=False)
+            session.execute(text("UPDATE target_templates SET last_fill_at = now(), last_fill_version_id = :v "
+                                 "WHERE id = CAST(:i AS uuid) AND tenant_id = CAST(:t AS uuid)"),
+                            {"v": data_vid, "i": entry["template_id"], "t": str(tenant_id)})
+            if audit:
+                write_audit_row(session, tenant_id, None, "migration.template.autofill", "target_template",
+                                entry["template_id"], {"format": "xlsx", "version_id": version_id, **summary})
+            entry.update(status="filled", error=None, format=ext, summary=summary, source_version_id=data_vid,
+                         filled_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                         download_url=download_url(version_id, entry["module"]))
+        except Exception as e:  # noqa: BLE001 - a fill must never fail the extraction
+            session.rollback()
+            logger.warning("auto-fill of template %s for %s failed: %s", entry.get("template_id"), version_id, e)
+            detail = getattr(e, "detail", None) or str(e) or e.__class__.__name__
+            entry.update(status="failed", error=re.sub(r"\s+", " ", str(detail))[:300])
+        _save(session, tenant_id, version_id, target)
+    return target
+
+
+# The newest run of a system that stored every row of ``module``: a delta that read only the changes (it names a
+# baseline) would fill a partial load, and a failed run stored nothing to read.
+LATEST_FULL_SQL = (
+    "SELECT CAST(id AS text) FROM analysis_versions WHERE tenant_id = :t AND metadata->>'system_id' = :s "
+    "AND metadata->'modules' @> CAST(:mj AS jsonb) AND metadata->>'dataset_path' IS NOT NULL "
+    "AND status <> 'failed' AND metadata->'delta'->>'baseline_version_id' IS NULL "
+    "ORDER BY run_at DESC, id DESC LIMIT 1")
+BUSY_WINDOW_SECONDS = 24 * 3600  # an extraction job silent this long crashed and must not block a refill for ever
+
+
+def extraction_running(tenant_id: str, system_id: Optional[str]) -> bool:
+    """Whether an extraction of ``system_id`` is queued or running. An unreadable job registry raises 503:
+    "cannot tell" is not "nothing is running"."""
+    import time
+
+    from api.services import jobs
+
+    try:
+        active = jobs.list_jobs(str(tenant_id), active_only=True, strict=True)
+    except Exception as e:
+        raise HTTPException(503, "Could not check for running extractions. Try again shortly.") from e
+    cutoff = time.time() - BUSY_WINDOW_SECONDS
+    return any(j.get("kind") == "extraction" and str(j.get("system_id")) == str(system_id)
+               and float(j.get("updated_at") or 0) > cutoff for j in active)

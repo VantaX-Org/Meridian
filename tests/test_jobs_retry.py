@@ -25,6 +25,9 @@ class _Res:
     def scalar(self):
         return self.value
 
+    def fetchall(self):
+        return []
+
 
 class _DB:
     """Answers the system-type lookup of the downloads route; every other statement is a no-op."""

@@ -790,6 +790,97 @@ async def accept_reconciliation(
     return await get_reconciliation(run_id, db, tenant, _role)
 
 
+class LoadApprovalIn(BaseModel):
+    decision: Literal["approved", "rejected"]
+    comment: Optional[str] = Field(default=None, max_length=2000)
+
+
+class LoadApprovalOut(BaseModel):
+    run_id: uuid.UUID
+    prepared_by: Optional[uuid.UUID] = None
+    prepared_by_label: Optional[str] = None
+    prepared_at: Optional[datetime.datetime] = None
+    decision: Optional[Literal["approved", "rejected"]] = None
+    decided_by: Optional[uuid.UUID] = None
+    decided_by_label: Optional[str] = None
+    decided_at: Optional[datetime.datetime] = None
+    comment: Optional[str] = None
+
+
+def check_load_decision(preparer: Optional[str], approver: Optional[str], existing: bool,
+                        decision: str, comment: Optional[str]) -> Optional[tuple[int, str]]:
+    """Pure four-eyes rule for a load decision. Returns (status, detail) when refused, else None."""
+    if existing:
+        return 409, "This load already has a decision."
+    if not approver or (preparer and str(preparer) == str(approver)):
+        return 403, "A different user from the one who prepared the load must decide it."
+    if decision == "rejected" and not (comment or "").strip():
+        return 422, "A rejection needs a comment."
+    return None
+
+
+async def _load_approval(db: AsyncSession, tenant: Tenant, run_id: uuid.UUID) -> LoadApprovalOut:
+    run = (await db.execute(text(
+        "SELECT r.requested_by, r.created_at, coalesce(u.name, u.email) AS label FROM migration_runs r "
+        "LEFT JOIN users u ON u.id = r.requested_by WHERE r.id = :r AND r.tenant_id = :t"),
+        {"r": run_id, "t": str(tenant.id)})).mappings().first()
+    if run is None:
+        raise HTTPException(status_code=404, detail="Migration run not found.")
+    a = (await db.execute(text(
+        "SELECT a.decision, a.decided_by, a.decided_at, a.comment, coalesce(u.name, u.email) AS label "
+        "FROM load_approvals a JOIN users u ON u.id = a.decided_by WHERE a.run_id = :r AND a.tenant_id = :t"),
+        {"r": run_id, "t": str(tenant.id)})).mappings().first()
+    return LoadApprovalOut(
+        run_id=run_id, prepared_by=run["requested_by"], prepared_by_label=run["label"], prepared_at=run["created_at"],
+        decision=a["decision"] if a else None, decided_by=a["decided_by"] if a else None,
+        decided_by_label=a["label"] if a else None, decided_at=a["decided_at"] if a else None,
+        comment=a["comment"] if a else None)
+
+
+@router.get("/runs/{run_id}/load-approval", response_model=LoadApprovalOut)
+async def get_load_approval(
+    run_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
+):
+    """Who prepared the load and, when decided, who approved or rejected it."""
+    await _set_rls(db, tenant.id)
+    return await _load_approval(db, tenant, run_id)
+
+
+@router.post("/runs/{run_id}/load-approval", response_model=LoadApprovalOut)
+async def decide_load_approval(
+    run_id: uuid.UUID,
+    body: LoadApprovalIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
+):
+    """Four-eyes decision on a load, held on the server. The preparer can never decide; one decision per run."""
+    await _set_rls(db, tenant.id)
+    cur = await _load_approval(db, tenant, run_id)
+    me = current_user_id(request)
+    refused = check_load_decision(str(cur.prepared_by) if cur.prepared_by else None, str(me) if me else None,
+                                  cur.decision is not None, body.decision, body.comment)
+    if refused:
+        raise HTTPException(status_code=refused[0], detail=refused[1])
+    try:
+        await db.execute(text(
+            "INSERT INTO load_approvals (tenant_id, run_id, decision, decided_by, comment) "
+            "VALUES (:t, :r, :d, :u, :c)"),
+            {"t": str(tenant.id), "r": run_id, "d": body.decision, "u": me, "c": (body.comment or "").strip() or None})
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="This load already has a decision.")
+    await _audit(db, tenant, request, f"load_{body.decision}", run_id, 200,
+                 {"decision": body.decision, "decided_by": str(me), "prepared_by": str(cur.prepared_by),
+                  "comment": (body.comment or "").strip() or None})
+    await db.commit()
+    return await _load_approval(db, tenant, run_id)
+
+
 @router.get("/runs/{run_id}/reconciliation/records", response_model=ReconciliationRecordsPage)
 async def get_reconciliation_records(
     run_id: uuid.UUID,
@@ -1698,8 +1789,10 @@ def _mark_learned(report: dict, pending: dict, unresolved: Optional[dict] = None
 
 def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "",
                    column_map: Optional[dict] = None, cleansed: bool = False, *, load_mode: str = "full",
-                   since: Optional[datetime.date] = None) -> tuple:
+                   since: Optional[datetime.date] = None, fresh: bool = False) -> tuple:
     """Parse an uploaded workbook and fill it from one finished run. Nothing is stored.
+
+    `fresh` accepts a run that is stored but not analysed yet (the automatic fill right after an extraction).
 
     `column_map` holds a person's corrections to unresolved columns ("sheet::header" to TABLE.FIELD). With
     `cleansed`, the approved proposals of the run's modules' remediation batches replace the extracted values first.
@@ -1728,7 +1821,7 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "",
         if not row:
             raise HTTPException(status_code=404, detail="Run not found.")
         meta = row[1] or {}
-        if "complete" not in (row[0] or "") or not meta.get("dataset_path"):
+        if not meta.get("dataset_path") or not (fresh or "complete" in (row[0] or "")):
             raise HTTPException(status_code=409, detail="This run has not finished, so it holds no data to export.")
         system_id = meta.get("system_id")
         dictionary = dictionary_for(s, system_id)
@@ -1786,7 +1879,8 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "",
         strict = {t for t, vm in maps.items() if vm.keys() - config.get(t, {}).keys()}
     tabs, report = wb.fill(book, frames, maps, strict, load_mode=load_mode, since=since)
     if cleansed:
-        report["cleansed"] = {"approved": len(fixes), **({k: stats[k] for k in ("cells_changed", "by_field")}
+        report["cleansed"] = {"approved": len(fixes), "stale": len(stats["stale_records"]) if fixes else 0,
+                              **({k: stats[k] for k in ("cells_changed", "by_field")}
                                                          if fixes else {"cells_changed": 0, "by_field": {}})}
     waiting, missing = _mark_learned(report, pending, unresolved)
     report["learned"] = {"new": sum(len(f) for f in learned.values()), "waiting": waiting, "missing": missing,
@@ -1801,18 +1895,18 @@ def _approved_fixes(s, modules: list[str], system_id: Optional[str]) -> list[dic
     if not modules or not s.execute(text("SELECT to_regclass('remediation_items')")).scalar():
         return []
     rows = s.execute(text(
-        "SELECT i.field, i.record_key, i.proposed_value FROM remediation_items i "
+        "SELECT i.field, i.record_key, i.proposed_value, i.current_value FROM remediation_items i "
         "JOIN remediation_batches b ON b.id = i.batch_id AND b.tenant_id = i.tenant_id "
         "WHERE b.status IN ('approved', 'awaiting_load', 'exported') AND i.field IS NOT NULL "
         "AND i.record_key IS NOT NULL AND i.proposed_value IS NOT NULL AND i.module = ANY(:mods) "
         "AND i.scope = :scope ORDER BY b.approved_at NULLS FIRST, i.id"),
         {"mods": list(modules), "scope": str(system_id) if system_id else "upload"}).fetchall()
-    return [{"field": f, "record_key": k, "new_value": v} for f, k, v in rows]
+    return [{"field": f, "record_key": k, "new_value": v, "expected": c or ""} for f, k, v, c in rows]
 
 
 def _export_workbook(tenant_id, version_id: str, data: bytes, filename: str, export_format: str,
                      column_map: Optional[dict] = None, cleansed: bool = False, *, load_mode: str = "full",
-                     since: Optional[datetime.date] = None) -> tuple[bytes, str, dict]:
+                     since: Optional[datetime.date] = None, fresh: bool = False) -> tuple[bytes, str, dict]:
     """The filled workbook as bytes, its extension and the fill summary, with held rows on their own tab or file."""
     import pandas as pd
     from api.services.branded_xlsx import guard_frame
@@ -1820,12 +1914,13 @@ def _export_workbook(tenant_id, version_id: str, data: bytes, filename: str, exp
     from api.services.migration.export import to_csv_zip, to_xlsx
 
     book, tabs, report = _fill_workbook(tenant_id, version_id, data, filename, column_map, cleansed,
-                                        load_mode=load_mode, since=since)
+                                        load_mode=load_mode, since=since, fresh=fresh)
     if not tabs:
         raise HTTPException(status_code=422, detail="Nothing in this run matches the sheets in this workbook.")
     # Record keys are source values, so held rows take the formula guard; load tabs stay exact.
     held = guard_frame(pd.DataFrame(report["held"])) if report["held"] else None
-    summary = {**report["summary"], **({"cleansed": report["cleansed"]["cells_changed"]} if cleansed else {})}
+    summary = {**report["summary"], **({"cleansed": report["cleansed"]["cells_changed"],
+                                              "stale_fixes": report["cleansed"]["stale"]} if cleansed else {})}
     if export_format == "source":
         if not report["format"]["same"]:
             raise HTTPException(status_code=422, detail="This workbook defines fields but has no load layout to "

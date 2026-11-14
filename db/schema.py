@@ -100,6 +100,8 @@ class AnalysisVersion(Base):
                                nullable=True)
     dqs_summary = Column(JSONB, nullable=True)
     metadata_ = Column("metadata", JSONB, nullable=True)
+    # target system + templates chosen at extraction start, and each auto-fill outcome (migration 168)
+    extract_target = Column(JSONB, nullable=True)
     status = Column(
         String(20), nullable=False, server_default="pending"
     )
@@ -2035,12 +2037,28 @@ class AuditLog(Base):
     before_json = Column(JSONB, nullable=True)
     after_json = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    # Hash chain (migration 175): set by the audit_log_chain trigger, never by the app.
+    chain_seq = Column(BigInteger, nullable=True)
+    prev_hash = Column(Text, nullable=True)
+    row_hash = Column(Text, nullable=True)
+    payload_hash = Column(Text, nullable=True)
 
     __table_args__ = (
+        Index("ux_audit_log_chain", "tenant_id", "chain_seq", unique=True),
         Index("ix_audit_log_tenant_created", "tenant_id", text("created_at DESC")),
         Index("ix_audit_log_entity", "tenant_id", "entity_type", "entity_id"),
         Index("ix_audit_log_actor", "tenant_id", "actor_user_id"),
     )
+
+
+class AuditChainHead(Base):
+    """Last chain_seq and row_hash of each tenant's audit_log chain; the insert trigger locks and advances it."""
+
+    __tablename__ = "audit_chain_head"
+
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True)
+    last_seq = Column(BigInteger, nullable=False)
+    last_hash = Column(Text, nullable=False)
 
 
 class SystemUpdateLog(Base):
