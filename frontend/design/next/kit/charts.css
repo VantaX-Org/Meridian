@@ -20,3 +20,8 @@
 .nx-segbar-part[data-i="empty"] { background: var(--nx-border); }
 .nx-segbar-key { display: flex; flex-wrap: wrap; gap: var(--nx-s3); margin: 0; padding: 0; list-style: none; font-size: var(--nx-fs-small); color: var(--nx-ink-2); }
 .nx-segbar-sw { display: inline-block; inline-size: 0.75rem; block-size: 0.75rem; border-radius: 4px; background: var(--nx-accent); vertical-align: -1px; }
+.nx-segbar-part[data-i="3"], .nx-segbar-sw[data-i="3"] { background: var(--nx-chart-4); }
+.nx-segbar-part[data-i="4"], .nx-segbar-sw[data-i="4"] { background: var(--nx-chart-5); }
+.nx-segbar-part[data-i="5"], .nx-segbar-sw[data-i="5"] { background: var(--nx-chart-6); }
+.nx-segbar-part[data-i="6"], .nx-segbar-sw[data-i="6"] { background: var(--nx-chart-7); }
+.nx-segbar-part[data-i="7"], .nx-segbar-sw[data-i="7"] { background: var(--nx-chart-8); }

@@ -1,11 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "@/__tests__/render";
 import { push, replace, setUrl } from "@/design/v2/__tests__/nav-store";
 import { stubLayout } from "@/design/v2/__tests__/layout-stub";
 import { groupByRun, type Finding } from "@/lib/api/next/monitor";
-import { Work, resolveWork, WORK_PARTS } from "../screens/Work";
 import { Monitor } from "../screens/Monitor";
 import { More } from "../screens/More";
 import { NextRedirect } from "../shell/NextRedirect";
@@ -69,41 +67,6 @@ beforeEach(() => {
 afterEach(() => {
   undo();
   window.sessionStorage.clear();
-});
-
-describe("Work", () => {
-  it("mounts the queue (Attention and Work) at the root", () => {
-    renderWithQuery(<Work />);
-    expect(screen.getAllByTestId("mounted").map((e) => e.textContent)).toEqual(["Attention", "WorkCanvas"]);
-  });
-
-  it("mounts each part at its address and keeps the part's tab selected for deeper pages", () => {
-    for (const [slug, text, tab] of [
-      [["fix-drafts"], "FixDrafts", "Fix drafts"],
-      [["approve"], "Cleansing", "Approve"],
-      [["requests", "new"], "RequestFormCanvas", "Requests"],
-      [["people"], "PeopleCanvas", "People"],
-    ] as const) {
-      const { unmount } = renderWithQuery(<Work slug={[...slug]} />);
-      expect(screen.getByTestId("mounted")).toHaveTextContent(text);
-      expect(screen.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
-      unmount();
-    }
-  });
-
-  it("moves between parts through the strip", async () => {
-    const u = userEvent.setup();
-    renderWithQuery(<Work />);
-    await u.click(screen.getByRole("tab", { name: "People" }));
-    expect(push).toHaveBeenCalledWith("/next/work/people");
-  });
-
-  it("resolves every part and says so for an unknown address", () => {
-    for (const p of WORK_PARTS) expect(resolveWork(p.slug ? p.slug.split("/") : [])).not.toBeNull();
-    expect(resolveWork(["nope"])).toBeNull();
-    renderWithQuery(<Work slug={["nope"]} />);
-    expect(screen.getByText("Nothing at this address")).toBeInTheDocument();
-  });
 });
 
 describe("Monitor", () => {

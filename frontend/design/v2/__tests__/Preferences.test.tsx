@@ -13,7 +13,8 @@ import { resetKeptOutcomes } from "../inspector/shared";
 import { setUrl } from "./nav-store";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
-vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
+const changePassword = vi.hoisted(() => vi.fn());
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined, changePassword }) }));
 
 function stubMatchMedia() {
   window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false })) as typeof window.matchMedia;
@@ -169,5 +170,38 @@ describe("the preferences panel", () => {
     expect(prefs.getAttribute("href")).toContain("open=preferences");
     expect(within(menu).getByRole("menuitem", { name: "Reports" })).toHaveAttribute("href", "/reports?fixture=1");
     expect(within(menu).getByRole("menuitem", { name: "Administration" })).toHaveAttribute("href", "/admin?fixture=1");
+  });
+});
+
+describe("changing your own password in Preferences", () => {
+  const fill = (dlg: HTMLElement, current: string, next: string, confirm: string) => {
+    fireEvent.change(within(dlg).getByLabelText("Current password"), { target: { value: current } });
+    fireEvent.change(within(dlg).getByLabelText("New password"), { target: { value: next } });
+    fireEvent.change(within(dlg).getByLabelText("Confirm new password"), { target: { value: confirm } });
+    fireEvent.click(within(dlg).getByRole("button", { name: "Change password" }));
+  };
+
+  it("checks the confirmation and the length before asking the server", async () => {
+    changePassword.mockReset();
+    mount();
+    const dlg = await panel();
+    fill(dlg, "synthetic-old-pass-1", "synthetic-new-pass-2", "synthetic-new-pass-3");
+    expect(await within(dlg).findByText("The new password and its confirmation do not match.")).toBeInTheDocument();
+    fill(dlg, "synthetic-old-pass-1", "short", "short");
+    expect(await within(dlg).findByText("Use at least 12 characters")).toBeInTheDocument();
+    expect(changePassword).not.toHaveBeenCalled();
+  });
+
+  it("changes it with the current password, and says so when rate-limited", async () => {
+    changePassword.mockReset().mockResolvedValueOnce(undefined);
+    mount();
+    const dlg = await panel();
+    fill(dlg, "synthetic-old-pass-1", "synthetic-new-pass-2", "synthetic-new-pass-2");
+    expect(await within(dlg).findByText("Password changed")).toBeInTheDocument();
+    expect(changePassword).toHaveBeenCalledWith("synthetic-old-pass-1", "synthetic-new-pass-2");
+    const { AxiosError, AxiosHeaders } = await import("axios");
+    changePassword.mockRejectedValueOnce(new AxiosError("x", "ERR", undefined, undefined, { status: 429, data: {}, statusText: "", headers: {}, config: { headers: new AxiosHeaders() } }));
+    fill(dlg, "synthetic-old-pass-1", "synthetic-new-pass-4", "synthetic-new-pass-4");
+    expect(await within(dlg).findByText("Too many password changes")).toBeInTheDocument();
   });
 });

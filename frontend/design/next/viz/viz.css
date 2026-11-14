@@ -1,0 +1,23 @@
+/* Shared chart parts. Colours come from the chart ramp; good, warn and bad are reserved for status. */
+.nx-viz-ring { flex: none; }
+.nx-viz-ring-track { stroke: var(--nx-surface-2); }
+.nx-viz-ring-arc { stroke: var(--nx-chart-1); }
+.nx-viz-ring-text { fill: var(--nx-ink); font-size: 22px; font-weight: var(--nx-w-heading); font-variant-numeric: tabular-nums; }
+.nx-viz-line { stroke: var(--nx-chart-1); }
+.nx-viz-area { fill: var(--nx-chart-1); fill-opacity: 0.14; }
+.nx-viz-dot { fill: var(--nx-chart-1); }
+.nx-viz-dash { stroke: var(--nx-border-strong); }
+.nx-viz-empty { display: flex; flex-direction: column; gap: var(--nx-s1); color: var(--nx-ink-2); }
+.nx-viz-track { fill: var(--nx-surface-2); }
+.nx-viz-good { fill: var(--nx-good); }
+.nx-viz-warn { fill: var(--nx-warn); }
+.nx-viz-bad { fill: var(--nx-bad); }
+.nx-viz-chart1 { fill: var(--nx-chart-1); }
+.nx-viz-chart2 { fill: var(--nx-chart-2); }
+.nx-viz-chart3 { fill: var(--nx-chart-3); }
+.nx-viz-mute { fill: var(--nx-border-strong); }
+.nx-viz-cell { fill: none; stroke: var(--nx-border); }
+.nx-viz-h1 { fill: var(--nx-chart-1); fill-opacity: 0.2; stroke: none; }
+.nx-viz-h2 { fill: var(--nx-chart-1); fill-opacity: 0.4; stroke: none; }
+.nx-viz-h3 { fill: var(--nx-chart-1); fill-opacity: 0.65; stroke: none; }
+.nx-viz-h4 { fill: var(--nx-chart-1); fill-opacity: 0.9; stroke: none; }

@@ -62,6 +62,7 @@ describe("the status page", () => {
     renderWithQuery(<StatusScreen />);
     expect(await screen.findByTestId("status-overall")).toHaveTextContent("Degraded Part of the platform is slower or less available than usual.");
     expect(screen.getByRole("heading", { level: 1, name: "Status" })).toBeInTheDocument();
+    expect(screen.getByTestId("status-frame")).toHaveClass("nx-root");
     const table = screen.getByRole("region", { name: "Components and their state" });
     expect(within(table).getAllByRole("row")).toHaveLength(7);
     expect(within(table).getByText("Background workers").closest("tr")).toHaveTextContent("Degraded140 tasks waiting41 ms97.89%");
