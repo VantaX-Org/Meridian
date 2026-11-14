@@ -81,7 +81,7 @@ def test_apply_records_passes_based_on_per_record():
 
 def test_migration_173_keeps_one_alembic_head():
     versions = Path(__file__).resolve().parent.parent / "db/migrations/versions"
-    revs, downs = set(), set()
+    revs, downs, parent = set(), set(), {}
     for p in versions.glob("*.py"):
         ns: dict = {}
         src = p.read_text()
@@ -91,8 +91,10 @@ def test_migration_173_keeps_one_alembic_head():
         if "revision" in ns:
             revs.add(ns["revision"])
             d = ns.get("down_revision")
+            parent[ns["revision"]] = d
             downs.update(d if isinstance(d, (tuple, list)) else [d])
-    assert revs - downs == {"173"}
+    assert len(revs - downs) == 1, f"expected one alembic head, got {sorted(revs - downs)}"
+    assert parent.get("173") == "167"
 
 
 # ── single write-back approval (api/routes/writeback.py) ────────────────────
