@@ -61,16 +61,21 @@ def rollup(findings: list[dict[str, Any]]) -> dict[str, Any]:
     areas: dict[str, dict[str, Any]] = {
         a: {"area": a, "label": spec.get("label", a.replace("_", " ").capitalize()), "simplification_item": spec.get("simplification_item"),
             "rules": 0, "evaluated": 0, "failing": 0, "failing_records": 0,
+            "blocking_rules": 0, "blocking_evaluated": 0, "blocking_unevaluated": 0,
             "blocking_failing": 0, "warning_failing": 0, "status": "green", "checks": []}
         for a, spec in _areas(doc).items()}
-    for area, _ in members.values():
+    for area, impact in members.values():
         areas[area]["rules"] += 1
+        areas[area]["blocking_rules"] += impact == "blocking"
+    seen_blocking: dict[str, set[str]] = {a: set() for a in areas}
     for f in findings:
         if f.get("check_id") not in members or (f.get("details") or {}).get("error"):
             continue  # an errored / not-evaluated rule says nothing about readiness
         area, impact = members[f["check_id"]]
         a, status = areas[area], status_of(f, impact)
         a["evaluated"] += 1
+        if impact == "blocking":
+            seen_blocking[area].add(f["check_id"])  # a rule run on two objects counts once
         if f.get("affected_count"):
             a["failing"] += 1
             a["failing_records"] += int(f["affected_count"])
@@ -82,12 +87,20 @@ def rollup(findings: list[dict[str, Any]]) -> dict[str, Any]:
     rows = list(areas.values())
     overall = "green"
     for a in rows:
+        a["blocking_evaluated"] = len(seen_blocking[a["area"]])
+        a["blocking_unevaluated"] = max(0, a["blocking_rules"] - a["blocking_evaluated"])
         a["checks"].sort(key=lambda c: (c["impact"] != "blocking", -c["affected_count"]))
         if a["evaluated"]:
             overall = _worst_status(overall, a["status"])
         else:
             a["status"] = "not_evaluated"
     total = {k: sum(a[k] for a in rows) for k in
-             ("rules", "evaluated", "failing", "failing_records", "blocking_failing", "warning_failing")}
-    return {"status": overall, "ready": total["blocking_failing"] == 0 and total["evaluated"] > 0,
+             ("rules", "evaluated", "failing", "failing_records", "blocking_rules", "blocking_evaluated",
+              "blocking_unevaluated", "blocking_failing", "warning_failing")}
+    # ready only when every blocking rule was evaluated: a blocking rule that was skipped (field
+    # absent, other object not extracted) is unknown, not passed, so the verdict stays open
+    assessment = ("not_assessed" if not total["evaluated"]
+                  else "incomplete" if total["blocking_unevaluated"] else "complete")
+    return {"status": overall, "assessment": assessment,
+            "ready": total["blocking_failing"] == 0 and assessment == "complete",
             **total, "areas": rows}

@@ -599,17 +599,17 @@ def _unmaintained(rule: dict, result: "CheckResult | None") -> bool:
     populated rows are noise, not signal: on material_master MVKE.DWERK is blank in 200000
     of a 200000-row profile but the check still passed 50 of 5,728,702 rows.
 
-    Scoped to non-critical presence checks on purpose. A uniqueness, validity or cross-field
-    rule failing 100% means something is genuinely broken; and a *critical* field blank in
-    every record is a catastrophic systemic gap that must keep capping the score and stay
-    loud, not be filed away as an unmaintained column.
+    Scoped to low and medium presence checks on purpose. A uniqueness, validity or cross-field
+    rule failing 100% means something is genuinely broken; and a *critical* or *high* field
+    blank in every record is a systemic gap that must stay in the score and the coverage
+    (and, for critical, keep capping the score), not be filed away as an unmaintained column.
 
     Also requires a population of at least ``UNMAINTAINED_MIN_ROWS``. Over a handful of rows
     "every value is blank" carries no information — one missing telephone number in a
     one-record population is a defect, not an unmaintained column — so a small population is
     always judged on its merits.
     """
-    if rule.get("check_class") != "null_check" or rule.get("severity") == "critical":
+    if rule.get("check_class") != "null_check" or rule.get("severity") in ("critical", "high"):
         return False
     if result is None or result.error or result.total_count < UNMAINTAINED_MIN_ROWS:
         return False
@@ -731,6 +731,13 @@ def _prefetch_plan(order: list[int], rules: list[dict], grain: str, frames: Tabl
     return plan
 
 
+def logic_hash(rule: dict) -> str:
+    """Stable id of a rule's logic: the parsed rule as canonical JSON (sorted keys, so YAML key order and
+    whitespace do not count), without the runner's own ``_`` keys, hashed by checks/lifecycle.rule_hash."""
+    from checks.lifecycle import rule_hash
+    return rule_hash({k: v for k, v in rule.items() if not str(k).startswith("_")})
+
+
 def run_checks(
     module_name: str,
     data: pd.DataFrame | TableFrames,
@@ -767,6 +774,8 @@ def run_checks(
     # HQ / tenant governance (checks/overrides.py) applies to generated rules too
     rules = apply(module_rules(module_name) + [r for r in (extra_rules or []) if r.get("module") == module_name],
                   overrides)
+    # each result records the logic that produced it: a hash of the effective rule (YAML plus governance)
+    logic = [logic_hash(r) for r in rules]
     module = config.get("module", module_name)
     frames = data if isinstance(data, TableFrames) else TableFrames.from_flat(data, module=module)
     frames.module = module
@@ -860,6 +869,7 @@ def run_checks(
                 why = rule.get("_skip", "not_evaluable")
                 stats[why] = stats.get(why, 0) + 1
             continue
+        result.details = {**(result.details or {}), "rule_hash": logic[i]}
         results.append(result)
         result_rules.append(rule)
 

@@ -918,7 +918,7 @@ def sync_profile_scheduler():
                 # Due profiles, skipping any whose system already has a sync running. SKIP LOCKED
                 # keeps two overlapping beat ticks from picking the same profile.
                 due_profiles = session.execute(text("""
-                    SELECT p.id, p.schedule_cron, p.system_id
+                    SELECT p.id, p.schedule_cron, p.system_id, p.modules, p.domain
                     FROM sync_profiles p
                     WHERE p.tenant_id = :tid AND p.active = true AND p.schedule_cron IS NOT NULL
                       AND (p.next_run_at IS NULL OR p.next_run_at <= now())
@@ -932,19 +932,25 @@ def sync_profile_scheduler():
                 # cannot leave the profile due and enqueue it again on the next tick.
                 # ponytail: a busy system's profile stays due and runs on the first tick after it frees.
                 dispatch, systems = [], set()
-                for profile_id, schedule_cron, system_id in due_profiles:
+                for profile_id, schedule_cron, system_id, modules, domain in due_profiles:
                     if system_id in systems:
                         continue
                     systems.add(system_id)
-                    dispatch.append(str(profile_id))
+                    dispatch.append((str(profile_id), list(modules or []) or [domain]))
                     session.execute(text("UPDATE sync_profiles SET next_run_at = :next WHERE id = :pid"),
                                     {"next": _compute_next_run(schedule_cron), "pid": profile_id})
                 session.commit()
 
+                # Enqueue each sync, unless the licence no longer covers any of its modules (as run_sync
+                # reads them); the schedule has already moved on, so it is not retried every tick
+                from api.middleware.licence import licensed_modules_of
                 from workers.tasks.run_sync import run_sync
-                for profile_id in dispatch:
-                    run_sync.delay(profile_id, tid, trigger="scheduled")
-                    logger.info(f"  tenant={tid}: enqueued run_sync for profile={profile_id}")
+                for profile_id, modules in dispatch:
+                    if licensed_modules_of(modules):
+                        run_sync.delay(profile_id, tid, trigger="scheduled")
+                        logger.info(f"  tenant={tid}: enqueued run_sync for profile={profile_id}")
+                    else:
+                        logger.warning(f"  tenant={tid}: profile={profile_id} not run, no module is licensed")
 
         except Exception as e:
             logger.warning(f"  tenant={tid}: sync_profile_scheduler failed: {e}")

@@ -59,11 +59,17 @@ export function S4Readiness() {
   }
   const d = q.data;
   const measured = d.areas.filter((a) => a.status !== "not_evaluated");
+  // A blocking rule that was not evaluated is unknown, not passed: no go verdict until every one has run.
+  const unevaluated = d.blocking_unevaluated ?? 0;
   const headline = d.evaluated === 0
     ? t("Nothing measured yet")
-    : d.ready
-      ? t("Ready to convert")
-      : t("{n} blocking rules stand in the way", { n: int(d.blocking_failing) });
+    : d.blocking_failing > 0
+      ? t("{n} blocking rules stand in the way", { n: int(d.blocking_failing) })
+      : unevaluated > 0
+        ? t("Not fully assessed: {n} blocking rules not evaluated", { n: int(unevaluated) })
+        : d.ready
+          ? t("Ready to convert")
+          : t("{n} blocking rules stand in the way", { n: int(d.blocking_failing) });
   return (
     <CcPage title={t("S/4HANA readiness")}>
       <Guide
@@ -80,12 +86,12 @@ export function S4Readiness() {
       />
       <CcBanner
         eyebrow={t("S/4HANA readiness")}
-        verdict={d.evaluated === 0 ? undefined : d.ready ? (d.warning_failing ? "at-risk" : "go") : "no-go"}
+        verdict={d.evaluated === 0 ? undefined : d.ready ? (d.warning_failing ? "at-risk" : "go") : d.blocking_failing > 0 ? "no-go" : "at-risk"}
         headline={headline}
         why={t("The conversion-readiness rules are grouped by SAP simplification area. A failing blocking rule stops the conversion; a failing warning rule needs cleansing but does not stop it.")}
         figs={[
           { label: t("Areas ready"), value: t("{a} of {b}", { a: int(measured.filter((a) => a.status === "green").length), b: int(measured.length) }), note: d.areas.length > measured.length ? t("{n} not measured", { n: int(d.areas.length - measured.length) }) : undefined },
-          { label: t("Blocking rules failing"), value: int(d.blocking_failing), tone: d.blocking_failing > 0 ? "crit" : undefined },
+          { label: t("Blocking rules failing"), value: int(d.blocking_failing), tone: d.blocking_failing > 0 ? "crit" : undefined, note: unevaluated > 0 ? t("{n} not evaluated", { n: int(unevaluated) }) : undefined },
           { label: t("Warning rules failing"), value: int(d.warning_failing) },
           { label: t("Records to fix"), value: int(d.failing_records) },
         ]}
