@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 
 from api.deps import Tenant, get_tenant
+from api.services.rbac import require_permission
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["docs"])
@@ -45,7 +46,7 @@ def _read_slice(path: Path, start: int, length: int) -> bytes:
         return f.read(length)
 
 
-@router.get("/docs/help-videos/{name}")
+@router.get("/docs/help-videos/{name}", dependencies=[Depends(require_permission("view"))])
 async def help_video(name: str, request: Request, tenant: Tenant = Depends(get_tenant)) -> Response:  # noqa: ARG001 - sign-in only
     m_name = _NAME.match(name)
     if not m_name:

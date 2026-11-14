@@ -45,7 +45,7 @@ export function CompareStep({ o, cycle, onNextCycle }: { o: ObjectRun; cycle: nu
 
   if (o.heads.length < 2 && !o.runs.isLoading) {
     return (
-      <EmptyState heading={t("Nothing to compare yet")} action={<Button variant="primary" onClick={onNextCycle}>{t("Download the cleaning workbook")}</Button>}>
+      <EmptyState heading={t("Nothing to compare yet")} action={<Button variant="secondary" onClick={onNextCycle}>{t("Download the cleaning workbook")}</Button>}>
         {t("This is the first run of {object}. Clean it and upload the workbook; the cleaned run is compared with this one.", { object: o.label })}
       </EmptyState>
     );
@@ -128,7 +128,7 @@ export function CompareStep({ o, cycle, onNextCycle }: { o: ObjectRun; cycle: nu
             {t("Download workbook for the {n} new issues", { n: int(totals.new) })}
           </Button>
         ) : null}
-        <Button variant="primary" onClick={onNextCycle}>{t("Start cycle {n}", { n: nextNumber })}</Button>
+        <Button variant="secondary" onClick={onNextCycle}>{t("Start cycle {n}", { n: nextNumber })}</Button>
         <V2Link className="nx-btn nx-btn-secondary" href="/migration/load-plan">{t("Prepare load files")}</V2Link>
       </div>
     </div>
