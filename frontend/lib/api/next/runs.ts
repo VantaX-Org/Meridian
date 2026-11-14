@@ -5,12 +5,16 @@
  * cycle position of each object, and the cleaning workbook download. Fixture mode answers from ./runs-fixture so the
  * page carries 500 runs without a server.
  */
-import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery, useQueries } from "@tanstack/react-query";
+import apiClient from "@/lib/api/client";
+import { startExtraction } from "@/lib/api/v2/admin";
+import { getTemplates, type TargetTemplate } from "@/lib/api/v2/migration";
+import type { DownloadScope } from "@/lib/api/system-objects";
 import { v2Get } from "@/lib/api/v2/client";
 import { fixtureActive, useFixture } from "@/lib/api/v2/fixture";
 import { downloadAuthenticated } from "@/lib/api/download";
 import type { VersionHead } from "@/lib/api/v2/runs";
-import { fixtureCycles, fixtureRun, fixtureRunsPage, fixtureSets, fixtureSummary } from "./runs-fixture";
+import { fixtureCycles, fixtureTemplates, fixtureRun, fixtureRunsPage, fixtureSets, fixtureSummary } from "./runs-fixture";
 
 export type Change = "new" | "resolved" | "regressed" | "persisting";
 export type RunStatusFilter = "failed" | "complete" | "active";
@@ -170,4 +174,54 @@ export function useObjectCycle(run: string | null, module: string) {
   const fx = useFixture();
   const q = useQuery({ queryKey: nextRunKeys.cycles(fx, run), queryFn: () => getObjectCycles(run), staleTime: 15_000 });
   return { ...q, cycle: q.data?.[module] ?? null };
+}
+
+/** What "Start a run" sends. The two target fields are optional: a backend that does not know them ignores them. */
+export interface StartRunBody {
+  objects: string[];
+  scope: DownloadScope;
+  analyse: boolean;
+  delta?: boolean;
+  target_system_id?: string | null;
+  /** Module to the id of the target template that run is filled with. */
+  target_template_ids?: Record<string, string>;
+}
+
+/** POST /systems/{id}/downloads. Empty target fields are left out, so the call is the plain extraction when nothing is chosen. */
+export async function startRun(systemId: string, body: StartRunBody): Promise<{ job_id: string; status: string }> {
+  const ids = body.target_template_ids && Object.keys(body.target_template_ids).length ? body.target_template_ids : null;
+  if (fixtureActive()) return startExtraction(systemId, body.objects, body.analyse, body.scope, body.delta ?? false);
+  const { data } = await apiClient.post<{ job_id: string; status: string }>(`/api/v1/systems/${encodeURIComponent(systemId)}/downloads`, {
+    objects: body.objects,
+    scope: body.scope,
+    analyse: body.analyse,
+    ...(body.delta ? { delta: true } : {}),
+    ...(body.target_system_id ? { target_system_id: body.target_system_id } : {}),
+    ...(ids ? { target_template_ids: ids } : {}),
+  });
+  return data;
+}
+
+/** The kept templates of each object, newest version first. An object whose templates cannot be read is `error`, not empty. */
+export function useTemplatesFor(modules: readonly string[]) {
+  const fx = useFixture();
+  const results = useQueries({
+    queries: modules.map((m) => ({
+      queryKey: ["next", "templates", fx, m] as const,
+      queryFn: async (): Promise<TargetTemplate[]> => {
+        if (fx) return fixtureTemplates(m);
+        const out = await getTemplates(m);
+        return [...out.templates].sort((a, b) => b.version - a.version);
+      },
+      staleTime: 30_000,
+    })),
+  });
+  return Object.fromEntries(modules.map((m, i) => [m, { templates: results[i].data ?? [], loading: results[i].isLoading, error: results[i].isError }])) as Record<string, { templates: TargetTemplate[]; loading: boolean; error: boolean }>;
+}
+
+/** Heads of several runs at once, in the order asked. A run that does not exist (deleted, or a mistyped link) comes back null. */
+export function useRuns(ids: readonly string[]) {
+  const fx = useFixture();
+  const results = useQueries({ queries: ids.map((id) => ({ queryKey: nextRunKeys.run(fx, id), queryFn: () => getRun(id).catch(() => null), staleTime: 60_000 })) });
+  return { heads: results.map((r) => r.data ?? null), loading: results.some((r) => r.isLoading) };
 }

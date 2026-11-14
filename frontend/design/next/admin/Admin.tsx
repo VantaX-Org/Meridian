@@ -9,29 +9,12 @@ import { t } from "@/lib/v2/i18n";
 import { LegacyMount } from "../shell/LegacyMount";
 import { Denied } from "../more/states";
 import { EmptyState } from "../kit";
-import { useLicence, useUsers } from "@/lib/v2/admin-queries";
-import { userStatus } from "@/lib/users";
-import { EmptyViz, Ring, SegBar } from "../kit/viz/Viz";
+import { ChartCard } from "../more/ChartCard";
+import { SeatsCard, UsersCard } from "../more/cards";
 import { Roles } from "./Roles";
 import { Users } from "./Users";
 
-/** The visual at the head of a card, from real data only: people by status, seats used, or the empty chart shape. */
-function GroupViz({ group }: { group: string }) {
-  const { can } = useV2Session();
-  const users = useUsers({}, can("manage_users"));
-  const lic = useLicence();
-  if (group === t("People and access") && users.data) {
-    const n = (s: string) => users.data!.users.filter((u) => userStatus(u) === s).length;
-    return <SegBar label={group} parts={[{ label: t("Active"), value: n("active") }, { label: t("Invited"), value: n("invited") + n("invite_expired") }, { label: t("Locked"), value: n("locked") + n("suspended") }]} />;
-  }
-  const L = lic.data as { seats_used?: number; seats?: number | null } | undefined;
-  if (group === t("Tenant") && L && typeof L.seats_used === "number" && L.seats) {
-    return <Ring label={group} value={L.seats_used} max={L.seats} caption={t("{n} of {m} seats used", { n: L.seats_used, m: L.seats })} />;
-  }
-  return <EmptyViz line={t("No usage figures for this group yet.")} />;
-}
-
-/** Administration: five cards, one per group, each listing the sections this person may open. The one entry to admin. */
+/** Administration: five chart-led cards, one per group, each listing the sections this person may open. The one entry to admin. */
 export function AdminHome() {
   const { can } = useV2Session();
   const href = useV2Href();
@@ -42,19 +25,21 @@ export function AdminHome() {
   }, [can]);
   if (!canAdminister(can)) return <Denied what={t("Administration")} />;
   return (
-    <ul className="nx-cards" data-testid="admin-cards">
-      {groups.map(([group, items]) => (
-        <li key={group} className="nx-more-card">
-          <GroupViz group={group} />
-          <h2>{group}</h2>
-          <ul>
+    <div className="nx-chartcards" data-testid="admin-cards">
+      {groups.map(([group, items]) => {
+        const list = (
+          <ul className="nx-chartcard-list">
             {items.map((s) => (
               <li key={s.slug}><Link className="nx-link" href={href(`/more/admin/${s.slug}`)}>{s.label}</Link><span className="nx-sub"> {s.lead}</span></li>
             ))}
           </ul>
-        </li>
-      ))}
-    </ul>
+        );
+        // The two groups with real figures lead with them; the rest draw the chart's empty shape, never a made-up number.
+        if (group === t("People and access")) return <UsersCard key={group} title={group}>{list}</UsersCard>;
+        if (group === t("Tenant")) return <SeatsCard key={group} title={group}>{list}</SeatsCard>;
+        return <ChartCard key={group} title={group} state="empty" chart={null} emptyLine={t("No usage figures for this group yet.")}>{list}</ChartCard>;
+      })}
+    </div>
   );
 }
 

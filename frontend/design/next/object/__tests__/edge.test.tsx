@@ -93,7 +93,7 @@ describe("object page states and sheets", () => {
   });
 
   it("opens a run as a sheet with a link to its page", async () => {
-    page("&sheet=run:r1");
+    page("&sheet=object-run:r1");
     expect(await screen.findByTestId("run-sheet")).toBeTruthy();
     const link = await screen.findByRole("link", { name: "Open as page" });
     expect(link.getAttribute("href")).toMatch(/\/run\/r1/);
