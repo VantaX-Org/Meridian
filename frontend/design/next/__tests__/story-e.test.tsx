@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "@/__tests__/render";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { push, replace, setUrl } from "@/design/v2/__tests__/nav-store";
+import { getUrl, push, replace, setUrl } from "@/design/v2/__tests__/nav-store";
 import { stubLayout } from "@/design/v2/__tests__/layout-stub";
 import { fixtureRunId } from "@/lib/api/next/runs-fixture";
 import { AreaTrend, HeatGrid, ScoreRing, StackedBar } from "../viz";
@@ -83,7 +83,9 @@ describe("Runs", () => {
     wrap(<Runs />);
     expect(await screen.findByRole("heading", { name: "Runs" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Start a run" }));
-    expect(push.mock.calls.at(-1)?.[0]).toContain("sheet=run");
+    // Sheets open through history.pushState (Next mirrors it into the router), not router.push.
+    expect(getUrl()).toContain("sheet=run");
+    expect((window.history.state as { nxSheet?: boolean } | null)?.nxSheet).toBe(true);
   });
 
   it("keeps Compare disabled until two runs are ticked, and caps at six", async () => {

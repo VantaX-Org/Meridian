@@ -17,7 +17,7 @@ export { SegmentedControl, type Segment } from "./SegmentedControl";
 export { Code } from "./Code";
 export { DropZone } from "./DropZone";
 export { ProgressBar } from "./ProgressBar";
-export { Sheet, type SheetProps, type SheetSize, type SheetStep } from "./Sheet";
+export { Sheet, clampStep, hasUnsavedSheet, type SheetProps, type SheetSize, type SheetStep } from "./Sheet";
 export { Popover, place, type PopoverProps, type Placement } from "./Popover";
 export { LargeTitle, type LargeTitleProps } from "./LargeTitle";
 export { Ring, AreaSpark, SegBar, type SparkPoint, type Seg } from "./charts";
