@@ -46,7 +46,7 @@ export interface SystemVersion {
   extraction_complete: boolean | null;
   coverage: {
     read: number;
-    issues: { table: string; status: string; rows: number | null; source_rows: number | null; detail: string | null }[];
+    issues: { table: string; status: string; rows: number | null; source_rows: number | null; detail: string | null; truncated?: boolean }[];
   };
   outliers: Record<string, { label: string; outliers: number; checked: number }>;
 }

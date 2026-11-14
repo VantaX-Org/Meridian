@@ -129,7 +129,7 @@ async def uptime(db: AsyncSession, tenant_id: uuid.UUID) -> dict[str, Any]:
 @router.get("/status/page", dependencies=[Depends(_public_limit)])
 async def status_page(tenant: Optional[str] = Query(None, max_length=64),
                       db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
-    """{status, generated_at, components[], incidents[], maintenance[], uptime{}}. No sign-in."""
+    """{status, generated_at, components[], degraded[], incidents[], maintenance[], uptime{}}. No sign-in."""
     tid = await resolve_public_tenant(db, tenant)
     await set_rls(db, tid)
     now = datetime.now(timezone.utc)
@@ -142,6 +142,7 @@ async def status_page(tenant: Optional[str] = Query(None, max_length=64),
         "status": health_probe.overall(comps),
         "generated_at": now.isoformat(),
         "components": [c.as_dict() for c in comps],
+        "degraded": health_probe.degraded(comps),
         "incidents": incidents,
         "maintenance": maintenance,
         "uptime": up,

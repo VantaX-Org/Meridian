@@ -216,6 +216,11 @@ def overall(components: list[Component]) -> str:
     return "operational"
 
 
+def degraded(components: list[Component]) -> list[str]:
+    """Ids of the components that are not up (down or degraded); not_configured is not a fault."""
+    return [c.id for c in components if c.status in ("down", "degraded")]
+
+
 def slot(now: datetime) -> datetime:
     now = now.astimezone(timezone.utc)
     return now.replace(minute=now.minute - now.minute % SAMPLE_MINUTES, second=0, microsecond=0)

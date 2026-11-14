@@ -6,14 +6,19 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from api.config import settings
+from workers.db import reset_tenant_on_checkin
 
 # Each API process gets its share of the configured pool, so N workers never open more connections than one did.
 _share = max(1, settings.api_workers)
 engine = create_async_engine(
     settings.database_url, echo=False, pool_size=max(5, settings.db_pool_size // _share),
     max_overflow=max(5, settings.db_max_overflow // _share), pool_timeout=settings.db_pool_timeout,
+    pool_pre_ping=True, pool_recycle=settings.db_pool_recycle,
     connect_args={"server_settings": {"statement_timeout": str(settings.db_statement_timeout_ms)}},
 )
+# Tenant context never outlives the request: get_db sets it per transaction (set_config(..., true)), and any
+# session-level SET a route still issues is cleared when the connection goes back to the pool.
+reset_tenant_on_checkin(engine.sync_engine)
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
 # Lazy-initialised sync engine for local auth endpoints
@@ -24,7 +29,9 @@ def get_sync_engine_or_create():
     """Return a sync SQLAlchemy engine, creating it on first call."""
     global _sync_engine
     if _sync_engine is None:
-        _sync_engine = create_engine(settings.database_url_sync, echo=False)
+        _sync_engine = reset_tenant_on_checkin(create_engine(
+            settings.database_url_sync, echo=False, pool_size=5, max_overflow=5,
+            pool_pre_ping=True, pool_recycle=settings.db_pool_recycle))
     return _sync_engine
 
 
@@ -33,8 +40,9 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
     Reads the current tenant ID from the TenantMiddleware ContextVar so every
     query executes within the correct tenant's RLS policy automatically.
-    Individual routes may still call SET app.tenant_id explicitly — that is
-    harmless and keeps backward compatibility.
+    Individual routes may still call SET app.tenant_id explicitly; that is
+    session-level, so reset_tenant_on_checkin clears it when the connection
+    goes back to the pool.
     """
     from api.middleware.tenant import get_current_tenant_id  # deferred to avoid circular
 

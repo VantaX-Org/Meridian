@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     db_pool_size: int = Field(default=20, validation_alias="MERIDIAN_DB_POOL_SIZE")
     db_max_overflow: int = Field(default=20, validation_alias="MERIDIAN_DB_MAX_OVERFLOW")
     db_pool_timeout: int = Field(default=30, validation_alias="MERIDIAN_DB_POOL_TIMEOUT")
+    # Seconds before a pooled connection is replaced: under firewall or PgBouncer idle cut-offs. Every pool also
+    # pings a connection on checkout (pool_pre_ping), so a connection dropped by a Postgres restart is replaced.
+    db_pool_recycle: int = Field(default=1800, ge=-1, validation_alias="MERIDIAN_DB_POOL_RECYCLE")
     # API processes (docker/entrypoint.api.sh starts this many uvicorn workers): one slow or blocking request then
     # holds one process, not the whole API. The pool above is shared out between them, so the total stays the same.
     api_workers: int = Field(default=3, ge=1, validation_alias="API_WORKERS")

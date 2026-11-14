@@ -98,7 +98,7 @@ async def test_status_page_shape(owner, monkeypatch):
         r = await client.get("/api/v1/status/page", params={"tenant": tid})  # no Authorization header
         assert r.status_code == 200, r.text
         page = r.json()
-        assert set(page) == {"status", "generated_at", "components", "incidents", "maintenance", "uptime"}
+        assert set(page) == {"status", "generated_at", "components", "incidents", "maintenance", "uptime", "degraded"}
         assert page["status"] == "operational"
         assert [c["id"] for c in page["components"]] == ["api", "db", "redis", "workers", "garage"]
         workers = page["components"][3]

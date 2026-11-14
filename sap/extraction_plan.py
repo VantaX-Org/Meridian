@@ -293,6 +293,47 @@ def normalise_scope(scope: Optional[dict]) -> dict:
     return out
 
 
+def split_scope(scope: dict, capped: list[dict], dictionary: Dictionary) -> tuple[str, list[dict]]:
+    """Split ``scope`` into smaller scopes that together cover it, one download each, so every capped
+    table fits under the cap. ``capped``: the coverage entries of the capped tables (``rows`` read and
+    ``source_rows`` when SAP counted them). Returns the split key and the scopes; raises ValueError
+    when the scope has nothing that shrinks the capped tables.
+
+    A list of organisational units is split only when every capped table carries its field, and a date
+    range only when every capped table is read in a date window: anything else would not shrink them."""
+    scope = normalise_scope(scope)
+    tables = [str(c["table"]) for c in capped]
+    if not tables:
+        raise ValueError("No table in this run reached the row cap, so there is nothing to split.")
+    # ponytail: parts from the largest total-to-read ratio, units split evenly by count not by rows;
+    # a part that still caps can be split again
+    parts = max([2] + [-(-int(c["source_rows"]) // int(c["rows"])) for c in capped
+                       if c.get("source_rows") and c.get("rows")])
+    keys = [k for k, f in SCOPE_FIELDS.items()
+            if len(scope.get(k) or []) >= 2 and all(dictionary.field(t, f) is not None for t in tables)]
+    if keys:
+        key = max(keys, key=lambda k: len(scope[k]))
+        vals, n = scope[key], min(parts, len(scope[key]))
+        return key, [{**scope, key: vals[i * len(vals) // n:(i + 1) * len(vals) // n]} for i in range(n)]
+    # a "via" child follows its windowed parent, so a date split shrinks it too
+    windowed = all({"where", "via"} & set(_windows().get(t) or {}) for t in tables)
+    if windowed and scope.get("date_from") and scope.get("date_to"):
+        d0, d1 = date.fromisoformat(scope["date_from"]), date.fromisoformat(scope["date_to"])
+        days = (d1 - d0).days + 1
+        n = min(parts, days)
+        if n >= 2:
+            cuts = [d0 + timedelta(days=i * days // n) for i in range(n)] + [d1 + timedelta(days=1)]
+            return "dates", [{**scope, "date_from": cuts[i].isoformat(),
+                              "date_to": (cuts[i + 1] - timedelta(days=1)).isoformat()} for i in range(n)]
+    usable = [k.replace("_", " ") for k, f in SCOPE_FIELDS.items()
+              if all(dictionary.field(t, f) is not None for t in tables)]
+    ways = ([f"two or more {' or '.join(usable)}"] if usable else []) + \
+        (["a date range with a start and an end"] if windowed else [])
+    raise ValueError(f"This scope cannot be split to shrink {', '.join(tables)}. " + (
+        f"Choose {' or '.join(ways)} first." if ways
+        else "These tables carry no scope field, so only a higher row cap reads them in full."))
+
+
 def _scope_filters(table: str, dictionary: Dictionary, scope: dict) -> list[str]:
     out = []
     for key, scope_field in SCOPE_FIELDS.items():
