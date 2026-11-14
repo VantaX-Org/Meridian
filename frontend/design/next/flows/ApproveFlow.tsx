@@ -1,7 +1,7 @@
 "use client";
 
 /** The approval of one load as a sheet: review the totals, then the two approvals. `?sheet=approve:<runId>&step=n` */
-import { SegBar } from "@/design/next/kit/charts";
+import { SegBar } from "@/design/next/kit/viz";
 import { Button, EmptyState, ErrorState, Sheet, Skeleton } from "@/design/next/kit";
 import { useLoadApproval, useLoadRuns, useLoadSimulation } from "@/lib/api/next/load";
 import { t } from "@/lib/v2/i18n";

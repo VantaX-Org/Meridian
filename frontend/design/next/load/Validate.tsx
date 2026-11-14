@@ -7,7 +7,7 @@ import { t } from "@/lib/v2/i18n";
 import { V2Link } from "@/design/v2/parts";
 import type { SimGroup, SimObject } from "@/lib/api/v2/load-simulation";
 import { useFieldCoverage, useLoadSimulation } from "@/lib/api/next/load";
-import { SegBar } from "../kit/charts";
+import { SegBar } from "../kit/viz";
 import { loadSegs } from "./segs";
 import { Button, Chip, Confirm, DataTable, ErrorState, Skeleton, type Column, type ChipTone } from "../kit";
 

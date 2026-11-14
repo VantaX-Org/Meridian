@@ -1,7 +1,7 @@
 "use client";
 
-/** Registers the sheet kinds of the clean cycle and the load: cycle, load, approve, templates, decisions. */
-import { registerSheet } from "../shell/SheetHost";
+/** Registers the sheet kinds of the clean cycle and the load: cycle, load, approve, templates, decisions. Imported by shell/sheets.ts. */
+import { registerSheet } from "../shell/registry";
 import { CycleSheet } from "../object/CycleSheet";
 import { ApproveFlow } from "../flows/ApproveFlow";
 import { LoadPrepareFlow } from "../flows/LoadPrepareFlow";
@@ -35,3 +35,4 @@ export function registerLoadSheets() {
     );
   });
 }
+registerLoadSheets();

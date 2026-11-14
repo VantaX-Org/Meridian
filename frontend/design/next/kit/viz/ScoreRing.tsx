@@ -11,12 +11,12 @@ export function ScoreRing({ value, label, size = 112, compact = false, testid }:
   const c = 2 * Math.PI * r;
   const text = has ? t("{label}: {value} of 100", { label, value: String(Math.round(v * 10) / 10) }) : t("{label}: no score", { label });
   return (
-    <figure className="nx-chart nx-ring" data-testid={testid} data-empty={!has}>
+    <figure className="nx-chart nx-vring" data-testid={testid} data-empty={!has}>
       <svg viewBox="0 0 100 100" width={size} height={size} role="img" aria-label={text}>
         <title>{text}</title>
-        <circle cx="50" cy="50" r={r} className="nx-ring-track" />
-        {has ? <circle cx="50" cy="50" r={r} className="nx-ring-arc" strokeDasharray={`${(c * v) / 100} ${c}`} transform="rotate(-90 50 50)" /> : null}
-        {compact ? null : <text x="50" y="55" textAnchor="middle" className="nx-ring-num">{has ? Math.round(v) : "—"}</text>}
+        <circle cx="50" cy="50" r={r} className="nx-vring-track" />
+        {has ? <circle cx="50" cy="50" r={r} className="nx-vring-arc" strokeDasharray={`${(c * v) / 100} ${c}`} transform="rotate(-90 50 50)" /> : null}
+        {compact ? null : <text x="50" y="55" textAnchor="middle" className="nx-vring-num">{has ? Math.round(v) : "—"}</text>}
       </svg>
       {compact ? null : <figcaption>{label}</figcaption>}
     </figure>

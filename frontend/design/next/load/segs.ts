@@ -1,5 +1,5 @@
 import { t } from "@/lib/v2/i18n";
-import type { Seg } from "../kit/charts";
+import type { Seg } from "../kit/viz";
 
 /** The three outcomes of a load as bar parts; the figures are the API's, the bar only shows their shares. */
 export const loadSegs = (c: { would_load: number; provisional: number; would_fail: number }): Seg[] => [

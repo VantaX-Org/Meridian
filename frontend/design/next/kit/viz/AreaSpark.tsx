@@ -12,16 +12,16 @@ export function AreaSpark({ values, label, width = 240, height = 64, testid }: {
   const y = (v: number) => height - 4 - ((height - 8) * Math.max(0, Math.min(100, v))) / 100;
   const line = pts.map((p) => `${x(p.i)},${y(p.v)}`).join(" ");
   return (
-    <figure className="nx-chart nx-area" data-testid={testid} data-empty={pts.length < 2}>
+    <figure className="nx-chart nx-varea" data-testid={testid} data-empty={pts.length < 2}>
       <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} preserveAspectRatio="none" role="img" aria-label={text}>
         <title>{text}</title>
-        <line x1="0" x2={width} y1={height - 1} y2={height - 1} className="nx-area-base" />
+        <line x1="0" x2={width} y1={height - 1} y2={height - 1} className="nx-varea-base" />
         {pts.length >= 2 ? (
           <>
-            <polygon points={`${x(pts[0].i)},${height - 1} ${line} ${x(pts[pts.length - 1].i)},${height - 1}`} className="nx-area-fill" />
-            <polyline points={line} className="nx-area-line" />
+            <polygon points={`${x(pts[0].i)},${height - 1} ${line} ${x(pts[pts.length - 1].i)},${height - 1}`} className="nx-varea-fill" />
+            <polyline points={line} className="nx-varea-line" />
             {pts.map((p) => (
-              <circle key={p.i} cx={x(p.i)} cy={y(p.v)} r="3" className="nx-area-dot"><title>{String(Math.round(p.v * 10) / 10)}</title></circle>
+              <circle key={p.i} cx={x(p.i)} cy={y(p.v)} r="3" className="nx-varea-dot"><title>{String(Math.round(p.v * 10) / 10)}</title></circle>
             ))}
           </>
         ) : null}

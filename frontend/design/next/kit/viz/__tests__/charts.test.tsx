@@ -10,7 +10,7 @@ describe("ScoreRing", () => {
   it("draws an empty ring and no arc without a score", () => {
     const { container } = render(<ScoreRing value={null} label="Actual" testid="r" />);
     expect(screen.getByRole("img", { name: "Actual: no score" })).toBeInTheDocument();
-    expect(container.querySelector(".nx-ring-arc")).toBeNull();
+    expect(container.querySelector(".nx-vring-arc")).toBeNull();
     expect(screen.getByTestId("r")).toHaveAttribute("data-empty", "true");
   });
   it("clamps out-of-range values", () => {

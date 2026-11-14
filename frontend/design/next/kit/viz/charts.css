@@ -1,11 +1,11 @@
 /* Shared chart parts. Chart hues come from the chart ramp; good, warn and bad mean status and only status. No motion here. */
 .nx-chart { margin: 0; display: grid; gap: var(--nx-s2); justify-items: center; min-inline-size: 0; }
 .nx-chart figcaption { color: var(--nx-ink-2); font-size: 0.8125rem; }
-.nx-ring-track { fill: none; stroke: var(--nx-surface-2); stroke-width: 10; }
-.nx-ring-arc { fill: none; stroke: var(--nx-data); stroke-width: 10; stroke-linecap: round; }
-.nx-ring-num { fill: var(--nx-ink); font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.nx-ring[data-empty="true"] .nx-ring-num { fill: var(--nx-ink-2); }
-.nx-segbar { justify-items: stretch; }
+.nx-vring-track { fill: none; stroke: var(--nx-surface-2); stroke-width: 10; }
+.nx-vring-arc { fill: none; stroke: var(--nx-data); stroke-width: 10; stroke-linecap: round; }
+.nx-vring-num { fill: var(--nx-ink); font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.nx-vring[data-empty="true"] .nx-vring-num { fill: var(--nx-ink-2); }
+.nx-vsegbar { justify-items: stretch; }
 .nx-seg-track { fill: var(--nx-surface-2); }
 .nx-seg-good { fill: var(--nx-good); background: var(--nx-good); }
 .nx-seg-warn { fill: var(--nx-warn); background: var(--nx-warn); }
@@ -14,12 +14,12 @@
 .nx-seg-quiet { fill: var(--nx-chart-3); background: var(--nx-chart-3); }
 .nx-seg-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; padding: 0; list-style: none; }
 .nx-seg-dot { display: inline-block; inline-size: 8px; block-size: 8px; border-radius: 4px; margin-inline-end: 6px; }
-.nx-area { justify-items: stretch; }
-.nx-area-base { stroke: var(--nx-surface-2); stroke-width: 1; }
-.nx-area-fill { fill: var(--nx-data); opacity: 0.14; }
-.nx-area-line { fill: none; stroke: var(--nx-data); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.nx-area-dot { fill: var(--nx-data); opacity: 0; }
-.nx-area-dot:hover { opacity: 1; }
-.nx-area[data-empty="true"] .nx-area-base { stroke-dasharray: 4 4; }
+.nx-varea { justify-items: stretch; }
+.nx-varea-base { stroke: var(--nx-surface-2); stroke-width: 1; }
+.nx-varea-fill { fill: var(--nx-data); opacity: 0.14; }
+.nx-varea-line { fill: none; stroke: var(--nx-data); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.nx-varea-dot { fill: var(--nx-data); opacity: 0; }
+.nx-varea-dot:hover { opacity: 1; }
+.nx-varea[data-empty="true"] .nx-varea-base { stroke-dasharray: 4 4; }
 .nx-chart-cap { text-align: start; }
-.nx-ring[data-empty="true"] .nx-ring-track { stroke-dasharray: 3 5; }
+.nx-vring[data-empty="true"] .nx-vring-track { stroke-dasharray: 3 5; }

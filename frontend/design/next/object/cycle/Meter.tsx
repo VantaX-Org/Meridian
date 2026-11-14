@@ -2,7 +2,7 @@
 
 /** The score as a hero number with its change, a ruler from 0 to 100, and a bar for the change between two scores. */
 import { t } from "@/lib/v2/i18n";
-import { AreaSpark, ScoreRing } from "../../kit/charts";
+import { AreaSpark, ScoreRing } from "../../kit/viz";
 import { score, signed } from "../model";
 
 export function Ruler({ value, label }: { value: number | null; label: string }) {

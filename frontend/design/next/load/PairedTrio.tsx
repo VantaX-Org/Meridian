@@ -7,7 +7,7 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import { gapText } from "@/design/v2/screens/Migration";
 import { t } from "@/lib/v2/i18n";
 import { EmptyState, ErrorState, Skeleton } from "../kit";
-import { AreaSpark, ScoreRing } from "../kit/charts";
+import { AreaSpark, ScoreRing } from "../kit/viz";
 import { score, signed } from "../object/model";
 import { Trunc } from "./states";
 

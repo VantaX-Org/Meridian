@@ -5,7 +5,7 @@
  * The step is in the URL; the target and objects are kept in sessionStorage so a refresh in the middle lands in the same place.
  */
 import { useEffect, useState } from "react";
-import { SegBar } from "@/design/next/kit/charts";
+import { SegBar } from "@/design/next/kit/viz";
 import { Button, EmptyState, ErrorState, ProgressBar, Sheet, Skeleton } from "@/design/next/kit";
 import { exportLoadFiles } from "@/lib/api/v2/migration";
 import { useLoadApproval, useLoadRuns, useLoadSimulation } from "@/lib/api/next/load";

@@ -107,3 +107,8 @@ html[data-motion="off"] .nx-spinner,
 html[data-motion="off"] .nx-bar-indeterminate,
 html[data-motion="off"] .nx-count,
 html[data-motion="off"] .nx-tick path { animation: none; }
+
+/* Chart parts: the ring arc eases to its value; reduced motion and the app switch both make the duration 1 ms. */
+.nx-ring-arc, .nx-vring-arc { transition: stroke-dashoffset var(--nx-dur-slow) var(--nx-ease); }
+.nx-area-line, .nx-varea-line { animation: nx-draw var(--nx-dur-slow) var(--nx-ease) both; }
+@media (prefers-reduced-motion: reduce) { .nx-area-line, .nx-varea-line { animation: none; } }

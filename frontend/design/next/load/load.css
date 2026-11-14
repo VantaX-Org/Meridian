@@ -78,11 +78,11 @@
 .nx-stale p { margin: 0; }
 .nx-ld-partial { color: var(--nx-ink-2); margin: 0; }
 .nx-ld-trio-visual > div { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "ring dt" "ring dd"; align-items: center; column-gap: var(--nx-s3); }
-.nx-ld-trio-visual > div > .nx-ring { grid-area: ring; }
+.nx-ld-trio-visual > div > .nx-vring { grid-area: ring; }
 .nx-ld-trio-visual dt { grid-area: dt; align-self: end; }
 .nx-ld-trio-visual dd { grid-area: dd; align-self: start; }
 .nx-hero-visual { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--nx-s3) var(--nx-s4); }
-.nx-hero-visual > .nx-area { grid-column: 1 / -1; }
+.nx-hero-visual > .nx-varea { grid-column: 1 / -1; }
 .nx-hero-body { display: flex; flex-direction: column; gap: var(--nx-s1); min-inline-size: 0; }
 
 .nx-load-opts { display: flex; flex-direction: column; gap: var(--nx-s3); margin: 0; padding: var(--nx-s4); border: 1px solid var(--nx-border); border-radius: var(--nx-r-control); background: var(--nx-surface); min-inline-size: 0; }

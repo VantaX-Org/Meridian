@@ -13,7 +13,7 @@ export function SegBar({ segs, testid, format = (n: number) => String(n) }: { se
   const text = total === 0 ? t("No rows to show") : segs.map((s) => `${s.label} ${format(s.value)}`).join(", ");
   let at = 0;
   return (
-    <figure className="nx-chart nx-segbar" data-testid={testid} data-empty={total === 0}>
+    <figure className="nx-chart nx-vsegbar" data-testid={testid} data-empty={total === 0}>
       <svg viewBox="0 0 100 12" preserveAspectRatio="none" width="100%" height="48" role="img" aria-label={text}>
         <rect x="0" y="0" width="100" height="12" rx="4" className="nx-seg-track" />
         {shown.map((s) => {
