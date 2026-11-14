@@ -17,7 +17,8 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes.events import _subscribe_redis
 from api.services import jobs
 from api.services.rbac import (
-    Scope, _as_uuid, current_user_id, current_user_label, require_permission, require_scope, write_audit,
+    Scope, _as_uuid, current_user_id, current_user_label, require_any_permission, require_permission, require_scope,
+    write_audit,
 )
 
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"], dependencies=[Depends(require_permission("view"))])
@@ -250,17 +251,26 @@ def _revoke(task_ids: list[str]) -> bool:
         return False
 
 
-@router.post("/{job_id}/cancel", dependencies=[Depends(require_permission("manage_settings"))])
+@router.post("/{job_id}/cancel", dependencies=[Depends(require_any_permission("manage_settings", "trigger_sync"))])
 async def cancel_job(job_id: str, request: Request, tenant: Tenant = Depends(get_tenant),
                      db: AsyncSession = Depends(get_db)):
     """Cancel a queued or running job: revoke its Celery tasks (terminating a running one), mark it ``cancelled`` with who
-    and when, and publish it on the jobs stream. An analysis or upload also ends its version as ``failed`` with
-    ``metadata.cancelled``, so the run can be started again. 404 for an unknown job, 409 once it has finished."""
+    and when, and publish it on the jobs stream. An analysis, upload or download also ends its version as ``failed``
+    with ``metadata.cancelled``, so the run can be started again; a download also frees its locks and, when it never
+    registered a version, deletes its staged files. manage_settings cancels any job; the user who started a download
+    cancels it with trigger_sync on its system. 404 for an unknown job, 409 once it has finished."""
     job = jobs.get_job(str(tenant.id), job_id)
     if job is None:
         raise HTTPException(404, "Job not found")
     if job.get("status") not in jobs.ACTIVE:
         raise HTTPException(409, "This job has already finished")
+    try:
+        await require_scope(request, db, tenant, "manage_settings", Scope())
+    except HTTPException:
+        uid = current_user_id(request)
+        if not (job.get("kind") == "extraction" and uid and job.get("started_by") == uid):
+            raise
+        await require_scope(request, db, tenant, "trigger_sync", Scope(_as_uuid(job.get("system_id")), None))
     task_ids = [t for t in job.get("task_ids") or [] if isinstance(t, str)]
     revoked = await asyncio.to_thread(_revoke, task_ids) if task_ids else False
     saved = jobs.mark_cancelled(str(tenant.id), job_id, by=current_user_id(request), by_label=current_user_label())
@@ -268,7 +278,7 @@ async def cancel_job(job_id: str, request: Request, tenant: Tenant = Depends(get
         raise HTTPException(503, "The job registry is not reachable")
     await db.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": str(tenant.id)})
     version_id = job.get("version_id")
-    if job.get("kind") in ("analysis", "upload") and _as_uuid(version_id):
+    if job.get("kind") in ("analysis", "upload", "extraction") and _as_uuid(version_id):
         await db.execute(text(
             "UPDATE analysis_versions SET status = 'failed', metadata = COALESCE(metadata, '{}'::jsonb) "
             "|| jsonb_build_object('cancelled', CAST(:c AS jsonb)) "
@@ -276,6 +286,16 @@ async def cancel_job(job_id: str, request: Request, tenant: Tenant = Depends(get
             {"v": version_id, "t": str(tenant.id),
              "c": json.dumps({"by": saved["cancelled_by"], "by_label": saved["cancelled_by_label"],
                               "at": saved["cancelled_at"]})})
+        if job.get("kind") == "extraction":
+            from workers.tasks.run_extraction import _release_system_lock, discard_extraction
+            registered = (await db.execute(text("SELECT 1 FROM analysis_versions WHERE id = :v"),
+                                           {"v": version_id})).first()
+            # ponytail: frees the system even when the revoke missed a live worker; add a worker-side cancel poll if
+            # that overlap is ever seen
+            if registered:
+                await asyncio.to_thread(_release_system_lock, job.get("system_id"), str(version_id))
+            else:
+                await asyncio.to_thread(discard_extraction, str(tenant.id), job.get("system_id"), str(version_id))
     await write_audit(db, tenant.id, request, "job.cancel", "job", job_id,
                       {"status": job.get("status"), "kind": job.get("kind"), "label": job.get("label")},
                       {"status": "cancelled", "kind": job.get("kind"), "tasks_revoked": revoked if task_ids else None})
