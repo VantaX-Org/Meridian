@@ -60,6 +60,7 @@ import { loadSimulationRead, NONE_LOAD_SIMULATION } from "./load-simulation";
 import { processAnalyticsRead, NONE_PROCESS_ANALYTICS } from "./process-analytics";
 import { fieldLineageRead, NONE_FIELD_LINEAGE } from "./field-lineage";
 import { NONE_PORTFOLIO, portfolioRead, portfolioWrite } from "./portfolio";
+import { NONE_WB, wbRead, wbWrite } from "./writeback-requests";
 import { survivorshipPreviewWrite, NONE_SURVIVORSHIP_PREVIEW } from "./survivorship-preview";
 import { fixDraftsRead, fixDraftsWrite, NONE_FIX_DRAFTS } from "./fixDrafts";
 import { dataRequestsRead, dataRequestsWrite, NONE_DATA_REQUESTS } from "./dataRequests";
@@ -163,6 +164,8 @@ const fxWritebacks = [
   { id: "wb-2", finding_id: "f-2", version_id: null, requested_by: "u-me", records_updated: 4, sap_host: "sap-ecc.example.com", created_at: "2026-10-16T09:00:00Z", check_id: "MM031", module: "material_master", rule_message: "Base unit is blank.", requested_by_name: "Demo user" },
 ];
 export function fixtureWrite<T>(method: string, path: string, body: unknown, params: Params): T {
+  const wbw = wbWrite(method, path, body);
+  if (wbw !== NONE_WB) return wbw as T;
   const pfw = portfolioWrite(method, path, body);
   if (pfw !== NONE_PORTFOLIO) return pfw as T;
   const wbApprove = /^\/writeback\/approve\/([^/]+)$/.exec(path);
@@ -408,6 +411,8 @@ function forecastRead(path: string): unknown {
 }
 
 export function fixtureResponse<T>(path: string, params: Params): T {
+  const wbq = wbRead(path, params);
+  if (wbq !== NONE_WB) return wbq as T;
   const pfr = portfolioRead(path, params);
   if (pfr !== NONE_PORTFOLIO) return pfr as T;
   const wbr = wf.writebackRunRead(path, params as Record<string, string | number | boolean>);
