@@ -305,7 +305,7 @@ async def list_pending_writebacks(
             FROM write_back_log w
             LEFT JOIN findings f ON f.id = w.finding_id AND f.tenant_id = w.tenant_id
             LEFT JOIN users u ON u.id::text = w.requested_by AND u.tenant_id = w.tenant_id
-            WHERE w.tenant_id = :tid AND w.dry_run = false AND w.approved_by IS NULL
+            WHERE w.tenant_id = :tid AND w.dry_run = false AND w.approved_by IS NULL AND w.rejected_at IS NULL
             ORDER BY w.created_at DESC
             LIMIT 200
         """),
@@ -344,9 +344,10 @@ async def approve_writeback(
     # Load the pending write-back
     result = await db.execute(
         text("""
-            SELECT id, requested_by, approved_by, finding_id, sap_host, dry_run
+            SELECT id, requested_by, approved_by, finding_id, sap_host, dry_run, rejected_at
             FROM write_back_log
             WHERE id = :aid AND tenant_id = :tid
+            FOR UPDATE
         """),
         {"aid": approval_id, "tid": tenant_id},
     )
@@ -354,11 +355,23 @@ async def approve_writeback(
     if not record:
         raise HTTPException(status_code=404, detail="Write-back request not found")
 
-    if record[2]:  # approved_by already set
+    if record[2]:  # approved_by already set (the row is locked, so two approvers cannot both pass)
         raise HTTPException(status_code=409, detail="Write-back already approved")
+
+    if record[6]:
+        raise HTTPException(status_code=409, detail="This write-back request was rejected; submit a new one")
 
     if record[5]:  # dry_run — a validation-only request can never be executed
         raise HTTPException(status_code=409, detail="This was a dry-run request; submit a new write-back to execute")
+
+    # 4-eyes: approving user must differ from requesting user (checked before the deployment switches, so the
+    # requester always hears that a second person is needed)
+    approving_user = _require_user(request)
+    if approving_user == record[1]:
+        raise HTTPException(
+            status_code=403,
+            detail="4-eyes violation: approving user must differ from requesting user",
+        )
 
     from api.config import settings
     if not settings.live_writeback_enabled:
@@ -374,14 +387,6 @@ async def approve_writeback(
         await db.commit()
         raise HTTPException(status_code=409, detail="Sandbox mode is on: nothing is written back to SAP. "
                                                     "Exit the sandbox to apply this write-back.")
-
-    # 4-eyes: approving user must differ from requesting user
-    approving_user = _require_user(request)
-    if approving_user == record[1]:
-        raise HTTPException(
-            status_code=403,
-            detail="4-eyes violation: approving user must differ from requesting user",
-        )
 
     # Load the finding's record_fixes
     finding_result = await db.execute(
@@ -489,6 +494,9 @@ async def approve_writeback(
             "tid": tenant_id,
         },
     )
+    from api.services.rbac import write_audit
+    await write_audit(db, tenant.id, request, "writeback.approve", "write_back_log", approval_id,
+                      {"requested_by": record[1]}, {"approved_by": approving_user, "applied": applied, "errors": len(errors)})
     await db.commit()
 
     status = "completed" if not errors else "completed_with_errors"
@@ -1000,3 +1008,201 @@ async def retry_failed_batch_run(
     await db.commit()
     _enqueue(run["id"], tenant_id)
     return await _run_out(db, tenant, (await _latest_run(db, tenant, batch_id)) or {})
+
+
+# --- request view: list, detail (before/after), reject ---------------------------------------------------------
+
+class RejectRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500, description="Why the second person declines; the requester is told.")
+
+
+class RejectResponse(BaseModel):
+    id: str
+    status: str
+
+
+class ChangeOut(BaseModel):
+    record_key: str                  # the full SAP key, as stored on the finding
+    field: str                       # TABLE.FIELD
+    before: Optional[str] = None     # the fix's invalid_value: what the record holds now
+    after: str                       # the fix's proposed_value: what the write-back sets
+    delivery: str                    # "bapi" | "export"
+    bapi: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class RequestRow(BaseModel):
+    id: str
+    state: str                       # pending | approved | rejected | dry_run
+    finding_id: Optional[str] = None
+    version_id: Optional[str] = None
+    module: Optional[str] = None
+    check_id: Optional[str] = None
+    rule_message: Optional[str] = None
+    requested_by: Optional[str] = None
+    requested_by_name: Optional[str] = None
+    approved_by_name: Optional[str] = None
+    rejected_by_name: Optional[str] = None
+    records_updated: int = 0
+    sap_host: Optional[str] = None
+    created_at: Optional[str] = None
+    applied_at: Optional[str] = None
+    rejected_at: Optional[str] = None
+    reject_reason: Optional[str] = None
+
+
+class RequestList(BaseModel):
+    items: list[RequestRow]
+    live_enabled: bool
+
+
+class RequestDetail(RequestRow):
+    changes: list[ChangeOut] = []
+    approvers: list[str] = []        # names of the other active users who hold the approve permission
+    is_requester: bool = False       # the viewer made this request
+    can_decide: bool = False         # the viewer may approve or reject it now
+    cannot_decide_reason: Optional[str] = None   # own_request | not_pending | no_permission
+    errors: list[str] = []           # the run's error sentences (no values, no SAP messages with data)
+    live_enabled: bool = True
+    undo_available: bool = False     # always false: no SAP prior value is stored, see undo_note
+    undo_note: str = "SAP's previous values are not stored by a write-back, so it cannot be reversed here. The before column is the value Meridian found at the last run."
+
+
+_REQ_SELECT = """
+    SELECT w.id, w.finding_id, w.version_id, w.requested_by, w.approved_by, w.records_updated, w.sap_host,
+           w.created_at, w.applied_at, w.dry_run, w.rejected_by, w.rejected_at, w.reject_reason, w.errors,
+           f.check_id, f.module, COALESCE(f.details->>'message', f.rule_context->>'message'),
+           COALESCE(NULLIF(ru.name, ''), ru.email), COALESCE(NULLIF(au.name, ''), au.email),
+           COALESCE(NULLIF(xu.name, ''), xu.email)
+    FROM write_back_log w
+    LEFT JOIN findings f ON f.id = w.finding_id AND f.tenant_id = w.tenant_id
+    LEFT JOIN users ru ON ru.id::text = w.requested_by AND ru.tenant_id = w.tenant_id
+    LEFT JOIN users au ON au.id::text = w.approved_by AND au.tenant_id = w.tenant_id
+    LEFT JOIN users xu ON xu.id::text = w.rejected_by AND xu.tenant_id = w.tenant_id
+"""
+
+
+def _row_out(r) -> dict:
+    from api.services.writeback_view import request_state
+
+    iso = lambda d: d.isoformat() if d else None  # noqa: E731
+    return {
+        "id": str(r[0]), "finding_id": str(r[1]) if r[1] else None, "version_id": str(r[2]) if r[2] else None,
+        "requested_by": r[3], "records_updated": r[5] or 0, "sap_host": r[6], "created_at": iso(r[7]),
+        "applied_at": iso(r[8]), "rejected_at": iso(r[11]), "reject_reason": r[12] or None,
+        "state": request_state(dry_run=bool(r[9]), approved_by=r[4], rejected_at=r[11]),
+        "check_id": r[14], "module": r[15], "rule_message": r[16] or None,
+        "requested_by_name": r[17] or None, "approved_by_name": r[18] or None, "rejected_by_name": r[19] or None,
+    }
+
+
+@router.get("/writeback/requests", response_model=RequestList, dependencies=[Depends(require_permission("view"))])
+async def list_writeback_requests(
+    state: Optional[str] = None, limit: int = 100,
+    db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
+):
+    """Every live write-back request, newest first, whatever its state (pending, approved, rejected). Dry runs are
+    validation only and never listed. ``state`` narrows to one of pending | approved | rejected."""
+    if state not in (None, "", "pending", "approved", "rejected"):
+        raise HTTPException(status_code=422, detail="state must be pending, approved or rejected")
+    tenant_id = str(tenant.id)
+    await db.execute(text(f"SET app.tenant_id = '{tenant_id}'"))
+    rows = (await db.execute(
+        text(_REQ_SELECT + " WHERE w.tenant_id = :tid AND w.dry_run = false ORDER BY w.created_at DESC LIMIT :n"),
+        {"tid": tenant_id, "n": max(1, min(limit, 500))},
+    )).fetchall()
+    from api.config import settings
+    items = [RequestRow(**_row_out(r)) for r in rows]
+    if state:
+        items = [i for i in items if i.state == state]
+    return RequestList(items=items, live_enabled=bool(settings.live_writeback_enabled))
+
+
+@router.get("/writeback/requests/{request_id}", response_model=RequestDetail,
+            dependencies=[Depends(require_permission("view"))])
+async def get_writeback_request(
+    request: Request, request_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
+):
+    """One request with each changed field before and after, who requested it, who can approve it, and whether the
+    caller may decide it now."""
+    from api.config import settings
+    from api.services.rbac import active_users_holding_sync, current_user_id
+    from api.services.writeback_view import change_rows, viewer_can_decide
+
+    tenant_id = str(tenant.id)
+    await db.execute(text(f"SET app.tenant_id = '{tenant_id}'"))
+    r = (await db.execute(text(_REQ_SELECT + " WHERE w.id = :aid AND w.tenant_id = :tid"),
+                          {"aid": str(request_id), "tid": tenant_id})).fetchone()
+    if not r:
+        raise HTTPException(status_code=404, detail="Write-back request not found")
+    out = _row_out(r)
+
+    fixes: list[dict] = []
+    if r[1]:
+        fr = (await db.execute(text("SELECT record_fixes FROM findings WHERE id = :fid AND tenant_id = :tid"),
+                               {"fid": str(r[1]), "tid": tenant_id})).fetchone()
+        fixes = (fr[0] if fr else None) or []
+    module = r[15] or ""
+    pairs = [(f, field_support(module, f)) for f in fixes if _structured(f)]
+
+    people = (await db.execute(
+        text("SELECT id::text, COALESCE(NULLIF(name, ''), email) FROM users WHERE tenant_id = :tid AND is_active"),
+        {"tid": tenant_id})).fetchall()
+    names = {p[0]: p[1] for p in people}
+    holders = await db.run_sync(lambda s: active_users_holding_sync(s, tenant_id, list(names), "approve"))
+    viewer = current_user_id(request)
+    ok, why = viewer_can_decide(out["state"], r[3], viewer, bool(viewer and viewer in holders))
+    err = r[13] if isinstance(r[13], dict) else {}
+    return RequestDetail(
+        **out, changes=[ChangeOut(**c) for c in change_rows(pairs)],
+        approvers=sorted(names[u] for u in holders if u != r[3] and names.get(u)),
+        is_requester=bool(viewer and viewer == r[3]), can_decide=ok, cannot_decide_reason=why,
+        errors=[str(e) for e in (err.get("errors") or [])][:20], live_enabled=bool(settings.live_writeback_enabled),
+    )
+
+
+@router.post("/writeback/reject/{approval_id}", response_model=RejectResponse,
+             dependencies=[Depends(require_permission("approve"))])
+async def reject_writeback(
+    request: Request, approval_id: uuid.UUID, body: RejectRequest,
+    db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
+):
+    """Second user declines a pending write-back. The requester cannot (403); a request already decided gives 409."""
+    tenant_id = str(tenant.id)
+    await db.execute(text(f"SET app.tenant_id = '{tenant_id}'"))
+    rec = (await db.execute(
+        text("SELECT requested_by, approved_by, dry_run, rejected_at FROM write_back_log "
+             "WHERE id = :aid AND tenant_id = :tid FOR UPDATE"),
+        {"aid": str(approval_id), "tid": tenant_id})).fetchone()
+    if not rec:
+        raise HTTPException(status_code=404, detail="Write-back request not found")
+    if rec[2]:
+        raise HTTPException(status_code=409, detail="This was a dry-run request; there is nothing to reject")
+    if rec[1]:
+        raise HTTPException(status_code=409, detail="Write-back already approved")
+    if rec[3]:
+        raise HTTPException(status_code=409, detail="Write-back already rejected")
+    user = _require_user(request)
+    if user == rec[0]:
+        raise HTTPException(status_code=403, detail="4-eyes violation: rejecting user must differ from requesting user")
+    reason = body.reason.strip()
+    if not reason:
+        raise HTTPException(status_code=422, detail="A reason is required")
+    await db.execute(
+        text("UPDATE write_back_log SET rejected_by = :u, rejected_at = :now, reject_reason = :why "
+             "WHERE id = :aid AND tenant_id = :tid"),
+        {"u": user, "now": datetime.now(timezone.utc), "why": reason, "aid": str(approval_id), "tid": tenant_id})
+    from api.services.rbac import write_audit
+    await write_audit(db, tenant.id, request, "writeback.reject", "write_back_log", str(approval_id),
+                      {"requested_by": rec[0]}, {"rejected_by": user, "reason": reason})
+    # the requester is told only when they are a user of this tenant (a service key or auth-off request is not)
+    requester = (await db.execute(
+        text("SELECT id::text FROM users WHERE id::text = :u AND tenant_id = :tid"),
+        {"u": rec[0] or "", "tid": tenant_id})).scalar()
+    if requester:
+        from api.services.notifications import create_notification
+        await create_notification(tenant_id, requester, "writeback_rejected", "Write-back rejected",
+                                  f"Your write-back request was rejected: {reason}", "/work", db)
+    await db.commit()
+    return RejectResponse(id=str(approval_id), status="rejected")
