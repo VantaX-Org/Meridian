@@ -7,7 +7,7 @@ import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { useV2Href } from "@/lib/v2/hooks";
 import type { HealthStatus } from "@/types/api";
 import { Button, Chip } from "../kit";
-import { SegBar } from "../kit/viz/Viz";
+import { SystemsCard } from "./cards";
 import { useSheets } from "../shell/SheetHost";
 import { ListSearch, LongText, QueryView, VirtualList } from "./states";
 
@@ -30,7 +30,7 @@ export function Systems() {
     <div className="nx-body">
       <div className="nx-row">{connect}</div>
       <QueryView loading={q.isLoading} error={q.error} onRetry={() => void q.refetch()} empty={all.length === 0} emptyHeading={t("No system is connected")} emptyText={t("Connect your first system to start reading data.")} emptyAction={connect} label={t("Loading systems")}>
-        <SegBar label={t("Health of the systems")} parts={[...new Set(all.map((s) => s.health_status))].map((h) => ({ label: healthText(h), value: all.filter((s) => s.health_status === h).length }))} />
+        <div className="nx-chartcards"><SystemsCard /></div>
         <ListSearch value={find} onChange={setFind} label={t("Search systems")} />
         {shown.length === 0 ? <p className="nx-sub">{t("No system matches this search.")}</p> : (
           <VirtualList rows={shown} rowKey={(s) => s.id} label={t("Systems")} render={(s) => (

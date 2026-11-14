@@ -139,4 +139,16 @@ describe("the forced password change", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change password" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Use at least 12 characters");
   });
+
+  it("explains an admin-set password and a rate-limited change", async () => {
+    vi.spyOn(apiClient, "get").mockResolvedValue({ data: { user: USER, must_change_password: true } });
+    vi.spyOn(apiClient, "post").mockRejectedValue(httpError(429));
+    mount();
+    expect(await screen.findByText(/set for you, by setup or by an admin/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Current password"), { target: { value: "synthetic-old-pass-1" } });
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: "synthetic-new-pass-2" } });
+    fireEvent.change(screen.getByLabelText("Confirm new password"), { target: { value: "synthetic-new-pass-2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Change password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Too many password changes");
+  });
 });
