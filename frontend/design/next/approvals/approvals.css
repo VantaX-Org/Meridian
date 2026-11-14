@@ -1,0 +1,18 @@
+/* Approvals list, request detail, before and after table. Tokens only. */
+.nx-ap { display: flex; flex-direction: column; gap: var(--nx-s5); padding: var(--nx-s6) var(--nx-gutter); min-width: 0; }
+.nx-ap-head h1 { margin: 0; font-size: var(--nx-fs-h1); line-height: var(--nx-lh-h1); overflow-wrap: anywhere; }
+.nx-ap-head p { margin: var(--nx-s1) 0 0; color: var(--nx-ink-2); }
+.nx-ap-text { display: block; color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-ap-scroll { overflow-x: auto; max-width: 100%; }
+.nx-ap-changes { border-collapse: collapse; width: 100%; font-size: var(--nx-fs-small); }
+.nx-ap-changes th, .nx-ap-changes td { padding: var(--nx-s2) var(--nx-s3); border-bottom: 1px solid var(--nx-border); text-align: start; vertical-align: top; }
+.nx-ap-changes thead th { color: var(--nx-ink-2); font-weight: var(--nx-w-label); }
+.nx-ap-before { color: var(--nx-ink-2); text-decoration: line-through; }
+.nx-ap-after { color: var(--nx-accent); font-weight: var(--nx-w-heading); }
+.nx-ap-decide h2 { margin: 0 0 var(--nx-s3); font-size: var(--nx-fs-h2); }
+.nx-ap-facts { display: grid; grid-template-columns: max-content 1fr; gap: var(--nx-s2) var(--nx-s4); margin: 0 0 var(--nx-s3); }
+.nx-ap-facts dt { color: var(--nx-ink-2); }
+.nx-ap-facts dd { margin: 0; }
+.nx-ap-actions { display: flex; flex-wrap: wrap; gap: var(--nx-s3); margin: var(--nx-s3) 0; }
+.nx-ap-note { margin: var(--nx-s2) 0 0; color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-ap-errors { margin: 0; padding-inline-start: var(--nx-s5); color: var(--nx-ink-2); }
