@@ -54,3 +54,6 @@
 .nx-banner-text { flex: 1 1 auto; min-width: 0; }
 .nx-banner[data-tone="warn"] { background: var(--nx-warn-soft); color: var(--nx-warn-ink); }
 .nx-banner[data-tone="info"] { background: var(--nx-accent-soft); color: var(--nx-ink); }
+
+/* A token scope that adds no box: the kit Sheet inside v2 screens (design/v2/Inspector.tsx). */
+.nx-scope { display: contents; }
