@@ -46,6 +46,45 @@ async def list_wave_verdicts(db: AsyncSession, tenant_id: str, waves: list[dict]
         w["last_verdict"] = wave_verdict(cells)
 
 
+async def wave_dependencies(db: AsyncSession, tenant_id: str, wave) -> dict:
+    """The wave's load-order check (wave_gate.dependency_check): its DDIC load plan against the objects already
+    loaded into the target (an accepted reconciliation of a run into it) and the target's latest config load."""
+    import asyncio
+
+    from api.services.migration import load_plan as lp
+    from api.services.wave_gate import dependency_check
+    from checks.runner import get_required_columns
+    from sap.ddic import get_dictionary
+
+    modules = list(wave.modules or [])
+
+    def columns_of(m: str) -> set[str]:
+        if m not in modules:  # an outside object is planned only so that edges into the wave can name it
+            return set()
+        try:
+            return get_required_columns(m)
+        except Exception:  # a module without a rule pack reads nothing
+            return set()
+
+    plan = await asyncio.to_thread(lp.build_plan, modules + [m for m in lp.OWNED_TABLES if m not in modules],
+                                   get_dictionary("s4hana"), columns_of)
+    dst = str(wave.target_system_id) if wave.target_system_id else None
+    loaded = {r[0] for r in (await db.execute(text("""
+        SELECT DISTINCT unnest(r.modules) FROM migration_runs r
+          JOIN migration_reconciliations c ON c.run_id = r.id AND c.tenant_id = r.tenant_id
+         WHERE r.tenant_id = :t AND c.status = 'done' AND c.accepted_at IS NOT NULL
+           AND (CAST(:d AS text) IS NULL OR r.dest_system_id::text = :d)"""), {"t": tenant_id, "d": dst})).fetchall()}
+    target_config = None
+    if dst:
+        rows = (await db.execute(text("""
+            SELECT DISTINCT upper(object) FROM config_items WHERE tenant_id = :t AND load_id = (
+                SELECT id FROM config_loads WHERE tenant_id = :t AND system_id::text = :d AND status = 'completed'
+                 ORDER BY finished_at DESC NULLS LAST, created_at DESC LIMIT 1)"""),
+            {"t": tenant_id, "d": dst})).fetchall()
+        target_config = {r[0] for r in rows} or None  # no completed load: not checked
+    return dependency_check(plan, modules, loaded, target_config)
+
+
 async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
     run = (await db.execute(text("""
         SELECT id, gap_summary, readiness_score, records_total, records_blocked, source_version_id
@@ -133,6 +172,8 @@ async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
         "trend": trend_out,
         "forecast": forecast_gate({"at": t["completed_at"], "blocking": t["blocking"]} for t in trend_out),
         "blockers": [{**dict(b._mapping), "label": object_label(b.module)} for b in blockers],
+        # load order (V1, V2): signoff refuses while it fails; the verdict above stays the data verdict
+        "dependencies": await wave_dependencies(db, tenant_id, wave),
     }
 
 

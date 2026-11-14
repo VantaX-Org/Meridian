@@ -1152,17 +1152,33 @@ async def update_wave(
     return _row(row)
 
 
+def _wave_snap(w) -> dict:
+    """The audit snapshot of a wave row (JSON-safe)."""
+    return {k: (v.isoformat() if hasattr(v, "isoformat") else str(v) if isinstance(v, uuid.UUID) else v)
+            for k, v in dict(w._mapping).items()}
+
+
 @router.delete("/waves/{wave_id}", status_code=204)
 async def delete_wave(
     wave_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
+    """Deletes a wave that holds no signed evidence; a signed-off wave or one with a signed certificate is the
+    record of a go-live decision and stays (unsign it by editing the wave first)."""
     await _set_rls(db, tenant.id)
-    await _load_wave(db, tenant.id, wave_id)
+    w = await _load_wave(db, tenant.id, wave_id)
+    if w.signed_off_at:
+        raise HTTPException(status_code=409, detail="This wave is signed off. Edit the wave to clear the sign-off "
+                                                    "before you delete it.")
+    if (await db.execute(text("SELECT 1 FROM wave_certificates WHERE wave_id = :w AND tenant_id = :t "
+                              "AND status = 'signed' LIMIT 1"), {"w": str(wave_id), "t": str(tenant.id)})).first():
+        raise HTTPException(status_code=409, detail="This wave has a signed certificate and cannot be deleted.")
     await db.execute(text("DELETE FROM migration_waves WHERE id = :w AND tenant_id = :t"),
                      {"w": str(wave_id), "t": str(tenant.id)})
+    await write_audit(db, tenant.id, request, "delete", "migration_wave", str(wave_id), _wave_snap(w), None)
     await db.commit()
 
 
@@ -1178,9 +1194,20 @@ async def run_wave(
     w = await _load_wave(db, tenant.id, wave_id)
     if not w.source_system_id or not w.modules:
         raise HTTPException(status_code=400, detail="Set a source system and at least one module first.")
-    return await _enqueue_run(db, tenant.id, current_user_id(request), "source_to_destination",
-                              str(w.source_system_id), str(w.target_system_id) if w.target_system_id else None,
-                              list(w.modules), None, w.target_release, str(wave_id))
+    from api.services.migration.cockpit import wave_dependencies
+
+    deps = await wave_dependencies(db, str(tenant.id), w)
+    cleared = bool(w.signed_off_at)
+    if cleared:  # a new run replaces what was signed: the sign-off no longer describes the wave's latest run
+        await db.execute(text("UPDATE migration_waves SET signed_off_by = NULL, signed_off_at = NULL, "
+                              "updated_at = now() WHERE id = :w AND tenant_id = :t"),
+                         {"w": str(wave_id), "t": str(tenant.id)})
+        await write_audit(db, tenant.id, request, "signoff_cleared", "migration_wave", str(wave_id),
+                          _wave_snap(w), {"signed_off_by": None, "signed_off_at": None, "reason": "new run"})
+    out = await _enqueue_run(db, tenant.id, current_user_id(request), "source_to_destination",
+                             str(w.source_system_id), str(w.target_system_id) if w.target_system_id else None,
+                             list(w.modules), None, w.target_release, str(wave_id))
+    return {**out, "signoff_cleared": cleared, "warnings": [i["sentence"] for i in deps["items"]]}
 
 
 @router.get("/waves/{wave_id}/cockpit")
@@ -1204,6 +1231,7 @@ def signoff_refusal(cockpit: dict) -> dict:
     not go, with what holds it (blocking gaps, records blocked, the score against the wave's threshold) and where to
     open it, so the screen lists them instead of a toast."""
     from api.services import app_links
+    from api.services.migration import object_label
 
     th = cockpit.get("threshold")
     reasons = []
@@ -1225,8 +1253,13 @@ def signoff_refusal(cockpit: dict) -> dict:
                         "blocker_count": o.get("blocker_count") or 0, "records_blocked": o.get("records_blocked") or 0,
                         "score": o.get("score"), "dqs": o.get("dqs"), "threshold": th,
                         "href": app_links.object_page(o["module"], "readiness")})
-    return {"detail": "Only a wave with a go verdict can be signed off.", "verdict": cockpit["verdict"],
-            "reasons": reasons}
+    for i in (cockpit.get("dependencies") or {}).get("items") or []:
+        reasons.append({"module": i["module"], "label": object_label(i["module"]), "verdict": "no_go",
+                        "reason": f"needs {i['needs']}", "sentence": i["sentence"], "kind": i["kind"],
+                        "needs": i["needs"], "href": app_links.object_page(i["module"], "readiness")})
+    detail = ("Only a wave with a go verdict can be signed off." if cockpit["verdict"] != "go"
+              else "The wave's load order is not met: a predecessor or configuration prerequisite is missing.")
+    return {"detail": detail, "verdict": cockpit["verdict"], "reasons": reasons}
 
 
 @router.post("/waves/{wave_id}/signoff")
@@ -1247,13 +1280,22 @@ async def signoff_wave(
     if w.signed_off_at:
         raise HTTPException(status_code=409, detail="This wave is already signed off.")
     cockpit = await load_cockpit(db, str(tenant.id), w)
-    if cockpit["verdict"] != "go":
+    if cockpit["verdict"] != "go" or not (cockpit.get("dependencies") or {}).get("passed", True):
         raise HTTPException(status_code=409, detail=signoff_refusal(cockpit))
     uid = current_user_id(request)
+    # four eyes: whoever requested the run being signed cannot sign it
+    ran_by = (await db.execute(text("SELECT requested_by FROM migration_runs WHERE id = :r AND tenant_id = :t"),
+                               {"r": cockpit["run_id"], "t": str(tenant.id)})).scalar() if cockpit["run_id"] else None
+    if uid is None or (ran_by and str(ran_by) == str(uid)):
+        raise HTTPException(status_code=403, detail="A different user from the one who ran the wave must sign it off.")
+    # conditional: two approvers at once, only the first signs; the other gets 409, not a silent overwrite
     row = (await db.execute(text(f"""
         UPDATE migration_waves SET signed_off_by = :u, signed_off_at = now(), updated_at = now()
-         WHERE id = :w AND tenant_id = :t RETURNING {_WAVE_COLS}"""),
+         WHERE id = :w AND tenant_id = :t AND signed_off_at IS NULL RETURNING {_WAVE_COLS}"""),
         {"u": uid, "w": str(wave_id), "t": str(tenant.id)})).fetchone()
+    if row is None:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="This wave is already signed off.")
 
     def snap(r) -> dict:
         return {"stage": r.stage, "signed_off_by": str(r.signed_off_by) if r.signed_off_by else None,
@@ -1820,7 +1862,7 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "",
             if not str(e).startswith("No table parquet files"):  # a storage fault must not read as "no match"
                 raise
             raise no_match
-        fixes = _approved_fixes(s, meta.get("modules") or []) if cleansed else []
+        fixes = _approved_fixes(s, meta.get("modules") or [], system_id) if cleansed else []
         if fixes:
             from api.services.fix_simulation import apply_fixes
             frames, stats = apply_fixes(frames, None, fixes)
@@ -1842,8 +1884,10 @@ def _fill_workbook(tenant_id, version_id: str, data: bytes, filename: str = "",
     return book, tabs, report
 
 
-def _approved_fixes(s, modules: list[str]) -> list[dict]:
-    """Every approved remediation proposal of these modules, oldest approval first, so a later one wins."""
+def _approved_fixes(s, modules: list[str], system_id: Optional[str]) -> list[dict]:
+    """Every approved remediation proposal of these modules for the run's own source system, oldest approval first,
+    so a later one wins. An item's scope is the source system its issue was found in ('upload' for an uploaded
+    run), so a fix for customer 1000 in one system never lands in another system's workbook."""
     if not modules or not s.execute(text("SELECT to_regclass('remediation_items')")).scalar():
         return []
     rows = s.execute(text(
@@ -1851,7 +1895,8 @@ def _approved_fixes(s, modules: list[str]) -> list[dict]:
         "JOIN remediation_batches b ON b.id = i.batch_id AND b.tenant_id = i.tenant_id "
         "WHERE b.status IN ('approved', 'awaiting_load', 'exported') AND i.field IS NOT NULL "
         "AND i.record_key IS NOT NULL AND i.proposed_value IS NOT NULL AND i.module = ANY(:mods) "
-        "ORDER BY b.approved_at NULLS FIRST, i.id"), {"mods": list(modules)}).fetchall()
+        "AND i.scope = :scope ORDER BY b.approved_at NULLS FIRST, i.id"),
+        {"mods": list(modules), "scope": str(system_id) if system_id else "upload"}).fetchall()
     return [{"field": f, "record_key": k, "new_value": v} for f, k, v in rows]
 
 
@@ -1961,6 +2006,30 @@ def _template_coverage(data: bytes, filename: str, column_map: dict) -> dict:
     return wb.coverage(book, get_dictionary("s4hana"))
 
 
+TEMPLATE_MODULE_SHARE = 0.5  # below this share of matched columns on the module's own tables, a template is refused
+
+
+def template_module_mismatch(cov: dict, module: str) -> Optional[str]:
+    """Why a template does not belong to ``module`` (T5), or None: most of its matched columns resolve to tables the
+    module neither owns nor reads (a vendor template uploaded under the customer master)."""
+    from checks.frames import tables_of
+    from checks.runner import get_required_columns
+    from api.services.migration.load_plan import OWNED_TABLES
+
+    try:
+        mine = set(tables_of(get_required_columns(module)))
+    except Exception:  # a module without a rule pack reads nothing
+        mine = set()
+    mine |= set(OWNED_TABLES.get(module, ()))
+    matched = sum(sh["matched"] for sh in cov.get("sheets") or [] if sh.get("table"))
+    own = sum(sh["matched"] for sh in cov.get("sheets") or [] if sh.get("table") in mine)
+    if not mine or not matched or own / matched >= TEMPLATE_MODULE_SHARE:
+        return None
+    other = sorted({sh["table"] for sh in cov["sheets"] if sh.get("table") and sh["table"] not in mine})
+    return (f"This template does not look like {module}: {matched - own} of its {matched} matched columns resolve "
+            f"to {', '.join(other)}, which {module} does not load. Upload it under the module it belongs to.")
+
+
 async def _template(db: AsyncSession, tenant: Tenant, module: str, template_id: str, content: bool = False) -> dict:
     await _set_rls(db, tenant.id)
     row = (await db.execute(text(
@@ -2018,6 +2087,9 @@ async def upload_template(module: str, request: Request, file: UploadFile = File
         "ORDER BY version DESC LIMIT 1"), {"m": module, "n": label, "t": str(tenant.id)})).fetchone()
     column_map = dict(prev[1] or {}) if prev else {}
     cov = await run_in_threadpool(_template_coverage, data, file.filename or "", column_map)
+    mismatch = template_module_mismatch(cov, module)
+    if mismatch:
+        raise HTTPException(status_code=422, detail=mismatch)
     version = (prev[0] + 1) if prev else 1
     new_id = (await db.execute(text(
         "INSERT INTO target_templates (tenant_id, module, name, version, filename, sha256, size_bytes, content, "
