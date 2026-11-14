@@ -10484,6 +10484,7 @@ export const en = {
   "Ask an administrator to give your role this permission.": "Ask an administrator to give your role this permission.",
   "Your session ended. Your draft is kept. Sign in again, then send it.": "Your session ended. Your draft is kept. Sign in again, then send it.",
   "Your draft was kept from before.": "Your draft was kept from before.",
+  // story-feed: frame
   "More views": "More views",
   "Aletheia evidence": "Aletheia evidence",
   "Loading the evidence": "Loading the evidence",

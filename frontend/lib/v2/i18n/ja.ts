@@ -10485,6 +10485,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Ask an administrator to give your role this permission.": "管理者に、あなたのロールへこの権限を付与するよう依頼してください。",
   "Your session ended. Your draft is kept. Sign in again, then send it.": "セッションが終了しました。下書きは保持されています。再度サインインしてから送信してください。",
   "Your draft was kept from before.": "以前の下書きが保持されています。",
+  // story-feed: frame
   "More views": "その他のビュー",
   "Aletheia evidence": "Aletheiaの根拠",
   "Loading the evidence": "根拠を読み込み中",

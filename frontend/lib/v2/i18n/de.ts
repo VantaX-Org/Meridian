@@ -10485,6 +10485,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Ask an administrator to give your role this permission.": "Bitten Sie einen Administrator, Ihrer Rolle diese Berechtigung zu geben.",
   "Your session ended. Your draft is kept. Sign in again, then send it.": "Ihre Sitzung ist abgelaufen. Ihr Entwurf bleibt erhalten. Melden Sie sich erneut an und senden Sie ihn dann.",
   "Your draft was kept from before.": "Ihr Entwurf von zuvor wurde beibehalten.",
+  // story-feed: frame
   "More views": "Weitere Ansichten",
   "Aletheia evidence": "Aletheia-Belege",
   "Loading the evidence": "Belege werden geladen",
