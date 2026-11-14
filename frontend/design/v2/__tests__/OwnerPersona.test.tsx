@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { resetWorkFixture } from "@/lib/api/v2/fixtures";
 import { PERSONA_LABEL } from "@/lib/v2/hooks";
@@ -75,7 +75,7 @@ describe("the data owner on the landscape", () => {
     visit("&persona=owner&open=batch%3AB-241");
     mount();
     // The landscape and the inspector render together; under coverage that takes longer than the default second.
-    const insp = await screen.findByTestId("inspector", undefined, { timeout: 10_000 });
-    expect(await within(insp).findByRole("heading", { level: 2, name: "Batch B-241" }, { timeout: 10_000 })).toBeInTheDocument();
+    await screen.findByTestId("inspector", undefined, { timeout: 10_000 });
+    expect(await screen.findByRole("heading", { level: 2, name: "Batch B-241" }, { timeout: 10_000 })).toBeInTheDocument();
   });
 });

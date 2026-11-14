@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { ToastProvider } from "@/design/next/kit";
+import { SheetHost } from "@/design/next/shell/SheetHost";
 import { ObjectPage } from "@/design/next/screens/ObjectPage";
 import type { TabId } from "../../object/tabs";
 import { getUrl, setUrl } from "@/design/v2/__tests__/nav-store";
@@ -16,7 +17,7 @@ afterEach(() => { window.sessionStorage.clear(); vi.clearAllMocks(); });
 
 function open(tab: TabId, query = "") {
   setUrl(`/next/o/ecc-production/material-master/${tab}?fixture=1${query}`);
-  return renderWithQuery(<ToastProvider><ObjectPage system="ecc-production" module="material-master" tab={tab} /></ToastProvider>);
+  return renderWithQuery(<ToastProvider><SheetHost><ObjectPage system="ecc-production" module="material-master" tab={tab} /></SheetHost></ToastProvider>);
 }
 
 describe("failing records", () => {

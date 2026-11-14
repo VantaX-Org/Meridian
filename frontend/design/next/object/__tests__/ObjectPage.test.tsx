@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { ToastProvider } from "@/design/next/kit";
+import { SheetHost } from "@/design/next/shell/SheetHost";
 import { ObjectPage } from "@/design/next/screens/ObjectPage";
 import { nestRuns, RUNS_PAGE } from "../RunsTab";
 import type { TabId } from "../tabs";
@@ -24,22 +25,25 @@ afterEach(() => {
 function open(tab: TabId, query = "") {
   setUrl(`/next/o/${SYS}/${MOD}/${tab}?fixture=1${query}`);
   return renderWithQuery(
-    <ToastProvider>
+    <ToastProvider><SheetHost>
       <ObjectPage system={SYS} module={MOD} tab={tab} />
-    </ToastProvider>,
+    </SheetHost></ToastProvider>,
   );
 }
 
 describe("object page", () => {
   it("shows the object bar with the object, the system and the run's score", async () => {
-    open("cycle");
+    open("overview");
     const bar = await screen.findByTestId("object-bar");
-    expect(within(bar).getByText(/ECC production/)).toBeTruthy();
+    expect(within(bar).getAllByText(/ECC production/)[0]).toBeTruthy();
     await waitFor(() => expect(within(bar).getByTestId("object-dqs").textContent).toMatch(/\d/));
+    const viz = within(bar).getByTestId("hero-viz");
+    expect(viz.querySelector(".nx-ring-arc")).not.toBeNull();
+    expect(viz.querySelectorAll("svg[role=img]").length).toBe(2);
   });
 
   it("opens a tab as a path segment and keeps the run", async () => {
-    open("cycle", "&run=abc");
+    open("overview", "&run=abc");
     await screen.findByTestId("object-page");
     fireEvent.click(screen.getByRole("tab", { name: "Runs" }));
     expect(push).toHaveBeenCalled();
@@ -48,30 +52,8 @@ describe("object page", () => {
 
   it("says so when the system in the address does not exist", async () => {
     setUrl(`/next/o/nowhere/${MOD}/cycle?fixture=1`);
-    renderWithQuery(<ToastProvider><ObjectPage system="nowhere" module={MOD} tab="cycle" /></ToastProvider>);
+    renderWithQuery(<ToastProvider><SheetHost><ObjectPage system="nowhere" module={MOD} tab="overview" /></SheetHost></ToastProvider>);
     expect(await screen.findByText("No system called nowhere")).toBeTruthy();
-  });
-});
-
-describe("cycle tab", () => {
-  it("lists the five steps and opens the step in the address", async () => {
-    open("cycle", "&step=clean");
-    await screen.findByTestId("cycle-tab");
-    expect(await screen.findByTestId("clean-step")).toBeTruthy();
-    expect(within(screen.getByRole("list", { name: "Steps of the cleaning cycle" })).getAllByRole("listitem")).toHaveLength(5);
-    expect(screen.getByRole("heading", { name: "Download and clean" })).toBeTruthy();
-  });
-
-  it("the compare step shows the score change and the new, resolved and regressed counts", async () => {
-    open("cycle", "&step=compare");
-    expect(await screen.findByTestId("compare-step")).toBeTruthy();
-    await waitFor(() => expect(screen.getByTestId("compare-receipt").textContent).toMatch(/new.*resolved.*regressed/));
-  });
-
-  it("the upload step holds the upload back until a workbook is added", async () => {
-    open("cycle", "&step=upload");
-    expect(await screen.findByTestId("upload-step")).toBeTruthy();
-    expect((screen.getByRole("button", { name: /Upload and score/ }) as HTMLButtonElement).getAttribute("aria-disabled") ?? String((screen.getByRole("button", { name: /Upload and score/ }) as HTMLButtonElement).disabled)).toBe("true");
   });
 });
 
@@ -91,7 +73,7 @@ describe("runs tab", () => {
     fireEvent.click(boxes[0]);
     fireEvent.click(boxes[3]);
     fireEvent.click(screen.getByRole("button", { name: "Compare these two" }));
-    expect(getUrl()).toMatch(/\/cycle\?.*step=compare.*before=.*after=/);
+    expect(getUrl()).toMatch(/\/run\/.+\/vs\//);
   });
 
   it("nests a cleaned run under the run it was cleaned from, and Flat lays them out in order", () => {
