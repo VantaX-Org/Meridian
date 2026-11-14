@@ -422,6 +422,14 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
                 if c["status"] == "live" and c.get("purpose", "data") == "data" and c["table"] in frames \
                         and c["table"] not in stored_rows:
                     store(c["table"], frames.pop(c["table"]), c)
+            if not stored_rows and scope_is_empty(coverage):
+                if not purpose:
+                    _mark_modules(session, tenant_id, system_id, modules, "empty", 0)
+                progress({"status": "complete", "percent": 100, "rows": 0}, 300)
+                jobs.finish_job(tenant_id, job_id, result={"coverage": coverage, "empty": True},
+                                message="0 rows in scope", rows_done=0)
+                logger.info(f"Extraction from {system_id}: 0 rows in scope: {coverage}")
+                return {"status": "empty", "coverage": coverage}
             if not stored_rows:
                 if not purpose:
                     _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
@@ -473,6 +481,8 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
                     # every data table read completely (row count reconciled, no truncation, no paging drift)
                     "extraction_complete": all(c.get("complete", True) for c in coverage if c["status"] == "live")
                                            and not any(c["status"] == "failed" for c in coverage),
+                    # tables capped at MERIDIAN_EXTRACT_MAX_ROWS or with a capped slice: checks ran on part of them
+                    "truncated_tables": truncated_tables(coverage),
                 })},
             )
             session.commit()
@@ -494,7 +504,8 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
             run_checks.delay(version_id, tenant_id, prefix)
         jobs.finish_job(tenant_id, job_id, result={"version_id": version_id, "coverage": coverage,
                                                    "analysis": "queued" if analyse else "on_request"},
-                        message="Download complete" + (" — analysis queued" if analyse else ""))
+                        message=("Download complete: 0 rows in scope" if not total_rows else "Download complete")
+                                + (" — analysis queued" if analyse else ""))
         logger.info(f"Extraction {version_id}: {len(stored_rows)} tables, analysis {'enqueued' if analyse else 'on request'}")
         return {"status": "success", "version_id": version_id, "coverage": coverage}
 
@@ -511,6 +522,17 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
         progress({"status": "failed", "error": str(e)[:300]}, 3600)
         jobs.finish_job(tenant_id, job_id, "failed", error=str(e) or e.__class__.__name__)
         raise
+
+
+def scope_is_empty(coverage: list[dict]) -> bool:
+    """Every data table was read and returned 0 rows: the scope is empty, which is complete, not a failed read."""
+    data = [c for c in coverage if c.get("purpose", "data") == "data"]
+    return bool(data) and all(c["status"] == "live" and not c.get("rows") for c in data)
+
+
+def truncated_tables(coverage: list[dict]) -> list[str]:
+    """Tables capped at MERIDIAN_EXTRACT_MAX_ROWS, or with a capped slice: the checks ran on part of them."""
+    return [c["table"] for c in coverage if c["status"] == "live" and (c.get("truncated") or c.get("truncated_slices"))]
 
 
 def _mark_modules(session, tenant_id, system_id, modules, status, rows) -> None:

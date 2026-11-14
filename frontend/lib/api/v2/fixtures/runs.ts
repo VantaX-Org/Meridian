@@ -705,6 +705,11 @@ export function fixtureAction(name: string, args: Record<string, unknown>): unkn
     }
     case "download":
       return { ok: true };
+    case "split-scope": {
+      const scopes = [{ plants: ["P100", "P200"] }, { plants: ["P300", "P400"] }];
+      return { split_by: "plants", scopes, tables: ["MARC"],
+               ...(args.start ? { downloads: scopes.map((_, i) => ({ job_id: `dl-split-${i + 1}`, version_id: `split-${i + 1}` })) } : {}) };
+    }
     case "rename": {
       const id = String(args.id);
       state.labels[id] = String(args.label);

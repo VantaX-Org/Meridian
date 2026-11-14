@@ -35,11 +35,28 @@ def _probe_redis() -> dict[str, Any]:
     return {"status": c.status, "latency_ms": c.latency_ms, "detail": c.detail}
 
 
+def _probe_workers() -> dict[str, Any]:
+    """Celery workers answering a broadcast ping (health_probe.probe_workers), with the queue depths."""
+    from api.services import health_probe
+
+    redis_c, depths = health_probe.probe_redis()
+    c = health_probe.probe_workers(redis_c.status == "up", depths)
+    return {"status": c.status, "latency_ms": c.latency_ms, "detail": c.detail}
+
+
+# Components a request cannot be served without. Workers are reported but do not gate readiness: the worker
+# container starts independently of the API, and a stopped worker must not make the API look dead to the
+# container healthcheck or the update canary (they would cycle or roll back a healthy API).
+GATING = ("db", "redis")
+
+
 async def readiness() -> dict[str, dict[str, Any]]:
-    """Postgres (SELECT 1) and Redis (PING), probed in parallel; each bounded by health_probe.PROBE_TIMEOUT_S and
-    never raising (a failure is ``down`` with the exception's class name, never its message)."""
-    db, redis = await asyncio.gather(asyncio.to_thread(_probe_db), asyncio.to_thread(_probe_redis))
-    return {"db": db, "redis": redis}
+    """Postgres (SELECT 1), Redis (PING) and the Celery workers (ping), probed in parallel; each bounded by
+    health_probe.PROBE_TIMEOUT_S and never raising (a failure is ``down`` with the exception's class name,
+    never its message)."""
+    db, redis, workers = await asyncio.gather(asyncio.to_thread(_probe_db), asyncio.to_thread(_probe_redis),
+                                              asyncio.to_thread(_probe_workers))
+    return {"db": db, "redis": redis, "workers": workers}
 
 
 @router.get("/health/live")
@@ -53,9 +70,10 @@ async def live() -> dict:
 async def health() -> Any:
     """Readiness: 200 with ``status: ok`` only when Postgres and Redis answer; otherwise 503 with
     ``status: degraded`` and the per-component status. The update canary (scripts/update.sh) and the
-    container healthcheck rely on this, so a release that cannot reach its database fails them."""
+    container healthcheck rely on this, so a release that cannot reach its database fails them.
+    ``degraded`` lists every component that is not up, workers included, even when the API is ready."""
     components = await readiness()
-    ready = all(c["status"] == "up" for c in components.values())
+    ready = all(components[k]["status"] == "up" for k in GATING)
     llm_connected = False
     llm_source = "environment"
     provider = settings.llm_provider
@@ -87,6 +105,7 @@ async def health() -> Any:
     body = {
         "status": "ok" if ready else "degraded",
         "components": components,
+        "degraded": [k for k, c in components.items() if c["status"] in ("down", "degraded")],
         "version": APP_VERSION,
         "llm_provider": provider,
         "llm_source": llm_source,

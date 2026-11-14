@@ -12,7 +12,7 @@ import logging
 
 from celery.exceptions import SoftTimeLimitExceeded
 
-from api.services.health_probe import collect, record_samples
+from api.services.health_probe import collect, degraded, record_samples
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 
@@ -29,4 +29,6 @@ def sample_health() -> dict:
         logger.warning("health sample timed out")
         return {"written": 0, "timed_out": True}
     logger.info("health sample: %s rows (%s)", written, ", ".join(f"{c.id}={c.status}" for c in components))
-    return {"written": written, "components": {c.id: c.status for c in components}}
+    if bad := degraded(components):
+        logger.warning("health sample: degraded components %s", ", ".join(bad))
+    return {"written": written, "components": {c.id: c.status for c in components}, "degraded": bad}

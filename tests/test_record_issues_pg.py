@@ -884,7 +884,9 @@ def test_run_checks_lifecycle_session_resets_tenant_per_transaction(app_engine):
                     c.commit()
                 return s.execute(text("SELECT count(*) FROM analysis_versions WHERE id = :v"), {"v": vid}).scalar()
 
-        assert visible(lambda: Session(eng)) == 0  # the bug: the tenant was swapped under the session
+        # A plain Session that issued a session-level SET now keeps its tenant too: the Session after_begin
+        # hook in workers.db reapplies it transaction-local, so the other job's tenant never shows through.
+        assert visible(lambda: Session(eng)) == 1
         assert visible(lambda: tenant_session(eng, tid)) == 1
     finally:
         eng.dispose()

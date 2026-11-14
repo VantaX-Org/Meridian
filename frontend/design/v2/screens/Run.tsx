@@ -8,7 +8,8 @@ import { getObjectRules } from "@/lib/api/v2/landscape";
 import { formatDate } from "@/lib/format";
 import { exportFindings } from "@/lib/api/findings";
 import type { LandscapeCell, RuleRow } from "@/lib/api/v2/types";
-import { analyseRun, archiveRuns, downloadRunReport, pinBaseline, restoreRuns, type TimelineRun } from "@/lib/api/v2/runs";
+import { analyseRun, archiveRuns, cappedReads, downloadRunReport, pinBaseline, restoreRuns, splitScope, type SplitScope, type TimelineRun } from "@/lib/api/v2/runs";
+import type { DownloadScope } from "@/lib/api/system-objects";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobObject, jobSeconds } from "@/lib/v2/jobs";
 import { useLandscape, v2Keys } from "@/lib/v2/queries";
@@ -36,6 +37,12 @@ import { renameRun, rerunAgents } from "@/lib/api/v2/run-ops";
 import { RunSemantics } from "./RunSemantics";
 import "../basis.css";
 import { TableExport } from "@/design/v2/TableExport";
+
+/** The part of a split scope that differs between the parts: its slice of units, or its date range. */
+export function scopePart(s: DownloadScope, by: string): string {
+  if (by === "dates") return tr("{from} to {to}", { from: s.date_from ?? "", to: s.date_to ?? "" });
+  return ((s as Record<string, unknown>)[by] as string[] | undefined)?.join(", ") ?? "";
+}
 
 /**
  * The shape of a run in two figures: how its objects spread over the measured score, against the verdict bands, and
@@ -398,7 +405,11 @@ export function RunCanvas({ id }: { id: string }) {
   const baseline = Boolean(v?.metadata?.baseline);
   const [refusal, setRefusal] = useState<BaselineRefusal | null>(null);
   const archived = Boolean(v?.metadata?.archived);
+  const reads = cappedReads(v?.metadata ?? null);
+  const capped = reads.map((r) => r.table);
   const canChange = session.can("analyse");
+  const canSplit = session.can("trigger_sync");
+  const [split, setSplit] = useState<SplitScope | null>(null);
   const strip = L?.status_strip;
 
   const rank = (page.data?.versions ?? []).findIndex((r) => r.id === id);
@@ -451,6 +462,12 @@ export function RunCanvas({ id }: { id: string }) {
             {archived ? (
               <span>{tr("Archived")}</span>
             ) : null}
+            {capped.length ? (
+              <span className="m2-v" data-testid="run-capped" title={tr("These tables reached the row cap, so the scores cover only the rows read. Raise MERIDIAN_EXTRACT_MAX_ROWS or narrow the scope and run again.")}>
+                <VerdictMark verdict="at-risk" />
+                {tr("Read capped: {tables}", { tables: capped.join(", ") })}
+              </span>
+            ) : null}
             {v.status === "failed" ? (
               <span className="m2-v">
                 <VerdictMark verdict="no-go" />
@@ -476,11 +493,24 @@ export function RunCanvas({ id }: { id: string }) {
           label={tr("Run verdict")}
           eyebrow={tr("This run")}
           verdict={verdict}
-          headline={VERDICT_LABEL[verdict]}
+          headline={capped.length ? tr("{verdict} on a partial read", { verdict: VERDICT_LABEL[verdict] }) : VERDICT_LABEL[verdict]}
           why={
-            <span data-testid="run-sentence">
-              {tr("{cellsCount} {cellsCount, plural, one {object} other {objects}} scored: {go} go, {counts} at risk, {counts2} no-go.", { cellsCount: cells.length, go: counts.go ?? 0, counts: counts["at-risk"] ?? 0, counts2: counts["no-go"] ?? 0 })}
-            </span>
+            <>
+              <span data-testid="run-sentence">
+                {tr("{cellsCount} {cellsCount, plural, one {object} other {objects}} scored: {go} go, {counts} at risk, {counts2} no-go.", { cellsCount: cells.length, go: counts.go ?? 0, counts: counts["at-risk"] ?? 0, counts2: counts["no-go"] ?? 0 })}
+              </span>
+              {reads.length ? (
+                <span data-testid="run-partial">
+                  {" "}
+                  {tr("Partial score: the read stopped at the row cap, so only the rows read are scored.")}{" "}
+                  {reads.map((r) => (r.rows != null && r.source_rows != null
+                    ? tr("{table}: {rows} of {total} rows", { table: r.table, rows: int(r.rows), total: int(r.source_rows) })
+                    : r.rows != null
+                      ? tr("{table}: {rows} rows read, total not counted", { table: r.table, rows: int(r.rows) })
+                      : tr("{table}: total not counted", { table: r.table }))).join("; ")}
+                </span>
+              ) : null}
+            </>
           }
           figs={[
             { label: tr("Ready"), value: int(counts.go ?? 0), note: tr("of {n} objects", { n: int(cells.length) }) },
@@ -610,8 +640,56 @@ export function RunCanvas({ id }: { id: string }) {
         >
           {pending === "agents" ? tr("Starting…") : tr("Re-run agents")}
         </button>
+        {capped.length && systemId ? (
+          <button
+            type="button"
+            className="m2-btn"
+            data-testid="run-split"
+            disabled={!canSplit || pending !== null || !v}
+            title={tr("Split this run's scope into smaller scopes that each read under the row cap")}
+            onClick={() =>
+              void run("split", async () => {
+                const r = await splitScope(systemId, id, false);
+                setSplit(r);
+                return { tone: "info", title: tr("{n} smaller scopes", { n: r.scopes.length }), detail: tr("Each scope is one download, scored when it finishes. Check them, then start the downloads.") };
+              })
+            }
+          >
+            {pending === "split" ? tr("Splitting…") : tr("Split scope")}
+          </button>
+        ) : null}
         <CompareControl id={id} runs={timeline.data?.runs ?? []} system={system?.name} />
       </div>
+      {split && systemId ? (
+        <div className="m2-sec" data-testid="run-split-preview">
+          <ol>
+            {split.scopes.map((s, i) => (
+              <li key={i} className="m2-mono">{scopePart(s, split.split_by)}</li>
+            ))}
+          </ol>
+          <div className="m2-cta">
+            <button
+              type="button"
+              className="m2-btn m2-next"
+              data-testid="run-split-start"
+              disabled={!canSplit || pending !== null}
+              onClick={() =>
+                void run("split-start", async () => {
+                  const r = await splitScope(systemId, id, true);
+                  setSplit(null);
+                  refresh();
+                  return { tone: "ok", title: tr("{n} downloads started", { n: r.downloads?.length ?? 0 }), detail: tr("Each smaller scope is read and scored as a run of its own.") };
+                })
+              }
+            >
+              {tr("Start {n} downloads", { n: split.scopes.length })}
+            </button>
+            <button type="button" className="m2-btn" onClick={() => setSplit(null)}>
+              {tr("Cancel")}
+            </button>
+          </div>
+        </div>
+      ) : null}
       <RenameRun
         key={`${id}:${v?.label ?? ""}`}
         label={v?.label ?? null}
@@ -626,6 +704,7 @@ export function RunCanvas({ id }: { id: string }) {
         }
       />
       {!canChange ? <p className="m2-prov">{tr("Pinning, archiving, restoring, renaming and re-running agents need the analyse permission.")}</p> : null}
+      {capped.length && !canSplit ? <p className="m2-prov">{tr("Splitting the scope needs the trigger sync permission.")}</p> : null}
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {refusal ? (
         <PinRefusal

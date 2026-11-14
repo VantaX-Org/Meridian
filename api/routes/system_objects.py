@@ -376,6 +376,52 @@ async def start_download(system_id: uuid.UUID, body: DownloadBody, request: Requ
             "scope": scope, "analyse": body.analyse, "delta": body.delta}
 
 
+class SplitScopeBody(BaseModel):
+    # False answers the smaller scopes only; True also starts one analysed download per scope.
+    start: bool = False
+
+
+class SplitScopeOut(BaseModel):
+    split_by: str
+    scopes: list[dict[str, Any]]
+    tables: list[str]
+    downloads: Optional[list[dict[str, Any]]] = None
+
+
+@router.post("/{system_id}/versions/{version_id}/split-scope", response_model=SplitScopeOut,
+             response_model_exclude_none=True, dependencies=[Depends(require_permission("trigger_sync"))])
+async def split_capped_scope(system_id: uuid.UUID, version_id: uuid.UUID, body: SplitScopeBody, request: Request,
+                             db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """A run whose read hit the row cap scored only part of its tables. Split its scope into smaller scopes,
+    one download each, so every capped table can be read under the cap."""
+    from sap.ddic import dictionary_for_system
+    from sap.extraction_plan import split_scope
+    from workers.tasks.run_extraction import truncated_tables
+
+    await _rls(db, tenant)
+    st = await _system_type(db, system_id)
+    row = (await db.execute(text("SELECT label, metadata FROM analysis_versions "
+                                 "WHERE id = :v AND metadata->>'system_id' = :s"),
+                            {"v": version_id, "s": str(system_id)})).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+    meta = row.metadata or {}
+    coverage = meta.get("coverage") or []
+    capped_names = set(truncated_tables(coverage))
+    capped = [c for c in coverage if c.get("table") in capped_names]
+    try:
+        key, scopes = split_scope(meta.get("scope") or {}, capped, dictionary_for_system(st))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    out: dict[str, Any] = {"split_by": key, "scopes": scopes, "tables": [c.get("table") for c in capped]}
+    if body.start:
+        objects, label = meta.get("modules") or [], row.label or "Split scope"
+        out["downloads"] = [await start_download(system_id, DownloadBody(
+            objects=objects, scope=s, analyse=True, label=f"{label} ({i + 1} of {len(scopes)})"[:120]),
+            request, db, tenant) for i, s in enumerate(scopes)]
+    return out
+
+
 async def _delta_state(db: AsyncSession, tenant: Tenant, system_id: uuid.UUID, objects: list[str],
                        scope: dict) -> dict:
     """Whether a delta download is possible now, and why not when it is not."""
@@ -430,7 +476,8 @@ async def system_versions(system_id: uuid.UUID, limit: int = Query(50, le=200),
             # per-table read status; anything not read completely is listed with its reason
             "coverage": {"read": sum(1 for c in meta.get("coverage") or [] if c.get("status") == "live"),
                          "issues": [{"table": c.get("table"), "status": c.get("status"), "rows": c.get("rows"),
-                                     "source_rows": c.get("source_rows"), "detail": c.get("detail")}
+                                     "source_rows": c.get("source_rows"), "detail": c.get("detail"),
+                                     "truncated": bool(c.get("truncated") or c.get("truncated_slices"))}
                                     for c in meta.get("coverage") or []
                                     if c.get("status") != "live" or c.get("complete") is False]},
             "outliers": {k: {"label": v.get("label"), "outliers": v.get("outliers", 0), "checked": v.get("checked", 0)}
