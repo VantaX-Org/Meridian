@@ -10,6 +10,7 @@ import csv
 import io
 import logging
 import re
+import secrets
 import uuid
 from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
@@ -27,10 +28,14 @@ from api.routes.roles import (
     LAST_ADMIN_DETAIL, LEGACY_GRANT_DETAIL, _custom_role, enforce_ceiling, guard_user_access_change,
     insert_grant, lock_admin_rows, resolve_caller,
 )
-from api.services.local_auth import INVITE_TTL_DAYS, create_invite_token, create_password_reset_token
+from api.services import oidc
+from api.services.local_auth import (
+    INVITE_TTL_DAYS, create_invite_token, create_password_reset_token, hash_password, validate_password,
+)
+from api.services.rate_limiter import rate_limit
 from api.services.rbac import (
-    BUILTIN_NAMES, LEGACY_ROLES, PERSONA_ALIAS, VALID_ROLES, Scope, require_permission,
-    strongest_role, write_audit,
+    BUILTIN_NAMES, LEGACY_ROLES, PERSONA_ALIAS, VALID_ROLES, Scope, _as_uuid, current_user_id,
+    require_permission, strongest_role, write_audit,
 )
 from workers.tasks.send_password_reset import send_password_reset_email
 from workers.tasks.send_user_invitation import _resolve_app_base_url, send_invitation_email
@@ -46,6 +51,8 @@ NO_PASSWORD_DETAIL = "This user has not set a password yet. Resend the invite in
 IMPORT_MAX_ROWS = 500
 IMPORT_MAX_BYTES = 256 * 1024
 BULK_MAX_IDS = 200
+SELF_PASSWORD_DETAIL = "Change your own password under Preferences, with your current password."
+SSO_MANAGED_DETAIL = "Managed by your identity provider. This user signs in there, not with a password."
 RESET_LINK_MINUTES = 24 * 60  # a link handed over by an admin; the emailed one keeps the 1-hour default
 
 UserStatus = Literal["invited", "invite_expired", "active", "locked", "suspended"]
@@ -106,6 +113,18 @@ class InviteUserBody(BaseModel):
 class ResetPasswordBody(BaseModel):
     # True: queue the reset email. False: return a one-time link for the admin to hand over.
     send_email: bool = True
+
+
+class SetPasswordBody(BaseModel):
+    # Either a password the admin typed, or generate=true for a random one returned once in the response.
+    password: Optional[str] = Field(default=None, max_length=256)
+    generate: bool = False
+
+
+class SetPasswordOut(BaseModel):
+    id: str
+    must_change_password: bool
+    password: Optional[str] = None  # the generated password, returned once; None when the admin typed one
 
 
 class BulkBody(BaseModel):
@@ -548,7 +567,61 @@ async def invite_link(user_id: uuid.UUID, request: Request, db: AsyncSession = D
     return {"id": str(user_id), "url": _accept_url(token), "expires_at": expires.isoformat()}
 
 
-# ── Password reset ───────────────────────────────────────────────────────────
+# ── Password reset and set ───────────────────────────────────────────────────
+
+# Per acting admin: a stolen admin session cannot spray resets across the tenant.
+_reset_rate_limit = rate_limit("user_password_reset", limit=10, window_s=60, key_by="user")
+_set_rate_limit = rate_limit("user_password_set", limit=10, window_s=60, key_by="user")
+GENERATED_PASSWORD_BYTES = 15  # token_urlsafe(15) = 20 characters, about 120 bits
+
+
+async def _password_target(db: AsyncSession, tenant: Tenant, request: Request, user_id: uuid.UUID):
+    """The guards every admin password action shares, then the target row (email, name, is_active,
+    password_hash). Your own password goes through /auth/change-password (403); never a service account; only
+    users under your own permissions; tenant-scoped (another tenant's user is a 404); never the last active
+    admin (409); and not while SSO is enforced, except for an admin, who keeps a break-glass password (409)."""
+    if _as_uuid(current_user_id(request) or "") == user_id:
+        raise HTTPException(status_code=403, detail=SELF_PASSWORD_DETAIL)
+    await forbid_service_account(db, tenant.id, user_id)
+    await guard_user_access_change(db, tenant, request, user_id)
+    row = (await db.execute(
+        text("SELECT email, name, is_active, password_hash FROM users WHERE id = :u AND tenant_id = :t"),
+        {"u": str(user_id), "t": str(tenant.id)})).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not row[2]:
+        raise HTTPException(status_code=409, detail="This user is suspended. Reactivate them first.")
+    await forbid_last_admin(db, tenant.id, user_id)
+    cfg = (await db.execute(text("SELECT sso_config FROM tenants WHERE id = :t"), {"t": str(tenant.id)})).scalar()
+    if oidc.is_enforced(cfg if isinstance(cfg, dict) else None) and not await _is_active_admin(db, tenant.id, user_id):
+        raise HTTPException(status_code=409, detail=SSO_MANAGED_DETAIL)
+    return row
+
+
+async def set_user_password(db: AsyncSession, tenant: Tenant, request: Request, user_id: uuid.UUID,
+                            password: Optional[str], generate: bool) -> dict[str, Any]:
+    """Give a user a password: the one typed (checked by local_auth.validate_password) or a generated one,
+    returned once in this response and nowhere else. Sets must_change_password, revokes every session
+    (token_version + 1) and clears any lockout. The audit row names who, for whom and whether it was
+    generated, never the password. Commits."""
+    if generate == bool(password):
+        raise HTTPException(status_code=422, detail="Type a password or choose Generate, not both.")
+    row = await _password_target(db, tenant, request, user_id)
+    plain = secrets.token_urlsafe(GENERATED_PASSWORD_BYTES) if generate else str(password)
+    if not generate and (reason := validate_password(plain, row[0], row[3])):
+        raise HTTPException(status_code=422, detail=reason)
+    await db.execute(
+        text("UPDATE users SET password_hash = :h, must_change_password = true, token_version = token_version + 1, "
+             "password_changed_at = now(), failed_login_count = 0, locked_until = NULL "
+             "WHERE id = :u AND tenant_id = :t"),
+        {"h": hash_password(plain), "u": str(user_id), "t": str(tenant.id)})
+    await write_audit(db, tenant.id, request, "user.password_set", "user", str(user_id), None,
+                      {"email": row[0], "generated": generate})
+    await db.commit()
+    from api.middleware.local_auth import forget_token_version
+
+    forget_token_version(str(user_id))
+    return {"id": str(user_id), "must_change_password": True, "password": plain if generate else None}
 
 
 async def reset_user_password(db: AsyncSession, tenant: Tenant, request: Request, user_id: uuid.UUID,
@@ -556,15 +629,7 @@ async def reset_user_password(db: AsyncSession, tenant: Tenant, request: Request
     """Force a password change: must_change_password, every session revoked (token_version + 1), any lockout
     cleared, and either the reset email queued or a one-time link returned. Not yourself; not a user above
     your own permissions. The link carries the new token_version, so it works once. Commits."""
-    await forbid_service_account(db, tenant.id, user_id)
-    await guard_user_access_change(db, tenant, request, user_id)
-    row = (await db.execute(
-        text("SELECT email, name, is_active, (password_hash IS NOT NULL) FROM users WHERE id = :u AND tenant_id = :t"),
-        {"u": str(user_id), "t": str(tenant.id)})).fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="User not found")
-    if not row[2]:
-        raise HTTPException(status_code=409, detail="This user is suspended. Reactivate them first.")
+    row = await _password_target(db, tenant, request, user_id)
     if not row[3]:
         raise HTTPException(status_code=409, detail=NO_PASSWORD_DETAIL)
     secret = (await db.execute(text("SELECT jwt_secret FROM tenants WHERE id = :t"), {"t": str(tenant.id)})).scalar()
@@ -597,7 +662,15 @@ async def reset_user_password(db: AsyncSession, tenant: Tenant, request: Request
     return out
 
 
-@router.post("/users/{user_id}/reset-password")
+@router.post("/users/{user_id}/set-password", response_model=SetPasswordOut, dependencies=[Depends(_set_rate_limit)])
+async def set_password_route(user_id: uuid.UUID, body: SetPasswordBody, request: Request,
+                             db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
+                             _role: str = Depends(require_permission("manage_users"))):
+    await _set_rls(db, tenant.id)
+    return await set_user_password(db, tenant, request, user_id, body.password, body.generate)
+
+
+@router.post("/users/{user_id}/reset-password", dependencies=[Depends(_reset_rate_limit)])
 async def reset_password_route(user_id: uuid.UUID, body: ResetPasswordBody, request: Request,
                                db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
                                _role: str = Depends(require_permission("manage_users"))):
