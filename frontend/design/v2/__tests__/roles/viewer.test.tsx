@@ -38,6 +38,7 @@ describe("the viewer's and the auditor's jobs", () => {
     visit("/share/expired", "viewer");
     mount(<ShareLanding />);
     expect(await screen.findByText("This link was expired. Ask whoever shared it for a new one.")).toBeInTheDocument();
+    expect(screen.getByTestId("share-frame")).toContainElement(screen.getByRole("alert"));
   });
 
   it("a viewer cannot export a grid; an auditor can", async () => {

@@ -11,6 +11,7 @@ import { useSheets } from "../shell/SheetHost";
 import { LegacyMount } from "../shell/LegacyMount";
 import { failureText } from "@/lib/v2/errors";
 import { ListSearch, LongText, QueryView, VirtualList } from "./states";
+import { FilesCard, SchedulesCard } from "./cards";
 
 type Seg = "files" | "schedules" | "links";
 const STATUS_TONE = { sent: "good", running: "accent", partial: "warn", failed: "bad", skipped: "neutral" } as const;
@@ -75,6 +76,7 @@ export function Reports() {
   const sheets = useSheets();
   return (
     <div className="nx-body">
+      <div className="nx-chartcards"><FilesCard /><SchedulesCard /></div>
       <div className="nx-row">
         <SegmentedControl label={t("Reports")} value={seg} onChange={(v) => setSeg(v as Seg)} items={[{ value: "files", label: t("Files") }, { value: "schedules", label: t("Schedules") }, { value: "links", label: t("Shared links") }]} />
         <Button variant="primary" onClick={() => sheets.open({ kind: "report", id: "new" })}>{t("New report")}</Button>

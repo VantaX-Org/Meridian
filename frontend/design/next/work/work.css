@@ -1,0 +1,12 @@
+.nx-work { min-width: 0; }
+.nx-wk-ledger { display: flex; flex-direction: column; gap: var(--nx-s4); padding: var(--nx-s5) var(--nx-gutter); min-width: 0; }
+.nx-wk-pills { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2); }
+.nx-wk-pills .nx-seg { margin-inline-start: auto; }
+.nx-wk-lede { margin: 0; color: var(--nx-ink-2); }
+.nx-wk-rec { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nx-wk-rec small { color: var(--nx-ink-2); }
+.nx-wk-rule { display: flex; flex-direction: column; gap: 2px; min-width: 0; color: var(--nx-ink-2); }
+.nx-wk-more { align-self: flex-start; }
+.nx-wk-note { display: flex; flex-direction: column; gap: var(--nx-s2); color: var(--nx-ink-2); }
+.nx-wk-note textarea { width: 100%; padding: var(--nx-s2); background: var(--nx-surface); color: var(--nx-ink); border: 1px solid var(--nx-border-strong); border-radius: var(--nx-r-control); font: inherit; }
+.nx-wk-viz { display: flex; flex-direction: column; gap: var(--nx-s2); padding: var(--nx-s4); background: var(--nx-surface); border: 1px solid var(--nx-border); border-radius: var(--nx-r-card); } .nx-wk-viz svg { height: 40px; } .nx-wk-viz small { color: var(--nx-ink-2); }

@@ -16,9 +16,12 @@ describe("nav defaults", () => {
     expect(redirectFor("/monitor")).toBe("/work/monitor");
     expect(redirectFor("/next/work/approve")).toBe("/work/approve");
     expect(redirectFor("/load/compare")).toBe("/load?tab=compare");
+    // Administration has one entry, under More.
+    expect(redirectFor("/admin")).toBe("/more/admin");
+    expect(redirectFor("/admin/users")).toBe("/more/admin/users");
   });
   it("leaves screens that stay", () => {
-    for (const p of ["/", "/work", "/work/triage", "/work/monitor", "/runs", "/admin", "/admin/users", "/run/a", "/run/a/vs/b", "/o/a/b", "/share/x", "/status", "/more", "/more/rules"]) {
+    for (const p of ["/", "/work", "/work/triage", "/work/monitor", "/runs", "/run/a", "/run/a/vs/b", "/o/a/b", "/share/x", "/status", "/more", "/more/rules", "/more/admin", "/more/admin/users"]) {
       expect(redirectFor(p)).toBeNull();
     }
   });
