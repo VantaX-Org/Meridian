@@ -51,6 +51,8 @@ export interface Job {
   run_ids?: string[];
   /** extraction: the start request its route recorded; present means POST /jobs/{id}/retry can run it again. */
   retry?: { via: string; body: Record<string, unknown> };
+  /** extraction: the target chosen at start and each template's auto-fill status (GET /versions/{id}/extract-target is the durable copy). */
+  extract_target?: { target_system_id: string | null; templates: { module: string; template_id: string; template_name?: string | null; status: "pending" | "filled" | "failed"; error?: string | null; download_url?: string | null }[] } | null;
   /** A queued job's place in the tenant's queue (1: next), from GET /jobs and /jobs/{id}. */
   queue_position?: number | null;
 }

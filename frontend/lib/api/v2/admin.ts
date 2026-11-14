@@ -11,6 +11,7 @@ import type { LicenceManifest } from "@/lib/api/licence";
 import type { AccessRequest, EffectivePermissions } from "@/lib/api/me";
 import type { AlertChannel, AlertChannelCreate, AlertChannelUpdate, NotificationDelivery } from "@/lib/api/notifications";
 import type { Preferences, PreferencesPatch } from "@/lib/preferences";
+import type { ExtractTargetChoice } from "./extract-target";
 import type {
   PurgeLogEntry, PurgeResult, RetentionPolicy, RetentionPreviewItem, RetentionResponse, TenantPurgeRequest,
 } from "@/lib/api/retention";
@@ -227,10 +228,10 @@ export const sendTestNotification = (): Promise<{ email: "sent" | "no_backend" |
 export type { SyncProfile, DownloadScope };
 
 /** POST /systems/{id}/downloads: extract the chosen objects within a scope, optionally analysing straight after. */
-export async function startExtraction(systemId: string, objects: string[], analyse: boolean, scope: DownloadScope, delta = false): Promise<{ job_id: string; status: string }> {
-  if (fixtureActive()) return fixtureAction("extract", { id: systemId, objects, analyse, scope, delta }) as { job_id: string; status: string };
+export async function startExtraction(systemId: string, objects: string[], analyse: boolean, scope: DownloadScope, delta = false, target?: ExtractTargetChoice): Promise<{ job_id: string; status: string }> {
+  if (fixtureActive()) return fixtureAction("extract", { id: systemId, objects, analyse, scope, delta, target }) as { job_id: string; status: string };
   const { startDownload } = await import("@/lib/api/system-objects");
-  return startDownload(systemId, { objects, scope, analyse, ...(delta ? { delta: true } : {}) });
+  return startDownload(systemId, { objects, scope, analyse, ...(delta ? { delta: true } : {}), ...target });
 }
 
 /** One run of a schedule, as GET /systems/{id}/runs answers it. */

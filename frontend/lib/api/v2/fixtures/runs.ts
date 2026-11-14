@@ -643,6 +643,18 @@ function configLoadOf(systemId: string): ConfigLoad | { status: "never_loaded" }
 
 // ── The router and the writes ────────────────────────────────────────────────────────────────
 
+/** GET /versions/{id}/extract-target: one template filled, one skipped (a delta run), one failed. */
+function fixtureExtractTarget() {
+  return {
+    target_system_id: "sys-target",
+    templates: [
+      { module: "material_master", template_id: "tpl-1", template_name: "Material load v2", status: "filled", format: "xlsx", filled_at: "2026-10-15T09:20:00Z", summary: { rows: 120, ready: 112, held: 8, cleansed: 14, stale_fixes: 2 }, download_url: "/x" },
+      { module: "customer_master", template_id: "tpl-2", template_name: "Customer load", status: "skipped", error: "delta run; refill from full version" },
+      { module: "employee_central", template_id: "tpl-3", template_name: "Employee load", status: "failed", error: "No mapped columns" },
+    ],
+  };
+}
+
 /** The answer to one step 3 read, or NONE when the path is not one of this step's. */
 export function runsFixtureResponse(path: string, params: Params): unknown {
   if (path === "/runs/rule-trend") return fixtureRuleTrend(String(params.system_id), Number(params.limit ?? 8));
@@ -660,6 +672,8 @@ export function runsFixtureResponse(path: string, params: Params): unknown {
     if (!RUNS.some((r) => r.id === id)) throw new FixtureNotFound(path);
     return head(numberOf(id));
   }
+  const xt = /^\/versions\/([^/]+)\/extract-target$/.exec(path);
+  if (xt) return fixtureExtractTarget();
   if (path === "/jobs") return { jobs: jobs().slice(0, Number(params.limit ?? 100)) };
   const job = /^\/jobs\/([^/]+)$/.exec(path);
   if (job) {

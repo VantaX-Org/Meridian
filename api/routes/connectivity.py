@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.models.config_score import LandscapeConfigStatus
 from api.services import jobs
+from api.services.extract_target import ExtractTargetOut
 
 router = APIRouter(prefix="/api/v1/connectivity", tags=["connectivity"])
 logger = logging.getLogger("meridian.connectivity")
@@ -24,6 +25,10 @@ class ExtractModuleRequest(BaseModel):
     modules: list[str]
     include_config: bool = True
     sync_type: str = "both"  # data, config, both
+    # Optional target: a target system and/or a target template per module (module -> template id). Omitted system
+    # defaults to the source's paired target; an omitted template to the module's newest one, if any.
+    target_system_id: Optional[str] = None
+    target_template_ids: Optional[dict[str, str]] = None
 
 
 class ConfigSyncRequest(BaseModel):
@@ -51,6 +56,7 @@ class QueuedJobOut(BaseModel):
     status: str
     version_id: Optional[str] = None
     modules: Optional[list[str]] = None
+    extract_target: Optional[ExtractTargetOut] = None
 
 
 class ConfigSnapshotTable(BaseModel):
@@ -137,12 +143,16 @@ async def extract_modules(
     enforce_licensed_modules(request, body.modules)
 
     jobs.ensure_no_extraction(str(tenant.id), body.system_id)
+    from api.services.extract_target import resolve_target
+
+    target = await resolve_target(db, str(tenant.id), body.system_id, body.modules, body.target_system_id,
+                                  body.target_template_ids)
     version_id = str(uuid.uuid4())
     jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", ", ".join(body.modules), status="queued",
-                   system_id=body.system_id, modules=body.modules, version_id=version_id,
+                   system_id=body.system_id, modules=body.modules, version_id=version_id, extract_target=target,
                    retry={"via": "extract", "body": body.model_dump(mode="json")}, started_by=current_user_id(request))
     task = run_extraction.delay(str(tenant.id), body.system_id, body.modules, body.include_config, body.sync_type,
-                                None, True, None, version_id)
+                                None, True, None, version_id, **({"extract_target": target} if target else {}))
     jobs.set_task_ids(str(tenant.id), f"dl-{version_id}", [getattr(task, "id", None)])
     return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "modules": body.modules}
 

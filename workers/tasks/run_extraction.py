@@ -241,7 +241,8 @@ def discard_extraction(tenant_id: str, system_id: Optional[str], version_id: str
     reject_on_worker_lost=True,
 )
 def run_extraction(self, tenant_id, system_id, modules, include_config=True, sync_type="both",
-                   scope=None, analyse=True, label=None, version_id=None, delta=False, purpose=None):
+                   scope=None, analyse=True, label=None, version_id=None, delta=False, purpose=None,
+                   extract_target=None):
     """Download ``modules`` (business objects) from ``system_id`` into a new version.
 
     The version is stored as ``extracted`` with its objects, scope and per-object
@@ -252,6 +253,8 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
     ``delta`` re-reads only what SAP's change documents say changed since the previous version.
     ``purpose`` marks a download made for something other than data quality (process discovery): it is recorded on
     the version and the DQ side effects (module map, table profiles) are skipped.
+    ``extract_target`` (api/services/extract_target.py) names the target system and templates; each template is
+    filled from the stored run, and a failed fill is recorded on the job and never fails the extraction.
     """
     if version_id:
         prior = jobs.get_job(tenant_id, f"dl-{version_id}")
@@ -275,13 +278,13 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
 
     try:
         return _extract(self, tenant_id, system_id, modules, include_config, sync_type, scope, analyse, label,
-                        version_id, delta, purpose)
+                        version_id, delta, purpose, extract_target)
     finally:
         _release_system_lock(str(system_id), str(version_id) if version_id else None)
 
 
 def _extract(self, tenant_id, system_id, modules, include_config, sync_type, scope, analyse, label, version_id, delta,
-             purpose):
+             purpose, extract_target=None):
     """The extraction proper, run while the system lock is held."""
     from api.services.task_progress import publish_progress
 
@@ -442,7 +445,7 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
             session.execute(
                 text("""
                     INSERT INTO analysis_versions
-                        (id, tenant_id, status, label, metadata, run_number, parent_version_id)
+                        (id, tenant_id, status, label, metadata, run_number, parent_version_id, extract_target)
                     SELECT :vid, :tid, :st, :label, CAST(:meta AS jsonb),
                            COALESCE((SELECT max(run_number) FROM analysis_versions
                                       WHERE tenant_id = CAST(:tid AS uuid)
@@ -454,10 +457,12 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
                                    = COALESCE(:sysid, 'upload')
                                AND COALESCE(metadata->'modules', '[]'::jsonb)
                                    = CAST(:mods AS jsonb)
-                             ORDER BY run_at DESC, id DESC LIMIT 1)
+                             ORDER BY run_at DESC, id DESC LIMIT 1),
+                           CAST(:xt AS jsonb)
                 """),
                 {"vid": version_id, "tid": tenant_id, "st": "pending" if analyse else "extracted",
                  "label": label, "sysid": system_id, "mods": json.dumps(modules),
+                 "xt": json.dumps(extract_target) if extract_target else None,
                  "meta": json.dumps({
                     "modules": modules, "source": "extraction", "trigger": "manual", "system_id": system_id,
                     "config_basis": config_basis,
@@ -485,6 +490,15 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
                 _mark_modules(session, tenant_id, system_id, modules, "partial" if failed else "success", total_rows)
                 jobs.update_job(tenant_id, job_id, stage="register", message="Recording table profiles")
                 _store_profiles(session, tenant_id, system_id, version_id, profiles)
+            if extract_target:
+                jobs.update_job(tenant_id, job_id, stage="register", message="Filling the assigned templates")
+                from api.services.extract_target import autofill
+                try:
+                    extract_target = autofill(session, tenant_id, version_id, extract_target,
+                                              delta=not fell_back)
+                except Exception as e:  # noqa: BLE001 - never fail a stored extraction over a fill
+                    logger.warning("auto-fill of %s failed: %s", version_id, e)
+                jobs.update_job(tenant_id, job_id, extract_target=extract_target)
 
         progress({"status": "complete", "percent": 100, "version_id": version_id}, 300)
         if analyse:
