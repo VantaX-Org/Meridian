@@ -17,12 +17,12 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// The object page opens the cycle as a sheet now; the steps are mounted directly.
+const IDS = ["fingerprint", "run", "template", "columns", "rows", "keys", "values", "formulas"] as const;
+
+// The cycle is no longer an object page tab, so the test mounts the cycle steps directly.
 function Cycle() {
   return <CycleTab o={useObjectRun("ecc-production", "material-master")} />;
 }
-
-const IDS = ["fingerprint", "run", "template", "columns", "rows", "keys", "values", "formulas"] as const;
 
 async function addFile(name: string) {
   setUrl("/next/o/ecc-production/material-master/cycle?fixture=1&step=upload");
