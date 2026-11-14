@@ -4,6 +4,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool, text
 
+from db.migration_lock import migration_lock
 from db.schema import Base
 
 config = context.config
@@ -49,7 +50,8 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
 
-    with connectable.connect() as connection:
+    # The api entrypoint and update.sh both migrate; the second run waits here, then no-ops.
+    with connectable.connect() as connection, migration_lock(connection):
         # Thread MERIDIAN_APP_PASSWORD through as a per-session GUC so
         # migration 040 (meridian_app role) can read it. Safe if unset —
         # migration 040 falls back to a logged dev default.

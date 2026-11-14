@@ -38,8 +38,15 @@ def store_signal(result: dict) -> None:
 
 
 def _busy(own_task_id: str | None) -> bool:
-    """True if any worker runs a job other than this one. No reply = busy."""
-    active = celery_app.control.inspect(timeout=2).active()
+    """True if any worker runs a job other than this one, of any kind. No reply or an error = busy.
+
+    update.sh applies the same rule (and ignores this task by name) when the sidecar runs it.
+    """
+    try:
+        active = celery_app.control.inspect(timeout=2).active()
+    except Exception as exc:  # broker down or a garbled reply: fail closed, try again next tick
+        logger.warning("Forced update: could not ask the worker what it runs (%s); waiting", exc)
+        return True
     if not active:
         return True
     return any(t.get("id") != own_task_id for tasks in active.values() for t in tasks)
