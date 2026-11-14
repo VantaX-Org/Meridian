@@ -166,7 +166,7 @@ def _touch_system_lock(system_id: str) -> None:
         pass
 
 
-def _acquire_system_lock(system_id: str) -> bool:
+def _acquire_system_lock(system_id: str, owner: str = "1") -> bool:
     """One extraction per SYSTEM at a time, not merely per version.
 
     A version lock stops a redelivered copy of the same run, but every dispatch gets a fresh
@@ -176,7 +176,8 @@ def _acquire_system_lock(system_id: str) -> bool:
     refuses the surplus logons, and refused logons are how an account ends up locked - with no OOM
     and no retry anywhere in the picture, which is exactly the lock that could not be explained.
 
-    Returns False when another extraction already holds this system.
+    Returns False when another extraction already holds this system. ``owner`` (the version id) is stored as the
+    value so a release on behalf of one version never frees a system another version holds.
     """
     try:
         import redis  # type: ignore
@@ -186,13 +187,19 @@ def _acquire_system_lock(system_id: str) -> bool:
         if not url:
             return True
         client = redis.from_url(url)
-        return bool(client.set(f"extract-lock:system:{system_id}", "1", nx=True, ex=SYSTEM_LOCK_TTL))
+        return bool(client.set(f"extract-lock:system:{system_id}", owner, nx=True, ex=SYSTEM_LOCK_TTL))
     except Exception:
         return True
 
 
-def _release_system_lock(system_id: str) -> None:
-    """Free the system when the extraction ends, however it ends, so the next download need not wait out the TTL."""
+def _release_system_lock(system_id: Optional[str], version_id: Optional[str] = None) -> None:
+    """Free the system (and the version) when the extraction ends, however it ends, so the next download need not
+    wait out the TTL. Also called by the cancel route and the orphan reaper (workers/scheduler.py).
+
+    The version lock goes too: a config-wait ``Retry`` leaves through here, and a version lock left behind made the
+    retried copy exit as ``duplicate_ignored`` with its job stuck queued. A late redelivery of a finished run is
+    stopped by the job-status check in ``run_extraction`` instead. With a ``version_id`` the system lock goes only
+    when that version holds it, so cancelling a queued download never frees a system another run is reading."""
     try:
         import redis  # type: ignore
 
@@ -200,9 +207,29 @@ def _release_system_lock(system_id: str) -> None:
         url = celery_app.conf.broker_url
         if not url:
             return
-        redis.from_url(url).delete(f"extract-lock:system:{system_id}")
+        client = redis.from_url(url)
+        sys_key = f"extract-lock:system:{system_id}"
+        # ponytail: get-then-delete, not atomic; the window is one round trip and a lost race only frees a lock
+        # whose owner is already ending
+        owned = system_id and (not version_id or client.get(sys_key) in (version_id.encode(), version_id))
+        keys = ([sys_key] if owned else []) + ([f"extract-lock:{version_id}"] if version_id else [])
+        if keys:
+            client.delete(*keys)
     except Exception:
         pass
+
+
+def discard_extraction(tenant_id: str, system_id: Optional[str], version_id: str) -> None:
+    """Free the locks of a download that will not finish, and delete its parquet (cancel route, orphan reaper).
+    Call only when no analysis_versions row exists for ``version_id``: once registered, the prefix is the version's
+    dataset."""
+    _release_system_lock(system_id, version_id)
+    try:
+        from api.config import settings
+        from api.services.storage import delete_prefix
+        delete_prefix(settings.minio_bucket_uploads, f"staging/{tenant_id}/{version_id}/")
+    except Exception as e:  # ponytail: a missed delete leaves orphan parquet for purge.py; retry if storage is flaky
+        logger.warning("staged files of %s not deleted: %s", version_id, e)
 
 
 @celery_app.task(
@@ -229,23 +256,31 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
     ``extract_target`` (api/services/extract_target.py) names the target system and templates; each template is
     filled from the stored run, and a failed fill is recorded on the job and never fails the extraction.
     """
+    if version_id:
+        prior = jobs.get_job(tenant_id, f"dl-{version_id}")
+        if prior and prior.get("status") not in jobs.ACTIVE:
+            # Cancelled while queued, or a late redelivery of a run that already finished: nothing to do.
+            return {"version_id": str(version_id), "status": prior.get("status")}
     if version_id and not _acquire_version_lock(str(version_id)):
         logger.warning(
             "extraction for version %s is already running (redelivered after a restart); "
             "exiting rather than starting a second read of the same system", version_id)
         return {"version_id": str(version_id), "status": "duplicate_ignored"}
-    if not _acquire_system_lock(str(system_id)):
+    if not _acquire_system_lock(str(system_id), str(version_id or "1")):
         logger.warning(
             "an extraction is already running against system %s; not starting a second one. "
             "Concurrent extractions multiply RFC sessions for one SAP user and SAP refuses the "
             "surplus logons, which locks the account.", system_id)
+        if version_id:
+            _release_system_lock(None, str(version_id))  # the version only; the system belongs to the other run
+            jobs.finish_job(tenant_id, f"dl-{version_id}", "failed", error="Another download is running on this system")
         return {"version_id": str(version_id), "status": "system_busy"}
 
     try:
         return _extract(self, tenant_id, system_id, modules, include_config, sync_type, scope, analyse, label,
                         version_id, delta, purpose, extract_target)
     finally:
-        _release_system_lock(str(system_id))
+        _release_system_lock(str(system_id), str(version_id) if version_id else None)
 
 
 def _extract(self, tenant_id, system_id, modules, include_config, sync_type, scope, analyse, label, version_id, delta,

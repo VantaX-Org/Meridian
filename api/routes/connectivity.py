@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from api.services.rbac import require_permission, scope_from_path
+from api.services.rbac import current_user_id, require_permission, scope_from_path
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -142,6 +142,7 @@ async def extract_modules(
 
     enforce_licensed_modules(request, body.modules)
 
+    jobs.ensure_no_extraction(str(tenant.id), body.system_id)
     from api.services.extract_target import resolve_target
 
     target = await resolve_target(db, str(tenant.id), body.system_id, body.modules, body.target_system_id,
@@ -149,7 +150,7 @@ async def extract_modules(
     version_id = str(uuid.uuid4())
     jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", ", ".join(body.modules), status="queued",
                    system_id=body.system_id, modules=body.modules, version_id=version_id, extract_target=target,
-                   retry={"via": "extract", "body": body.model_dump(mode="json")})
+                   retry={"via": "extract", "body": body.model_dump(mode="json")}, started_by=current_user_id(request))
     task = run_extraction.delay(str(tenant.id), body.system_id, body.modules, body.include_config, body.sync_type,
                                 None, True, None, version_id, **({"extract_target": target} if target else {}))
     jobs.set_task_ids(str(tenant.id), f"dl-{version_id}", [getattr(task, "id", None)])
