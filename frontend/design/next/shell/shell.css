@@ -16,7 +16,7 @@
 .nx-header-label { white-space: nowrap; }
 .nx-account-btn { display: inline-flex; align-items: center; gap: var(--nx-s2); height: var(--nx-h-control); padding: 0 var(--nx-s2); background: transparent; border: 0; border-radius: var(--nx-r-pill); color: var(--nx-ink); font: inherit; font-size: var(--nx-fs-small); cursor: pointer; }
 .nx-account-btn:hover { background: var(--nx-surface-2); }
-.nx-avatar { flex: none; width: var(--nx-h-control-sm); height: var(--nx-h-control-sm); border-radius: var(--nx-r-pill); background: var(--nx-accent-soft); color: var(--nx-accent-ink); display: grid; place-items: center; font-size: var(--nx-fs-micro); font-weight: var(--nx-w-label); }
+.nx-avatar { flex: none; width: var(--nx-h-control-sm); height: var(--nx-h-control-sm); border-radius: var(--nx-r-pill); background: var(--nx-accent-soft); color: var(--nx-ink); display: grid; place-items: center; font-size: var(--nx-fs-micro); font-weight: var(--nx-w-label); }
 .nx-account-name { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Tabs: text pills under the header on a desktop, a fixed bar with glyphs on a phone. */

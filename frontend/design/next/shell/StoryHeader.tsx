@@ -79,7 +79,7 @@ export function StoryHeader({ onShortcuts }: { onShortcuts: () => void }) {
           <Icon name="search" size={16} />
           <span className="nx-header-label">{t("Search")}</span>
         </button>
-        <button type="button" className="nx-header-btn" aria-haspopup="dialog" aria-expanded={askOpen} onClick={() => sheets.open({ kind: "ask", id: "" })}>
+        <button type="button" className="nx-header-btn" aria-haspopup="dialog" aria-expanded={askOpen} aria-label={t("Ask Aletheia")} onClick={() => sheets.open({ kind: "ask", id: "" })}>
           <Icon name="sparkles" size={16} />
           <span className="nx-header-label">{t("Ask Aletheia")}</span>
         </button>

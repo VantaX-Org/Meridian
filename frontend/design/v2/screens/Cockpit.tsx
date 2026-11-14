@@ -188,7 +188,7 @@ export function FixPipeline({ label, module }: { label: (m: string) => string; m
               </li>
             ))}
           </ol>
-          <TableExport><table className="m2-ck-mini">
+          <TableExport><table className="m2-ck-mini" tabIndex={0}>
             <caption className="m2-sr">{t("Records at each step, by object")}</caption>
             <thead>
               <tr>
