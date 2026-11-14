@@ -5,6 +5,7 @@ from typing import Annotated, Any, Literal, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 
+from api.middleware.licence import licensed_module
 from api.services.rbac import require_permission, scope_from_path
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select, text
@@ -912,7 +913,8 @@ async def get_extract_target(version_id: str, db: AsyncSession = Depends(get_db)
 
 
 @router.get("/versions/{version_id}/extract-target/{module}/file", response_class=Response,
-            dependencies=[Depends(require_permission("export", scope=scope_from_path))])
+            dependencies=[Depends(require_permission("export", scope=scope_from_path)),
+                          Depends(licensed_module())])
 async def get_extract_target_file(version_id: str, module: str, db: AsyncSession = Depends(get_db),
                                   tenant: Tenant = Depends(get_tenant)):
     """The template filled automatically from this run for ``module``."""
@@ -933,7 +935,8 @@ async def get_extract_target_file(version_id: str, module: str, db: AsyncSession
 
 
 @router.post("/versions/{version_id}/extract-target/{module}/refill", response_model=TemplateFillOut,
-             dependencies=[Depends(require_permission("export", scope=scope_from_path))])
+             dependencies=[Depends(require_permission("export", scope=scope_from_path)),
+                          Depends(licensed_module())])
 async def refill_extract_target(version_id: str, module: str, request: Request, db: AsyncSession = Depends(get_db),
                                 tenant: Tenant = Depends(get_tenant)):
     """Fill this run's template for ``module`` again, from the newest full extraction of the run's system.
