@@ -7,12 +7,13 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.rbac import require_permission, scope_from_path
 
 router = APIRouter(prefix="/api/v1/config-impact", tags=["config-impact"])
 logger = logging.getLogger("meridian.config_impact")
 
 
-@router.get("/{version_id}")
+@router.get("/{version_id}", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_config_impact(
     version_id: str,
     db: AsyncSession = Depends(get_db),

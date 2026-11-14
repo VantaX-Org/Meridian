@@ -164,7 +164,7 @@ def _version_to_response(v: AnalysisVersion) -> VersionResponse:
     )
 
 
-@router.get("/versions", response_model=VersionListOut)
+@router.get("/versions", response_model=VersionListOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_versions(
     # Annotated, so a direct Python call (runs.export_runs) gets plain defaults, not Query() objects.
     limit: Annotated[int, Query(ge=1, le=1000, description="Runs per page (default 20, up to 1000); "
@@ -331,7 +331,7 @@ def change_kind(v1_affected: int, v2_affected: int) -> Optional[str]:
     return None
 
 
-@router.get("/versions/compare")
+@router.get("/versions/compare", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def compare_versions(
     v2: str = Query(...),
     v1: Optional[str] = Query(None, description="Default: pinned baseline, else the previous finished run"),
@@ -426,7 +426,7 @@ async def _resolve_pair(db: AsyncSession, v1: Optional[str], v2: str) -> tuple[u
     return row[0], vid2
 
 
-@router.get("/versions/compare/records")
+@router.get("/versions/compare/records", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def compare_records(
     v2: str = Query(...),
     v1: Optional[str] = Query(None, description="Default: pinned baseline, else the previous run"),
@@ -463,7 +463,7 @@ async def compare_records(
     }
 
 
-@router.get("/versions/compare/records/{check_id}", response_model=CompareRecordKeysOut)
+@router.get("/versions/compare/records/{check_id}", response_model=CompareRecordKeysOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def compare_records_list(
     check_id: str,
     v2: str = Query(...),
@@ -491,7 +491,7 @@ async def _classify_args(db: AsyncSession, v1: Optional[str], v2: str):
     return vid1, vid2, await earlier_runs(db, await _scope_of(db, vid2) or "", vid1)
 
 
-@router.get("/versions/compare/sets", response_model=CompareSetsListOut)
+@router.get("/versions/compare/sets", response_model=CompareSetsListOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def compare_sets_list(
     v2: str = Query(...),
     v1: Optional[str] = Query(None, description="Default: pinned baseline, else the previous run"),
@@ -515,7 +515,7 @@ async def compare_sets_list(
     return {"v1": str(vid1), "v2": str(vid2), "records": items, **page_meta(total, limit, offset)}
 
 
-@router.get("/versions/compare/sets/summary", response_model=CompareSetsSummaryOut)
+@router.get("/versions/compare/sets/summary", response_model=CompareSetsSummaryOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def compare_sets_summary(
     v2: str = Query(...),
     v1: Optional[str] = Query(None),
@@ -530,7 +530,7 @@ async def compare_sets_summary(
     return {"v1": str(vid1), "v2": str(vid2), **await cs.counts(db, vid1, vid2, earlier)}
 
 
-@router.get("/versions/compare/multi")
+@router.get("/versions/compare/multi", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def compare_multi(
     runs: str = Query(..., description="Two to ten run ids, oldest first, comma separated"),
     db: AsyncSession = Depends(get_db),
@@ -550,7 +550,7 @@ async def compare_multi(
     return {"runs": [str(_run_id(i)) for i in ids], "steps": steps}
 
 
-@router.get("/versions/{version_id}/findings/{check_id}/records", response_model=FindingRecordsOut)
+@router.get("/versions/{version_id}/findings/{check_id}/records", response_model=FindingRecordsOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def finding_records(
     version_id: uuid.UUID,
     check_id: str,
@@ -600,7 +600,7 @@ def value_labels(field_values: Optional[dict], module: Optional[str], check_id: 
     return out
 
 
-@router.get("/versions/{version_id}/findings/{check_id}/root-cause", response_model=FindingRootCauseOut)
+@router.get("/versions/{version_id}/findings/{check_id}/root-cause", response_model=FindingRootCauseOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def finding_root_cause(
     version_id: uuid.UUID,
     check_id: str,
@@ -827,7 +827,7 @@ async def pin_baseline(
     return {"version_id": version_id, "baseline": pinned, "scope": scope}
 
 
-@router.get("/versions/{version_id}", response_model=VersionResponse)
+@router.get("/versions/{version_id}", response_model=VersionResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_version(
     version_id: str,
     db: AsyncSession = Depends(get_db),
@@ -871,7 +871,7 @@ async def patch_version(
     return _version_to_response(version)
 
 
-@router.get("/versions/{version_id}/status", response_model=VersionStatusOut)
+@router.get("/versions/{version_id}/status", response_model=VersionStatusOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_version_status(
     version_id: str,
     db: AsyncSession = Depends(get_db),

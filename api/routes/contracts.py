@@ -13,6 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.rbac import scope_from_path
 
 router = APIRouter(prefix="/api/v1", tags=["contracts"])
 
@@ -117,7 +118,7 @@ def _row_to_dict(row) -> dict:
 # ── 1. GET /api/v1/contracts — list all contracts with latest compliance ─────
 
 
-@router.get("/contracts", response_model=ContractList)
+@router.get("/contracts", response_model=ContractList, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_contracts(
     status: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
@@ -310,7 +311,7 @@ class ContractComplianceOut(BaseModel):
     compliance_history: list[dict[str, Any]]
 
 
-@router.get("/contracts/{contract_id}/compliance", response_model=ContractComplianceOut)
+@router.get("/contracts/{contract_id}/compliance", response_model=ContractComplianceOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_contract_compliance(
     contract_id: str,
     days: int = Query(90, ge=1, le=365),

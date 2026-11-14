@@ -9,12 +9,13 @@ from fastapi.responses import Response
 from api.server_error import server_failure
 from api.deps import Tenant, get_tenant
 from api.services import user_guide
+from api.services.rbac import require_permission
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["docs"])
 
 
-@router.get("/docs/user-guide.pdf")
+@router.get("/docs/user-guide.pdf", dependencies=[Depends(require_permission("view"))])
 async def user_guide_pdf(tenant: Tenant = Depends(get_tenant)) -> Response:  # noqa: ARG001 - sign-in only
     try:
         pdf = await asyncio.to_thread(user_guide.build_pdf)

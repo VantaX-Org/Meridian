@@ -34,6 +34,7 @@ from db.schema import (
     Finding,
     StewardMetric,
 )
+from api.services.rbac import Scope, current_user_id, require_permission, require_scope, scope_from_path
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 logger = logging.getLogger("meridian.analytics")
@@ -119,7 +120,7 @@ async def _dqs_history_extent(db: AsyncSession, tenant_id, module_id: Optional[s
 # ── 1. GET /analytics/predictive ─────────────────────────────────────────────
 
 
-@router.get("/predictive")
+@router.get("/predictive", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_predictive_analytics(
     module_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
@@ -155,7 +156,7 @@ async def get_predictive_analytics(
 # ── 2. GET /analytics/prescriptive ───────────────────────────────────────────
 
 
-@router.get("/prescriptive")
+@router.get("/prescriptive", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_prescriptive_analytics(
     limit: int = Query(20, ge=1, le=50),
     type: Optional[str] = Query(None),
@@ -292,7 +293,7 @@ async def _live_impact(db: AsyncSession, tenant: Tenant, version_id: Optional[st
     return {"impacts": impacts, "roi": impact_analytics.calculate_roi(impacts), "version_id": str(vid)}
 
 
-@router.get("/impact")
+@router.get("/impact", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_impact_analytics(
     version_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
@@ -326,7 +327,7 @@ class MdmHealthOut(BaseModel):
 # ── 4. GET /analytics/impact/{finding_id} ────────────────────────────────────
 
 
-@router.get("/impact/{finding_id}", response_model=FindingImpactOut)
+@router.get("/impact/{finding_id}", response_model=FindingImpactOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_finding_impact(
     finding_id: str,
     db: AsyncSession = Depends(get_db),
@@ -372,7 +373,7 @@ async def _queue_stages(db: AsyncSession, tenant: Tenant) -> dict[str, dict]:
 # ── 5. GET /analytics/operational ────────────────────────────────────────────
 
 
-@router.get("/operational")
+@router.get("/operational", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_operational_analytics(
     period_type: Optional[str] = Query("daily"),
     db: AsyncSession = Depends(get_db),
@@ -416,16 +417,21 @@ async def get_operational_analytics(
 # ── 6. GET /analytics/operational/team/{user_id} ─────────────────────────────
 
 
-@router.get("/operational/team/{user_id}")
+@router.get("/operational/team/{user_id}", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_team_member_performance(
     user_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """Steward-specific performance metrics."""
+    """Steward-specific performance metrics: the caller's own, or anyone's for a holder of `assign` (team leads)."""
+    try:
+        uid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="user_id must be a UUID")
+    if current_user_id(request) != str(uid):
+        await require_scope(request, db, tenant, "assign", Scope())
     await _set_tenant(db, tenant)
-
-    uid = uuid.UUID(user_id)
     result = await db.execute(
         select(StewardMetric).where(
             StewardMetric.tenant_id == tenant.id,
@@ -460,7 +466,7 @@ async def get_team_member_performance(
 # ── 7. GET /analytics/forecast/{module_id} ───────────────────────────────────
 
 
-@router.get("/forecast/{module_id}")
+@router.get("/forecast/{module_id}", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_module_forecast(
     module_id: str,
     db: AsyncSession = Depends(get_db),
@@ -499,7 +505,7 @@ async def _impact_analytics(db: AsyncSession, tenant: Tenant) -> BusinessImpactA
 # ── 8. GET /analytics/roi ────────────────────────────────────────────────────
 
 
-@router.get("/roi")
+@router.get("/roi", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_roi(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -528,7 +534,7 @@ async def get_roi(
 # ── 9. GET /analytics/sprints ────────────────────────────────────────────────
 
 
-@router.get("/sprints", response_model=SprintPlanOut)
+@router.get("/sprints", response_model=SprintPlanOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_sprints(
     max_hours: int = Query(40, ge=8, le=80),
     db: AsyncSession = Depends(get_db),
@@ -567,7 +573,7 @@ async def get_sprints(
 # ── 10. GET /analytics/bottlenecks ───────────────────────────────────────────
 
 
-@router.get("/bottlenecks")
+@router.get("/bottlenecks", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_bottlenecks(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -587,7 +593,7 @@ async def get_bottlenecks(
 # ── 11. GET /analytics/capacity ──────────────────────────────────────────────
 
 
-@router.get("/capacity")
+@router.get("/capacity", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_capacity(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -630,7 +636,7 @@ async def get_capacity(
 # ── 12. GET /analytics/mdm-health ──────────────────────────────────────────
 
 
-@router.get("/mdm-health", response_model=MdmHealthOut)
+@router.get("/mdm-health", response_model=MdmHealthOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_mdm_health(
     days: int = Query(56, ge=7, le=365),
     request: Request = None,

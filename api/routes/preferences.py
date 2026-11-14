@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import current_user_id
+from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["preferences"])
 
@@ -29,6 +30,13 @@ class NotificationPrefs(_Strict):
     digest: Optional[Literal["daily", "weekly", "off"]] = None
     immediate_critical: Optional[bool] = None
     channels: Optional[dict[str, Optional[bool]]] = Field(default=None, max_length=20)
+
+
+class NotificationReads(_Strict):
+    """Which tenant-wide notifications this user has read; written by the notification routes."""
+
+    before: Optional[str] = Field(default=None, max_length=40)
+    ids: Optional[list[str]] = Field(default=None, max_length=500)
 
 
 class SavedView(BaseModel):
@@ -47,6 +55,7 @@ class Preferences(_Strict):
     tours_done: Optional[list[str]] = Field(default=None, max_length=50)
     seen_version: Optional[str] = Field(default=None, max_length=40)
     notifications: Optional[NotificationPrefs] = None
+    notifications_read: Optional[NotificationReads] = None
     # the persona whose home screen opens at sign-in, instead of the one the user's role implies
     start_screen: Optional[str] = Field(default=None, min_length=1, max_length=40)
     # show keyboard shortcut hints next to actions
@@ -101,7 +110,7 @@ async def _load(db: AsyncSession, tenant: Tenant, uid: uuid.UUID, *, for_update:
     return prefs if isinstance(prefs, dict) else {}
 
 
-@router.get("/me/preferences")
+@router.get("/me/preferences", dependencies=[Depends(require_permission("view"))])
 async def get_preferences(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -110,7 +119,7 @@ async def get_preferences(
     return await _load(db, tenant, _user(request))
 
 
-@router.patch("/me/preferences")
+@router.patch("/me/preferences", dependencies=[Depends(require_permission("view"))])
 async def patch_preferences(
     body: Preferences,
     request: Request,
