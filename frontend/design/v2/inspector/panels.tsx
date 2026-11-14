@@ -26,6 +26,7 @@ import { Actions, InspectorFrame } from "../Inspector";
 import { EmptyFrame, Skeleton, V2Link } from "../parts";
 import { copyText } from "../admin/kit";
 import { SubscriptionsBlock, WatchListBlock } from "./collab";
+import { ChangePasswordBlock } from "./password";
 
 /* ── Preferences ── */
 
@@ -196,6 +197,8 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
         <V2Link href="/work?open=triage">{tr("Inbox and triage settings")}</V2Link>
         {tr(" decide what reaches your inbox and who covers it.")}
       </p>
+      <h3>{tr("Password")}</h3>
+      <ChangePasswordBlock />
       <DeliveryLog />
       <SubscriptionsBlock />
       <WatchListBlock />
