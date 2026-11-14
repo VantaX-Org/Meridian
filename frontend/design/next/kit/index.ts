@@ -20,3 +20,4 @@ export { Sheet, type SheetProps, type SheetSize, type SheetStep } from "./Sheet"
 export { Popover, place, type PopoverProps, type Placement } from "./Popover";
 export { LargeTitle, type LargeTitleProps } from "./LargeTitle";
 export { Ring, AreaSpark, SegBar, type SparkPoint, type Seg } from "./charts";
+export { ScoreRing, type SegTone } from "./viz";

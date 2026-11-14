@@ -4,10 +4,10 @@
  * Reads of the Load area: the runs to load from, what the target would take, the order to load in, and the files
  * already handed over. Thin typed wrappers over /migration/*; fixture mode answers through v2Get.
  */
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { v2Get } from "@/lib/api/v2/client";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { getFieldMap, getMigrationRuns, type LoadHistoryPage, type MigrationRun } from "@/lib/api/v2/migration";
+import { decideLoad, getFieldMap, getLoadApproval, getMigrationRuns, getTemplateFields, getTemplates, type LoadApproval, type LoadHistoryPage, type MigrationRun } from "@/lib/api/v2/migration";
 import { getLoadSimulation } from "@/lib/api/v2/load-simulation";
 import { getLoadPlan } from "@/lib/api/v2/load-plan";
 
@@ -57,4 +57,58 @@ export function useFieldCoverage(modules: string[], release: string) {
     },
     enabled: modules.length > 0,
   });
+}
+
+/** One person's approval: who, and when. */
+export interface Approval { id: string; name: string; at: string }
+/**
+ * The four-eyes state of one load, read from the server. The user who prepared the run is the first approval (they
+ * prepared it); the second is the server-held decision of someone else. The server refuses the preparer and a second
+ * decision, so nothing here can be bypassed from the browser.
+ */
+export interface ApprovalState {
+  preparer: { id: string; name: string };
+  first?: Approval;
+  second?: Approval;
+  rejected?: Approval & { comment: string };
+}
+
+export function approvalState(a: LoadApproval): ApprovalState {
+  const preparer = { id: a.prepared_by ?? "", name: a.prepared_by_label ?? "" };
+  const by = { id: a.decided_by ?? "", name: a.decided_by_label ?? "", at: a.decided_at ?? "" };
+  return {
+    preparer,
+    first: { ...preparer, at: a.prepared_at ?? "" },
+    second: a.decision === "approved" ? by : undefined,
+    rejected: a.decision === "rejected" ? { ...by, comment: a.comment ?? "" } : undefined,
+  };
+}
+
+export function useLoadApproval(runId: string | null) {
+  const fx = useFixture();
+  return useQuery({
+    queryKey: [...loadKeys.all, "approval", fx, runId] as const,
+    queryFn: () => getLoadApproval(runId as string),
+    select: approvalState,
+    enabled: !!runId,
+  });
+}
+
+/** Give the second approval or reject the load. The server answers 403 to the preparer and 409 to a second decision. */
+export function useDecideLoad(runId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { decision: "approved" | "rejected"; comment?: string }) => decideLoad(runId, v.decision, v.comment),
+    onSettled: () => qc.invalidateQueries({ queryKey: [...loadKeys.all, "approval"] }),
+  });
+}
+
+/** The kept target templates of one object (the workbooks the new system gave). */
+export function useTemplates(module: string | null) {
+  const fx = useFixture();
+  return useQuery({ queryKey: [...loadKeys.all, "templates", fx, module] as const, queryFn: () => getTemplates(module as string), enabled: !!module });
+}
+export function useTemplateFields(module: string | null) {
+  const fx = useFixture();
+  return useQuery({ queryKey: [...loadKeys.all, "template-fields", fx, module] as const, queryFn: () => getTemplateFields(module as string), enabled: !!module });
 }

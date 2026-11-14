@@ -25,6 +25,9 @@ registerWorkSheet("compare", ({ id, close, under }) => createElement(CompareShee
 // story-feed: object
 import "../object/register";
 
+// story-feed: load
+import "../load/register";
+
 /** Later batches register their sheet kinds here: `registerSheet("connect", (ctx) => ...)`. Imported once by SheetHost. */
 
 // story-feed: more
