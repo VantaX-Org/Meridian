@@ -1,31 +1,24 @@
 "use client";
 
 /**
- * The object page: the object bar, the tabs, and the open tab under them. The tab is a path segment, the run is
- * `?run=`; both survive a reload and a shared link. Under 1100 px the tabs after Fixes move into one list.
+ * The object page: the hero, the segments, and the open segment under them. The segment is a path segment, the run is
+ * `?run=`; both survive a reload and a shared link.
  */
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Tabs, Skeleton, ErrorState, EmptyState } from "@/design/next/kit";
+import { Denied, isDenied } from "../object/edge";
+import { Popover, Skeleton, ErrorState, EmptyState } from "@/design/next/kit";
 import { V2Link } from "@/design/v2/parts";
+import { Inspector } from "@/design/v2/Inspector";
 import { t } from "@/lib/v2/i18n";
 import { useObjectCycle } from "@/lib/api/next/runs";
 import { DownloadsMenu } from "../object/DownloadsMenu";
 import { ObjectBar } from "../object/ObjectBar";
 import { useObjectRun } from "../object/useObjectRun";
-import { PRIMARY, TAB_IDS, renderTab, tabLabel, type TabId } from "../object/tabs";
+import { MORE, SEGMENTS, renderTab, tabLabel, type TabId } from "../object/tabs";
+import { LegacyScope } from "../shell/LegacyMount";
+import { useSheets } from "../shell/SheetHost";
 import "../object/object.css";
-
-const WIDE = "(min-width: 1100px)"; // i18n-ignore
-const subscribeWide = (cb: () => void) => {
-  if (typeof window.matchMedia !== "function") return () => undefined;
-  const mq = window.matchMedia(WIDE);
-  mq.addEventListener("change", cb);
-  return () => mq.removeEventListener("change", cb);
-};
-function useWide(): boolean {
-  return useSyncExternalStore(subscribeWide, () => typeof window.matchMedia !== "function" || window.matchMedia(WIDE).matches, () => true);
-}
 
 const ID = "nx-object";
 
@@ -34,7 +27,9 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
   const params = useSearchParams();
   const o = useObjectRun(system, module);
   const { cycle } = useObjectCycle(o.runId, o.module);
-  const wide = useWide();
+  const { open } = useSheets();
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const go = useCallback(
     (next: TabId, extra: Record<string, string | null> = {}) => {
@@ -66,11 +61,21 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
     return () => { window.removeEventListener("nx:run-step", step); window.removeEventListener("nx:upload", up); window.removeEventListener("nx:download", down); };
   }, [heads, runId, setRun, go]);
 
-  const shown = wide ? TAB_IDS : PRIMARY;
-  const items = shown.map((id) => ({ id, label: tabLabel(id) }));
-  const inMore = !shown.includes(tab);
+  const inMore = MORE.includes(tab);
+
+  // The old cycle tab is now a sheet; an old link lands on the overview with the sheet open.
+  const step = cycle?.step ?? "clean";
+  useEffect(() => {
+    if (tab !== "cycle") return;
+    router.replace(`/next/o/${encodeURIComponent(system)}/${encodeURIComponent(module)}/overview${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
+    // An old /cycle?step=compare link opens the compare sheet, the rest open the cycle sheet.
+    if (params.get("step") === "compare") open({ kind: "compare", id: "" });
+    else open({ kind: "cycle", id: step });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   if (o.landscape.isLoading) return <div className="nx-object"><Skeleton lines={6} label={t("Loading the object")} /></div>;
+  if (o.landscape.isError && isDenied(o.landscape.error)) return <div className="nx-object"><Denied what={t("this object")} /></div>;
   if (o.landscape.isError) return <div className="nx-object"><ErrorState sentence={t("The object could not be loaded.")} error={o.landscape.error} onRetry={() => void o.landscape.refetch()} /></div>;
   if (!o.systemId) {
     return (
@@ -84,18 +89,19 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
 
   return (
     <div className="nx-object" data-testid="object-page">
-      <ObjectBar o={o} cycle={cycle} onCompare={() => go("cycle", { step: "compare" })} downloads={<DownloadsMenu o={o} open={menu} onOpen={setMenu} />} />
-      <div className="nx-otabs">
-        <Tabs items={items} value={inMore ? "" : tab} onChange={(id) => go(id as TabId)} label={t("Object views")} idBase={ID} />
-        {!wide ? (
-          <label className="nx-otabs-more">
-            <span className="nx-sr">{t("More tabs")}</span>
-            <select aria-label={t("More tabs")} value={inMore ? tab : ""} onChange={(e) => e.target.value && go(e.target.value as TabId)}>
-              <option value="">{t("More")}</option>
-              {TAB_IDS.filter((id) => !PRIMARY.includes(id)).map((id) => <option key={id} value={id}>{tabLabel(id)}</option>)}
-            </select>
-          </label>
-        ) : null}
+      <ObjectBar o={o} cycle={cycle} downloads={<DownloadsMenu o={o} open={menu} onOpen={setMenu} />} />
+      <div className="nx-segs" role="tablist" aria-label={t("Object views")}>
+        {SEGMENTS.map((id) => (
+          <button key={id} type="button" role="tab" id={`${ID}-tab-${id}`} aria-selected={tab === id} aria-controls={`${ID}-panel-${tab}`} className="nx-seg" onClick={() => go(id)}>{tabLabel(id)}</button>
+        ))}
+        <button ref={moreRef} type="button" role="tab" aria-selected={inMore} aria-haspopup="menu" aria-expanded={moreOpen} className="nx-seg" onClick={() => setMoreOpen((v) => !v)}>
+          {inMore ? tabLabel(tab) : t("More")}
+        </button>
+        <Popover anchor={moreRef.current} open={moreOpen} onClose={() => setMoreOpen(false)} placement="bottom" label={t("More views")}>
+          {MORE.map((id) => (
+            <button key={id} type="button" role="menuitem" className="nx-menuitem" onClick={() => { setMoreOpen(false); go(id); }}>{tabLabel(id)}</button>
+          ))}
+        </Popover>
       </div>
       <section
         id={`${ID}-panel-${tab}`}
@@ -104,7 +110,7 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
         className="nx-opanel"
         tabIndex={-1}
       >
-        {renderTab(tab, o, go)}
+        <LegacyScope>{renderTab(tab, o, go)}<Inspector /></LegacyScope>
       </section>
     </div>
   );
