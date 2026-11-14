@@ -66,7 +66,8 @@ def tenant_row():
         conn.execute(text("INSERT INTO tenants (id, name) VALUES (:id, :id)"), {"id": t})
     yield t
     with engine.begin() as conn:
-        for table in ("config_alignment_findings", "config_health_scores", "config_process_steps",
+        conn.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard: test cleanup only
+        for table in ("audit_log", "config_alignment_findings", "config_health_scores", "config_process_steps",
                       "config_processes", "config_inventory"):
             try:
                 with conn.begin_nested():

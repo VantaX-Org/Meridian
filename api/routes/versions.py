@@ -899,7 +899,8 @@ async def get_version_status(
     }
 
 
-@router.get("/versions/{version_id}/extract-target", response_model=ExtractTargetOut)
+@router.get("/versions/{version_id}/extract-target", response_model=ExtractTargetOut,
+            dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_extract_target(version_id: str, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """The target system and templates this run was started with, and each template's auto-fill status."""
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})

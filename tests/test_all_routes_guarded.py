@@ -24,6 +24,8 @@ ALLOWLIST = {
     ("GET", "/api/v1/auth/me"),
     ("POST", "/api/v1/auth/change-password"),
     ("POST", "/api/v1/auth/logout"),
+    # Slides the caller's own browser session; the middleware has already checked the cookie and CSRF token.
+    ("POST", "/api/v1/auth/refresh"),
     ("POST", "/api/v1/auth/accept-invite"),
     ("POST", "/api/v1/auth/invite/preview"),
     ("POST", "/api/v1/auth/forgot-password"),
