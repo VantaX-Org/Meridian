@@ -1,7 +1,7 @@
 """load_approvals: the server-held four-eyes decision on a load
 
 Revision ID: 180
-Revises: 166
+Revises: 175
 Create Date: 2026-11-13
 
 NUMBER NOTE: taken at 180 so it cannot collide with open branches; renumber at merge if the head has moved.
@@ -14,7 +14,7 @@ from typing import Sequence, Union
 from alembic import op
 
 revision: str = "180"
-down_revision: Union[str, None] = "166"
+down_revision: Union[str, None] = "175"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
