@@ -120,3 +120,8 @@ html[data-motion="off"] .nx-live-seg-busy { animation: none; }
   .nx-live-ring-spin { animation: none; }
   .nx-live-seg-busy { animation: none; opacity: 0.3; }
 }
+
+/* Chart parts: the ring arc eases to its value; reduced motion and the app switch both make the duration 1 ms. */
+.nx-ring-arc { transition: stroke-dashoffset var(--nx-dur-slow) var(--nx-ease); }
+.nx-area-line { animation: nx-draw var(--nx-dur-slow) var(--nx-ease) both; }
+@media (prefers-reduced-motion: reduce) { .nx-area-line { animation: none; } }

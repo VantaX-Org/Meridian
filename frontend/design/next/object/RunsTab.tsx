@@ -134,7 +134,7 @@ export function RunsTab({ o, onOpen }: { o: ObjectRun; onOpen: (runId: string) =
           keys.length === 2 ? (
             <Button variant="primary" size={32} onClick={() => {
               const [x, y] = keys.map((k) => rows.find((r) => r.h.id === k)?.h).sort((a, b) => (a?.run_number ?? 0) - (b?.run_number ?? 0));
-              router.push(o.hrefWith(`/next/o/${o.systemSeg}/${o.moduleSeg}/cycle`, { step: "compare", before: x?.id ?? null, after: y?.id ?? null, run: y?.id ?? null }));
+              router.push(`/next/run/${encodeURIComponent(y?.id ?? "")}/vs/${encodeURIComponent(x?.id ?? "")}`);
             }}>
               {t("Compare these two")}
             </Button>
@@ -145,7 +145,7 @@ export function RunsTab({ o, onOpen }: { o: ObjectRun; onOpen: (runId: string) =
         onOpenRow={(r) => onOpen(r.h.id)}
         loading={page.isLoading}
         error={page.error ? { sentence: t("The runs could not be loaded."), onRetry: () => void page.refetch() } : undefined}
-        empty={{ heading: filtered || status !== "all" ? t("No run matches the filters") : t("No run yet"), text: t("Pull the object on the Cycle tab to make the first run.") }}
+        empty={{ heading: filtered || status !== "all" ? t("No run matches the filters") : t("No run yet"), text: t("Pull the object to make the first run.") }}
       />
       <div className="nx-pager">
         <Button variant="secondary" size={32} disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - RUNS_PAGE))}>{t("Previous")}</Button>

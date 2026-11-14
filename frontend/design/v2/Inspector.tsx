@@ -1,19 +1,22 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Landscape, Receipt } from "@/lib/api/v2/types";
 import { useOpenItem, type OpenItem } from "@/lib/v2/hooks";
 import { useLandscape, v2Keys } from "@/lib/v2/queries";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
-import { IconClose } from "./marks";
+import { Sheet } from "@/design/next/kit/Sheet";
 import { EmptyFrame, Mono, V2Link } from "./parts";
 import { extensionFor } from "./inspector/registry";
 import { RuleInspectorBody } from "./inspector/rule";
 import { RecordInspector } from "./screens/RecordInspector";
 import { t } from "@/lib/v2/i18n";
-
-const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+// The kit Sheet's styles are scoped under .nx-root; the v2 layout does not load them, so the frame does.
+import "@/design/next/tokens.css";
+import "@/design/next/motion.css";
+import "@/design/next/kit/kit.css";
+import "@/design/next/layers.css";
 
 export interface InspectorFrameProps {
   title: ReactNode;
@@ -24,61 +27,18 @@ export interface InspectorFrameProps {
 
 /**
  * The inspector's anatomy, the same for every kind of thing: a title, a status line, then facts, actions and
- * history in the body. It is a dialog: Tab cycles inside it, Esc closes it, focus goes to Close when it opens and
- * back to where it was when it closes. On a phone it fills the screen.
+ * history in the body. It is the kit Sheet: a panel from the right (a bottom sheet on a phone) that traps focus,
+ * closes on Esc and gives focus back to where it was.
  */
 export function InspectorFrame({ title, status, onClose, children }: InspectorFrameProps) {
-  const root = useRef<HTMLDivElement>(null);
-  const closeBtn = useRef<HTMLButtonElement>(null);
-  const titleId = useId();
-
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
-    closeBtn.current?.focus({ preventScroll: true });
-    return () => {
-      const back = opener && document.contains(opener) ? opener : document.getElementById("m2-canvas");
-      back?.focus({ preventScroll: true });
-    };
-  }, []);
-
-  const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Escape" && !e.defaultPrevented) {
-      e.preventDefault();
-      onClose();
-      return;
-    }
-    if (e.key !== "Tab" || !root.current) return;
-    const items = Array.from(root.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.hasAttribute("disabled"));
-    if (items.length === 0) return;
-    const first = items[0];
-    const last = items[items.length - 1];
-    const at = document.activeElement;
-    if (e.shiftKey && (at === first || !root.current.contains(at))) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && (at === last || !root.current.contains(at))) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
-
   return (
-    // The aside is the inspector's landmark (a skip link and a screen reader's region list reach it); the dialog inside
-    // it holds the focus loop and Esc.
-    <aside className="m2-insp" id="m2-inspector" aria-label={t("Inspector")}>
-      <div ref={root} className="m2-insp-d" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={onKeyDown} data-testid="inspector">
-      <div className="m2-ih">
-        <div style={{ minWidth: 0 }}>
-          <h2 id={titleId}>{title}</h2>
+    <aside className="nx-root nx-scope" aria-label={t("Inspector")} data-testid="inspector">
+      <Sheet open onClose={onClose} title={title} size="large" id="m2-inspector" closeLabel={t("Close inspector")} focusClose>
+        <div className="m2-ib">
           {status ? <div className="m2-ih-sl">{status}</div> : null}
+          {children}
         </div>
-        <button ref={closeBtn} type="button" className="m2-x" onClick={onClose} aria-label={t("Close inspector")}>
-          <IconClose />
-          <span className="m2-x-t">{t("Close")}</span>
-        </button>
-      </div>
-      <div className="m2-ib">{children}</div>
-      </div>
+      </Sheet>
     </aside>
   );
 }
