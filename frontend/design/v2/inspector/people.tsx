@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
+import { legacyRole } from "@/hooks/use-role";
 import type { User } from "@/types/api";
 import type { ApiKey } from "@/lib/api/api-keys";
 import type { Matrix, Role } from "@/lib/api/roles";
@@ -21,6 +22,7 @@ import { PermissionMatrix, matrixToPairs } from "../admin/roles";
 import { UserStatusWord, roleNames } from "../admin/users";
 import { keyRoles } from "../admin/apikeys";
 import { ResultFrame, useOutcome } from "./shared";
+import { SetPasswordDialog, passwordFailure, useSsoEnforced } from "./password";
 import { t } from "@/lib/v2/i18n";
 import { useToast } from "../Toast";
 import { errorSentence } from "@/lib/api/v2/client";
@@ -315,10 +317,17 @@ function UserBody({ user }: { user: User }) {
   const me = useAuth().user;
   const done = useDone();
   const { outcome, pending, run } = useOutcome();
-  const [ask, setAsk] = useState<"remove" | "suspend" | "reset" | null>(null);
+  const [ask, setAsk] = useState<"remove" | "suspend" | "reset" | "set" | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const edit = can("manage_users");
   const self = me?.id === user.id;
+  const all = useUsers({}, edit).data?.users;
+  const admin = legacyRole(user.role) === "admin";
+  const lastAdmin = admin && user.is_active && all !== undefined && !all.some((u) => u.id !== user.id && u.is_active && legacyRole(u.role) === "admin");
+  // Under enforced single sign-on only admins keep a (break-glass) password; everyone else's lives with the identity provider.
+  const ssoManaged = useSsoEnforced() && !admin;
+  const pwWhy = !edit ? null : self ? t("Change your own password under Preferences, with your current password.") : ssoManaged ? t("Managed by your identity provider. This user signs in there, not with a password.") : lastAdmin ? t("This is the last admin. Add another admin before setting or resetting this password.") : !user.is_active ? t("Reactivate this user before setting a password.") : null;
+  const pwBlocked = !edit || pwWhy !== null;
   const status = userStatus(user);
   const refresh = async () => {
     await refreshAdmin(qc, "users");
@@ -395,9 +404,14 @@ function UserBody({ user }: { user: User }) {
             </button>
           </>
         ) : (
-          <button type="button" className="m2-btn" disabled={!edit || pending !== null} onClick={() => setAsk("reset")}>
-            {t("Reset the password")}
-          </button>
+          <>
+            <button type="button" className="m2-btn" disabled={pwBlocked || pending !== null} aria-describedby={pwWhy ? "user-pw-why" : undefined} onClick={() => setAsk("reset")}>
+              {t("Reset the password")}
+            </button>
+            <button type="button" className="m2-btn" disabled={pwBlocked || pending !== null} aria-describedby={pwWhy ? "user-pw-why" : undefined} onClick={() => setAsk("set")}>
+              {t("Set a password")}
+            </button>
+          </>
         )}
         <button type="button" className="m2-btn m2-crit" disabled={!edit || self || pending !== null} aria-describedby={self ? "user-self-why" : undefined} onClick={() => setAsk("remove")}>
           {t("Remove the user")}
@@ -407,6 +421,8 @@ function UserBody({ user }: { user: User }) {
       {outcome ? <ResultFrame outcome={outcome} /> : null}
       {!edit ? <p className="m2-prov">{t("Changing a user needs the manage users permission.")}</p> : null}
       {edit && self ? <p id="user-self-why" className="m2-prov">{t("You can't suspend or remove yourself.")}</p> : null}
+      {pwWhy && status !== "invited" && status !== "invite_expired" ? <p id="user-pw-why" className="m2-prov">{pwWhy}</p> : null}
+      {ask === "set" ? <SetPasswordDialog user={user} onClose={() => { setAsk(null); void refresh(); }} /> : null}
       <GrantsBlock user={user} canEdit={edit} onChanged={refresh} />
       <EffectiveBlock userId={user.id} />
       {ask === "suspend" ? <Confirm title={t("Suspend {name}", { name: user.name })} body={t("They are signed out and cannot sign in until someone reactivates them. Their work stays where it is.")} confirm={t("Suspend")} danger pending={pending === "suspend"} onCancel={() => setAsk(null)} onConfirm={() => setActive(false)} /> : null}
@@ -431,14 +447,20 @@ function UserBody({ user }: { user: User }) {
       {ask === "reset" ? (
         <Confirm
           title={t("Reset the password for {name}", { name: user.name })}
-          body={t("They are signed out and must choose a new password. Email them a link, or copy a one-time link to hand over; it works once and ends in 24 hours.")}
+          body={t("They are signed out and must choose a new password. The emailed link works once and ends in 60 minutes; a copied link works once and ends in 24 hours.")}
           confirm={t("Email the link")}
           cancel={t("Cancel")}
           pending={pending === "reset"}
           onCancel={() => setAsk(null)}
           onConfirm={() =>
             void run("reset", async () => {
-              const r = await api.resetUserPassword(user.id, true);
+              let r: Awaited<ReturnType<typeof api.resetUserPassword>>;
+              try {
+                r = await api.resetUserPassword(user.id, true);
+              } catch (e) {
+                setAsk(null);
+                return passwordFailure(e);
+              }
               setAsk(null);
               return r.emailed ? { tone: "ok", title: t("Reset email sent to {email}", { email: user.email }), detail: t("{name} is signed out.", { name: user.name }) } : { tone: "fail", title: t("{name} is signed out, but the email could not be queued", { name: user.name }), detail: t("Copy a one-time link instead.") };
             })
@@ -451,11 +473,17 @@ function UserBody({ user }: { user: User }) {
             <button
               type="button"
               className="m2-linkbtn"
-              disabled={!edit || pending !== null}
+              disabled={pwBlocked || pending !== null}
               onClick={() =>
                 void run("reset-link", async () => {
-                  const r = await api.resetUserPassword(user.id, false);
-                  if (r.link) {
+                  let r: Awaited<ReturnType<typeof api.resetUserPassword>>;
+              try {
+                r = await api.resetUserPassword(user.id, false);
+              } catch (e) {
+                setAsk(null);
+                return passwordFailure(e);
+              }
+                      if (r.link) {
                     setLink(r.link);
                     await copyText(r.link);
                   }

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { setUrl } from "@/design/v2/__tests__/nav-store";
 import { stubLayout } from "@/design/v2/__tests__/layout-stub";
@@ -20,17 +20,18 @@ const S = vi.hoisted(() => ({
   users: { data: undefined as unknown, isLoading: false, error: null as unknown, refetch: () => Promise.resolve() },
   roles: [{ key: "analyst", name: "Analyst", description: "" }],
   invite: vi.fn(),
+  remove: vi.fn(),
 }));
 vi.mock("@/lib/v2/hooks", async (orig) => ({ ...(await orig<object>()), useV2Session: () => ({ can: S.can, id: S.self, name: "Me", email: "me@example.com", persona: "admin", label: "Admin", fixture: true, viewAs: null, shared: false }) }));
 vi.mock("@/lib/v2/admin-queries", () => ({
   useUsers: () => S.users,
   useRoles: () => ({ data: S.roles }),
   useGrants: () => ({ data: [] }),
-  useLicence: () => ({ data: undefined }),
+  useLicence: () => ({ data: undefined, isLoading: false, error: null, refetch: () => Promise.resolve() }),
   useScheduleOptions: () => ({ data: { modules: ["material_master"] } }),
   refreshAdmin: () => Promise.resolve(),
 }));
-vi.mock("@/lib/api/v2/admin", () => ({ inviteUser: S.invite, setUserActive: vi.fn(), removeGrant: vi.fn() }));
+vi.mock("@/lib/api/v2/admin", () => ({ inviteUser: S.invite, setUserActive: vi.fn(), removeGrant: vi.fn(), removeUser: S.remove }));
 
 const u = (id: string, role: "analyst" | "admin" = "analyst", extra: object = {}) => ({ id, name: `Person ${id}`, email: `${id}@example.com`, role, is_active: true, ...extra });
 const setUsers = (list: unknown[] | undefined, over: object = {}) => (S.users = { data: list ? { users: list } : undefined, isLoading: false, error: null, refetch: () => Promise.resolve(), ...over });
@@ -42,6 +43,7 @@ beforeEach(() => {
   S.can = () => true;
   S.self = "u-self";
   S.invite.mockReset();
+  S.remove.mockReset();
   window.sessionStorage.clear();
   setUsers([u("a")]);
 });
@@ -70,6 +72,43 @@ describe("last administrator guard", () => {
     setUsers([u("u-self"), u("y", "admin")]);
     wrap(<PersonSheet ctx={{ id: "u-self", step: 1, setStep: vi.fn(), close: vi.fn(), dismiss: vi.fn(), open: vi.fn(), under: false }} />);
     expect(screen.getByTestId("remove-block")).toHaveTextContent(/yourself/i);
+  });
+});
+
+describe("remove a person", () => {
+  const sheet = () => wrap(<PersonSheet ctx={{ id: "a", step: 1, setStep: vi.fn(), close: vi.fn(), dismiss: vi.fn(), open: vi.fn(), under: false }} />);
+  const confirmRemove = () => {
+    fireEvent.click(screen.getByTestId("remove-person"));
+    const dialog = screen.getByRole("alertdialog", { name: "Remove this person?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
+  };
+  beforeEach(() => { setUsers([u("a"), u("b", "admin")]); vi.useFakeTimers(); });
+  afterEach(() => vi.useRealTimers());
+
+  it("Undo inside the window means the delete is never sent", () => {
+    sheet();
+    confirmRemove();
+    fireEvent.click(screen.getByRole("button", { name: /undo/i }));
+    expect(screen.getByText("Removal undone.")).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(9000); });
+    expect(S.remove).not.toHaveBeenCalled();
+  });
+
+  it("sends the delete once the window passes", async () => {
+    S.remove.mockResolvedValue(undefined);
+    sheet();
+    confirmRemove();
+    expect(screen.getByText("Person a will be removed.")).toBeInTheDocument();
+    await act(async () => { vi.advanceTimersByTime(8000); });
+    expect(S.remove).toHaveBeenCalledWith("a");
+  });
+
+  it("a 409 says to deactivate instead", async () => {
+    S.remove.mockRejectedValue(Object.assign(new Error("409"), { isAxiosError: true, response: { status: 409 } }));
+    sheet();
+    confirmRemove();
+    await act(async () => { vi.advanceTimersByTime(8000); });
+    expect(screen.getByText(/still linked to work/)).toBeInTheDocument();
   });
 });
 
