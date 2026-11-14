@@ -1,21 +1,51 @@
 "use client";
 
-/** Admin: update the platform. Check, start, watch. Never offered while the updater is not set up. */
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { StepFlow, type FlowStep } from "@/design/next/kit";
-import { getUpdateProgress, getUpdateStatus, triggerUpdate } from "@/lib/api/system-update";
 import { t } from "@/lib/v2/i18n";
+import { getUpdateProgress, triggerUpdate } from "@/lib/api/v2/admin";
+import { useUpdateStatus } from "@/lib/v2/admin-queries";
+import { Button, Chip, Confirm, EmptyState, Sheet } from "../kit";
+import type { SheetCtx } from "../shell/SheetHost";
 
-export function UpdateFlow({ start = triggerUpdate, onDone }: { start?: () => Promise<unknown>; onDone?: () => void }) {
-  const s = useQuery({ queryKey: ["update-flow-status"], queryFn: getUpdateStatus });
-  const p = useQuery({ queryKey: ["update-flow-progress"], queryFn: getUpdateProgress, refetchInterval: 3000 });
-  const d = s.data;
-  const steps: FlowStep[] = [
-    { id: "check", label: t("Version"), blocked: !d ? t("Reading the version.") : !d.updater_configured ? t("The updater is not set up on this system.") : !d.update_available ? t("Already on the newest version.") : undefined,
-      body: <p>{d ? t("Version {current}, newest {latest}.", { current: d.current_version, latest: d.latest_version }) : null}</p> },
-    { id: "start", label: t("Update"), next: { label: t("Update now"), run: async () => { await start(); } }, body: <p>{t("Meridian restarts during the update. Do not start it while an extraction runs.")}</p> },
-    { id: "watch", label: t("Progress"), blocked: p.data && ["done", "rolled_back", "failed"].includes(p.data.status) ? undefined : t("The update is still running."),
-      body: <p data-testid="update-progress">{p.data?.message ?? p.data?.status ?? ""}</p> },
-  ];
-  return <StepFlow steps={steps} label={t("Update the platform")} onFinish={onDone} />;
+const END = ["done", "failed", "rolled_back"];
+
+/** Update the stack: version, release notes, a confirm, then the live progress. Offered only when an updater exists and a newer version is out. */
+export function UpdateFlow({ ctx }: { ctx: SheetCtx }) {
+  const status = useUpdateStatus().data;
+  const [ask, setAsk] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [err, setErr] = useState(false);
+  const progress = useQuery({
+    queryKey: ["next", "update-progress"],
+    queryFn: getUpdateProgress,
+    enabled: started,
+    refetchInterval: (q) => (q.state.data && END.includes(q.state.data.status) ? false : 3000),
+  });
+  const go = async () => {
+    setAsk(false);
+    try {
+      await triggerUpdate();
+      setStarted(true);
+    } catch {
+      setErr(true);
+    }
+  };
+  const canUpdate = !!status?.updater_configured && !!status.update_available;
+  const p = progress.data;
+  return (
+    <Sheet open onClose={ctx.close} title={t("Update")} size="small" under={ctx.under} primary={canUpdate && !started ? <Button variant="primary" onClick={() => setAsk(true)}>{t("Update now")}</Button> : undefined}>
+      {!status ? <p>{t("Loading")}</p> : (
+        <div>
+          <p>{t("Installed")} <Chip tone="neutral">{status.current_version}</Chip> {t("Latest")} <Chip tone={status.update_available ? "accent" : "good"}>{status.latest_version}</Chip></p>
+          {!status.updater_configured ? <EmptyState heading={t("Updates are not set up")}>{t("This deployment has no update service yet.")}</EmptyState> : null}
+          {status.updater_configured && !status.update_available ? <EmptyState icon="check" heading={t("You are up to date")} /> : null}
+          {canUpdate && status.release_notes ? <pre className="nx-notes">{status.release_notes}</pre> : null}
+          {started ? <p role="status">{p ? `${p.status}${p.message ? `: ${p.message}` : ""}` : t("Starting")}</p> : null}
+          {err ? <p role="alert">{t("The update could not start.")}</p> : null}
+        </div>
+      )}
+      <Confirm open={ask} title={t("Update now?")} consequence={t("The service restarts. Do not update while an extraction runs.")} confirmLabel={t("Update now")} onConfirm={go} onCancel={() => setAsk(false)} />
+    </Sheet>
+  );
 }

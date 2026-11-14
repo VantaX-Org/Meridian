@@ -2,10 +2,6 @@
 
 import type { ComponentType } from "react";
 import { t } from "@/lib/v2/i18n";
-import { RulesLibrary } from "@/design/v2/screens/RulesLibrary";
-import { RulePromotion } from "@/design/v2/screens/RulePromotion";
-import { RuleDryRun } from "@/design/v2/screens/RuleDryRun";
-import { AnomalyRules } from "@/design/v2/screens/AnomalyRules";
 import { AletheiaEvidence } from "@/design/v2/screens/AletheiaEvidence";
 import { AletheiaForesight } from "@/design/v2/screens/AletheiaForesight";
 import { AletheiaReason } from "@/design/v2/screens/AletheiaReason";
@@ -24,22 +20,13 @@ import { Forecast } from "@/design/v2/screens/Forecast";
 import { Value } from "@/design/v2/screens/Value";
 import { Config } from "@/design/v2/screens/Config";
 import { RunsCanvas } from "@/design/v2/screens/Runs";
-import { SystemsCanvas } from "@/design/v2/screens/system/SystemsCanvas";
-import { ReportsCanvas } from "@/design/v2/screens/Reports";
 import { Atlas } from "@/design/v2/screens/Atlas";
-import { AdminHome } from "@/design/v2/admin/Admin";
 
 export interface Tab { id: string; label: () => string; Screen: ComponentType }
 export interface Group { id: string; title: () => string; blurb: () => string; tabs: Tab[] }
 
 /** Tabbed groups: ?tab= picks the screen, the first tab is the default. Every screen is the existing v2 one. */
 export const GROUPS: Group[] = [
-  { id: "rules", title: () => t("Rules"), blurb: () => t("The checks every object is scored against."), tabs: [
-    { id: "catalogue", label: () => t("Catalogue"), Screen: RulesLibrary },
-    { id: "promotion", label: () => t("Promotion"), Screen: RulePromotion },
-    { id: "dry-run", label: () => t("Dry run"), Screen: RuleDryRun },
-    { id: "anomaly", label: () => t("Anomaly rules"), Screen: AnomalyRules },
-  ] },
   { id: "aletheia", title: () => t("Aletheia"), blurb: () => t("The reasoning engine, with its evidence."), tabs: [
     { id: "evidence", label: () => t("Evidence"), Screen: AletheiaEvidence },
     { id: "foresight", label: () => t("Foresight"), Screen: AletheiaForesight },
@@ -67,11 +54,8 @@ export const GROUPS: Group[] = [
 /** Single screens, addressed by their path under /more. */
 export const SINGLES: Record<string, { title: () => string; blurb: () => string; Screen: ComponentType }> = {
   runs: { title: () => t("Runs"), blurb: () => t("Every run, across every system."), Screen: RunsCanvas },
-  systems: { title: () => t("Systems"), blurb: () => t("The connected systems."), Screen: SystemsCanvas },
   "systems/config": { title: () => t("Configuration"), blurb: () => t("Thresholds and settings."), Screen: Config },
-  reports: { title: () => t("Reports"), blurb: () => t("Reports and exports."), Screen: ReportsCanvas },
   atlas: { title: () => t("Atlas"), blurb: () => t("The landscape and its flows."), Screen: Atlas },
-  admin: { title: () => t("Administration"), blurb: () => t("Users, tenants and access."), Screen: AdminHome },
 };
 
 /** Screens that stay at their own address; More links to them so nothing is lost. */
@@ -81,4 +65,17 @@ export const LINKS: Array<{ href: string; title: () => string; blurb: () => stri
   { href: "/go-live", title: () => t("Go-live"), blurb: () => t("The flight deck for cutover.") },
   { href: "/system-compare", title: () => t("Compare systems"), blurb: () => t("Two systems, side by side.") },
   { href: "/status", title: () => t("Status"), blurb: () => t("Service health and recent incidents.") },
+];
+
+/** The More home: one text tile each. Native screens first, then the groups, then the screens that keep their own address. */
+export interface Tile { id: string; href: string; title: () => string; blurb: () => string; adminOnly?: boolean }
+export const TILES: Tile[] = [
+  { id: "rules", href: "/more/rules", title: () => t("Rules"), blurb: () => t("The checks every object is scored against.") },
+  { id: "reports", href: "/more/reports", title: () => t("Reports"), blurb: () => t("Files, schedules and shared links.") },
+  { id: "systems", href: "/more/systems", title: () => t("Systems"), blurb: () => t("The connected systems, and how to connect one.") },
+  { id: "people", href: "/more/people", title: () => t("People"), blurb: () => t("Who holds the open work.") },
+  { id: "admin", href: "/more/admin", title: () => t("Administration"), blurb: () => t("Users, roles, licence and settings."), adminOnly: true },
+  ...GROUPS.map((g) => ({ id: g.id, href: `/more/${g.id}`, title: g.title, blurb: g.blurb })),
+  ...Object.entries(SINGLES).filter(([k]) => !k.includes("/")).map(([k, s]) => ({ id: k, href: `/more/${k}`, title: s.title, blurb: s.blurb })),
+  ...LINKS.map((l) => ({ id: l.href, href: l.href, title: l.title, blurb: l.blurb })),
 ];
