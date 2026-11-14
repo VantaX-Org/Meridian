@@ -1,6 +1,6 @@
 /**
  * Upload checks (api/services/upload_checks.py), read before a cleaned workbook is scored.
- *   POST /upload/roundtrip/check  multipart: file, parent_version_id (only when the file carries no marker)
+ *   POST /upload/roundtrip/check  multipart: file, parent_version_id (only when the file carries no marker), module (optional)
  *        -> {verdict, checks[{id, status, detail}], parent_version_id, latest_version_id, edits}; changes nothing.
  * A `fail` blocks the upload; a `warn` needs `confirm_warnings` on POST /upload/roundtrip. The types are the ones of
  * the round-trip client; this file adds what the screens need to read a result: the sentence of every check, the
@@ -57,11 +57,12 @@ export function fixtureWorkbookChecks(name: string, parent: string): UploadCheck
 }
 
 /** POST /upload/roundtrip/check: run every check on the file and change nothing. A 422 that carries checks is an answer too. */
-export async function checkWorkbook(file: File, parentVersionId?: string): Promise<UploadChecks> {
+export async function checkWorkbook(file: File, parentVersionId?: string, module?: string): Promise<UploadChecks> {
   if (fixtureActive()) return fixtureWorkbookChecks(file.name, parentVersionId ?? "");
   const form = new FormData();
   form.append("file", file);
   if (parentVersionId) form.append("parent_version_id", parentVersionId);
+  if (module) form.append("module", module);
   try {
     const { data } = await uploadApiClient.post<UploadChecks>("/api/v1/upload/roundtrip/check", form, { headers: { "Content-Type": "multipart/form-data" } });
     return data;

@@ -94,7 +94,7 @@ export function UploadPanel({ open, onClose, expected, onDone }: {
     await pool(todo, 3, async (it) => {
       patch(it.key, { status: "uploading", error: undefined });
       try {
-        const res = await uploadCleaned(it.file, it.parent, !!it.confirmed);
+        const res = await uploadCleaned(it.file, it.parent, undefined, !!it.confirmed);
         done.push(res);
         patch(it.key, { status: res.status === "pending" || res.status === "running" ? "scoring" : "done", result: res });
       } catch (err) {

@@ -81,7 +81,7 @@ def test_cleaning_edits_strip_the_field_description():
 def test_roundtrip_batch_isolates_a_bad_file(monkeypatch):
     from api.routes import upload
 
-    async def one(request, f, parent, db, tenant, role=""):
+    async def one(request, f, parent, db, tenant, role="", **kw):
         if f.filename == "bad.xlsx":
             raise HTTPException(status_code=422, detail="The file holds no edits to apply.")
         return SimpleNamespace(parent_version_id="p-" + f.filename)
