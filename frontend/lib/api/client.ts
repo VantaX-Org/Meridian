@@ -41,6 +41,17 @@ const RETRY_DELAY_MS = 300;
 /** What a scoped 403 asked for (rbac.md §3.3). `resource` is null for in-handler `require_scope` checks; `action` may be a legacy action name. */
 export interface AccessDenied { resource: string | null; action: string }
 
+const expiredListeners = new Set<() => boolean>();
+
+/**
+ * Subscribe to an expired session (a 401 outside the login call); returns the unsubscribe. A listener that returns
+ * true has handled it (the page holds unsaved edits and offers sign-in in a new tab), so the page is not sent away.
+ */
+export function onSessionExpired(listener: () => boolean): () => void {
+  expiredListeners.add(listener);
+  return () => expiredListeners.delete(listener);
+}
+
 const deniedListeners = new Set<(denied: AccessDenied) => void>();
 
 /** Subscribe to user-initiated scoped 403s; returns the unsubscribe. The (app) PermissionsProvider is the only listener, so public auth routes never get the Dialog. */
@@ -146,8 +157,10 @@ function instrument(client: AxiosInstance): AxiosInstance {
       if (typeof window !== "undefined" && error.response) {
         // a 401 from the login call means wrong credentials, not an expired session: let the form show it
         if (error.response.status === 401 && !String(error.config?.url ?? "").endsWith("/api/v1/auth/login")) {
+          if ([...expiredListeners].some((l) => l())) return Promise.reject(error);
           clearBrowserSession();
-          window.location.href = new URL("/sign-in", window.location.origin).href;
+          const back = window.location.pathname + window.location.search;
+          window.location.href = new URL(`/sign-in?next=${encodeURIComponent(back)}`, window.location.origin).href;
           return Promise.reject(error);
         }
         const lock = licenceLockFrom(error.response.status, error.response.data);

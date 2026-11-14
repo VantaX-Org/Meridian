@@ -46,7 +46,7 @@ def finding():
     with engine.begin() as c:
         c.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
         c.execute(text("DELETE FROM system_credentials WHERE system_id = :s"), {"s": sid})
-        for t in ("write_back_log", "findings", "sap_systems", "analysis_versions"):
+        for t in ("audit_log", "write_back_log", "findings", "sap_systems", "analysis_versions"):
             c.execute(text(f"DELETE FROM {t} WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM tenants WHERE id = :t"), {"t": tid})
     engine.dispose()

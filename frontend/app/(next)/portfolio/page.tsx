@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Portfolio } from "@/design/next/screens/Portfolio";
+import { Home } from "@/design/next/feed/Home";
 
-export const metadata: Metadata = { title: "Portfolio" };
+export const metadata: Metadata = { title: "Home" };
 
 export default function PortfolioPage() {
-  return <Portfolio />;
+  return <Home />;
 }

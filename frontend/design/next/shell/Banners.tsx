@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { formatDate } from "@/lib/format";
 import { useStatus } from "@/lib/v2/queries";
@@ -7,11 +8,28 @@ import { useSandbox } from "@/lib/v2/step10-queries";
 import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 
-/** One calm band under the tab bar, one at a time: sandbox first, then the demo notice, then a role notice. */
+const onLine = (fire: () => void) => {
+  window.addEventListener("online", fire);
+  window.addEventListener("offline", fire);
+  return () => {
+    window.removeEventListener("online", fire);
+    window.removeEventListener("offline", fire);
+  };
+};
+
+/** One calm band under the tab bar, one at a time: offline first, then sandbox, then the demo notice, then a role notice. */
 export function Banners() {
+  const offline = useSyncExternalStore(onLine, () => !navigator.onLine, () => false);
   const session = useV2Session();
   const sandbox = useStatus().data?.sandbox === true;
   const s = useSandbox(sandbox).data;
+  if (offline) {
+    return (
+      <div className="nx-banner" data-tone="warn" role="status" data-testid="offline-banner">
+        <p className="nx-banner-text"><strong>{t("You are offline.")}</strong> {t("Changes will not save until the connection is back.")}</p>
+      </div>
+    );
+  }
   if (sandbox) {
     const since = s?.since ? (s.by ? t("Since {when}, by {who}.", { when: formatDate(s.since, "datetime"), who: s.by }) : t("Since {when}.", { when: formatDate(s.since, "datetime") })) : null;
     return (

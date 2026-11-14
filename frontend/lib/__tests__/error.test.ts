@@ -31,3 +31,11 @@ describe("unhandled server error reference", () => {
     expect(apiErrorState(err)).toEqual({ title: "The server could not complete the request.", message: detail });
   });
 });
+
+describe("apiErrorState for 401 and 403", () => {
+  it("reads a 401 as an ended session and a 403 as no access", () => {
+    expect(apiErrorState(failed(401)).title).toBe("Your session has ended.");
+    expect(apiErrorState(failed(401)).message).toContain("Sign in again");
+    expect(apiErrorState(failed(403)).title).toBe("You do not have access to this.");
+  });
+});
