@@ -5,10 +5,11 @@ import asyncio
 import json
 import logging
 import uuid
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,6 +54,89 @@ async def stream_jobs(tenant: Tenant = Depends(get_tenant), db: AsyncSession = D
     return StreamingResponse(_subscribe_redis(f"events:{tenant.id}:jobs"), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "Connection": "keep-alive",
                                       "X-Accel-Buffering": "no"})
+
+
+class ProgressStep(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    unit: Optional[str] = None
+    done: int = 0
+    total: Optional[int] = None
+    pct: Optional[float] = None
+    rows: Optional[int] = None
+
+
+class ProgressStage(BaseModel):
+    id: Optional[str] = None
+    label: Optional[str] = None
+    status: Optional[str] = None
+
+
+class ProgressPart(BaseModel):
+    name: Optional[str] = None
+    state: str
+    status: str
+    done: int = 0
+    total: Optional[int] = None
+    pct: Optional[float] = None
+
+
+class RunProgress(BaseModel):
+    """Shape of api/services/run_progress.compute_progress."""
+    model_config = ConfigDict(extra="allow")
+    id: Optional[str] = None
+    kind: Optional[str] = None
+    label: Optional[str] = None
+    status: str
+    state: str
+    pct: Optional[float] = None
+    determinate: bool
+    stage: Optional[str] = None
+    stage_index: Optional[int] = None
+    stage_count: int
+    stages: list[ProgressStage]
+    step: ProgressStep
+    parts: list[ProgressPart]
+    rows: int = 0
+    rows_per_min: Optional[int] = None
+    elapsed_s: int
+    idle_s: int
+    eta_s: Optional[int] = None
+    eta_is_estimate: bool = True
+    message: str = ""
+    error: Optional[Any] = None
+    started_at: Optional[float] = None
+    updated_at: Optional[float] = None
+    finished_at: Optional[float] = None
+    queue_position: Optional[int] = None
+    system_id: Optional[str] = None
+    version_id: Optional[str] = None
+    modules: list[Any] = []
+
+
+class ActiveProgress(BaseModel):
+    runs: list[RunProgress]
+
+
+@router.get("/active/progress", response_model=ActiveProgress)
+async def active_progress(tenant: Tenant = Depends(get_tenant)):
+    """Every queued and running job of the tenant, plus those finished in the last two minutes, with truthful
+    progress (api/services/run_progress.py)."""
+    from api.services.run_prediction import with_queue_positions
+    from api.services.run_progress import compute_progress, is_live
+
+    listed = with_queue_positions([j for j in jobs.list_jobs(str(tenant.id), limit=200) if is_live(j)])
+    return {"runs": [compute_progress(j) for j in listed]}
+
+
+@router.get("/{job_id}/progress", response_model=RunProgress)
+async def job_progress(job_id: str, tenant: Tenant = Depends(get_tenant)):
+    """One job's progress, also after it finished (completed, failed or cancelled)."""
+    from api.services.run_progress import compute_progress
+
+    job = jobs.get_job(str(tenant.id), job_id)
+    if job is None:
+        raise HTTPException(404, "Job not found")
+    return compute_progress(job)
 
 
 @router.get("/{job_id}")
