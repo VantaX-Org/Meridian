@@ -13,8 +13,10 @@ from typing import AsyncGenerator
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import Tenant, get_tenant
+from api.deps import Tenant, get_db, get_tenant
+from api.services.rbac import require_permission, scope_from_path
 
 logger = logging.getLogger("meridian.events")
 
@@ -85,8 +87,8 @@ async def _subscribe_redis(channel: str) -> AsyncGenerator[str, None]:
         await r.close()
 
 
-@router.get("/events/{version_id}", response_class=StreamingResponse)
-async def stream_events(version_id: str, tenant: Tenant = Depends(get_tenant)):
+@router.get("/events/{version_id}", response_class=StreamingResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
+async def stream_events(version_id: str, tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db)):
     """Server-Sent Events stream for analysis job progress.
 
     Workers publish JSON messages to the Redis channel
@@ -98,8 +100,9 @@ async def stream_events(version_id: str, tenant: Tenant = Depends(get_tenant)):
     automatically when a ``complete``, ``error``, or ``cancelled`` event
     is received.
     """
-    # No DB dependency here, on purpose: a stream must hold a Redis subscription only, never
-    # a pooled Postgres connection (see api/routes/jobs.py:stream_jobs).
+    # A stream must hold a Redis subscription only, never a pooled Postgres connection. ``db`` is the session the
+    # permission check borrowed (same per-request instance): close it before streaming (as jobs.py:stream_jobs).
+    await db.close()
     channel = f"events:{tenant.id}:{version_id}"
 
     return StreamingResponse(

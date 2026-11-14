@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import get_session, get_tenant_id
 from api.services.rbac import current_user_label, require_permission
+from api.services.rbac import scope_from_path
 
 logger = logging.getLogger("meridian.sync_trigger")
 
@@ -169,7 +170,7 @@ class TriggerResponse(BaseModel):
     skipped: list[str]
 
 
-@router.get("/modules", response_model=list[ModuleStatus])
+@router.get("/modules", response_model=list[ModuleStatus], dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_modules(
     tenant_id: UUID = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_session),

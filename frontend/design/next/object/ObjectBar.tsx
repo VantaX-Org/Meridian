@@ -5,7 +5,7 @@
  * paired system the source, projected and actual target score with the reasons they differ. One primary button opens
  * the cycle sheet at the step the object is on. The trend sits under it, its figures one click away.
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AreaSpark, Button, LargeTitle, Popover, Ring } from "@/design/next/kit";
 import { writeClipboard } from "@/lib/browser";
@@ -60,7 +60,7 @@ function Paired({ o }: { o: ObjectRun }) {
   );
 }
 
-export function ObjectBar({ o, cycle }: { o: ObjectRun; cycle: ObjectCycle | null }) {
+export function ObjectBar({ o, cycle, downloads }: { o: ObjectRun; cycle: ObjectCycle | null; downloads?: ReactNode }) {
   const { open } = useSheets();
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const [menu, setMenu] = useState(false);
@@ -114,6 +114,7 @@ export function ObjectBar({ o, cycle }: { o: ObjectRun; cycle: ObjectCycle | nul
           <button type="button" role="menuitem" className="nx-menuitem" disabled={busy} aria-busy={busy} onClick={download}>{t("Download workbook")}</button>
           <button type="button" role="menuitem" className="nx-menuitem" onClick={share}>{t("Share")}</button>
         </Popover>
+        {downloads}
       </div>
       <div className="nx-hero-viz" data-testid="hero-viz">
         <Ring value={now} label={now === null ? t("Not scored yet") : t("DQS {score} of 100", { score: score(now) })} size={152}>
