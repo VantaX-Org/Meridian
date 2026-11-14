@@ -28,7 +28,7 @@ const TEXT: [string, string][] = [
   ["--nx-accent-ink", "--nx-accent"], ["--nx-accent", "--nx-surface"], ["--nx-ink", "--nx-accent-soft"],
   ["--nx-good-ink", "--nx-good-soft"], ["--nx-warn-ink", "--nx-warn-soft"], ["--nx-bad-ink", "--nx-bad-soft"],
 ];
-const EDGE: [string, string][] = [["--nx-control-edge", "--nx-surface"], ["--nx-focus", "--nx-surface"], ["--nx-focus", "--nx-bg"]];
+const EDGE: [string, string][] = [["--nx-data", "--nx-surface"], ...[1, 2, 3, 4, 5, 6, 7, 8].map((i): [string, string] => [`--nx-chart-${i}`, "--nx-surface"]), ["--nx-control-edge", "--nx-surface"], ["--nx-focus", "--nx-surface"], ["--nx-focus", "--nx-bg"]];
 
 describe.each([["light", light], ["dark", dark]] as const)("tokens %s", (_n, tk) => {
   it("defines every token the pairs need", () => {

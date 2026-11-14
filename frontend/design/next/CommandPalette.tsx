@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { CommandPalette as KitPalette, type CommandGroup } from "./kit";
 import { useV2Href, useRunParam, useV2Session } from "@/lib/v2/hooks";
@@ -8,7 +8,8 @@ import { useLandscape } from "@/lib/v2/queries";
 import { useVersionsPage } from "@/lib/v2/runs-queries";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { placeIndex } from "@/design/v2/CommandLine";
-import { redirectFor } from "@/lib/next/nav-defaults";
+import { PATHS, redirectFor } from "@/lib/next/nav-defaults";
+import { withSheets } from "@/lib/next/sheet";
 import { t } from "@/lib/v2/i18n";
 
 /** Every place the old command line knew, at its address in this interface. */
@@ -25,6 +26,7 @@ export function NextPalette({ open, onClose }: { open: boolean; onClose: () => v
   const router = useRouter();
   const href = useV2Href();
   const pathname = usePathname();
+  const sp = useSearchParams();
   const { can } = useV2Session();
   const run = useRunParam();
   const L = useLandscape(run).data;
@@ -53,19 +55,19 @@ export function NextPalette({ open, onClose }: { open: boolean; onClose: () => v
       ] });
     }
     out.push({ id: "across", label: t("Across the portfolio"), items: [
-      { id: "x-work", label: t("Open the work queue"), run: go("/next/work") },
-      { id: "x-approve", label: t("Approve waiting batches"), run: go("/next/work/approve") },
-      { id: "x-load", label: t("Load a file"), run: go("/load") },
-      { id: "x-monitor", label: t("See what changed"), run: go("/monitor") },
+      { id: "x-work", label: t("Open the work queue"), run: go(PATHS.work) },
+      { id: "x-approve", label: t("Approve waiting batches"), run: go("/work/approvals") },
+      { id: "x-load", label: t("Load a file"), run: go(PATHS.load) },
+      { id: "x-monitor", label: t("See what changed"), run: go("/work/monitor") },
     ] });
     out.push({ id: "ask", label: t("Ask"), items: [
-      { id: "ask-open", label: t("Ask Meridian"), run: go("/portfolio?open=ask") },
-      { id: "ask-work", label: t("Open in Work"), run: go("/next/work") },
+      { id: "ask-open", label: t("Ask Meridian"), run: () => router.push(`${pathname}?${withSheets(sp, [{ kind: "ask", id: "" }])}`) },
+      { id: "ask-work", label: t("Open in Work"), run: go(PATHS.work) },
     ] });
-    if (runs?.length) out.push({ id: "runs", label: t("Recent runs"), items: runs.map((r) => ({ id: `run-${r.id}`, label: r.label || `#${r.run_number}`, hint: r.system_name ?? undefined, run: go(`/more/runs?run=${r.id}`) })) });
+    if (runs?.length) out.push({ id: "runs", label: t("Recent runs"), items: runs.map((r) => ({ id: `run-${r.id}`, label: r.label || `#${r.run_number}`, hint: r.system_name ?? undefined, run: go(`${PATHS.runs}?run=${r.id}`) })) });
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- go closes over router and href only
-  }, [can, L, runs, pathname, href, router]);
+  }, [can, L, runs, pathname, sp, href, router]);
 
   return <KitPalette open={open} onClose={onClose} groups={groups} />;
 }
