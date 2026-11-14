@@ -2,11 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { ToastProvider } from "@/design/next/kit";
-import { ObjectPage } from "@/design/next/screens/ObjectPage";
+import { CycleTab } from "../CycleTab";
+import { useObjectRun } from "../useObjectRun";
 import { setUrl } from "@/design/v2/__tests__/nav-store";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
+
+// The cycle is no longer an object page tab, so the test mounts the cycle steps directly,
+// once the object has loaded, as the object page did.
+function Cycle() {
+  const o = useObjectRun("ecc-production", "material-master");
+  return o.landscape.isLoading ? null : <CycleTab o={o} />;
+}
 
 beforeEach(() => window.sessionStorage.setItem("mn_v2_fixture", "1"));
 afterEach(() => {
@@ -16,7 +24,7 @@ afterEach(() => {
 
 function open(step: string) {
   setUrl(`/next/o/ecc-production/material-master/cycle?fixture=1&step=${step}`);
-  renderWithQuery(<ToastProvider><ObjectPage system="ecc-production" module="material-master" tab="cycle" /></ToastProvider>);
+  renderWithQuery(<ToastProvider><Cycle /></ToastProvider>);
 }
 const off = (b: HTMLElement) => b.getAttribute("aria-disabled") === "true" || (b as HTMLButtonElement).disabled;
 const primary = () => within(screen.getByTestId("flow-bar")).getAllByRole("button").find((b) => b.className.includes("primary"))!;
