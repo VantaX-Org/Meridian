@@ -112,12 +112,15 @@ def project(module: str, *, target_type: str, target_values: dict[tuple[str, str
 
     texts: dict[str, str] = {k: (v or {}).get("message", "") for k, v in rules.items()}
     target: list[CheckResult] = []
+    packs_unlicensed: list[str] = []
     if target_type in S4_TARGETS and target_values:
+        from api.middleware.licence import licensed_modules_of
+        packs = [p for p in TARGET_PACKS if p != module]
+        held = licensed_modules_of(packs)
+        packs_unlicensed = [p for p in packs if p not in held]
         frames = target_frames(target_values, target_dict)
         carried_ids = {r.check_id for r in carried}
-        for pack in TARGET_PACKS:
-            if pack == module:
-                continue
+        for pack in held:
             texts.update({r.get("id"): r.get("message", "") for r in module_rules(pack)})
             # ponytail: re-runs whole packs on the module's target frames; rules on absent tables return
             # None cheaply. Restrict to the packs' columns present in the frames if a large run gets slow.
@@ -162,5 +165,7 @@ def project(module: str, *, target_type: str, target_values: dict[tuple[str, str
         "rules_dropped": len(dropped),
         "rules_target": len(target),
         "gap_rules": len(gap_res),
+        # target packs the licence does not cover: not run, so the projection leaves their rules out
+        "packs_unlicensed": packs_unlicensed,
         "contributors": rows[:TOP_CONTRIBUTORS],
     }

@@ -335,6 +335,7 @@ export function fixtureScoreDelta(a: string, b: string, module: string): ScoreDe
     module, label, before: sa.score, after: sb.score, delta, contributions,
     by_dimension: [...byDim].map(([dimension, points]) => ({ dimension, points })).sort((x, y) => Math.abs(y.points) - Math.abs(x.points)),
     sum, residual: r2(delta - sum), tolerance: 0.05, within_tolerance: Math.abs(delta - sum) <= 0.05, reproduced: true,
+    rules_changed: false, rules_added: 0, rules_removed: 0, logic_changed: [],
     narrative: { source: "template", sentences, dropped: 0 },
   };
 }

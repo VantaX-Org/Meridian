@@ -766,6 +766,9 @@ class S4Area(BaseModel):
     failing_records: int
     blocking_failing: int
     warning_failing: int
+    blocking_rules: int = 0
+    blocking_evaluated: int = 0
+    blocking_unevaluated: int = 0
     status: str
     checks: list[S4Check]
 
@@ -774,12 +777,18 @@ class S4Readiness(BaseModel):
     version_id: str | None
     status: str
     ready: bool
+    # complete: every blocking rule was evaluated; incomplete: some were not (ready stays False);
+    # not_assessed: no readiness rule was evaluated at all
+    assessment: Literal["complete", "incomplete", "not_assessed"] = "not_assessed"
     rules: int
     evaluated: int
     failing: int
     failing_records: int
     blocking_failing: int
     warning_failing: int
+    blocking_rules: int = 0
+    blocking_evaluated: int = 0
+    blocking_unevaluated: int = 0
     areas: list[S4Area]
     # scope=current only: "current", and the runs the objects were read from (newest first); None for one run.
     scope: Optional[Literal["current"]] = None

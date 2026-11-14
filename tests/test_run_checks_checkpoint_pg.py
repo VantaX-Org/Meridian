@@ -231,3 +231,32 @@ def test_timeout_leaves_partial_version_and_rerun_resumes_without_duplicates(eng
     _run(app, tid, vid, sixth)
     assert sixth.ran == MODULES
     assert _stored(owner, vid) == (findings, records)
+
+
+def test_licence_dropped_mid_run_finishes_the_current_module_then_stops(engines: tuple[Engine, Engine]) -> None:
+    """A module the licence drops while the run is going: the module in progress finishes and is kept,
+    the dropped one never starts, and the version ends partial (resumable once the licence covers it)."""
+    from workers.tasks.run_checks import LicenceWithdrawn
+
+    owner, app = engines
+    tid, vid = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, 'Licence drop')"), {"t": tid})
+        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, metadata) "
+                       "VALUES (:v, :t, 'pending', CAST(:m AS jsonb))"),
+                  {"v": vid, "t": tid, "m": json.dumps({"modules": MODULES})})
+    calls: list[list[str]] = []
+
+    def held(modules: list[str]) -> list[str]:  # licensed at the start, accounts_payable dropped after
+        calls.append(list(modules))
+        return list(modules) if len(calls) == 1 else [m for m in modules if m != "accounts_payable"]
+
+    rules = FakeRules()
+    with patch("api.middleware.licence.licensed_modules_of", held), pytest.raises(LicenceWithdrawn):
+        _run(app, tid, vid, rules)
+    assert rules.ran == ["material_master"]
+    status, _dqs, meta = _version(owner, vid)
+    assert status == "partial"
+    assert meta["checks_partial"]["completed"] == ["material_master"]
+    assert meta["checks_partial"]["missing"] == ["accounts_payable"]
+    assert set(_stored(owner, vid)[0]) == {"CKPT-MM-1", "CKPT-MM-2", "CKPT-MM-3"}

@@ -245,7 +245,9 @@ def test_reaper_fails_the_version_of_a_stale_analysis(redis, monkeypatch):  # no
 
 def test_scheduler_commits_before_dispatch_and_runs_one_profile_per_system(monkeypatch):
     session = _Session()
-    rows = [("p1", "0 2 * * *", "s1"), ("p2", "0 2 * * *", "s1"), ("p3", "0 2 * * *", "s2")]
+    rows = [("p1", "0 2 * * *", "s1", ["material_master"], "material_master"),
+            ("p2", "0 2 * * *", "s1", ["material_master"], "material_master"),
+            ("p3", "0 2 * * *", "s2", ["material_master"], "material_master")]
     orig = session.execute
 
     def execute(stmt, params=None):
@@ -268,6 +270,7 @@ def test_scheduler_commits_before_dispatch_and_runs_one_profile_per_system(monke
     monkeypatch.setattr(scheduler, "get_sync_engine", lambda: None)
     monkeypatch.setattr(scheduler, "Session", _Ctx)
     monkeypatch.setattr(scheduler, "_get_tenants", lambda s: [{"id": "t1"}])
+    monkeypatch.setattr("api.middleware.licence.licensed_modules_of", lambda ms: ms)
     monkeypatch.setattr("workers.tasks.run_sync.run_sync.delay",
                         lambda pid, tid, trigger: (sent.append(pid), session.events.append("dispatch")))
     scheduler.sync_profile_scheduler.run()

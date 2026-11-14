@@ -64,16 +64,44 @@ def _marginal(rules: dict, cid: str, share: float) -> float:
     return share * w * (s - (num - w * s) / (den - w)) / den
 
 
-def decompose(rows_a: list[dict], rows_b: list[dict], sum_a: dict, sum_b: dict, tenant_scoring: Optional[dict] = None) -> Optional[dict]:
+def run_scoring(stored: object, fallback: Optional[dict] = None) -> Optional[dict]:
+    """A run's stored scoring config (``analysis_versions.metadata.scoring``, the ``scoring_config`` shape) as raw
+    tenant scoring input; ``fallback`` (today's ``tenants.dqs_weights``) for a run stored before the config was."""
+    if not isinstance(stored, dict) or not isinstance(stored.get("dimension_weights"), dict):
+        return fallback
+    return {**stored["dimension_weights"], **{k: stored[k] for k in (
+        "module_weights", "thresholds", "severity_weights", "severity_multipliers", "critical_tolerance") if k in stored}}
+
+
+def rule_set_change(fp_a: Optional[str], fp_b: Optional[str], rows_a: list[dict], rows_b: list[dict]) -> dict:
+    """Whether run b ran a different rule set from run a: the stored fingerprints differ (a rule's logic, an
+    override or the app version changed) or a rule ran in one run only. Unknown fingerprints count as unchanged.
+    ``logic_changed`` lists the rules run in both whose recorded logic hash (``rule_hash``) differs; a run
+    stored before results recorded the hash has none, and its rules are not listed."""
+    ids_a, ids_b = {r["check_id"] for r in rows_a}, {r["check_id"] for r in rows_b}
+    added, removed = len(ids_b - ids_a), len(ids_a - ids_b)
+    ha = {r["check_id"]: r.get("rule_hash") for r in rows_a}
+    logic = [{"check_id": r["check_id"], "hash_before": ha[r["check_id"]], "hash_after": r.get("rule_hash")}
+             for r in sorted(rows_b, key=lambda r: r["check_id"])
+             if ha.get(r["check_id"]) and r.get("rule_hash") and ha[r["check_id"]] != r["rule_hash"]]
+    return {"rules_changed": bool(fp_a and fp_b and fp_a != fp_b) or bool(added or removed or logic),
+            "rules_added": added, "rules_removed": removed, "logic_changed": logic}
+
+
+def decompose(rows_a: list[dict], rows_b: list[dict], sum_a: dict, sum_b: dict, tenant_scoring: Optional[dict] = None,
+              scoring_b: Optional[dict] = None) -> Optional[dict]:
     """Contributions to ``sum_b.composite_score - sum_a.composite_score`` for one module; None when either run has no score.
-    ``rows_*`` are findings rows (check_id, severity, dimension, affected_count, total_count, pass_rate) that ran cleanly."""
+    ``rows_*`` are findings rows (check_id, severity, dimension, affected_count, total_count, pass_rate) that ran cleanly.
+    ``tenant_scoring`` is run a's scoring config, ``scoring_b`` run b's (default: a's): each run's rules are weighted
+    under its own config, and what a config change moved lands in ``reweighting``, never in ``failing_records``."""
     ca, cb = sum_a.get("composite_score"), sum_b.get("composite_score")
     ra, rb = sum_a.get("raw_score"), sum_b.get("raw_score")
     if ca is None or cb is None or ra is None or rb is None:
         return None
-    cfg, configured = scoring_config(tenant_scoring), effective_weights(tenant_scoring)
-    A, B = _by_dim(rows_a, cfg), _by_dim(rows_b, cfg)
-    sh_a, sh_b = reweigh(sum_a, configured)[0], reweigh(sum_b, configured)[0]
+    scoring_b = tenant_scoring if scoring_b is None else scoring_b
+    cfg, cfg_b = scoring_config(tenant_scoring), scoring_config(scoring_b)
+    A, B = _by_dim(rows_a, cfg), _by_dim(rows_b, cfg_b)
+    sh_a, sh_b = reweigh(sum_a, effective_weights(tenant_scoring))[0], reweigh(sum_b, effective_weights(scoring_b))[0]
     out: list[dict] = []
 
     def add(kind: str, points: float, dim: Optional[str] = None, a: Optional[dict] = None, b: Optional[dict] = None,
@@ -97,8 +125,9 @@ def decompose(rows_a: list[dict], rows_b: list[dict], sum_a: dict, sum_b: dict, 
         explained = 0.0
         for cid in sorted(set(da) | set(db)):
             if cid in da and cid in db:
-                (wa, s_a, a), (_, s_b, b) = da[cid], db[cid]
+                (wa, s_a, a), (_, _, b) = da[cid], db[cid]
                 s_mid = _rule(b, cfg, b["affected_count"], a["total_count"])[1]
+                s_b = _rule(b, cfg)[1]  # under a's config: a config change is left to reweighting
                 f = sa * wa * (s_mid - s_a) / den_a
                 c = sa * wa * (s_b - s_mid) / den_a
                 add("failing_records", f, d, a, b, cid)

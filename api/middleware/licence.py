@@ -8,7 +8,7 @@ import platform
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Iterable, Optional
 
 import httpx
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -781,27 +781,47 @@ def _check_feature_gate(path: str, licensed_features: list[str]) -> JSONResponse
     return None
 
 
-def feature_licensed(feature: str) -> bool:
-    """Whether the licence entitles ``feature``, for code outside a request (Celery workers).
-
-    Decided as LicenceMiddleware.dispatch decides a gated route: the development bypass, the cached
-    result while fresh, else a revalidation; when HQ is unreachable, the last validated licence inside
-    the degradation window; otherwise closed. Synchronous: never call it from a running event loop."""
-    if not settings.licence_key and settings.env == "development":
-        return True
+def _worker_manifest() -> dict | None:
+    """The licence manifest for code outside a request (Celery workers), decided as
+    LicenceMiddleware.dispatch decides a gated route: the cached result while fresh, else a
+    revalidation; when HQ is unreachable, the last validated licence inside the degradation
+    window; ``None`` when closed. Synchronous: never call it from a running event loop."""
     if _cache["response"] and _cache["expires_at"] > time.time():
         manifest = _cache["response"]
-        if not manifest.get("valid"):
-            return False
-    else:
-        import asyncio
+        return manifest if manifest.get("valid") else None
+    import asyncio
 
-        result, outcome = asyncio.run(revalidate())
-        if result is None or outcome in ("cutoff", "invalid"):
-            return False
-        manifest = _cache["response"] if outcome == "grace" else result
+    result, outcome = asyncio.run(revalidate())
+    if result is None or outcome in ("cutoff", "invalid"):
+        return None
+    return _cache["response"] if outcome == "grace" else result
+
+
+def feature_licensed(feature: str) -> bool:
+    """Whether the licence entitles ``feature``, for code outside a request (Celery workers)."""
+    if not settings.licence_key and settings.env == "development":
+        return True
+    manifest = _worker_manifest()
+    if manifest is None:
+        return False
     features = _features_to_list(manifest.get("features", {}))
     return "*" in features or feature in features
+
+
+def licensed_modules_of(modules: Iterable[str]) -> list[str]:
+    """The ones of ``modules`` the licence entitles now, for code outside a request (workers,
+    beat schedulers): every one in the development bypass or under ``"*"``, none when the licence
+    is invalid, cut off or unreachable past its grace. The same entitlement the routes apply
+    (request.state.licensed_modules), so a run started by a schedule, a drift alert or a sync
+    checks no module a user could not have started by hand."""
+    modules = list(modules)
+    if not settings.licence_key and settings.env == "development":
+        return modules
+    manifest = _worker_manifest()
+    if manifest is None:
+        return []
+    licensed = manifest.get("enabled_modules") or manifest.get("modules") or []
+    return modules if "*" in licensed else [m for m in modules if m in licensed]
 
 
 def enforce_licensed_modules(request: Request, requested: list[str]) -> None:
