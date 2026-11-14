@@ -1,21 +1,9 @@
 import type { Metadata } from "next";
-import { Suspense, type ReactNode } from "react";
-import "@/design/v2/tokens.css";
-import "@/design/v2/v2.css";
-import "@/design/v2/admin.css";
-import "@/design/v2/status.css";
-import "@/design/v2/print.css";
-import { V2Shell } from "@/design/v2/shell/V2Shell";
+import type { ReactNode } from "react";
 
 export const metadata: Metadata = { title: "Load" };
 
-// The object page keeps the v2 shell (menu, command bar, inspector) until the shell itself moves to the new design.
+// The (next) layout already gives Load the next shell and its inspector; the v2 screens on the tabs mount through LegacyMount.
 export default function LoadLayout({ children }: { children: ReactNode }) {
-  return (
-    <div className="m2-fonts">
-      <Suspense fallback={<div className="m2-boot" aria-hidden="true" />}>
-        <V2Shell>{children}</V2Shell>
-      </Suspense>
-    </div>
-  );
+  return children;
 }

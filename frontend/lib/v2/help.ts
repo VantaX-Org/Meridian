@@ -167,6 +167,12 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/system-compare": "v2:migration",
   "/migration/load-plan": "v2:migration",
   "/s4": "v2:waves",
+  "/load": "v2:migration",
+  "/load/compare": "v2:migration",
+  "/load/plan": "v2:migration",
+  "/load/s4": "v2:waves",
+  "/load/go-live": "v2:waves",
+  "/load/waves": "v2:waves",
   "/insights": "v2:monitoring",
   "/forecast": "v2:monitoring",
   "/value": "v2:monitoring",
@@ -233,6 +239,7 @@ export function routeOf(pathname: string): string | null {
   if (a === "share" && b) return "/share/[token]";
   if (a === "requests" && b) return b === "analytics" ? "/requests/analytics" : b === "new" ? "/requests/new" : "/requests/[id]";
   if (a === "migration" && b === "load-plan") return "/migration/load-plan";
+  if (a === "load" && b && ["compare", "plan", "s4", "go-live", "waves"].includes(b)) return `/load/${b}`;
   if (a === "admin") return b ? "/admin/[section]" : "/admin";
   if (a === "work" && b === "monitor") return "/work/monitor";
   if (a === "work" && b === "analytics") return "/work/analytics";

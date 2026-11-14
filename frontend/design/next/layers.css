@@ -53,7 +53,7 @@
 .nx-banner { display: flex; align-items: center; gap: var(--nx-s3); padding: var(--nx-s3) var(--nx-gutter); background: var(--nx-surface-2); border-bottom: 1px solid var(--nx-border); color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
 .nx-banner-text { flex: 1 1 auto; min-width: 0; }
 .nx-banner[data-tone="warn"] { background: var(--nx-warn-soft); color: var(--nx-warn-ink); }
-.nx-banner[data-tone="info"] { background: var(--nx-accent-soft); color: var(--nx-accent-ink); }
+.nx-banner[data-tone="info"] { background: var(--nx-accent-soft); color: var(--nx-ink); }
 
 /* A token scope that adds no box: the kit Sheet inside v2 screens (design/v2/Inspector.tsx). */
 .nx-scope { display: contents; }
