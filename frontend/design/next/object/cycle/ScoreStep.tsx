@@ -27,7 +27,7 @@ export function ScoreStep({ o }: { o: ObjectRun }) {
       {running ? <p role="status">{t("Run {n} is being scored.", { n })}</p> : null}
       <RunForecast systemId={o.systemId} modules={[o.module]} what="analysis" />
       <Button
-        variant="primary"
+        variant="secondary"
         icon="refresh"
         loading={busy}
         loadingLabel={t("Starting")}

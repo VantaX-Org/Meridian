@@ -75,6 +75,17 @@
 .nx-checks li[data-status="warn"] .nx-checks-state { color: var(--nx-warn); }
 .nx-checks li[data-status="fail"] .nx-checks-state { color: var(--nx-bad); }
 
+.nx-obar-title { font: var(--nx-title-3, var(--nx-t-title, inherit)); margin: 0; }
+.nx-dl { position: relative; }
+.nx-dl-menu { position: absolute; inset-inline-end: 0; top: 100%; z-index: 5; display: grid; gap: var(--nx-s-1, 0.25rem); min-width: 18rem; padding: var(--nx-s-2, 0.5rem); }
+.nx-dl-item { display: grid; gap: 0.125rem; text-align: start; padding: var(--nx-s-2, 0.5rem); background: transparent; border: 0; border-radius: var(--nx-r-2, 0.5rem); color: inherit; font: inherit; text-decoration: none; cursor: pointer; }
+.nx-dl-item span { color: var(--nx-text-2, var(--nx-muted)); }
+.nx-dl-item:hover:not(:disabled) { background: var(--nx-fill, var(--nx-surface-2)); }
+.nx-checks { list-style: none; margin: 0 0 var(--nx-s-3, 0.75rem); padding: 0; display: grid; gap: var(--nx-s-1, 0.25rem); }
+.nx-checks li[data-status="fail"] { color: var(--nx-bad, inherit); }
+.nx-checks li[data-status="warn"] { color: var(--nx-warn, inherit); }
+.nx-confirm-line { display: block; margin-block: var(--nx-s-2, 0.5rem); }
+
 /* Story feed: hero, segments, sections and edge states */
 .nx-hero { flex-direction: column; align-items: stretch; padding: var(--nx-s5); }
 .nx-hero-row { display: flex; flex-wrap: wrap; gap: var(--nx-s3); align-items: center; min-inline-size: 0; }

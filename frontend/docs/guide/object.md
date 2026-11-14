@@ -45,6 +45,20 @@ The **run picker** beside the object's name chooses which of this object's runs 
 - **Profile**: what the run found in each field the object reads, table by table: the field with its dictionary text, its type, the blank share, distinct values, length, and the commonest values or the range of a number or date. Values stay withheld for personal data and free text. **Mined dependencies** lists where one field decides another in almost every record, for example "MARA-MTART Material type decides MARA-MBRSH Industry sector, holds in 99.3%", with the rows breaking it. A person who manages rules picks a severity and selects **Make it a rule**; the rule runs from the next analysis.
 - **Processes**, **Glossary**, **Golden records**: each has its own chapter.
 
+## The cleaning cycle
+
+**Cycle** walks one cleaning cycle in five steps. Pick the object, the version and the run in the bar at the top, then open **Cycle**. Each step shows a short list of checks; the one button at the bottom stays off until the checks for that step pass.
+
+1. **Pull**: read the object from the connected system. The step is blocked until the object has a run.
+2. **Clean**: download the cleaning workbook. It holds the template, the instructions and the failing records. Edit it in Excel. If you already hold the workbook, tick **I already have the workbook** to go on.
+3. **Upload**: add the cleaned workbook. Meridian checks each file before it scores anything: the fingerprint, the run, the template, the columns, the rows, the keys, the values and the formulas. A failed check blocks the button. A warning lets you go on once you tick **Add it with these warnings**.
+4. **Score**: Meridian scores the copy as a new run. The step waits while scoring runs and stops if it fails.
+5. **Compare**: see the new score next to the previous one. **Start the next cycle** returns to the clean step.
+
+Use **Back** to return to an earlier step. Every other tab of the object stays reachable at any time.
+
+Press `d` or open **Downloads** in the bar. Each item says what it is for: the **cleaning workbook** for the cycle, the **fix workbook** for approved fixes, and **Export in load order** for the target load.
+
 ## The numbers and where they come from
 
 - **Score by dimension** reads the dimension scores of the run in the top bar; the shares are the dimension weights under Administration, Settings.
@@ -67,6 +81,7 @@ The **run picker** beside the object's name chooses which of this object's runs 
 - In every tab table, `j` and `k` move, `Enter` opens the row in the inspector, `x` selects.
 - `[` and `]` step to the previous or next row while the inspector is open.
 - `Esc` closes the inspector.
+- On **Cycle**, `[` and `]` move to the previous or the next run, `u` opens the upload step and `d` opens the downloads menu.
 
 ## When something is wrong
 

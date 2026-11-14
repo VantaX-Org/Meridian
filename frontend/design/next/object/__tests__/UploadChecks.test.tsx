@@ -11,6 +11,13 @@ import { RunSwitcher, type RunOption } from "@/design/next/kit";
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
+// The cycle is no longer an object page tab, so the test mounts the cycle steps directly,
+// once the object has loaded, as the object page did.
+function Cycle() {
+  const o = useObjectRun("ecc-production", "material-master");
+  return o.landscape.isLoading ? null : <CycleTab o={o} />;
+}
+
 beforeEach(() => window.sessionStorage.setItem("mn_v2_fixture", "1"));
 afterEach(() => {
   window.sessionStorage.clear();
@@ -18,11 +25,6 @@ afterEach(() => {
 });
 
 const IDS = ["fingerprint", "run", "template", "columns", "rows", "keys", "values", "formulas"] as const;
-
-// The cycle is no longer an object page tab, so the test mounts the cycle steps directly.
-function Cycle() {
-  return <CycleTab o={useObjectRun("ecc-production", "material-master")} />;
-}
 
 async function addFile(name: string) {
   setUrl("/next/o/ecc-production/material-master/cycle?fixture=1&step=upload");
@@ -46,7 +48,7 @@ describe("upload checks", () => {
   });
   it("a failed check blocks the upload", async () => {
     await addFile("bad.xlsx");
-    expect(screen.getByTestId("check-columns").getAttribute("data-status")).toBe("fail");
+    expect(screen.getByTestId("check-fingerprint").getAttribute("data-status")).toBe("fail");
     expect(off(upload())).toBe(true);
   });
   it("a warning needs the confirmation", async () => {
