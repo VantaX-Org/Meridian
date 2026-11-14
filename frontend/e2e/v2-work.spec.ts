@@ -157,9 +157,10 @@ for (const size of SIZES) {
           const box = await dialog.boundingBox();
           expect(box?.width).toBeGreaterThanOrEqual(size.width - 1);
         } else {
-          // The inspector's landmark is the 400 px panel; the dialog sits inside its 1 px rule.
+          // The inspector is the large kit sheet: a 48rem panel from the right.
           const box = await page.locator("#m2-inspector").boundingBox();
-          expect(Math.round(box?.width ?? 0)).toBe(400);
+          const rem = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize));
+          expect(Math.round(box?.width ?? 0)).toBe(Math.round(48 * rem));
         }
         await page.waitForLoadState("networkidle");
         await shot(page, "work-record");
