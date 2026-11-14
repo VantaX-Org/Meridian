@@ -7,6 +7,20 @@ import { UpdateFlow } from "../flows/UpdateFlow";
 import { PersonSheet } from "../admin/PersonSheet";
 import { ReportSheet } from "../more/ReportSheet";
 import { RuleSheet } from "../more/RuleSheet";
+
+// story-feed: work (Batch E) start
+import { registerSheet as registerWorkSheet } from "./registry";
+import { RunSheet } from "../runs/RunSheet";
+import { CompareSheet } from "../runs/CompareSheet";
+import { RunDetailSheet } from "../runs/RunDetail";
+
+registerWorkSheet("run", ({ id, step, setStep, close, under }) =>
+  id === "new"
+    ? createElement(RunSheet, { step, setStep, close, under })
+    : createElement(RunDetailSheet, { id, close, under }));
+registerWorkSheet("compare", ({ id, close, under }) => createElement(CompareSheet, { id, close, under }));
+// story-feed: work (Batch E) end
+
 // story-feed: object
 import "../object/register";
 
