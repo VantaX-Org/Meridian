@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { t } from "@/lib/v2/i18n";
-import { canAdminister } from "@/lib/v2/admin-sections";
-import { useV2Href, useV2Session } from "@/lib/v2/hooks";
+import { useV2Href } from "@/lib/v2/hooks";
 import { EmptyState, Tabs } from "../kit";
 import { GROUPS, SINGLES, TILES } from "../more/groups";
+import { MoreCards } from "../more/cards";
 import { Rules } from "../more/Rules";
 import { RuleBody } from "../more/RuleSheet";
 import { Reports } from "../more/Reports";
@@ -19,16 +19,20 @@ import { AdminFlow, FlowCards, isAdminFlow } from "../admin/AdminFlows";
 import "../shell/shell.css";
 import "../more/more.css";
 
+const NATIVE = new Set(["rules", "reports", "systems", "people", "admin"]);
+
+/** More opens on chart-led cards for the native screens, then every other screen as a plain link with its line. */
 function Home() {
   const href = useV2Href();
-  const { can } = useV2Session();
   return (
     <div className="nx-more">
       <header className="nx-strip"><h1>{t("More")}</h1></header>
-      <ul className="nx-more-grid" data-testid="more-tiles">
-        {TILES.filter((x) => !x.adminOnly || canAdminister(can)).map((x) => (
+      <MoreCards />
+      <ul className="nx-more-links" data-testid="more-tiles">
+        {TILES.filter((x) => !NATIVE.has(x.id)).map((x) => (
           <li key={x.id}>
-            <Link className="nx-more-card" href={href(x.href)}><h2>{x.title()}</h2><p>{x.blurb()}</p></Link>
+            <Link className="nx-link" href={href(x.href)}>{x.title()}</Link>
+            <p>{x.blurb()}</p>
           </li>
         ))}
       </ul>
