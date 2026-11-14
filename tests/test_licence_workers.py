@@ -93,8 +93,8 @@ def test_run_extraction_refuses_when_no_module_is_licensed_and_drops_the_unlicen
 def test_sync_scheduler_skips_an_unlicensed_profile_but_moves_its_schedule_on():
     from workers import scheduler
 
-    rows = [("p-licensed", "0 2 * * *", None, ["material_master"], "material_master"),
-            ("p-dropped", "0 2 * * *", None, None, "fi_gl")]
+    rows = [("p-licensed", "0 2 * * *", "s1", ["material_master"], "material_master"),
+            ("p-dropped", "0 2 * * *", "s2", None, "fi_gl")]
     session = MagicMock()
     session.__enter__.return_value = session
     session.execute.return_value.fetchall.return_value = rows

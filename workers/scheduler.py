@@ -915,39 +915,42 @@ def sync_profile_scheduler():
                       AND started_at < now() - make_interval(secs => :stale_after)
                 """), {"tid": tid, "stale_after": EXTRACT_TIME_LIMIT + 600})
 
-                # Find due profiles: active, with a schedule, and next_run_at <= now
-                result = session.execute(text("""
-                    SELECT id, schedule_cron, next_run_at, modules, domain
-                    FROM sync_profiles
-                    WHERE tenant_id = :tid AND active = true AND schedule_cron IS NOT NULL
-                      AND (next_run_at IS NULL OR next_run_at <= now())
-                """), {"tid": tid})
+                # Due profiles, skipping any whose system already has a sync running. SKIP LOCKED
+                # keeps two overlapping beat ticks from picking the same profile.
+                due_profiles = session.execute(text("""
+                    SELECT p.id, p.schedule_cron, p.system_id, p.modules, p.domain
+                    FROM sync_profiles p
+                    WHERE p.tenant_id = :tid AND p.active = true AND p.schedule_cron IS NOT NULL
+                      AND (p.next_run_at IS NULL OR p.next_run_at <= now())
+                      AND NOT EXISTS (
+                          SELECT 1 FROM sync_runs r JOIN sync_profiles q ON q.id = r.profile_id
+                          WHERE r.status = 'running' AND q.system_id = p.system_id)
+                    FOR UPDATE OF p SKIP LOCKED
+                """), {"tid": tid}).fetchall()
 
-                due_profiles = result.fetchall()
+                # Advance next_run_at and commit before dispatch, so a crash or a slow broker
+                # cannot leave the profile due and enqueue it again on the next tick.
+                # ponytail: a busy system's profile stays due and runs on the first tick after it frees.
+                dispatch, systems = [], set()
+                for profile_id, schedule_cron, system_id, modules, domain in due_profiles:
+                    if system_id in systems:
+                        continue
+                    systems.add(system_id)
+                    dispatch.append((str(profile_id), list(modules or []) or [domain]))
+                    session.execute(text("UPDATE sync_profiles SET next_run_at = :next WHERE id = :pid"),
+                                    {"next": _compute_next_run(schedule_cron), "pid": profile_id})
+                session.commit()
 
-                for row in due_profiles:
-                    profile_id = str(row[0])
-                    schedule_cron = row[1]
-
-                    # Enqueue sync task, unless the licence no longer covers any of its modules (as run_sync
-                    # reads them); the schedule still moves on, so it is not retried every tick
-                    from api.middleware.licence import licensed_modules_of
-                    from workers.tasks.run_sync import run_sync
-                    if licensed_modules_of(list(row[3] or []) or [row[4]]):
+                # Enqueue each sync, unless the licence no longer covers any of its modules (as run_sync
+                # reads them); the schedule has already moved on, so it is not retried every tick
+                from api.middleware.licence import licensed_modules_of
+                from workers.tasks.run_sync import run_sync
+                for profile_id, modules in dispatch:
+                    if licensed_modules_of(modules):
                         run_sync.delay(profile_id, tid, trigger="scheduled")
                         logger.info(f"  tenant={tid}: enqueued run_sync for profile={profile_id}")
                     else:
                         logger.warning(f"  tenant={tid}: profile={profile_id} not run, no module is licensed")
-
-                    # Compute next run time from cron expression
-                    next_run = _compute_next_run(schedule_cron)
-                    if next_run:
-                        session.execute(
-                            text("UPDATE sync_profiles SET next_run_at = :next WHERE id = :pid"),
-                            {"next": next_run, "pid": profile_id},
-                        )
-
-                session.commit()
 
         except Exception as e:
             logger.warning(f"  tenant={tid}: sync_profile_scheduler failed: {e}")
@@ -961,6 +964,91 @@ def _compute_next_run(cron_expression: str):
         return croniter(cron_expression, datetime.now(SAST)).get_next(datetime)
     except Exception:  # an expression croniter rejects: retry in a day rather than every tick
         return datetime.now(SAST) + timedelta(hours=24)
+
+
+# ── Trigger 7: reap_orphans — every 10 minutes ───────────────────────────────
+
+REAP_REASON = "interrupted (worker restart or deploy)"
+REAP_STALE_SECONDS = int(os.environ.get("MERIDIAN_REAP_STALE_SECONDS", "3600"))
+# Row tables a Celery task drives through queued/running, each with its task_id column.
+_REAP_TABLES = ("migration_runs", "system_comparisons", "migration_reconciliations")
+
+
+def _live_task_ids() -> set[str] | None:
+    """Ids of every task a worker is running, holding or has scheduled for a retry. None when no worker replies,
+    so the reaper never takes "cannot tell" for "dead"."""
+    insp = celery_app.control.inspect(timeout=5)
+    replies = [insp.active(), insp.reserved(), insp.scheduled()]
+    if replies[0] is None:
+        return None
+    ids: set[str] = set()
+    for reply in replies:
+        for tasks in (reply or {}).values():
+            ids.update(str((t.get("request") or t).get("id")) for t in tasks)
+    return ids
+
+
+def _reap_tenant(session: Session, tid: str, live: set[str]) -> int:
+    from api.services import jobs
+    from workers.tasks.run_extraction import EXTRACT_TIME_LIMIT, _release_system_lock, discard_extraction
+
+    now, reaped = datetime.now(timezone.utc).timestamp(), 0
+    for job in jobs.list_jobs(tid, active_only=True, limit=jobs.INDEX_KEEP):
+        # A queued job may wait in the broker behind a full extraction, so it gets the longer allowance.
+        stale = REAP_STALE_SECONDS if job["status"] == "running" else EXTRACT_TIME_LIMIT + 600
+        if now - float(job.get("updated_at") or now) < stale or live & set(job.get("task_ids") or []):
+            continue
+        jobs.finish_job(tid, job["id"], "failed", error=REAP_REASON)
+        reaped += 1
+        vid = job.get("version_id") or (job["id"] if job.get("kind") in ("analysis", "upload") else None)
+        if not vid:
+            continue
+        registered = session.execute(text("SELECT 1 FROM analysis_versions WHERE id = CAST(:v AS uuid)"),
+                                     {"v": str(vid)}).first()
+        if job.get("kind") == "extraction":
+            if registered:
+                _release_system_lock(job.get("system_id"), str(vid))
+            else:
+                discard_extraction(tid, job.get("system_id"), str(vid))
+        elif registered:
+            session.execute(text("UPDATE analysis_versions SET status = 'failed' "
+                                 "WHERE id = CAST(:v AS uuid) AND status IN ('pending', 'running')"), {"v": str(vid)})
+
+    # Task time limits here are 31 minutes, so a queued or running row older than a full extraction allowance
+    # whose task no worker holds is dead.
+    # ponytail: messages still waiting in the broker are not inspected; the age floor covers them.
+    for table in _REAP_TABLES:
+        reaped += len(session.execute(text(f"""
+            UPDATE {table} SET status = 'failed', error_detail = :reason, completed_at = now()
+            WHERE tenant_id = :tid AND status IN ('queued', 'running')
+              AND created_at < now() - make_interval(secs => :stale)
+              AND (task_id IS NULL OR NOT task_id = ANY(:live)) RETURNING id
+        """), {"reason": REAP_REASON, "tid": tid, "stale": EXTRACT_TIME_LIMIT + 600, "live": list(live)}).fetchall())
+    session.commit()
+    return reaped
+
+
+@celery_app.task(name="workers.scheduler.reap_orphans", soft_time_limit=120, time_limit=180)
+def reap_orphans():
+    """Fail jobs whose worker died (restart, deploy, OOM), free their locks and delete their staged files. A job
+    whose task a worker still holds is never touched."""
+    live = _live_task_ids()
+    if live is None:
+        logger.warning("reap_orphans: no worker replied; skipped")
+        return
+    engine = get_sync_engine()
+    with Session(engine) as session:
+        tenants = _get_tenants(session)
+    for t in tenants:
+        tid = str(t["id"])
+        try:
+            with Session(engine) as session:
+                _set_rls(session, tid)
+                n = _reap_tenant(session, tid, live)
+                if n:
+                    logger.warning(f"  tenant={tid}: reaped {n} orphaned jobs")
+        except Exception as e:
+            logger.warning(f"  tenant={tid}: reap_orphans failed: {e}")
 
 
 # ── Beat schedule configuration ──────────────────────────────────────────────
@@ -989,6 +1077,10 @@ celery_app.conf.beat_schedule = {
     "weekly-archive-sunday-midnight": {
         "task": "workers.scheduler.weekly_archive",
         "schedule": crontab(hour=22, minute=0, day_of_week=6),  # 22:00 UTC Saturday = 00:00 SAST Sunday
+    },
+    "reap-orphans-every-10min": {
+        "task": "workers.scheduler.reap_orphans",
+        "schedule": crontab(minute="9-59/10"),
     },
     "sync-profile-scheduler-every-5min": {
         "task": "workers.scheduler.sync_profile_scheduler",
