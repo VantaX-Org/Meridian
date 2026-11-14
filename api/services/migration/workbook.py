@@ -790,6 +790,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         raise ValueError("an incremental load needs a since date")
     maps = value_maps or {}
     unfiltered: list[str] = []
+    start_date_only: list[str] = []
     mapped = 0
     same = True
     unchecked: list[dict] = []
@@ -871,6 +872,8 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
             row["since_field"] = changed.qualified if changed else None
             if changed:
                 df = df[(_when(df[changed.qualified]) >= pd.Timestamp(since, tz="UTC")).fillna(False)]
+                if changed.name in _DATED_KEYS:  # no last-modified field: a back-dated change is missed
+                    start_date_only.append(sheet.name)
             else:
                 unfiltered.append(sheet.name)
         from api.services.connectivity_manager import _asof_join, _primary_first  # lazy: avoids an import cycle
@@ -900,6 +903,16 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         df = _history_order(df, table, frames.dictionary)
         keys = record_keys(df, key_cols)
         bad = pd.Series(False, index=df.index)
+        dated = [c for c in key_cols if c.split(".", 1)[1] in _DATED_KEYS]
+        if dated:  # two rows for one person, start date and sequence: the load would keep only one
+            dup = df.duplicated(key_cols, keep="first")
+            if dup.any():
+                bad |= dup
+                reasons["duplicate_effective_record"] += int(dup.sum())
+                held.extend({"sheet": sheet.name, "record": k, "field": dated[0].split(".", 1)[1],
+                             "reason": "duplicate_effective_record",
+                             "detail": "Duplicate effective record: another row has the same person, start date "
+                                       "and sequence number."} for k in keys[dup])
         countries = _row_countries(df[country.qualified]) if country else None
         values: dict[str, pd.Series] = {}
 
@@ -969,6 +982,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
             "load_mode": load_mode, "since": since.isoformat() if since else None,
             "mandatory_missing": sum(sum(r.get("mandatory_missing", {}).values()) for r in report),
             "incremental_unfiltered": unfiltered,
+            "start_date_only": start_date_only,
         },
         "purge_type": LOAD_MODES[load_mode] if any(
             frames.dictionary.tables[r["table"]].provenance == "canonical:successfactors" for r in known) else None,
