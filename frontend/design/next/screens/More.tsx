@@ -15,6 +15,7 @@ import { SystemPage } from "../more/SystemPage";
 import { People } from "../more/People";
 import { AdminHome, AdminSectionView } from "../admin/Admin";
 import { LegacyMount } from "../shell/LegacyMount";
+import { AdminFlow, FlowCards, isAdminFlow } from "../admin/AdminFlows";
 import "../shell/shell.css";
 import "../more/more.css";
 
@@ -73,10 +74,11 @@ export function More({ slug }: { slug?: string[] }) {
       ? <Frame title={t("Systems")} back={{ to: "/more/systems", label: t("Systems") }}><SystemPage id={b} /></Frame>
       : <Frame title={t("Systems")}><Systems /></Frame>;
   }
+  if (a === "admin" && b === "flow" && slug!.length === 3 && isAdminFlow(slug![2])) return <AdminFlow name={slug![2]} />;
   if (a === "admin" && slug!.length <= 2) {
     return b
       ? <Frame title={t("Administration")} back={{ to: "/more/admin", label: t("Administration") }}><AdminSectionView slug={b} /></Frame>
-      : <Frame title={t("Administration")}><AdminHome /></Frame>;
+      : <Frame title={t("Administration")}><FlowCards /><AdminHome /></Frame>;
   }
 
   const group = GROUPS.find((g) => g.id === a && slug!.length === 1);
