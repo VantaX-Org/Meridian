@@ -21,7 +21,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import jobs
-from api.services.rbac import require_permission, write_audit
+from api.services.rbac import current_user_id, require_permission, write_audit
 
 router = APIRouter(prefix="/api/v1/systems", tags=["system-objects"])
 
@@ -364,10 +364,11 @@ async def start_download(system_id: uuid.UUID, body: DownloadBody, request: Requ
     enforce_licensed_modules(request, body.objects)
     if body.dry_run:
         return await _dry_run(db, tenant, system_id, st, body.objects, scope)
+    jobs.ensure_no_extraction(str(tenant.id), str(system_id))
     version_id = str(uuid.uuid4())
     jobs.start_job(str(tenant.id), f"dl-{version_id}", "extraction", body.label or ", ".join(body.objects),
                    status="queued", system_id=str(system_id), modules=body.objects, version_id=version_id,
-                   retry={"via": "downloads", "body": body.model_dump(mode="json")})
+                   retry={"via": "downloads", "body": body.model_dump(mode="json")}, started_by=current_user_id(request))
     task = run_extraction.delay(str(tenant.id), str(system_id), body.objects, True, "both",
                                 scope, body.analyse, body.label, version_id, **({"delta": True} if body.delta else {}))
     jobs.set_task_ids(str(tenant.id), f"dl-{version_id}", [getattr(task, "id", None)])
