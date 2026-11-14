@@ -8,7 +8,7 @@ import { ToastProvider } from "./kit/Toast";
 export function NextRoot({ className, children }: { className: string; children: ReactNode }) {
   const { tag } = useInterfaceLang();
   return (
-    <div className={`nx-root ${className}`} lang={tag || undefined}>
+    <div className={`nx-root ${className}`} lang={tag || undefined} data-title-scope>
       <ToastProvider>{children}</ToastProvider>
     </div>
   );
