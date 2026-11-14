@@ -98,8 +98,13 @@ def _purge_audit(session: Any, tenant_id: str, days: int, now: datetime, dry_run
         "SELECT count(*) FROM audit_log WHERE tenant_id = :t AND created_at < :cutoff"), p).scalar() or 0)
     if not n:
         return {"rows_by_table": {}, "purge_log_id": None}
-    if not dry_run:
-        session.execute(text("DELETE FROM audit_log WHERE tenant_id = :t AND created_at < :cutoff"), p)
+    if not dry_run:  # the oldest rows go as one run, closed by a checkpoint row so the rest still verify
+        from api.services.audit_chain import purge_prefix
+
+        n = purge_prefix(session, tenant_id, cutoff)
+        if not n:
+            session.commit()
+            return {"rows_by_table": {}, "purge_log_id": None}
     log_id = write_purge_log(session, tenant_id, "audit", None, dry_run, {"audit_log": n}, 0, None, None,
                              source="nightly")
     session.commit()

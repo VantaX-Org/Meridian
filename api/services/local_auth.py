@@ -18,6 +18,8 @@ _ph = PasswordHasher()
 # JWT config
 _JWT_ALGORITHM = "HS256"
 _JWT_EXPIRY_HOURS = 24
+# A session slides (POST /api/v1/auth/refresh issues a fresh 24h token) but never past this long after the sign-in.
+SESSION_ABSOLUTE_HOURS = 7 * 24
 
 
 def hash_password(plain: str) -> str:
@@ -80,8 +82,12 @@ def create_access_token(
     role: str,
     secret: str,
     token_version: int = 0,
+    auth_time: int | None = None,
 ) -> str:
     """Create a signed JWT access token.
+
+    ``auth_time`` is when the user actually signed in (epoch seconds); a refresh carries it over so the
+    session's absolute limit (SESSION_ABSOLUTE_HOURS) counts from the sign-in, not from the last refresh.
 
     ``tv`` is the user's ``users.token_version`` at issue time. LocalAuthMiddleware rejects a token
     whose ``tv`` is below the user's current value, so bumping the column (password change or reset,
@@ -94,6 +100,7 @@ def create_access_token(
         "email": email,
         "role": role,
         "tv": token_version,
+        "auth_time": int(auth_time if auth_time is not None else now.timestamp()),
         "iat": now,
         "exp": now + timedelta(hours=_JWT_EXPIRY_HOURS),
     }

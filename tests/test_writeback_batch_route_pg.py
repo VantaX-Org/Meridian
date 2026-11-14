@@ -47,6 +47,7 @@ def _drop(engine, tid, sid):
     with engine.begin() as c:
         c.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
         c.execute(text("DELETE FROM system_credentials WHERE system_id = :s"), {"s": sid})
+        c.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard
         for t in ("audit_log", "writeback_runs", "remediation_events", "remediation_items", "remediation_batches", "sap_systems"):
             c.execute(text(f"DELETE FROM {t} WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM tenants WHERE id = :t"), {"t": tid})

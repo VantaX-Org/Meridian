@@ -199,6 +199,7 @@ def world(monkeypatch):
     yield engine, a, b, store, lambda t: tenant_session(engine, t)
     with engine.begin() as c:
         c.execute(text("SET LOCAL app.subject_erasure = 'on'"))
+        c.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard
         for table in EVERY_STORE + ("webhooks", "writeback_runs", "remediation_batches"):
             c.execute(text(f"DELETE FROM {table} WHERE tenant_id IN (:a, :b)"), {"a": a, "b": b})
         for table in ("migration_reconciliations", "migration_runs", "mdm_pair_constraints", "mdm_merge_events", "golden_writeback_requests",

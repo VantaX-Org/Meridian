@@ -976,6 +976,7 @@ async def _export(request: Request, tenant: Tenant, db: AsyncSession, run_id: st
         "user_agent": request.headers.get("user-agent"),
         "before_json": {"run_id": run.id, "l1": run.l1, "node_id": node_id, "filters": filters},
         "after_json": None})
+    request.state.audit_written = True  # the middleware need not write a second row
     return Response(content=data, media_type="application/xml" if node_id else "application/zip",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 

@@ -390,23 +390,26 @@ async def record_report_pdf(version_id: uuid.UUID, matnr: str, tenant: Tenant = 
 
 async def _audit_export(request: Request, tenant: Tenant, kind: str, version_id: Optional[uuid.UUID],
                         module: Optional[str]) -> None:
-    """One audit_log row per board or workbook download. Never breaks the download: building the
-    row and the insert are both guarded, and a failure is logged and swallowed."""
+    """One audit_log row per board or workbook download, written before the file is released. A row that cannot
+    be written withholds the download (503), and the audit middleware is told not to write a second row."""
     from api.middleware.audit import _insert_audit_row
 
+    uid = getattr(request.state, "local_user_id", None)
+    row = {
+        "tenant_id": tenant.id, "actor_user_id": uuid.UUID(str(uid)) if uid else None,
+        "actor_email": getattr(request.state, "local_user_email", None), "action": "report.export",
+        "entity_type": "report", "entity_id": str(version_id) if version_id else kind, "method": request.method,
+        "path": request.url.path, "status_code": 200, "ip": request.client.host if request.client else None,
+        "user_agent": request.headers.get("user-agent"), "before_json": None,
+        "after_json": {"kind": kind, "version_id": str(version_id) if version_id else None, "module": module},
+    }
     try:
-        uid = getattr(request.state, "local_user_id", None)
-        row = {
-            "tenant_id": tenant.id, "actor_user_id": uuid.UUID(str(uid)) if uid else None,
-            "actor_email": getattr(request.state, "local_user_email", None), "action": "report.export",
-            "entity_type": "report", "entity_id": str(version_id) if version_id else kind, "method": request.method,
-            "path": request.url.path, "status_code": 200, "ip": request.client.host if request.client else None,
-            "user_agent": request.headers.get("user-agent"), "before_json": None,
-            "after_json": {"kind": kind, "version_id": str(version_id) if version_id else None, "module": module},
-        }
         await asyncio.to_thread(_insert_audit_row, row)
-    except Exception:
-        logger.exception("report.export audit failed")
+    except Exception as e:
+        logger.error("report.export audit failed (%s): download withheld", type(e).__name__)
+        raise HTTPException(status_code=503, detail="The audit log cannot be written, so this download was "
+                                                    "withheld. Try again shortly.")
+    request.state.audit_written = True
 
 
 async def _require_run_of_tenant(db: AsyncSession, tenant: Tenant, version_id: uuid.UUID) -> None:

@@ -133,6 +133,7 @@ def two_tenants(engine):
     for tid in (tid_a, tid_b):
         with eng.begin() as conn:
             _set_tenant(conn, tid)
+            conn.execute(text("SET LOCAL app.audit_purge = 'on'"))  # migration 175 guard
             # Some tables have FKs to others; order matters. Wipe in reverse.
             for table in (
                 "audit_log",

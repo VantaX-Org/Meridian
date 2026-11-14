@@ -148,7 +148,9 @@ def _purge_tenant(tenant_id: str, actor: Actor) -> dict[str, Any]:
         n = session.execute(text("DELETE FROM reports WHERE tenant_id = :t"), {"t": tenant_id}).rowcount or 0
         if n:
             totals["reports"] = totals.get("reports", 0) + n
-        n = session.execute(text("DELETE FROM audit_log WHERE tenant_id = :t"), {"t": tenant_id}).rowcount or 0
+        from api.services.audit_chain import purge_prefix
+
+        n = purge_prefix(session, tenant_id, None, actor)  # leaves one checkpoint row so the chain still verifies
         if n:
             totals["audit_log"] = n
         n = session.execute(text("DELETE FROM purge_log WHERE tenant_id = :t AND kind <> 'tenant'"),
