@@ -25,13 +25,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # rejected_by / rejected_at / reject_reason belong to 167
     for col in ("system_id uuid", "record_fixes jsonb", "fixes_sha256 text",
-                "status text NOT NULL DEFAULT 'pending'", "expires_at timestamptz", "rejected_by text",
-                "rejected_at timestamptz", "reject_reason text"):
+                "status text NOT NULL DEFAULT 'pending'", "expires_at timestamptz"):
         op.execute(f"ALTER TABLE write_back_log ADD COLUMN IF NOT EXISTS {col}")
     # rows already decided keep their meaning
     op.execute("UPDATE write_back_log SET status = 'approved' WHERE approved_by IS NOT NULL")
     op.execute("UPDATE write_back_log SET status = 'dry_run' WHERE dry_run AND approved_by IS NULL")
+    op.execute("UPDATE write_back_log SET status = 'rejected' WHERE rejected_at IS NOT NULL AND NOT dry_run "
+               "AND approved_by IS NULL")
     op.execute("ALTER TABLE write_back_log ADD CONSTRAINT ck_write_back_log_status CHECK "
                "(status IN ('pending', 'approved', 'rejected', 'blocked', 'expired', 'dry_run'))")
     op.execute("ALTER TABLE remediation_batches ADD COLUMN IF NOT EXISTS approved_sha256 text")
@@ -49,6 +51,6 @@ def downgrade() -> None:
     op.execute("ALTER TABLE writeback_run_records DROP COLUMN IF EXISTS based_on")
     op.execute("ALTER TABLE remediation_batches DROP COLUMN IF EXISTS approved_sha256")
     op.execute("ALTER TABLE write_back_log DROP CONSTRAINT IF EXISTS ck_write_back_log_status")
-    for col in ("reject_reason", "rejected_at", "rejected_by", "expires_at", "status", "fixes_sha256",
+    for col in ("expires_at", "status", "fixes_sha256",
                 "record_fixes", "system_id"):
         op.execute(f"ALTER TABLE write_back_log DROP COLUMN IF EXISTS {col}")

@@ -154,7 +154,7 @@ def _row(**kw) -> dict:
 
 
 def _req(user: str):
-    return SimpleNamespace(state=SimpleNamespace(local_user_id=user))
+    return SimpleNamespace(state=SimpleNamespace(local_user_id=user), method="POST", url=SimpleNamespace(path="/x"))
 
 
 @pytest.fixture

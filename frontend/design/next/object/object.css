@@ -68,6 +68,13 @@
   .nx-obar-dqs { margin-inline-start: 0; }
 }
 
+.nx-checks { list-style: none; margin: 0; padding: 0; flex-basis: 100%; display: flex; flex-direction: column; gap: var(--nx-s1); font-size: var(--nx-fs-small); }
+.nx-checks li { display: flex; flex-wrap: wrap; gap: var(--nx-s2); align-items: baseline; }
+.nx-checks-state { min-width: 4.5rem; font-weight: 600; }
+.nx-checks li[data-status="pass"] .nx-checks-state { color: var(--nx-good); }
+.nx-checks li[data-status="warn"] .nx-checks-state { color: var(--nx-warn); }
+.nx-checks li[data-status="fail"] .nx-checks-state { color: var(--nx-bad); }
+
 /* Story feed: hero, segments, sections and edge states */
 .nx-hero { flex-direction: column; align-items: stretch; padding: var(--nx-s5); }
 .nx-hero-row { display: flex; flex-wrap: wrap; gap: var(--nx-s3); align-items: center; min-inline-size: 0; }
