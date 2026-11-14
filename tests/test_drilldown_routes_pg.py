@@ -224,7 +224,7 @@ def test_drilldown_routes(app_engine):
         os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)
 
 
-def test_findings_aggregate(app_engine):
+def test_findings_aggregate(app_engine, monkeypatch):
     """Server-side totals + composite DQS over the latest run per lineage, with the previous run's DQS."""
     import asyncio
 
@@ -283,4 +283,5 @@ def test_findings_aggregate(app_engine):
             assert none["total"] == 0 and none["dqs"]["composite"] is None
         await aeng.dispose()
 
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")  # the route is guarded; the header supplies the analyst role
     asyncio.run(scenario())

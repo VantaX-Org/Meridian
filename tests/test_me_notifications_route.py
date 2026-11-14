@@ -119,7 +119,8 @@ def _client(db: _DB, monkeypatch, uid=str(UID), backend="smtp", send=True) -> Te
 
     api.dependency_overrides[get_db] = _db
     api.dependency_overrides[get_tenant] = lambda: TENANT
-    c = TestClient(api)
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")  # the route's view guard; viewer holds view
+    c = TestClient(api, headers={"X-User-Role": "viewer"})
     c.sent = sent  # type: ignore[attr-defined]
     return c
 

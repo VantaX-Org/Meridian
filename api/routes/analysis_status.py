@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services.task_progress import TOTAL_STEPS, get_task_progress
 from db.schema import AnalysisVersion
+from api.services.rbac import require_permission, scope_from_path
 
 router = APIRouter(prefix="/api/v1", tags=["analysis"])
 logger = logging.getLogger("meridian.analysis_status")
@@ -102,7 +103,7 @@ def _build_progress_from_db(db_status: str) -> ProgressPayload:
 @router.get(
     "/analysis/status/{version_id}",
     response_model=AnalysisStatusResponse,
-)
+dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_analysis_status(
     version_id: str,
     db: AsyncSession = Depends(get_db),

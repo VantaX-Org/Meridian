@@ -12,12 +12,13 @@ from db.queries.config_matches import (
     get_config_matches,
     get_config_matches_for_export,
 )
+from api.services.rbac import scope_from_path
 
 router = APIRouter(prefix="/api/v1", tags=["config-matches"])
 logger = logging.getLogger("meridian.config_matches")
 
 
-@router.get("/versions/{version_id}/config-matches")
+@router.get("/versions/{version_id}/config-matches", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_config_matches(
     version_id: str,
     module: str | None = Query(None),
@@ -40,7 +41,7 @@ async def list_config_matches(
     return {"items": items, "total": len(items), "limit": limit, "offset": offset}
 
 
-@router.get("/versions/{version_id}/config-matches/summary")
+@router.get("/versions/{version_id}/config-matches/summary", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_config_matches_summary(
     version_id: str,
     db: AsyncSession = Depends(get_db),

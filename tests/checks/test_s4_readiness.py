@@ -81,7 +81,7 @@ def test_rollup_ready_when_no_blocking_failure():
     assert out["ready"] is True and out["status"] == "green"
 
 
-def test_readiness_route_scopes_to_tenant_and_version():
+def test_readiness_route_scopes_to_tenant_and_version(monkeypatch):
     import uuid
 
     from fastapi import FastAPI
@@ -116,7 +116,10 @@ def test_readiness_route_scopes_to_tenant_and_version():
     app.include_router(router)
     app.dependency_overrides[get_db] = _db
     app.dependency_overrides[get_tenant] = lambda: Tenant(id=tid, name="t", licensed_modules=[])
-    body = TestClient(app).get("/api/v1/findings/s4-readiness").json()
+    assert TestClient(app).get("/api/v1/findings/s4-readiness").status_code == 403  # guarded: no caller, no read
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    h = {"X-User-Role": "analyst"}
+    body = TestClient(app).get("/api/v1/findings/s4-readiness", headers=h).json()
     assert body["version_id"] == str(vid) and body["status"] == "red" and body["blocking_failing"] == 1
     assert str(tid) in seen[0] and str(tid).replace("-", "") in seen[-1].replace("-", "")
-    assert TestClient(app).get("/api/v1/findings/s4-readiness?version_id=bad").status_code == 422
+    assert TestClient(app).get("/api/v1/findings/s4-readiness?version_id=bad", headers=h).status_code == 422

@@ -14,8 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.models.config_score import LandscapeConfigStatus
 from api.services import jobs
+from api.middleware.licence import licensed_module
 
-router = APIRouter(prefix="/api/v1/connectivity", tags=["connectivity"])
+router = APIRouter(prefix="/api/v1/connectivity", tags=["connectivity"], dependencies=[Depends(licensed_module())])
 logger = logging.getLogger("meridian.connectivity")
 
 
@@ -67,7 +68,7 @@ class ConfigSnapshotOut(BaseModel):
     tables: list[ConfigSnapshotTable]
 
 
-@router.get("/systems/{system_id}/modules", response_model=list[SystemModuleOut])
+@router.get("/systems/{system_id}/modules", response_model=list[SystemModuleOut], dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_system_modules(
     system_id: str,
     db: AsyncSession = Depends(get_db),
@@ -181,7 +182,7 @@ async def health_check(
     return {"job_id": str(job.id), "status": "queued"}
 
 
-@router.get("/config/{system_id}/{module}", response_model=ConfigSnapshotOut)
+@router.get("/config/{system_id}/{module}", response_model=ConfigSnapshotOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_config_snapshot(
     system_id: str,
     module: str,
@@ -232,7 +233,7 @@ async def start_config_load(
     return out
 
 
-@router.get("/config-load", response_model=LandscapeConfigStatus)
+@router.get("/config-load", response_model=LandscapeConfigStatus, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_config_status(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -266,7 +267,7 @@ async def list_config_status(
             "total": sum(1 for r in out if r["status"] != "not_available")}
 
 
-@router.get("/config-load/{system_id}")
+@router.get("/config-load/{system_id}", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_config_load(
     system_id: str,
     role: Optional[str] = None,
@@ -319,7 +320,7 @@ async def get_config_load(
             "history": {k: v for k, v in history.items() if k != "tables"}}
 
 
-@router.get("/config-load/{system_id}/items")
+@router.get("/config-load/{system_id}/items", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_config_load_items(
     system_id: str,
     object: str,

@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.middleware.cache import cached_json
 from api.services import stewardship
+from api.middleware.licence import licensed_module
 from api.services.rbac import (
     _get_user_role,
     current_user_id,
@@ -35,7 +36,7 @@ from api.services.rbac import (
     write_audit,
 )
 
-router = APIRouter(prefix="/api/v1", tags=["stewardship-template"])
+router = APIRouter(prefix="/api/v1", tags=["stewardship-template"], dependencies=[Depends(licensed_module())])
 
 
 class RelatedRow(BaseModel):
