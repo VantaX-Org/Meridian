@@ -2,7 +2,7 @@
 
 /**
  * The segments of the object page. Overview tells the story (why, what to fix), the other segments are the v2 tabs
- * mounted unchanged. Golden records, Glossary, Lineage and Profile sit in the More menu. `cycle` and `trend` are old
+ * mounted unchanged. Failing records, Report, Golden records, Glossary, Lineage and Profile sit in the More menu. `cycle` and `trend` are old
  * addresses: cycle opens the cycle sheet over Overview, trend is the hero's trend.
  */
 import type { ReactNode } from "react";
@@ -16,12 +16,12 @@ import { SteeringReport } from "../report/SteeringReport";
 import { LoadFilesPanel } from "../load/LoadFilesPanel";
 import type { ObjectRun } from "./useObjectRun";
 
-export const TAB_IDS = ["overview", "why", "fix", "records", "failing", "rules", "fixes", "report", "runs", "readiness", "processes", "golden", "glossary", "lineage", "profile", "cycle", "trend"] as const;
+export const TAB_IDS = ["overview", "why", "fix", "records", "rules", "fixes", "runs", "readiness", "processes", "failing", "report", "golden", "glossary", "lineage", "profile", "cycle", "trend"] as const;
 export type TabId = (typeof TAB_IDS)[number];
 /** The segment row, in order. */
-export const SEGMENTS: readonly TabId[] = ["overview", "why", "fix", "records", "failing", "rules", "fixes", "report", "runs", "readiness", "processes"];
+export const SEGMENTS: readonly TabId[] = ["overview", "why", "fix", "records", "rules", "fixes", "runs", "readiness", "processes"];
 /** Behind the More segment. */
-export const MORE: readonly TabId[] = ["golden", "glossary", "lineage", "profile"];
+export const MORE: readonly TabId[] = ["failing", "report", "golden", "glossary", "lineage", "profile"];
 
 export const isTab = (s: string | undefined): s is TabId => !!s && (TAB_IDS as readonly string[]).includes(s);
 
@@ -34,8 +34,8 @@ export function tabLabel(id: TabId): string {
     case "rules": return t("Rules");
     case "failing": return t("Failing records");
     case "fixes": return t("Fixes");
-    case "report": return t("Report");
     case "runs": return t("Runs");
+    case "report": return t("Report");
     case "readiness": return t("Readiness");
     case "processes": return t("Processes");
     case "golden": return t("Golden records");

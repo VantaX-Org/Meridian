@@ -10591,6 +10591,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The licence has no seat count.": "ライセンスにシート数がありません。",
   "Opening the shared page": "共有ページを開いています",
   // story-feed: frame
+  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "アクセス権が変更されました。現在のロール: {roles}。メニューを更新するには再読み込みしてください。",
   "Reload": "再読み込み",
   "different roles": "別のロール",

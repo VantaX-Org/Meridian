@@ -10590,6 +10590,7 @@ export const en = {
   "The licence has no seat count.": "The licence has no seat count.",
   "Opening the shared page": "Opening the shared page",
   // story-feed: frame
+  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "Your access changed: you now have {roles}. Reload to update the menu.",
   "Reload": "Reload",
   "different roles": "different roles",

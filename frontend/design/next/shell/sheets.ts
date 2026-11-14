@@ -14,12 +14,12 @@ import "../object/register";
 /** Later batches register their sheet kinds here: `registerSheet("connect", (ctx) => ...)`. Imported once by SheetHost. */
 
 // story-feed: more
-// Registered after the object sheets, so the Rules page's rule sheet wins the shared "rule" kind.
-export const MORE_SHEETS = ["connect", "invite", "person", "rule", "report", "licence", "notify", "update"] as const;
+// The Rules page's sheet is "library-rule" so it does not take over the object page's "rule" sheet.
+export const MORE_SHEETS = ["connect", "invite", "person", "library-rule", "report", "licence", "notify", "update"] as const;
 registerSheet("connect", (ctx) => createElement(ConnectFlow, { ctx }));
 registerSheet("invite", (ctx) => createElement(InviteFlow, { ctx }));
 registerSheet("person", (ctx) => createElement(PersonSheet, { ctx }));
-registerSheet("rule", (ctx) => createElement(RuleSheet, { ctx }));
+registerSheet("library-rule", (ctx) => createElement(RuleSheet, { ctx }));
 registerSheet("report", (ctx) => createElement(ReportSheet, { ctx }));
 registerSheet("licence", (ctx) => createElement(LicenceFlow, { ctx }));
 registerSheet("notify", (ctx) => createElement(NotifyFlow, { ctx }));

@@ -10591,6 +10591,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The licence has no seat count.": "Die Lizenz hat keine Platzanzahl.",
   "Opening the shared page": "Die geteilte Seite wird geöffnet",
   // story-feed: frame
+  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "Ihr Zugriff hat sich geändert: Sie haben jetzt {roles}. Laden Sie neu, um das Menü zu aktualisieren.",
   "Reload": "Neu laden",
   "different roles": "andere Rollen",
