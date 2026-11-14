@@ -3,12 +3,16 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { ToastProvider } from "@/design/next/kit";
 import { SheetHost } from "@/design/next/shell/SheetHost";
+import { registerSheet, registry } from "@/design/next/shell/registry";
 import { ObjectPage } from "@/design/next/screens/ObjectPage";
 import { Count, Denied, Trunc, compactCount, isDenied } from "../edge";
 import { setUrl, getUrl } from "@/design/v2/__tests__/nav-store";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
+
+// The compare sheet lands with the Work batch; until then the host would drop the unknown name, so stand one in.
+if (!registry.has("compare")) registerSheet("compare", () => <div data-testid="compare-sheet" />);
 
 const SYS = "ecc-production";
 const MOD = "material-master";
@@ -98,6 +102,7 @@ describe("object page states and sheets", () => {
   it("sends an old cycle compare link to the compare sheet", async () => {
     setUrl(`/next/o/${SYS}/${MOD}/cycle?fixture=1&step=compare`);
     renderWithQuery(<ToastProvider><SheetHost><ObjectPage system={SYS} module={MOD} tab={"cycle" as never} /></SheetHost></ToastProvider>);
-    await waitFor(() => expect(getUrl()).toMatch(/sheet=compare/));
+    await waitFor(() => expect(getUrl()).toMatch(/\/overview\?.*sheet=compare/));
+    expect(getUrl()).not.toMatch(/step=/);
   });
 });
