@@ -1,0 +1,22 @@
+.nx-ring { position: relative; flex: none; display: inline-grid; place-items: center; }
+.nx-ring svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
+.nx-ring-track { stroke: var(--nx-border); }
+.nx-ring-arc { stroke: var(--nx-accent); }
+.nx-ring-mid { position: relative; text-align: center; font-variant-numeric: tabular-nums; }
+
+.nx-area { margin: 0; min-inline-size: 0; flex: 1 1 12rem; }
+.nx-area svg { display: block; inline-size: 100%; block-size: 5.5rem; overflow: visible; }
+.nx-area-fill { fill: var(--nx-accent-soft); }
+.nx-area-line { stroke: var(--nx-accent); }
+.nx-area-dot { fill: var(--nx-surface); stroke: var(--nx-accent); stroke-width: 2; }
+.nx-area-base { stroke: var(--nx-border-strong); }
+.nx-area-dot:hover { fill: var(--nx-accent); }
+
+.nx-segbar { display: grid; gap: var(--nx-s2); }
+.nx-segbar-bar { display: flex; gap: 2px; block-size: 1.5rem; }
+.nx-segbar-part { min-inline-size: 4px; border-radius: 4px; background: var(--nx-accent); }
+.nx-segbar-part[data-i="1"], .nx-segbar-sw[data-i="1"] { background: var(--nx-aletheia); }
+.nx-segbar-part[data-i="2"], .nx-segbar-sw[data-i="2"] { background: var(--nx-ink-3); }
+.nx-segbar-part[data-i="empty"] { background: var(--nx-border); }
+.nx-segbar-key { display: flex; flex-wrap: wrap; gap: var(--nx-s3); margin: 0; padding: 0; list-style: none; font-size: var(--nx-fs-small); color: var(--nx-ink-2); }
+.nx-segbar-sw { display: inline-block; inline-size: 0.75rem; block-size: 0.75rem; border-radius: 4px; background: var(--nx-accent); vertical-align: -1px; }
