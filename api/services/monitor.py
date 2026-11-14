@@ -155,13 +155,15 @@ _FIX_NOT_IN_SOURCE_SQL = f"""
            AND p.run_at < (SELECT run_at FROM analysis_versions WHERE id = CAST(:v AS uuid))
          ORDER BY p.run_at DESC LIMIT 1),
     ov AS (
-        SELECT o.metadata->'cleaned_overlay' AS c FROM analysis_versions o, prev
+        SELECT o.id, o.metadata->'cleaned_overlay' AS c FROM analysis_versions o, prev
          WHERE o.tenant_id = :t AND o.metadata->>'source' = 'roundtrip'
            AND o.metadata->'cleaned_overlay'->>'base_version_id' = prev.id::text
            AND o.status IN ('complete', 'agents_complete')
          ORDER BY o.run_at DESC LIMIT 1),
-    e AS (SELECT DISTINCT x->>'table' AS grain, x->>'key' AS record_key
-            FROM ov, jsonb_array_elements(ov.c->'edits') x),
+    e AS (SELECT x->>'table' AS grain, x->>'key' AS record_key
+            FROM ov, jsonb_array_elements(COALESCE(ov.c->'edits', '[]'::jsonb)) x  -- copies made before 169
+          UNION
+          SELECT r.grain, r.record_key FROM roundtrip_edits r, ov WHERE r.version_id = ov.id AND r.tenant_id = :t),
     hit AS (SELECT DISTINCT ri.id FROM record_issue_events ev
               JOIN record_issues ri ON ri.id = ev.issue_id AND ri.tenant_id = :t AND ri.scope = :scope
               JOIN e ON e.grain = ri.grain AND e.record_key = ri.record_key
