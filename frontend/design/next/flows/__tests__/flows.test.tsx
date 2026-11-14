@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
-import { ConnectFlow } from "../ConnectFlow";
-import { InviteFlow } from "../InviteFlow";
+import { ConnectSteps } from "../ConnectSteps";
+import { InviteSteps } from "../InviteSteps";
 import { ApproveFlow } from "../ApproveFlow";
 import { AnalysisFlow } from "../AnalysisFlow";
-import { NotifyFlow } from "../NotifyFlow";
+import { NotifySteps } from "../NotifySteps";
 
 const type = (label: RegExp, v: string) => fireEvent.change(screen.getByLabelText(label), { target: { value: v } });
 const next = (name = "Next") => fireEvent.click(screen.getByRole("button", { name }));
@@ -13,7 +13,7 @@ const next = (name = "Next") => fireEvent.click(screen.getByRole("button", { nam
 describe("connect flow", () => {
   it("tests before it saves and extracts only after", async () => {
     const api = { test: vi.fn().mockResolvedValue({ ok: true }), save: vi.fn().mockResolvedValue({ id: "s1" }), extract: vi.fn().mockResolvedValue({}) };
-    renderWithQuery(<ConnectFlow api={api} objects={["material-master"]} />);
+    renderWithQuery(<ConnectSteps api={api} objects={["material-master"]} />);
     type(/^Name/, "Test system");
     type(/^Host/, "host.example");
     next();
@@ -29,7 +29,7 @@ describe("connect flow", () => {
   });
   it("stays on the test step when the logon fails", async () => {
     const api = { test: vi.fn().mockResolvedValue({ ok: false, message: "Logon refused." }), save: vi.fn(), extract: vi.fn() };
-    renderWithQuery(<ConnectFlow api={api} objects={[]} />);
+    renderWithQuery(<ConnectSteps api={api} objects={[]} />);
     type(/^Name/, "x");
     type(/^Host/, "h");
     next();
@@ -42,7 +42,7 @@ describe("connect flow", () => {
 describe("invite flow", () => {
   it("needs a valid email, then sends with the role", async () => {
     const api = { invite: vi.fn().mockResolvedValue({ id: "u1" }), link: vi.fn().mockResolvedValue("https://x/invite") };
-    renderWithQuery(<InviteFlow roles={[{ key: "viewer", label: "Viewer" }]} api={api} />);
+    renderWithQuery(<InviteSteps roles={[{ key: "viewer", label: "Viewer" }]} api={api} />);
     expect(screen.getAllByText("Enter a valid email address.")[0]).toBeTruthy();
     type(/^Email/, "a@b.co");
     next();
@@ -90,7 +90,7 @@ describe("analysis flow", () => {
 describe("notify flow", () => {
   it("saves the chosen schedule", async () => {
     const save = vi.fn().mockResolvedValue(undefined);
-    renderWithQuery(<NotifyFlow save={save} />);
+    renderWithQuery(<NotifySteps save={save} />);
     type(/^Email/, "a@b.co");
     next();
     await screen.findByTestId("flow-step-what");

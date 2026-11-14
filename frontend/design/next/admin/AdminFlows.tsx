@@ -13,8 +13,8 @@ import { RulePromotion } from "@/design/v2/screens/RulePromotion";
 import { useV2Href } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { EmptyState, Skeleton, StepFlow, type FlowStep } from "../kit";
-import { ConnectFlow } from "../flows/ConnectFlow";
-import { InviteFlow } from "../flows/InviteFlow";
+import { ConnectSteps } from "../flows/ConnectSteps";
+import { InviteSteps } from "../flows/InviteSteps";
 import { LegacyMount } from "../shell/LegacyMount";
 
 export const ADMIN_FLOWS = ["connect", "users", "rules"] as const;
@@ -45,13 +45,13 @@ function UsersTask() {
   const q = useQuery({ queryKey: ["admin-flow-roles"], queryFn: listRoles });
   if (q.isPending) return <Skeleton lines={4} />;
   if (q.isError || !q.data.length) return <EmptyState heading={t("No roles could be read.")} />;
-  return <InviteFlow roles={q.data.filter((r) => !r.legacy).map((r) => ({ key: r.key, label: r.name }))} />;
+  return <InviteSteps roles={q.data.filter((r) => !r.legacy).map((r) => ({ key: r.key, label: r.name }))} />;
 }
 
 function ConnectTask() {
   const q = useQuery({ queryKey: ["admin-flow-licence"], queryFn: getLicenceManifest });
   if (q.isPending) return <Skeleton lines={4} />;
-  return <ConnectFlow objects={q.data?.enabled_modules ?? []} />;
+  return <ConnectSteps objects={q.data?.enabled_modules ?? []} />;
 }
 
 /** Pick, dry-run and promote all live in RulePromotion; the flow adds the review gate and the way on. */
