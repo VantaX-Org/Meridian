@@ -613,25 +613,61 @@ async def update_system(
 @router.delete("/systems/{system_id}")
 async def delete_system(
     system_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
 ):
-    """Delete an SAP system and its credentials. Admin and Steward only."""
+    """Delete an SAP system and its credentials. Admin and Steward only.
+
+    Refused (409) while a migration run or wave points at the system, or a run on it is still in flight: deleting
+    it would orphan their history or fail half way. The refusal names what holds it."""
+    from sqlalchemy.exc import IntegrityError
+
+    from api.services.rbac import write_audit
+    from api.services.version_status import ENDED
+
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     result = await db.execute(
-        text("SELECT id FROM sap_systems WHERE id = :sid AND tenant_id = :tid"),
+        text("SELECT id, name, system_type FROM sap_systems WHERE id = :sid AND tenant_id = :tid"),
         {"sid": system_id, "tid": str(tenant.id)},
     )
-    if not result.fetchone():
+    found = result.fetchone()
+    if not found:
         raise HTTPException(status_code=404, detail="System not found")
 
+    p = {"sid": system_id, "tid": str(tenant.id)}
+    runs = [str(r[0]) for r in (await db.execute(text(
+        "SELECT id FROM migration_runs WHERE tenant_id = :tid AND (source_system_id = :sid OR dest_system_id = :sid) "
+        "ORDER BY created_at DESC LIMIT 20"), p)).fetchall()]
+    waves = [r[0] for r in (await db.execute(text(
+        "SELECT name FROM migration_waves WHERE tenant_id = :tid "
+        "AND (source_system_id = :sid OR target_system_id = :sid) ORDER BY name LIMIT 20"), p)).fetchall()]
+    ended = ", ".join(repr(s) for s in ENDED)
+    jobs = [str(r[0]) for r in (await db.execute(text(
+        f"SELECT id FROM analysis_versions WHERE tenant_id = :tid AND metadata->>'system_id' = :sid "
+        f"AND status NOT IN ({ended}) LIMIT 20"), p)).fetchall()]
+    if runs or waves or jobs:
+        parts = ([f"{len(runs)} migration run(s) ({', '.join(runs[:5])})"] if runs else []) + \
+                ([f"{len(waves)} wave(s) ({', '.join(waves[:5])})"] if waves else []) + \
+                ([f"{len(jobs)} active job(s) ({', '.join(jobs[:5])})"] if jobs else [])
+        raise HTTPException(status_code=409, detail={
+            "message": "This system is still in use by " + "; ".join(parts)
+                       + ". Remove or reassign them, or wait for the jobs to finish, then delete it.",
+            "runs": runs, "waves": waves, "active_jobs": jobs})
+
     # CASCADE will handle credentials and profiles
-    await db.execute(
-        text("DELETE FROM sap_systems WHERE id = :sid AND tenant_id = :tid"),
-        {"sid": system_id, "tid": str(tenant.id)},
-    )
+    try:
+        await db.execute(
+            text("DELETE FROM sap_systems WHERE id = :sid AND tenant_id = :tid"),
+            {"sid": system_id, "tid": str(tenant.id)},
+        )
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="This system is still referenced by other records.")
+    await write_audit(db, tenant.id, request, "delete", "sap_system", system_id,
+                      {"name": found[1], "system_type": found[2]}, None)
     await db.commit()
     return {"status": "deleted"}
 
