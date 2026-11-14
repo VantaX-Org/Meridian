@@ -188,9 +188,14 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
     engine = get_sync_engine()
     with Session(engine) as session:
         session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-        session.execute(text("UPDATE migration_runs SET status = 'running', started_at = now() WHERE id = :rid"),
-                        {"rid": run_id})
+        # Claim the run. A redelivered message must not revive a run the reaper failed or a run
+        # already exported; re-running an analysed run stays allowed because it is idempotent.
+        claimed = session.execute(text(
+            "UPDATE migration_runs SET status = 'running', started_at = now() "
+            "WHERE id = :rid AND status NOT IN ('failed', 'exported') RETURNING id"), {"rid": run_id}).first()
         session.commit()
+        if not claimed:
+            return {"run_id": run_id, "status": "skipped"}
         try:
             if mode == "source_to_source":
                 return _finish(session, run_id, "analysed", None, {})

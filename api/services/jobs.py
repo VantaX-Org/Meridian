@@ -286,6 +286,17 @@ def list_jobs(tenant_id: str, *, active_only: bool = False, limit: int = 50, str
         return []
 
 
+def ensure_no_extraction(tenant_id: str, system_id: str) -> None:
+    """Refuse a new download while one is queued or running on the same system (409). The worker would only exit
+    ``system_busy`` and fail the new job. An unreadable registry lets the request through: the worker's system lock
+    still holds the line."""
+    from fastapi import HTTPException
+
+    active = list_jobs(tenant_id, active_only=True, limit=INDEX_KEEP)
+    if any(j.get("kind") == "extraction" and str(j.get("system_id")) == str(system_id) for j in active):
+        raise HTTPException(status_code=409, detail="A download is already running on this system.")
+
+
 def mirror_progress(progress_key: str, payload: dict) -> None:
     """Reflect an ``update_task_progress`` write onto the job registered for it."""
     client = _redis_client()
