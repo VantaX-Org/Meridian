@@ -42,6 +42,7 @@ from api.services.z_object_intelligence.serializers import (
     finding_to_response,
     profile_to_response,
 )
+from api.services.rbac import scope_from_path
 
 router = APIRouter(prefix="/api/v1/z-objects", tags=["z-object-intelligence"])
 logger = logging.getLogger("meridian.z_object_intelligence")
@@ -115,7 +116,7 @@ async def detect_latest(
 # 2. GET /registry — Z-Object Registry list
 # ------------------------------------------------------------------
 
-@router.get("/registry", response_model=ZRegistryListResponse)
+@router.get("/registry", response_model=ZRegistryListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_registry(
     module: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
@@ -135,7 +136,7 @@ async def list_registry(
 # 3. GET /registry/{z_id} — single Z object detail
 # ------------------------------------------------------------------
 
-@router.get("/registry/{z_id}", response_model=ZRegistryEntryResponse)
+@router.get("/registry/{z_id}", response_model=ZRegistryEntryResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_registry_entry(
     z_id: str,
     db: AsyncSession = Depends(get_db),
@@ -175,7 +176,7 @@ async def update_registry_entry(
 # 5. GET /profile/{z_id} — latest profile for a Z object
 # ------------------------------------------------------------------
 
-@router.get("/profile/{z_id}", response_model=ZProfileResponse)
+@router.get("/profile/{z_id}", response_model=ZProfileResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_profile(
     z_id: str,
     db: AsyncSession = Depends(get_db),
@@ -201,7 +202,7 @@ async def get_profile(
 # 6. GET /anomalies — active anomalies
 # ------------------------------------------------------------------
 
-@router.get("/anomalies", response_model=ZAnomalyListResponse)
+@router.get("/anomalies", response_model=ZAnomalyListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_anomalies(
     run_id: Optional[str] = Query(None),
     status: Optional[str] = Query("active"),
@@ -253,7 +254,7 @@ async def submit_anomaly_feedback(
 # 8. GET /ghost — ghost Z objects
 # ------------------------------------------------------------------
 
-@router.get("/ghost", response_model=list[ZGhostResponse])
+@router.get("/ghost", response_model=list[ZGhostResponse], dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_ghost_z_objects(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -278,7 +279,7 @@ async def list_ghost_z_objects(
 # 9. GET /dormant — dormant Z objects
 # ------------------------------------------------------------------
 
-@router.get("/dormant", response_model=list[ZDormantResponse])
+@router.get("/dormant", response_model=list[ZDormantResponse], dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_dormant_z_objects(
     months: int = Query(6),
     db: AsyncSession = Depends(get_db),
@@ -303,7 +304,7 @@ async def list_dormant_z_objects(
 # 10. GET /drift — new Z objects since last run
 # ------------------------------------------------------------------
 
-@router.get("/drift", response_model=list[ZDriftResponse])
+@router.get("/drift", response_model=list[ZDriftResponse], dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_z_drift(
     run_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
@@ -328,7 +329,7 @@ async def list_z_drift(
 # 11. GET /rules — templates + custom rules
 # ------------------------------------------------------------------
 
-@router.get("/rules", response_model=ZRuleListResponse)
+@router.get("/rules", response_model=ZRuleListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_rules(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -378,7 +379,7 @@ async def create_custom_rule(
 # 13. GET /report — comprehensive Z governance report
 # ------------------------------------------------------------------
 
-@router.get("/report", response_model=dict)
+@router.get("/report", response_model=dict, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_z_report(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -421,7 +422,7 @@ async def get_z_report(
 # 14. GET /mapping — standard equivalent mappings
 # ------------------------------------------------------------------
 
-@router.get("/mapping", response_model=ZMappingListResponse)
+@router.get("/mapping", response_model=ZMappingListResponse, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_mappings(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),

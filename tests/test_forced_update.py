@@ -23,3 +23,27 @@ def test_decide():
     assert decide("1.2.0", "1.1.9", True, MON_3AM, "Sun 02:00-04:00", False) == "go"
     assert decide("1.2.0", "1.1.9", True, MON_3AM, "", True) == "wait_jobs"
     assert decide("1.2.0", "1.1.9", False, SUN_3AM, "Sun 02:00-04:00", False) == "go"
+
+
+def test_busy_counts_any_other_task_and_fails_closed(monkeypatch):
+    from workers.tasks import forced_update
+
+    def replies(active):
+        class _Inspect:
+            def active(self):
+                if isinstance(active, Exception):
+                    raise active
+                return active
+        monkeypatch.setattr(forced_update.celery_app.control, "inspect", lambda timeout: _Inspect())
+
+    replies({"w1": [{"id": "me", "name": "forced_update_check"}]})
+    assert not forced_update._busy("me")
+    for name in ("run_sync", "run_cleaning", "run_migration", "run_comparison", "run_reconciliation"):
+        replies({"w1": [{"id": "me"}], "w2": [{"id": "x", "name": name}]})
+        assert forced_update._busy("me"), name
+    replies(None)  # no worker answered
+    assert forced_update._busy("me")
+    replies({})
+    assert forced_update._busy("me")
+    replies(ConnectionError("broker down"))
+    assert forced_update._busy("me")

@@ -56,7 +56,8 @@ def _client(db: _DB, monkeypatch, uid=str(UID)) -> TestClient:
 
     api.dependency_overrides[get_db] = _db
     api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.uuid4(), "D", [])
-    return TestClient(api)
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")  # the route's view guard; viewer holds view
+    return TestClient(api, headers={"X-User-Role": "viewer"})
 
 
 def test_get_returns_stored_document(monkeypatch):
