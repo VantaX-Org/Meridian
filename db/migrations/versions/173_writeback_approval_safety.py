@@ -1,7 +1,7 @@
 """Write-back approval safety: frozen snapshot, system id, lifecycle and expiry
 
 Revision ID: 173
-Revises: 166
+Revises: 167
 Create Date: 2026-11-13
 
 write_back_log (single finding write-back): the submit stores the exact fix rows it asks approval for
@@ -19,7 +19,7 @@ from typing import Sequence, Union
 from alembic import op
 
 revision: str = "173"
-down_revision: Union[str, None] = "166"
+down_revision: Union[str, None] = "167"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
