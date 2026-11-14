@@ -9,8 +9,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button, DropZone, StatCard } from "@/design/next/kit";
 import { fixtureActive } from "@/lib/api/v2/fixture";
 import { fixtureUpload } from "@/lib/api/next/runs-fixture";
-import { checksOf, needsParent, uploadCleaned, uploadSentence, type RoundTripResult } from "@/lib/api/v2/roundtrip";
+import { checksOf, needsParent, rejectedCsv, uploadCleaned, uploadFix, uploadRows, uploadSentence, type RejectedRow, type RoundTripResult } from "@/lib/api/v2/roundtrip";
 import { checkSentence, checkWorkbook, holdReason, staleRun, STATUS_SENTENCE, worstOf, type UploadCheck, type UploadChecks } from "@/lib/api/v2/upload-checks";
+import { downloadCsv } from "@/lib/v2/grid-export";
 import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
@@ -26,6 +27,50 @@ interface Item {
   result?: RoundTripResult;
   checks?: UploadCheck[];
   error?: string;
+  /** What to do about the error, when the API says. */
+  fix?: string;
+  /** Rows of a rejected upload that matched nothing. */
+  rows?: RejectedRow[];
+}
+
+/** Rows shown on screen; the download holds every listed row. */
+const SHOWN_ROWS = 20;
+
+function RejectedRows({ rows, name }: { rows: RejectedRow[]; name: string }) {
+  if (rows.length === 0) return null;
+  return (
+    <div className="nx-stack" data-testid="rejected-rows">
+      <div className="nx-table-scroll">
+        <table className="nx-table">
+          <caption>{t("Rows that matched nothing in {file}", { file: name })}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{t("Sheet")}</th>
+              <th scope="col">{t("Row")}</th>
+              <th scope="col">{t("Record key")}</th>
+              <th scope="col">{t("Field")}</th>
+              <th scope="col">{t("Reason")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.slice(0, SHOWN_ROWS).map((r, i) => (
+              <tr key={`${r.sheet}-${r.row}-${i}`}>
+                <td>{r.sheet}</td>
+                <td className="nx-num">{r.row ? int(r.row) : ""}</td>
+                <td className="nx-mono">{r.key}</td>
+                <td className="nx-mono">{r.table && r.field ? `${r.table}.${r.field}` : r.field || r.table}</td>
+                <td>{r.reason}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {rows.length > SHOWN_ROWS ? <p className="nx-muted">{t("Showing {n} of {total} rows. The download has them all.", { n: SHOWN_ROWS, total: int(rows.length) })}</p> : null}
+      <Button variant="secondary" size={32} icon="download" onClick={() => downloadCsv(`${name.replace(/\.[^.]+$/, "")}-rejected-rows`, rejectedCsv(rows))}>
+        {t("Download the rejected rows")}
+      </Button>
+    </div>
+  );
 }
 
 /** Per-check pass, warn or fail list for one file. */
@@ -58,7 +103,7 @@ export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; uplo
   const [items, setItems] = useState<Item[]>([]);
   const [parent, setParent] = useState<string>("");
   const [confirm, setConfirm] = useState(false);
-  const send = upload ?? ((f: File, p?: string, w?: boolean) => (fixtureActive() ? Promise.resolve(fixtureUpload(f.name)) : uploadCleaned(f, p, w)));
+  const send = upload ?? ((f: File, p?: string, w?: boolean) => (fixtureActive() ? Promise.resolve(fixtureUpload(f.name)) : uploadCleaned(f, p, o.module, w)));
   const busy = items.some((i) => i.state === "uploading");
   const ready = items.filter((i) => i.state === "ready" || i.state === "parent");
   const failed = items.some((i) => worstOf(i.checks) === "fail");
@@ -68,14 +113,14 @@ export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; uplo
 
   const patch = (file: File, p: Partial<Item>) => setItems((cur) => cur.map((c) => (c.file === file ? { ...c, ...p } : c)));
   const verify = async (file: File, p?: string) => {
-    patch(file, { state: "checking", error: undefined });
+    patch(file, { state: "checking", error: undefined, fix: undefined, rows: undefined });
     try {
-      const r: UploadChecks = await checkWorkbook(file, p);
+      const r: UploadChecks = await checkWorkbook(file, p, o.module);
       patch(file, { state: "ready", checks: r.checks });
     } catch (e) {
       const c = checksOf(e);
       const need = needsParent(e);
-      patch(file, { state: need ? "parent" : c ? "ready" : "failed", checks: c?.checks, error: c ? undefined : need ? undefined : uploadSentence(e, t("The workbook could not be read.")) });
+      patch(file, { state: need ? "parent" : c ? "ready" : "failed", checks: c?.checks, error: c ? undefined : need ? undefined : uploadSentence(e, t("The workbook could not be read.")), fix: c || need ? undefined : uploadFix(e) });
     }
   };
   const add = (files: File[]) => {
@@ -88,7 +133,7 @@ export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; uplo
   const run = async (): Promise<string | null> => {
     let refusal: string | null = null;
     for (const it of ready) {
-      setItems((cur) => cur.map((c) => (c === it ? { ...c, state: "uploading", error: undefined } : c)));
+      setItems((cur) => cur.map((c) => (c === it ? { ...c, state: "uploading", error: undefined, fix: undefined, rows: undefined } : c)));
       try {
         const result = await send(it.file, it.state === "parent" ? parent || undefined : undefined, warned && confirm);
         setItems((cur) => cur.map((c) => (c.file === it.file ? { ...c, state: "done", result } : c)));
@@ -97,7 +142,7 @@ export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; uplo
         const c = checksOf(e);
         const stale = staleRun(e);
         refusal = stale?.sentence ?? uploadSentence(e, t("The workbook could not be read."));
-        setItems((cur) => cur.map((x) => (x.file === it.file ? { ...x, state: p ? "parent" : c ? "ready" : "failed", checks: c?.checks ?? x.checks, error: c ? undefined : refusal ?? undefined } : x)));
+        setItems((cur) => cur.map((x) => (x.file === it.file ? { ...x, state: p ? "parent" : c ? "ready" : "failed", checks: c?.checks ?? x.checks, error: c ? undefined : refusal ?? undefined, fix: c ? undefined : uploadFix(e), rows: c ? undefined : uploadRows(e) } : x)));
       }
     }
     void qc.invalidateQueries({ queryKey: ["next"] });
@@ -142,6 +187,8 @@ export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; uplo
               </span>
               {it.checks ? <CheckList checks={it.checks} /> : null}
               {it.error ? <p role="alert" className="nx-error-line">{it.error}</p> : null}
+              {it.fix ? <p className="nx-note" data-testid="upload-fix">{it.fix}</p> : null}
+              {it.rows ? <RejectedRows rows={it.rows} name={it.file.name} /> : null}
               {it.state !== "uploading" ? (
                 <Button variant="quiet" size={32} onClick={() => setItems((cur) => cur.filter((c) => c !== it))} aria-label={t("Remove {file}", { file: it.file.name })}>{t("Remove")}</Button>
               ) : null}
@@ -193,6 +240,7 @@ export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; uplo
               {done.flatMap((i) => (i.result?.no_field ?? []).map((x) => <li key={`f-${x}`}>{t("No field called {name} in the run", { name: x })}</li>))}
             </ul>
           </details>
+          {done.map((i) => (i.result?.unmatched_rows?.length ? <RejectedRows key={`r-${i.file.name}`} rows={i.result.unmatched_rows} name={i.file.name} /> : null))}
           {onGate ? null : <Button variant="secondary" onClick={onScored}>{t("See what changed")}</Button>}
         </div>
       ) : null}

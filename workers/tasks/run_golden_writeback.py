@@ -54,6 +54,15 @@ def run(session: Any, tenant_id: str, request_id: str, mode: str) -> dict:
     if not row:
         return {"skipped": True, "reason": f"request is not {claim_from}"}
     targets, domain, obj_key, requested_by, approved_by, record_id = row
+    from api.middleware.licence import licensed_modules_of
+    if not licensed_modules_of([domain]):  # nothing was sent: the claim is released with the reason
+        session.execute(text(
+            "UPDATE golden_writeback_requests SET status = :st, error = :err, updated_at = now() "
+            "WHERE id = :id AND tenant_id = :t AND status = :claimed"),
+            {"id": request_id, "t": tenant_id, "st": "failed" if mode == "apply" else "simulation_failed",
+             "err": f"The licence does not cover {domain}", "claimed": claim_to})
+        session.commit()
+        return {"skipped": True, "reason": "not licensed"}
 
     apply = mode == "apply"
     try:

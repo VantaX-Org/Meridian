@@ -300,6 +300,10 @@ def _clear_deliveries(task_id: str | None) -> None:
         logger.warning(f"run_checks delivery counter not cleared: {e}")
 
 
+class LicenceWithdrawn(RuntimeError):
+    """The licence does not (or no longer) entitle a module of the run."""
+
+
 def _mark_failed(engine: Engine, tenant_id: str, version_id: str, error: str) -> None:
     """Record a failed check run on the version, its run step and its live progress.
 
@@ -618,6 +622,16 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         only = (metadata.get("analysis_options") or {}).get("modules")
         if only:
             modules = [m for m in modules if m in only]
+        # every entry point (analyse route, drift alert, extraction, sync, schedule) checks only what the
+        # licence entitles now: a narrowed licence never re-checks a module it no longer covers
+        from api.middleware.licence import licensed_modules_of
+        licensed = licensed_modules_of(modules)
+        if modules and not licensed:
+            raise LicenceWithdrawn(f"No module of this run is licensed: {', '.join(modules)}")
+        if len(licensed) < len(modules):
+            logger.warning(f"run_checks {version_id}: unlicensed modules not checked: "
+                           f"{sorted(set(modules) - set(licensed))}")
+        modules = licensed
         tenant_weights = (tenant_row[0] if tenant_row else None) or {}
         cost_model = (tenant_row[1] if tenant_row else None) or {}
 
@@ -858,6 +872,11 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 trackers.pop(module_name, None)  # its clean-record figure comes from the checkpoint
                 logger.info(f"Resumed checks for module {module_name} from the checkpoint")
                 continue
+            # a licence withdrawn mid-run: the modules already checked stay checkpointed (the version
+            # ends partial), this one never starts; a module is never cut off part way through its writes
+            if idx and not licensed_modules_of([module_name]):
+                raise LicenceWithdrawn(f"The licence no longer covers {module_name}: the run stopped after "
+                                       f"the modules it had finished")
             logger.info(f"Running checks for module: {module_name}")
             self.update_state(state='PROGRESS', meta={
                 'stage': 'checking',

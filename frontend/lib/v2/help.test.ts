@@ -241,3 +241,15 @@ describe("the support block", () => {
     expect(diagnosticsRef({ ...diag, screen: "/work" })).not.toBe(diagnosticsRef(diag));
   });
 });
+
+describe("the next More addresses", () => {
+  it.each([
+    ["/more/admin/flow/connect", "v2:systems"],
+    ["/more/admin/flow/users", "v2:administration"],
+    ["/more/admin/flow/rules", "v2:rules"],
+    ["/more/rules", "v2:administration"],
+  ])("%s opens %s", (p, id) => {
+    expect(chapterFor(p)).toBe(id);
+    expect(byId(id)).toBeDefined();
+  });
+});

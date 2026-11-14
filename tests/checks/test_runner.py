@@ -153,3 +153,16 @@ def test_a_small_population_is_judged_on_its_merits():
     assert _unmaintained(rule, _R(49, 49)) is False, "below the floor"
     assert _unmaintained(rule, _R(50, 50)) is True, "at the floor"
     assert _unmaintained(rule, _R(5728652, 5728702)) is True, "the real material_master case"
+
+
+def test_a_wholly_blank_high_or_critical_field_is_not_filed_as_unmaintained():
+    """Only a low or medium presence check is "nothing to judge" when blank everywhere. A high
+    field blank in every record stays a failing rule, in the score and in the coverage."""
+    from checks.runner import _unmaintained
+
+    class _R:
+        error = None
+        affected_count = total_count = 1000
+
+    for severity, expected in (("low", True), ("medium", True), ("high", False), ("critical", False)):
+        assert _unmaintained({"check_class": "null_check", "severity": severity}, _R()) is expected, severity

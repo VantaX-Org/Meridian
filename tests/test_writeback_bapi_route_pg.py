@@ -14,14 +14,18 @@ from sqlalchemy import create_engine, text
 from api import deps as api_deps
 from api.main import app
 from tests.route_auth import patch_tenant
+from api.routes.writeback import fixes_sha256
 from tests.test_bapi_writeback import FakeRFC
+from tests.test_writeback_safety import ReadRFC
 
 pytestmark = pytest.mark.skipif(not os.getenv("MERIDIAN_TEST_DB_URL"), reason="requires MERIDIAN_TEST_DB_URL")
 
 HEADERS = {"X-User-Role": "admin", "Authorization": "Bearer test-token"}
 KEY = "MATNR=000000000000000042|WERKS=1000"
-FIXES = [{"auto_fix": True, "record_key": KEY, "field": "MARC.PLIFZ", "proposed_value": "12"},
-         {"auto_fix": True, "record_key": KEY, "field": "MARC.NFMAT", "proposed_value": "X1"}]
+FIXES = [{"auto_fix": True, "record_key": KEY, "field": "MARC.PLIFZ", "invalid_value": "0",
+          "proposed_value": "12"},
+         {"auto_fix": True, "record_key": KEY, "field": "MARC.NFMAT", "invalid_value": "",
+          "proposed_value": "X1"}]
 
 
 @pytest.fixture
@@ -84,11 +88,13 @@ async def test_approval_simulates_commits_and_records_return_per_record(finding,
     aid = str(uuid.uuid4())
     with engine.begin() as c:
         c.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": tid})
+        # a pending request as the submit stores it: the finding's fix rows frozen, with their hash and system
         c.execute(text("INSERT INTO write_back_log (id, tenant_id, finding_id, requested_by, records_updated, dry_run, "
-                       "sap_host) VALUES (:a, :t, :f, 'another-user', 2, false, 'sap-host')"),
-                  {"a": aid, "t": tid, "f": fid})
+                       "sap_host, system_id, record_fixes, fixes_sha256, status) VALUES (:a, :t, :f, 'another-user', "
+                       "2, false, 'sap-host', CAST(:s AS uuid), CAST(:r AS jsonb), :sha, 'pending')"),
+                  {"a": aid, "t": tid, "f": fid, "s": sid, "r": json.dumps(FIXES), "sha": fixes_sha256(FIXES)})
 
-    fake = FakeRFC(testrun=True)
+    fake = ReadRFC({"MARC.PLIFZ": "0"})  # SAP still holds the value the fix was based on
 
     class _Conn(FakeRFC):
         def __enter__(self):

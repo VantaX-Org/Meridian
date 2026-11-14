@@ -24,6 +24,10 @@ logger = logging.getLogger("meridian.worker.cleaning")
 def run_cleaning(self, version_id: str, tenant_id: str, object_type: str, parquet_path: str):
     """Detect cleaning candidates for a completed analysis run."""
     logger.info(f"run_cleaning started: version_id={version_id}, object_type={object_type}")
+    from api.middleware.licence import licensed_modules_of
+    if not licensed_modules_of([object_type]):
+        logger.warning(f"run_cleaning {version_id}: {object_type} is not licensed, nothing detected")
+        return {"version_id": version_id, "candidates": 0, "skipped": "not licensed"}
 
     try:
         # Load the module's records (flat upload or extraction bundle)

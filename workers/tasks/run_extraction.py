@@ -258,6 +258,16 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
         if prior and prior.get("status") not in jobs.ACTIVE:
             # Cancelled while queued, or a late redelivery of a run that already finished: nothing to do.
             return {"version_id": str(version_id), "status": prior.get("status")}
+    if purpose is None:  # a process-discovery download is licence-checked by its L1 before it is queued
+        from api.middleware.licence import licensed_modules_of
+        held = licensed_modules_of(modules)
+        if not held:
+            logger.warning("extraction of %s refused: the licence covers none of these modules", modules)
+            if version_id:
+                jobs.finish_job(tenant_id, f"dl-{version_id}", "failed",
+                                error="The licence does not cover the requested objects")
+            return {"version_id": str(version_id), "status": "not_licensed"}
+        modules = held
     if version_id and not _acquire_version_lock(str(version_id)):
         logger.warning(
             "extraction for version %s is already running (redelivered after a restart); "

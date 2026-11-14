@@ -14,6 +14,7 @@ import { Button, Confirm, EmptyState, ErrorState, SegmentedControl, Skeleton, Ta
 import { BulkBar, type PortfolioActions } from "../portfolio/BulkBar";
 import { Cards } from "../portfolio/Cards";
 import { CompareObjects } from "../portfolio/CompareObjects";
+import { LiveRuns } from "../live/LiveRuns";
 import { StatRow } from "../portfolio/StatRow";
 import { Table } from "../portfolio/Table";
 import { UploadPanel } from "../panels/UploadPanel";
@@ -123,6 +124,8 @@ export function Portfolio() {
         </div>
         <V2Link className="nx-btn nx-btn-quiet nx-btn-sm" href="/">{t("Landscape map")}</V2Link>
       </header>
+
+      <LiveRuns />
 
       <StatRow rows={all.data?.objects ?? []} loading={all.isLoading} />
 

@@ -146,6 +146,19 @@ async def _items(db: AsyncSession, batch_id) -> list[dict]:
 
 _auto_approvable = remediation.auto_approvable
 
+# An approval holds this long; a batch approved earlier is sent back and approved again before it goes to SAP.
+APPROVAL_TTL_DAYS = 7
+
+
+def items_sha256(items: list[dict]) -> str:
+    """Hash of the changes an approver signs: every item with a field and a value (the ones a send can carry), by
+    module, record, field, proposed and current value. A send whose items hash differently is refused."""
+    rows = sorted([str(i.get("module") or ""), str(i.get("record_key") or ""), str(i.get("field") or ""),
+                   json.dumps(i.get("proposed_value"), sort_keys=True, default=str),
+                   json.dumps(i.get("current_value"), sort_keys=True, default=str)]
+                  for i in items if i.get("field") and remediation.has_value(i.get("proposed_value")))
+    return hashlib.sha256(json.dumps(rows).encode()).hexdigest()
+
 
 async def _tell_owners(db: AsyncSession, tenant: Tenant, batch_id) -> list:
     """The batch waits for approval: its objects' owners and their deputies are told (inbox and email), once per
@@ -485,9 +498,17 @@ async def approve_batch(
                 "workflow": _workflow_summary(res["instance"])}
     rec = undo.Recorder()
     rec.batch = await undo.batch_snapshot(db, tenant, batch_id, "approved")
-    await db.execute(text("UPDATE remediation_batches SET status = 'approved', approved_by = CAST(:uid AS uuid), "
-                          "approved_by_label = :label, approved_at = now() WHERE id = :id"),
-                     {"uid": uid, "label": current_user_label(), "id": batch_id})
+    # the claim: only one approval moves the batch out of draft; a second one, at the same moment, gets 409
+    claimed = (await db.execute(text(
+        "UPDATE remediation_batches SET status = 'approved', approved_by = CAST(:uid AS uuid), "
+        "approved_by_label = :label, approved_at = now(), approved_sha256 = :sha "
+        "WHERE id = :id AND tenant_id = :tid AND status = 'draft' RETURNING id"),
+        {"uid": uid, "label": current_user_label(), "id": batch_id, "tid": str(tenant.id),
+         "sha": items_sha256(items)})).fetchone()
+    if not claimed:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="This batch was approved or changed by someone else a moment ago; "
+                                                    "reload it.")
     await _event(db, tenant, batch_id, "approved", request)
     if blank:  # the approver saw them and approved the rest: each held-out change keeps that in its trail
         await _event(db, tenant, batch_id, "held_out", request, item_ids=[i["id"] for i in blank], to_value="no value")
@@ -613,6 +634,7 @@ async def send_back_batch(
                                                  current_user_label(), note))
     await db.execute(text("""
         UPDATE remediation_batches SET status = 'draft', approved_by = NULL, approved_by_label = NULL, approved_at = NULL,
+               approved_sha256 = NULL,
                filter = COALESCE(filter, '{}'::jsonb) || jsonb_build_object('returned', jsonb_build_object(
                           'by', CAST(:label AS text), 'note', CAST(:note AS text), 'at', to_jsonb(now())))
          WHERE id = :id AND tenant_id = :tid"""),

@@ -534,10 +534,11 @@ def build_workbook(
 
 
 def xlsx_response(data: bytes, filename: str) -> Response:
-    """Wrap workbook bytes in a download response with the spreadsheet media type."""
+    """Wrap workbook bytes in a download response with the spreadsheet media type (zip for a split download)."""
     return Response(
         content=data,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        media_type="application/zip" if filename.endswith(".zip")
+        else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
