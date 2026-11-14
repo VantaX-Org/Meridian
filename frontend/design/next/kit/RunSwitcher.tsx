@@ -15,6 +15,8 @@ export interface RunOption {
   parentNumber?: number;
   dateLabel: string;
   dqs?: string;
+  /** Record count already formatted, "12,480". */
+  records?: string;
   chips?: Array<Pick<ChipProps, "tone" | "count"> & { label: string }>;
 }
 
@@ -49,7 +51,7 @@ export function RunSwitcher({ runs, value, onChange, onCompare, onMore, moreLabe
   const cur = sorted.find((r) => r.id === value);
   const list = useMemo(() => {
     const n = q.trim().toLowerCase();
-    return n ? sorted.filter((r) => `${runSentence(r)} ${r.kind} ${STATUS[r.status]()} ${r.dqs ?? ""}`.toLowerCase().includes(n)) : sorted;
+    return n ? sorted.filter((r) => `${runSentence(r)} ${r.kind} ${STATUS[r.status]()} ${r.dqs ?? ""} ${r.records ?? ""} ${r.dateLabel}`.toLowerCase().includes(n)) : sorted;
   }, [sorted, q]);
   const rows = onCompare ? list.length + 1 : list.length;
 
@@ -156,6 +158,8 @@ export function RunSwitcher({ runs, value, onChange, onCompare, onMore, moreLabe
                   {r.parentNumber !== undefined ? <span className="nx-runsw-parent">{t("from run {n}", { n: r.parentNumber })}</span> : null}
                   <span className="nx-runsw-date">{r.dateLabel}</span>
                   {r.dqs ? <span className="nx-runsw-dqs">{t("DQS {score}", { score: r.dqs })}</span> : null}
+                  {r.records ? <span className="nx-runsw-records">{t("{n} records", { n: r.records })}</span> : null}
+                  {i === 0 && !q.trim() ? <Chip tone="accent">{t("Latest")}</Chip> : null}
                 </div>
                 {r.chips?.length ? (
                   <div className="nx-runsw-chips">

@@ -9,7 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button, DropZone, StatCard } from "@/design/next/kit";
 import { fixtureActive } from "@/lib/api/v2/fixture";
 import { fixtureUpload } from "@/lib/api/next/runs-fixture";
-import { needsParent, uploadCleaned, uploadSentence, type RoundTripResult } from "@/lib/api/v2/roundtrip";
+import { checkCleaned, checksOf, needsParent, uploadCleaned, uploadSentence, type CheckId, type RoundTripResult, type UploadCheck, type UploadChecks } from "@/lib/api/v2/roundtrip";
 import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
@@ -21,39 +21,87 @@ const ACCEPT = ".xlsx,.xlsm,.csv";
 
 interface Item {
   file: File;
-  state: "ready" | "too-big" | "wrong-type" | "uploading" | "done" | "failed" | "parent";
+  state: "checking" | "ready" | "too-big" | "wrong-type" | "uploading" | "done" | "failed" | "parent";
   result?: RoundTripResult;
+  checks?: UploadCheck[];
   error?: string;
+}
+
+/** One plain sentence per check id; the API detail (ids and counts only) follows it. */
+const CHECK_LABEL: Record<CheckId, () => string> = {
+  fingerprint: () => t("Made by Meridian for this object"),
+  run: () => t("Made from this run, and the run is still the latest"),
+  template: () => t("Template version is current"),
+  columns: () => t("Required columns are present and not renamed"),
+  rows: () => t("No rows added or removed"),
+  keys: () => t("Key values exist in the run"),
+  values: () => t("Values fit the field types and lengths"),
+  formulas: () => t("No formulas in edited cells"),
+};
+const STATUS_LABEL = { pass: () => t("Passed"), warn: () => t("Warning"), fail: () => t("Failed") } as const;
+const worst = (cs?: UploadCheck[]) => (cs?.some((c) => c.status === "fail") ? "fail" : cs?.some((c) => c.status === "warn") ? "warn" : "pass");
+
+/** Per-check pass, warn or fail list for one file. */
+export function CheckList({ checks }: { checks: UploadCheck[] }) {
+  return (
+    <ul className="nx-checks" aria-label={t("Checks on this workbook")} data-testid="check-list">
+      {checks.map((c) => (
+        <li key={c.id} data-status={c.status} data-testid={`check-${c.id}`}>
+          <span className="nx-checks-state">{STATUS_LABEL[c.status]()}</span>
+          <span>{CHECK_LABEL[c.id]?.() ?? c.id}</span>
+          {c.detail ? <span className="nx-muted">{c.detail}</span> : null}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 const okType = (f: File) => /\.(xlsx|xlsm|csv)$/i.test(f.name);
 const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
 
-export function UploadStep({ o, upload, onScored }: { o: ObjectRun; upload?: (file: File, parent?: string) => Promise<RoundTripResult>; onScored: () => void }) {
+export function UploadStep({ o, upload, onScored }: { o: ObjectRun; upload?: (file: File, parent?: string, confirmWarnings?: boolean) => Promise<RoundTripResult>; onScored: () => void }) {
   const can = useV2Session().can("analyse");
   const qc = useQueryClient();
   const [items, setItems] = useState<Item[]>([]);
   const [parent, setParent] = useState<string>("");
-  const send = upload ?? ((f: File, p?: string) => (fixtureActive() ? Promise.resolve(fixtureUpload(f.name)) : uploadCleaned(f, p)));
+  const [confirm, setConfirm] = useState(false);
+  const send = upload ?? ((f: File, p?: string, w?: boolean) => (fixtureActive() ? Promise.resolve(fixtureUpload(f.name)) : uploadCleaned(f, p, w)));
   const busy = items.some((i) => i.state === "uploading");
   const ready = items.filter((i) => i.state === "ready" || i.state === "parent");
+  const failed = items.some((i) => worst(i.checks) === "fail");
+  const warned = !failed && items.some((i) => i.state !== "done" && worst(i.checks) === "warn");
+  const checking = items.some((i) => i.state === "checking");
   const askParent = items.some((i) => i.state === "parent");
 
-  const add = (files: File[]) =>
-    setItems((cur) => [
-      ...cur.filter((c) => c.state !== "done"),
-      ...files.map((file): Item => ({ file, state: !okType(file) ? "wrong-type" : file.size > MAX_BYTES ? "too-big" : "ready" })),
-    ]);
+  const patch = (file: File, p: Partial<Item>) => setItems((cur) => cur.map((c) => (c.file === file ? { ...c, ...p } : c)));
+  const verify = async (file: File, p?: string) => {
+    patch(file, { state: "checking", error: undefined });
+    try {
+      const r: UploadChecks = await checkCleaned(file, p);
+      patch(file, { state: "ready", checks: r.checks });
+    } catch (e) {
+      const c = checksOf(e);
+      const need = needsParent(e);
+      patch(file, { state: need ? "parent" : c ? "ready" : "failed", checks: c?.checks, error: c ? undefined : need ? undefined : uploadSentence(e, t("The workbook could not be read.")) });
+    }
+  };
+  const add = (files: File[]) => {
+    const next = files.map((file): Item => ({ file, state: !okType(file) ? "wrong-type" : file.size > MAX_BYTES ? "too-big" : "checking" }));
+    setConfirm(false);
+    setItems((cur) => [...cur.filter((c) => c.state !== "done"), ...next]);
+    next.filter((n) => n.state === "checking").forEach((n) => void verify(n.file));
+  };
 
   const run = async () => {
     for (const it of ready) {
       setItems((cur) => cur.map((c) => (c === it ? { ...c, state: "uploading", error: undefined } : c)));
       try {
-        const result = await send(it.file, it.state === "parent" ? parent || undefined : undefined);
+        const result = await send(it.file, it.state === "parent" ? parent || undefined : undefined, warned && confirm);
         setItems((cur) => cur.map((c) => (c.file === it.file ? { ...c, state: "done", result } : c)));
       } catch (e) {
         const p = needsParent(e);
-        setItems((cur) => cur.map((c) => (c.file === it.file ? { ...c, state: p ? "parent" : "failed", error: uploadSentence(e, t("The workbook could not be read.")) } : c)));
+        const c = checksOf(e);
+        setItems((cur) => cur.map((x) => (x.file === it.file ? { ...x, state: p ? "parent" : c ? "ready" : "failed", checks: c?.checks ?? x.checks, error: c ? undefined : uploadSentence(e, t("The workbook could not be read.")) } : x)));
       }
     }
     void qc.invalidateQueries({ queryKey: ["next"] });
@@ -79,12 +127,14 @@ export function UploadStep({ o, upload, onScored }: { o: ObjectRun; upload?: (fi
               <span className="nx-mono">{it.file.name}</span>
               <span className="nx-num nx-muted">{t("{mb} MB", { mb: mb(it.file.size) })}</span>
               <span className="nx-preflight-state">
-                {it.state === "ready" ? t("Ready to upload") : null}
+                {it.state === "checking" ? t("Checking the workbook") : null}
+                {it.state === "ready" ? (worst(it.checks) === "fail" ? t("Fix the failed checks and upload again.") : t("Ready to upload")) : null}
                 {it.state === "too-big" ? t("Larger than 25 MB; split the workbook and upload the parts.") : null}
                 {it.state === "wrong-type" ? t("Not an Excel or CSV file.") : null}
                 {it.state === "uploading" ? t("Uploading and reading") : null}
                 {it.state === "done" ? t("Read") : null}
               </span>
+              {it.checks ? <CheckList checks={it.checks} /> : null}
               {it.error ? <p role="alert" className="nx-error-line">{it.error}</p> : null}
               {it.state !== "uploading" ? (
                 <Button variant="quiet" size={32} onClick={() => setItems((cur) => cur.filter((c) => c !== it))} aria-label={t("Remove {file}", { file: it.file.name })}>{t("Remove")}</Button>
@@ -104,7 +154,12 @@ export function UploadStep({ o, upload, onScored }: { o: ObjectRun; upload?: (fi
           </select>
         </label>
       ) : null}
-      <Button variant="primary" icon="upload" loading={busy} loadingLabel={t("Uploading and scoring")} disabled={ready.length === 0 || (askParent && !parent)} reason={ready.length === 0 ? t("Add a workbook first.") : askParent && !parent ? t("Choose the run the workbook was made from.") : undefined} onClick={() => void run()}>
+      {warned ? (
+        <label className="nx-field-label" data-testid="confirm-warnings">
+          <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} /> {t("I have read the warnings and want to upload anyway.")}
+        </label>
+      ) : null}
+      <Button variant="primary" icon="upload" loading={busy} loadingLabel={t("Uploading and scoring")} disabled={ready.length === 0 || checking || failed || (warned && !confirm) || (askParent && !parent)} reason={ready.length === 0 ? t("Add a workbook first.") : checking ? t("Wait for the checks to finish.") : failed ? t("A check failed. Fix the workbook and add it again.") : warned && !confirm ? t("Confirm the warnings to continue.") : askParent && !parent ? t("Choose the run the workbook was made from.") : undefined} onClick={() => void run()}>
         {t("Upload and score")}
       </Button>
       {last ? (
