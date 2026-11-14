@@ -17,6 +17,8 @@ type ConfirmProps = {
   danger?: boolean;
   /** The phrase to type before the confirm button works (live systems). */
   phrase?: string;
+  /** Why the confirm button is off (an input in the consequence still needs filling); unset means it works. */
+  blocked?: string;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -26,7 +28,7 @@ export function Confirm(props: ConfirmProps) {
   return props.open ? <ConfirmBody {...props} /> : null;
 }
 
-function ConfirmBody({ title, consequence, confirmLabel, danger, phrase, onConfirm, onCancel }: ConfirmProps) {
+function ConfirmBody({ title, consequence, confirmLabel, danger, phrase, blocked, onConfirm, onCancel }: ConfirmProps) {
   const [typed, setTyped] = useState("");
   const box = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLElement | null>(null);
@@ -69,7 +71,7 @@ function ConfirmBody({ title, consequence, confirmLabel, danger, phrase, onConfi
         ) : null}
         <div className="nx-dialog-actions">
           <Button variant="quiet" onClick={onCancel} {...(phrase ? {} : { "data-autofocus": true })}>{t("Cancel")}</Button>
-          <Button variant={danger ? "danger" : "primary"} disabled={!ok} reason={!ok ? t("Type the phrase first") : undefined} onClick={onConfirm}>
+          <Button variant={danger ? "danger" : "primary"} disabled={!ok || !!blocked} reason={!ok ? t("Type the phrase first") : blocked} onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>

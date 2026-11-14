@@ -17,7 +17,7 @@ import { ObjectBar } from "../object/ObjectBar";
 import { useObjectRun } from "../object/useObjectRun";
 import { MORE, SEGMENTS, renderTab, tabLabel, type TabId } from "../object/tabs";
 import { LegacyScope } from "../shell/LegacyMount";
-import { useSheets } from "../shell/SheetHost";
+import { withSheets } from "@/lib/next/sheet";
 import "../object/object.css";
 
 const ID = "nx-object";
@@ -27,7 +27,6 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
   const params = useSearchParams();
   const o = useObjectRun(system, module);
   const { cycle } = useObjectCycle(o.runId, o.module);
-  const { open } = useSheets();
   const moreRef = useRef<HTMLButtonElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -67,10 +66,11 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
   const step = cycle?.step ?? "clean";
   useEffect(() => {
     if (tab !== "cycle") return;
-    router.replace(`/next/o/${encodeURIComponent(system)}/${encodeURIComponent(module)}/overview${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
-    // An old /cycle?step=compare link opens the compare sheet, the rest open the cycle sheet.
-    if (params.get("step") === "compare") open({ kind: "compare", id: "" });
-    else open({ kind: "cycle", id: step });
+    // An old /cycle?step=compare link opens the compare sheet, the rest open the cycle sheet. One replace carries the
+    // sheet with it: opening it apart would write the stale /cycle address back over the redirect.
+    const sheet = params.get("step") === "compare" ? { kind: "compare", id: "" } : { kind: "cycle", id: step };
+    const qs = withSheets(params.toString(), [sheet]);
+    router.replace(`/next/o/${encodeURIComponent(system)}/${encodeURIComponent(module)}/overview${qs ? `?${qs}` : ""}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 

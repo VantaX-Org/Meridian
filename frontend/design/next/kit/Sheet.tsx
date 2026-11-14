@@ -16,7 +16,29 @@ export interface SheetStep {
   /** The status line under the label in the stepper. */
   detail?: ReactNode;
   failed?: boolean;
+  /** Finished. A link to a later step opens the first step not done instead. */
+  done?: boolean;
 }
+
+/** The step to show: the asked one, but never past the first step not done (so a link cannot skip a step). */
+export function clampStep(step: number, steps: Pick<SheetStep, "done">[] | undefined): number {
+  const total = steps?.length ?? 0;
+  const open = steps ? steps.findIndex((s) => !s.done) : -1;
+  const reach = open < 0 ? Math.max(total, 1) : open + 1;
+  return Math.min(Math.max(step, 1), reach);
+}
+
+/** How many open sheets hold unsaved edits: an expired session keeps the page (and the edits) while this is above zero. */
+let unsaved = 0;
+export const hasUnsavedSheet = (): boolean => unsaved > 0;
+
+/** Set by the app's own Close (it steps history back), so that step is not mistaken for the browser's Back button. */
+let ownBack = false;
+export const closingSheet = (): void => {
+  ownBack = true;
+  // Cleared after the step lands (a bubble listener runs after the capture one below), dirty sheet or not.
+  window.addEventListener("popstate", () => (ownBack = false), { once: true });
+};
 
 export interface SheetProps {
   open: boolean;
@@ -56,6 +78,7 @@ export function Sheet({ open, onClose, title, meta, size = "medium", variant = "
   const box = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const [ask, setAsk] = useState(false);
+  const leaving = useRef(false);
   const tid = useId();
   const top = variant === "top";
 
@@ -74,6 +97,33 @@ export function Sheet({ open, onClose, title, meta, size = "medium", variant = "
     return () => opener.current?.focus?.();
   }, [open, focusClose]);
 
+  // Unsaved edits survive Back (it asks first, in the app) and a reload or tab close (the browser asks).
+  useEffect(() => {
+    if (!open || !dirty || under) return;
+    leaving.current = false;
+    unsaved += 1;
+    const here = window.location.href;
+    const onBack = (e: PopStateEvent) => {
+      if (leaving.current || ownBack) return;
+      // A capture listener on window runs before the router's own, so the sheet stays mounted with its edits.
+      e.stopImmediatePropagation();
+      window.history.pushState({ nxSheet: true }, "", here);
+      setAsk(true);
+    };
+    const onUnload = (e: BeforeUnloadEvent) => {
+      if (leaving.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("popstate", onBack, { capture: true });
+    window.addEventListener("beforeunload", onUnload);
+    return () => {
+      unsaved -= 1;
+      window.removeEventListener("popstate", onBack, { capture: true });
+      window.removeEventListener("beforeunload", onUnload);
+    };
+  }, [open, dirty, under]);
+
   useEffect(() => {
     if (!open || under) return;
     const onKey = (e: KeyboardEvent) => {
@@ -85,10 +135,13 @@ export function Sheet({ open, onClose, title, meta, size = "medium", variant = "
     return () => document.removeEventListener("keydown", onKey);
   }, [open, under]);
 
-  if (!open) return null;
-
   const total = steps?.length ?? 0;
-  const at = Math.min(Math.max(step, 1), Math.max(total, 1));
+  const at = clampStep(step, steps);
+  useEffect(() => {
+    if (open && steps && at !== step) onStep?.(at);
+  }, [open, steps, at, step, onStep]);
+
+  if (!open) return null;
   const items: StepItem[] | undefined = steps?.map((s, i) => ({
     id: String(i + 1),
     label: s.label,
@@ -149,6 +202,7 @@ export function Sheet({ open, onClose, title, meta, size = "medium", variant = "
         danger
         onConfirm={() => {
           setAsk(false);
+          leaving.current = true;
           live.current.onClose();
         }}
         onCancel={() => setAsk(false)}

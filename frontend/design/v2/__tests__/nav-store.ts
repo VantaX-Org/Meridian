@@ -19,6 +19,18 @@ const subscribe = (cb: () => void) => {
   return () => listeners.delete(cb);
 };
 
+// Next patches the native history calls so they move the router too; do the same here, and follow Back.
+if (typeof window !== "undefined") {
+  for (const k of ["pushState", "replaceState"] as const) {
+    const native = window.history[k].bind(window.history);
+    window.history[k] = (data: unknown, unused: string, next?: string | URL | null) => {
+      native(data, unused, next);
+      if (next != null) setUrl(window.location.pathname + window.location.search);
+    };
+  }
+  window.addEventListener("popstate", () => setUrl(window.location.pathname + window.location.search));
+}
+
 export const push = vi.fn((next: string) => setUrl(next));
 export const replace = vi.fn((next: string) => setUrl(next));
 
