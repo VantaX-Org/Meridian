@@ -4,8 +4,8 @@ Revision ID: 168
 Revises: 173
 Create Date: 2026-11-13
 
-167 is taken by open PRs (#694, #699); this revision follows 166 on main. If one of those merges first, point
-down_revision at it (alembic heads will say).
+This revision follows 173 (#722), which follows 167 (#694) and 169 on main, so the open migration PRs stay one
+linear chain. If the merge order changes, point down_revision at the new parent (alembic heads will say).
 """
 from typing import Sequence, Union
 
