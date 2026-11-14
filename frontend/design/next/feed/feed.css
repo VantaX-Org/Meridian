@@ -8,13 +8,16 @@
 .nx-fd-card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--nx-s3); }
 .nx-fd-card-head h2 { margin: 0; font-size: var(--nx-fs-h2); line-height: var(--nx-lh-h2); font-weight: var(--nx-w-heading); color: var(--nx-ink); }
 .nx-fd-code, .nx-fd-meta { color: var(--nx-ink-3); font-size: var(--nx-fs-small); }
-.nx-fd-hero { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--nx-s2) var(--nx-s5); }
-.nx-fd-score { margin: 0; font-size: var(--nx-fs-hero); line-height: var(--nx-lh-hero); font-weight: var(--nx-w-heading); color: var(--nx-ink); font-variant-numeric: tabular-nums; }
+/* The visual lead holds at least 40 percent of the card: ring beside trend and record bar. */
+.nx-fd-visual { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s5); min-height: calc(var(--nx-s8) * 2.5); padding: var(--nx-s3) 0; }
+.nx-fd-visual-side { flex: 1 1 12rem; min-width: 0; display: flex; flex-direction: column; gap: var(--nx-s3); }
+.nx-fd-ring-value { font-size: var(--nx-fs-display); font-weight: var(--nx-w-heading); color: var(--nx-ink); }
+.nx-fd-ring-empty { display: block; max-width: 6rem; font-size: var(--nx-fs-small); color: var(--nx-ink-2); }
+.nx-fd-sk-ring { width: 8rem; aspect-ratio: 1; border-radius: 50%; flex: none; }
+.nx-fd-sk-spark { display: block; height: 5.5rem; border-radius: var(--nx-r-control); }
+.nx-fd-sk-seg { display: block; height: 1.5rem; width: 70%; border-radius: var(--nx-r-control); }
+.nx-fd-failed { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--nx-s3); color: var(--nx-bad-ink); font-size: var(--nx-fs-small); }
 .nx-fd-delta { margin: 0; color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
-.nx-fd-ruler { display: flex; align-items: center; gap: var(--nx-s3); }
-.nx-fd-ruler-bar { position: relative; flex: 1; height: var(--nx-s2); background: var(--nx-surface-2); border-radius: var(--nx-r-control); }
-.nx-fd-ruler-fill { position: absolute; inset-block: 0; inset-inline-start: 0; background: var(--nx-data); border-radius: inherit; }
-.nx-fd-ruler-tick { position: absolute; inset-block: calc(var(--nx-s1) * -1); width: 2px; background: var(--nx-ink); }
 .nx-fd-verdict { font-size: var(--nx-fs-small); color: var(--nx-ink-2); }
 .nx-fd-verdict[data-readiness="pass"] { color: var(--nx-good-ink); }
 .nx-fd-verdict[data-readiness="warn"] { color: var(--nx-warn-ink); }
@@ -23,9 +26,8 @@
 .nx-fd-aletheia { margin: 0; font-size: var(--nx-fs-body); color: var(--nx-ink); }
 .nx-fd-mark { color: var(--nx-aletheia); font-weight: var(--nx-w-label); }
 .nx-fd-card-foot { display: flex; flex-wrap: wrap; gap: var(--nx-s2); align-items: center; }
-.nx-fd-sk-title, .nx-fd-sk-score, .nx-fd-sk-line, .nx-fd-sk-btn { background: var(--nx-surface-2); border-radius: var(--nx-r-control); }
+.nx-fd-sk-title, .nx-fd-sk-line, .nx-fd-sk-btn { background: var(--nx-surface-2); border-radius: var(--nx-r-control); }
 .nx-fd-sk-title { height: var(--nx-s5); width: 40%; }
-.nx-fd-sk-score { height: var(--nx-s8); width: 25%; }
 .nx-fd-sk-line { height: var(--nx-s4); width: 80%; }
 .nx-fd-sk-btn { height: var(--nx-s7); width: 30%; }
 .nx-fd-quiet-h { margin: 0 0 var(--nx-s3); font-size: var(--nx-fs-h2); line-height: var(--nx-lh-h2); color: var(--nx-ink-2); font-weight: var(--nx-w-label); }
@@ -35,3 +37,4 @@
 .nx-fd-os-group h3 { display: flex; align-items: center; gap: var(--nx-s2); font-size: var(--nx-fs-body); color: var(--nx-ink); }
 .nx-fd-os-list { list-style: none; margin: 0; padding: 0; }
 .nx-fd-os-list li { display: flex; justify-content: space-between; gap: var(--nx-s3); padding: var(--nx-s2) 0; border-bottom: 1px solid var(--nx-border); }
+.nx-fd-capnote { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--nx-s3); color: var(--nx-ink-2); font-size: var(--nx-fs-small); }

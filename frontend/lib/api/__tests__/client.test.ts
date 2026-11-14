@@ -1,6 +1,6 @@
 import { AxiosError, AxiosHeaders, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it, vi } from "vitest";
-import apiClient, { isRetryable, licenceLockFrom } from "../client";
+import apiClient, { isRetryable, licenceLockFrom, onSessionExpired } from "../client";
 
 // axios doesn't publicly type the interceptor manager's internal handler
 // list, but it's the only way to invoke the request interceptor directly
@@ -73,6 +73,15 @@ describe("apiClient 401 handling", () => {
     await runResponseErrorInterceptors(apiClient, error(401));
     expect(localStorage.getItem("mn_auth_token")).toBeNull();
     expect(document.cookie).not.toContain("mn_session=1");
+  });
+
+  it("keeps the session and the page when a listener holds unsaved edits", async () => {
+    localStorage.setItem("mn_auth_token", "t");
+    const stop = onSessionExpired(() => true);
+    await runResponseErrorInterceptors(apiClient, error(401));
+    stop();
+    expect(localStorage.getItem("mn_auth_token")).toBe("t");
+    localStorage.removeItem("mn_auth_token");
   });
 
   it("sends the CSRF cookie as a header on a mutating request only, and never a bearer header", async () => {

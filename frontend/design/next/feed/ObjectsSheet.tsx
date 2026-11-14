@@ -10,11 +10,12 @@ import { usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { Chip, EmptyState, ErrorState, Skeleton } from "../kit";
 import { Sheet } from "../kit/Sheet";
 import { objectHref } from "../portfolio/BulkBar";
+import { CapNotice } from "./CapNotice";
 
 /** Every licensed object, searchable, grouped by system with code and text and DQS. */
 export function ObjectsSheet({ onClose }: { onClose: () => void }) {
-  // ponytail: one 500-row read covers the licensed scope, as the old Objects list did.
-  const q = usePortfolio({ limit: 500, sort: "module" });
+  const [all, setAll] = useState(false);
+  const q = usePortfolio({ limit: 500, sort: "module" }, all);
   const systems = useSystemsExtended().data ?? [];
   const [find, setFind] = useState("");
   const sysName = (id: string | null) => systems.find((s) => s.id === id)?.name ?? id ?? t("Unknown system");
@@ -28,6 +29,7 @@ export function ObjectsSheet({ onClose }: { onClose: () => void }) {
         <span>{t("Search")}</span>
         <input className="nx-input" type="search" value={find} placeholder={t("Object name or code")} onChange={(e) => setFind(e.target.value)} />
       </label>
+      <CapNotice page={q.data} onAll={() => setAll(true)} loading={all && q.isFetching} />
       {q.isError ? <ErrorState error={q.error} fallback={t("The objects could not be read. Check that the API is reachable, then retry.")} onRetry={() => void q.refetch()} />
         : q.isLoading ? <Skeleton lines={6} label={t("Loading the objects")} />
         : groups.size === 0 ? <EmptyState icon="inbox" heading={needle ? t("No object matches this search.") : t("No system is connected yet.")}>{needle ? t("Try a shorter name or the object code.") : t("Connect a system to see its objects here.")}</EmptyState>
@@ -38,7 +40,7 @@ export function ObjectsSheet({ onClose }: { onClose: () => void }) {
               {list.map((r) => (
                 <li key={r.version_id}>
                   <V2Link href={objectHref(r, sysName, `?run=${r.version_id}`)}><strong>{r.label}</strong> <span className="nx-mono nx-fd-code">{r.module}</span></V2Link>
-                  <span className="nx-fd-meta">{t("DQS {v}", { v: f1(r.composite_score) })}</span>
+                  <span className="nx-fd-meta">{r.composite_score == null ? t("Not scored yet") : t("DQS {v}", { v: f1(r.composite_score) })}</span>
                 </li>
               ))}
             </ul>
