@@ -8,6 +8,7 @@ import { kindWord } from "../RunTimeline";
 import { duration } from "../shell/StatusStrip";
 import { EmptyFrame, ErrorFrame, Mono, Skeleton, V2Link } from "../parts";
 import { t as tr } from "@/lib/v2/i18n";
+import { RunOutputCard } from "./RunOutputCard";
 
 function Since({ prev, id }: { prev: string; id: string }) {
   const q = useCompareSummary(prev, id);
@@ -57,6 +58,7 @@ export function RunInspector({ id, onClose }: { id: string; onClose: () => void 
               <Since prev={prev.id} id={id} />
             </>
           ) : null}
+          <RunOutputCard id={id} />
           <Actions>
             <V2Link href={`/run/${id}`} className="m2-btn m2-strong">
               {tr("Open the run")}

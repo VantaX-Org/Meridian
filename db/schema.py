@@ -100,6 +100,8 @@ class AnalysisVersion(Base):
                                nullable=True)
     dqs_summary = Column(JSONB, nullable=True)
     metadata_ = Column("metadata", JSONB, nullable=True)
+    # target system + templates chosen at extraction start, and each auto-fill outcome (migration 168)
+    extract_target = Column(JSONB, nullable=True)
     status = Column(
         String(20), nullable=False, server_default="pending"
     )

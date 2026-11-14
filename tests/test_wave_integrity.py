@@ -65,10 +65,11 @@ def test_approved_fixes_are_scoped_to_the_runs_source_system():
     class S:
         def execute(self, stmt, params=None):
             seen.append((str(stmt), params))
-            return Result(rows=[("KNA1.NAME1", "KUNNR=1000", "New name")], scalar="remediation_items")
+            return Result(rows=[("KNA1.NAME1", "KUNNR=1000", "New name", "Old name")], scalar="remediation_items")
 
     out = mig._approved_fixes(S(), ["customer_master"], "sys-a")
-    assert out == [{"field": "KNA1.NAME1", "record_key": "KUNNR=1000", "new_value": "New name"}]
+    assert out == [{"field": "KNA1.NAME1", "record_key": "KUNNR=1000", "new_value": "New name",
+                   "expected": "Old name"}]
     sql, params = seen[-1]
     assert "i.scope = :scope" in sql and params["scope"] == "sys-a"
     mig._approved_fixes(S(), ["customer_master"], None)
