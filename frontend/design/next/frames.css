@@ -1,0 +1,45 @@
+/*
+ * The two pages that stand outside the shell in the next look: the status page and the share landing (spec 3.15).
+ * Solid sheets on the page ground, no glass. The markup inside the status page is the v2 one; only its frame and
+ * sections take the next tokens, so the table, the uptime bar and the verdict marks keep their tested shape.
+ */
+.nx-root.nx-frame { min-block-size: 100dvh; background: var(--nx-bg); color: var(--nx-ink); font-family: inherit; }
+
+/* Status: a page of solid section cards */
+.nx-status .m2-stat-page { max-inline-size: 60rem; padding: var(--nx-s5) var(--nx-gutter) var(--nx-s8); }
+.nx-status .m2-stat-head { border-bottom: 0; padding-bottom: 0; }
+.nx-status .m2-stat-main { padding-top: var(--nx-s6); display: grid; gap: var(--nx-s4); }
+.nx-status .m2-stat-main > h1 { font-size: var(--nx-fs-display); line-height: var(--nx-lh-display); font-weight: var(--nx-w-heading); margin: 0; overflow-wrap: anywhere; }
+.nx-status .m2-stat-sum,
+.nx-status .m2-sec,
+.nx-status .m2-maint {
+  margin: 0;
+  background: var(--nx-surface);
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-r-card);
+  padding: var(--nx-s5);
+  min-inline-size: 0;
+}
+.nx-status .m2-stat-sum { font-size: var(--nx-fs-headline); line-height: var(--nx-lh-headline); }
+.nx-status .m2-maint { background: var(--nx-warn-soft); color: var(--nx-warn-ink); border-color: transparent; }
+.nx-status .m2-sec .m2-h2 { font-size: var(--nx-fs-h2); line-height: var(--nx-lh-h2); margin: 0 0 var(--nx-s3); }
+.nx-status .m2-frame { border-radius: var(--nx-r-control); }
+
+/* Share: one centred card, the shape of the story card it opens */
+.nx-share { display: grid; place-items: center; padding: var(--nx-s6) var(--nx-gutter); }
+.nx-share-card {
+  inline-size: min(100%, 32rem);
+  display: grid;
+  gap: var(--nx-s4);
+  background: var(--nx-surface);
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-r-card);
+  padding: var(--nx-s6);
+}
+.nx-share-card h1 { font-size: var(--nx-fs-h1); line-height: var(--nx-lh-h1); font-weight: var(--nx-w-heading); margin: 0; }
+.nx-share-card p { margin: 0; color: var(--nx-ink-2); }
+.nx-share-story { display: grid; grid-template-rows: minmax(7.5rem, 3fr) minmax(0, 2fr); gap: var(--nx-s3); min-block-size: 14rem; padding: var(--nx-s4); border-radius: var(--nx-r-control); background: var(--nx-surface-2); }
+.nx-share-story .nx-skeleton-bar { display: block; block-size: 100%; border-radius: var(--nx-r-control); }
+.nx-share-story > span:last-child { block-size: 40%; inline-size: 60%; }
+.nx-share-failed { background: var(--nx-bad-soft); color: var(--nx-bad-ink); border-radius: var(--nx-r-control); padding: var(--nx-s4); }
+.nx-share-card .nx-share-failed { color: var(--nx-bad-ink); }
