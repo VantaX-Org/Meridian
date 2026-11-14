@@ -65,6 +65,7 @@ def seeded():
         c.execute(text("SET LOCAL app.audit_purge = 'on'"))  # audit_log is append-only (migration 175)
         c.execute(text("DELETE FROM audit_log WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM record_issues WHERE tenant_id = :t"), {"t": tid})
+        c.execute(text("DELETE FROM migration_reconciliations WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM migration_runs WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM migration_waves WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM analysis_versions WHERE tenant_id = :t"), {"t": tid})
@@ -113,6 +114,14 @@ async def test_signoff_needs_go_and_approve_and_is_audited(seeded, monkeypatch):
             conn.execute(text("UPDATE migration_waves SET min_readiness = 90 WHERE id = :w"), {"w": seeded["wid"]})
             conn.execute(text("UPDATE migration_runs SET gap_summary = jsonb_set(gap_summary, "
                               "'{accounts_payable,verdict}', '\"go\"') WHERE id = :r"), {"r": seeded["r2"]})
+            # the load-order gate: BP supplier needs GL accounts loaded first, so an earlier GL run into the
+            # target with an accepted reconciliation satisfies it
+            gl = str(uuid.uuid4())
+            conn.execute(text("INSERT INTO migration_runs (id, tenant_id, mode, source_system_id, dest_system_id, "
+                              "modules, status) VALUES (:r, :t, 'source_to_destination', :p, :s, '{fi_gl}', "
+                              "'analysed')"), {"r": gl, "t": seeded["tid"], "p": seeded["prd"], "s": seeded["s4d"]})
+            conn.execute(text("INSERT INTO migration_reconciliations (tenant_id, run_id, status, accepted_at) "
+                              "VALUES (:t, :r, 'done', now())"), {"t": seeded["tid"], "r": gl})
         r = await c.post(url, headers={**H, "X-User-Role": "approver"})
         assert r.status_code == 200, r.text
         assert r.json()["signed_off_at"] is not None

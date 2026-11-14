@@ -179,3 +179,43 @@ def forecast_gate(points: Iterable[Mapping[str, Any]], horizon_days: int = 730) 
     if (when - pts[-1][0]).days > horizon_days:
         return {**out, "status": "not_converging"}
     return {**out, "status": "projected", "projected_date": when.date().isoformat()}
+
+
+def dependency_check(plan: Any, wave_modules: Iterable[str], loaded: Iterable[str],
+                     target_config: Optional[set[str]]) -> dict[str, Any]:
+    """The load-order gate of a wave (V1, V2) over its load plan (``load_plan.build_plan``).
+
+    A blocker is a required, non-deferred edge into an object of the wave whose predecessor is neither in the wave
+    nor already loaded (``loaded``: objects with an accepted reconciliation into the target), or a configuration
+    prerequisite of a wave object that the target's latest config load does not hold. With no config load on the
+    target (``target_config`` None) the prerequisites are listed as not checked, never as passed."""
+    from api.services.migration import object_label
+
+    wave, done = set(wave_modules), set(loaded)
+    items: list[dict[str, Any]] = []
+    for e in plan.edges:
+        if e.after in wave and e.kind == "required" and not e.deferred and e.before not in wave | done:
+            fields = [ev.field for ev in e.evidence if ev.required]
+            items.append({"kind": "predecessor", "module": e.after, "needs": e.before, "fields": fields,
+                          "sentence": f"{object_label(e.after)} needs {object_label(e.before)} loaded first "
+                                      f"({', '.join(fields)}): add it to the wave or load and reconcile it."})
+    unchecked: list[str] = []
+    for o in plan.objects:
+        if o.module not in wave:
+            continue
+        for p in o.prerequisites:
+            if p.kind != "configuration":
+                continue
+            if target_config is None:
+                unchecked.append(p.table)
+            elif p.table.upper() not in target_config:
+                items.append({"kind": "prerequisite", "module": o.module, "needs": p.table, "fields": p.fields,
+                              "sentence": f"{object_label(o.module)} needs configuration {p.table} "
+                                          f"({p.text or 'no description'}) in the target; it is not in the "
+                                          f"target's latest config load."})
+    detail = ("Every predecessor is in the wave or loaded, and every configuration prerequisite is in the target."
+              if not items else f"{len(items)} load-order blockers.")
+    if unchecked:
+        detail += f" {len(set(unchecked))} configuration prerequisites not checked: the target has no config load."
+    return {"key": "dependencies", "label": "Load order and prerequisites", "passed": not items, "detail": detail,
+            "actual": len(items), "threshold": 0, "items": items, "unchecked": sorted(set(unchecked))}
