@@ -572,7 +572,7 @@ def build(s: Session, tid: str, vid: str, module: str,
         return None
     refuse_download(data["run"], module)
     generated_at = generated_at or datetime.now(timezone.utc)
-    sheets, _ = cleaning_context(data, rule_meta(module))
+    sheets, counts = cleaning_context(data, rule_meta(module))
     plan_sheet = aletheia_plan_sheet(s, tid, vid, module)
     if plan_sheet is not None:
         sheets.insert(next((i for i, sh in enumerate(sheets) if sh.title.startswith("Records to clean")), len(sheets)),
@@ -580,7 +580,7 @@ def build(s: Session, tid: str, vid: str, module: str,
     run = data["run"]
     recs = [sh for sh in sheets if sh.title.startswith("Records to clean")]
     fp = fingerprint("cleaning", tid, run.get("system_id"), [c.header for c in recs[0].columns] if recs else [],
-                     sum(1 for sh in recs for _ in sh.rows))
+                     counts["records"])
     # hidden and last: tells the upload-back which run and object this file came from (api/services/sf_roundtrip.py)
     sheets.append(SheetSpec(MARKER, [ColumnSpec("key", "key"), ColumnSpec("value", "value")],
                             marker_rows(str(run["id"]), module, "cleaning", None, fp), hidden=True))

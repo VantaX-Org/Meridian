@@ -81,12 +81,12 @@ def check_columns(sheets, marker: dict, kind: str, maps: Optional[dict] = None) 
         if marker.get("columns") and marker["columns"] != columns_hash(h for h in head if h):
             return _c("columns", "fail", "The columns differ from the downloaded workbook: one was renamed, added or removed.")
         return _c("columns", "pass", "All required columns are present and unrenamed.")
-    n_gone = 0
+    missing = 0
     for name, rows in sheets:
         m = (maps or {}).get(name)
         if m and rows:
-            n_gone += sum(1 for h in m["map"] if h not in rows[0])
-    return _c("columns", "fail", f"{n_gone} column(s) of the template are missing or renamed.") if n_gone else \
+            missing += sum(1 for h in m["map"] if h not in rows[0])
+    return _c("columns", "fail", f"{missing} column(s) of the template are missing or renamed.") if missing else \
         _c("columns", "pass", "All template columns are present and unrenamed.")
 
 
