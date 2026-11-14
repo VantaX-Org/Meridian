@@ -66,7 +66,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Shown instead of everything else while the account still has its seeded password (`must_change_password`). The
+ * Shown instead of everything else while the account has a password someone else set: the seeded one, or one an
+ * admin set or reset (`must_change_password`). The
  * user cannot go anywhere until they set a new one; Sign out is there for someone who arrived here by mistake.
  */
 export function ForcePasswordChange() {
@@ -87,15 +88,15 @@ export function ForcePasswordChange() {
     try {
       await changePassword(currentPassword, newPassword);
     } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(detail || t("The password could not be changed. Try again."));
+      const res = (err as { response?: { status?: number; data?: { detail?: string } } })?.response;
+      setError(res?.status === 429 ? t("Too many password changes. Wait a minute, then try again.") : res?.data?.detail || t("The password could not be changed. Try again."));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <AuthFrame title={t("Change your password to continue")} lead={t("You are signed in as {email}. This account still has its default password. Set a new one to use Meridian.", { email: user?.email ?? "" })}>
+    <AuthFrame title={t("Change your password to continue")} lead={t("You are signed in as {email}. This password was set for you, by setup or by an admin. Choose your own to use Meridian.", { email: user?.email ?? "" })}>
       <form className="m2-auth-form" onSubmit={onSubmit} noValidate>
         {error ? <AuthNote tone="danger">{error}</AuthNote> : null}
         <PasswordField label={t("Current password")} value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />

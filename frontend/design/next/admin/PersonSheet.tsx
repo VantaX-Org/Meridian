@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { removeGrant, setUserActive } from "@/lib/api/v2/admin";
+import { isAxiosError } from "axios";
+import { removeGrant, removeUser, setUserActive } from "@/lib/api/v2/admin";
 import { refreshAdmin, useGrants, useUsers } from "@/lib/v2/admin-queries";
 import { userStatus } from "@/lib/users";
 import { useV2Href, useV2Session } from "@/lib/v2/hooks";
@@ -13,6 +14,9 @@ import { Denied, isSessionError, LongText, useSubmitGuard } from "../more/states
 import type { SheetCtx } from "../shell/SheetHost";
 import { removeBlock } from "./guard";
 import { statusText } from "./Users";
+
+/** How long Undo stays on offer before a removal is sent. The server delete is final, so nothing is sent until then. */
+export const UNDO_MS = 8000;
 
 /** One person: role, objects, delegations, how they sign in, and Deactivate. Yourself and the last administrator cannot be deactivated. */
 export function PersonSheet({ ctx }: { ctx: SheetCtx }) {
@@ -24,7 +28,7 @@ export function PersonSheet({ ctx }: { ctx: SheetCtx }) {
   const users = useUsers({}, can("manage_users"));
   const grants = useGrants(id, can("manage_users"));
   const guard = useSubmitGuard();
-  const [confirm, setConfirm] = useState<"deactivate" | null>(null);
+  const [confirm, setConfirm] = useState<"deactivate" | "remove" | null>(null);
   const [expired, setExpired] = useState(false);
   const all = users.data?.users ?? [];
   const user = all.find((u) => u.id === id);
@@ -48,6 +52,22 @@ export function PersonSheet({ ctx }: { ctx: SheetCtx }) {
         else toast({ text: t("That change could not be saved."), tone: "bad" });
       }
     });
+  const removeWhy = block === "self" ? t("You cannot remove yourself.") : block === "last-admin" ? t("This is the last active administrator. Make someone else an administrator first.") : "";
+  // Removal waits out the Undo window, then sends the delete. A 409 means the person is still referenced: deactivate instead.
+  const remove = () => {
+    const who = user.name || user.email;
+    let undone = false;
+    setConfirm(null);
+    close();
+    toast({ text: t("{name} will be removed.", { name: who }), timeout: UNDO_MS, onUndo: () => { undone = true; toast({ text: t("Removal undone.") }); } });
+    setTimeout(() => {
+      if (undone) return;
+      void removeUser(user.id).then(
+        async () => { await refreshAdmin(qc, "users"); toast({ text: t("{name} was removed.", { name: who }), tone: "good" }); },
+        (e: unknown) => toast({ tone: "bad", text: isAxiosError(e) && e.response?.status === 409 ? t("{name} is still linked to work, so they cannot be removed. Deactivate them instead.", { name: who }) : t("{name} could not be removed.", { name: who }) }),
+      );
+    }, UNDO_MS);
+  };
   const s = userStatus(user);
   const list = grants.data ?? [];
   return (
@@ -74,6 +94,10 @@ export function PersonSheet({ ctx }: { ctx: SheetCtx }) {
       )}
       <h3>{t("Delegations")}</h3>
       <p><Link className="nx-link" href={href("/more/admin/delegations")}>{t("Manage who covers for people who are away")}</Link></p>
+      <h3>{t("Remove")}</h3>
+      <p className="nx-sub">{t("Removes this person and their sign-in for good. Deactivate keeps their history instead.")}</p>
+      <Button variant="danger" size={32} disabled={!!block} reason={removeWhy} onClick={() => setConfirm("remove")} data-testid="remove-person">{t("Remove this person")}</Button>
+      <Confirm open={confirm === "remove"} title={t("Remove this person?")} consequence={t("Their account and sign-in are deleted. You can undo for a few seconds; after that it cannot be reversed.")} confirmLabel={t("Remove")} danger onConfirm={remove} onCancel={() => setConfirm(null)} />
       <Confirm open={confirm === "deactivate"} title={user.is_active ? t("Deactivate this person?") : t("Reactivate this person?")} consequence={user.is_active ? t("They can no longer sign in. Their work stays. You can reactivate them.") : t("They can sign in again.")} confirmLabel={user.is_active ? t("Deactivate") : t("Reactivate")} danger={user.is_active} onConfirm={() => void act(() => setUserActive(user.id, !user.is_active), t("Saved."))} onCancel={() => setConfirm(null)} />
     </Sheet>
   );

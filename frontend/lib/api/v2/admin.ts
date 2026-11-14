@@ -46,6 +46,9 @@ export const resendInvite = (id: string): Promise<{ id: string; invite_status: s
 export const createInviteLink = (id: string): Promise<{ id: string; url: string; expires_at: string }> => v2Send("POST", `/users/${enc(id)}/invite/link`);
 export const resetUserPassword = (id: string, send_email: boolean): Promise<{ id: string; must_change_password: boolean; emailed: boolean; link: string | null }> =>
   v2Send("POST", `/users/${enc(id)}/reset-password`, { send_email });
+/** Sets a user's password: typed (`password`) or generated (`generate: true`, returned once in `password`). They must change it at next sign-in. */
+export const setUserPassword = (id: string, body: { password: string } | { generate: true }): Promise<{ id: string; must_change_password: boolean; password: string | null }> =>
+  v2Send("POST", `/users/${enc(id)}/set-password`, body);
 export const bulkUsers = (ids: string[], action: BulkAction): Promise<BulkResponse> => v2Send("POST", "/users/bulk", { ids, action });
 export const previewUserImport = (csv: string): Promise<ImportPreview> => v2Send("POST", "/users/import/preview", { csv });
 export const importUsers = (csv: string): Promise<ImportResult> => v2Send("POST", "/users/import", { csv });
