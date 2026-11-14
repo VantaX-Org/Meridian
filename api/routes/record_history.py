@@ -30,8 +30,9 @@ from api.routes.record_issues import _rls
 from api.services.rule_text import rule_messages
 from api.services.rbac import require_permission, scope_from_path
 from api.services.version_status import finished_sql
+from api.middleware.licence import licensed_module
 
-router = APIRouter(prefix="/api/v1", tags=["record-history"])
+router = APIRouter(prefix="/api/v1", tags=["record-history"], dependencies=[Depends(licensed_module())])
 
 MAX_RUNS = 100
 SEVERITIES = ("critical", "high", "medium", "low")

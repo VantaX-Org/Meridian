@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import require_permission, write_audit
+from api.services.rbac import scope_from_path
 
 router = APIRouter(prefix="/api/v1", tags=["field-mappings"])
 
@@ -122,7 +123,7 @@ def _is_self_service_enabled(request=None) -> bool:
 # ── GET /api/v1/field-mappings ────────────────────────────────────────────────
 
 
-@router.get("/field-mappings", response_model=FieldMappingList)
+@router.get("/field-mappings", response_model=FieldMappingList, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_field_mappings(
     request: Request,
     module: Optional[str] = Query(None, description="Filter by SAP module"),
@@ -193,7 +194,7 @@ async def list_field_mappings(
 # ── GET /api/v1/field-mappings/{module} ───────────────────────────────────────
 
 
-@router.get("/field-mappings/module/{module_name}", response_model=ModuleMappings)
+@router.get("/field-mappings/module/{module_name}", response_model=ModuleMappings, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_module_mappings(
     module_name: str,
     db: AsyncSession = Depends(get_db),

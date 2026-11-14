@@ -18,9 +18,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services import rule_coverage as rc
 from api.services.rbac import require_permission
+from api.middleware.licence import licensed_module
 from sap.ddic import get_dictionary
 
-router = APIRouter(prefix="/api/v1", tags=["rules"], dependencies=[Depends(require_permission("view"))])
+router = APIRouter(prefix="/api/v1", tags=["rules"], dependencies=[Depends(licensed_module()), Depends(require_permission("view"))])
 
 
 async def _tenant_rules(db: AsyncSession, tenant: Tenant) -> list[dict]:

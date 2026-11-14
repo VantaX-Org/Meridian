@@ -31,6 +31,7 @@ from api.services.rbac import current_user_id
 from api.services.user_notifications import (
     claim_delivery_async, email_backend_name, finish_delivery_async, record_delivery_async, test_key,
 )
+from api.services.rbac import require_permission
 
 logger = logging.getLogger("meridian.api.me_notifications")
 
@@ -73,7 +74,7 @@ def _send_test_email(recipient: str) -> bool:
 
 
 @router.post("/me/notifications/test",
-             dependencies=[Depends(rate_limit("me_notifications_test", limit=3, window_s=3600, key_by="user"))])
+             dependencies=[Depends(require_permission("view")), Depends(rate_limit("me_notifications_test", limit=3, window_s=3600, key_by="user"))])
 async def send_test_notification(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -130,7 +131,7 @@ async def send_test_notification(
     return TestResult(email=email_status, in_app=True)
 
 
-@router.get("/me/notifications/deliveries")
+@router.get("/me/notifications/deliveries", dependencies=[Depends(require_permission("view"))])
 async def list_my_deliveries(
     request: Request,
     limit: int = Query(default=20, ge=1, le=100),

@@ -44,6 +44,7 @@ from api.services.pilot_scorecard import TARGET_PRECISION
 from api.services.rule_text import rule_messages
 from api.services.rbac import current_user_label, has_permission, require_permission
 from checks import lifecycle, self_tune
+from api.services.rbac import scope_from_path
 
 router = APIRouter(prefix="/api/v1", tags=["rules"])
 
@@ -59,7 +60,7 @@ async def _set_rls(db: AsyncSession, tenant_id: uuid.UUID) -> None:
 # ── GET /api/v1/rules ─────────────────────────────────────────────────────────
 
 
-@router.get("/rules")
+@router.get("/rules", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_rules(
     category: Optional[str] = Query(None, description="Filter by category: ecc, successfactors, warehouse"),
     module: Optional[str] = Query(None, description="Filter by module name"),
@@ -198,7 +199,7 @@ async def export_rules(
 # ── GET /api/v1/rules/summary ─────────────────────────────────────────────────
 
 
-@router.get("/rules/summary")
+@router.get("/rules/summary", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def rules_summary(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -335,7 +336,7 @@ async def rule_names(
 # ── GET /api/v1/rules/{rule_id} ───────────────────────────────────────────────
 
 
-@router.get("/rules/{rule_id}")
+@router.get("/rules/{rule_id}", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_rule(
     rule_id: str,
     db: AsyncSession = Depends(get_db),

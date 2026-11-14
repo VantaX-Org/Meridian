@@ -27,10 +27,11 @@ from api.deps import Tenant, get_db, get_tenant
 from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, csv_response
 from api.services.migration.post_load import NO_TARGET_ANALYSIS
 from api.services.rbac import Scope, current_user_id, require_permission, require_scope, scope_from_path, write_audit
+from api.middleware.licence import licensed_module
 
 logger = logging.getLogger("meridian.migration")
 
-router = APIRouter(prefix="/api/v1/migration", tags=["migration"])
+router = APIRouter(prefix="/api/v1/migration", tags=["migration"], dependencies=[Depends(licensed_module())])
 
 _VALID_MODES = ("source_to_source", "source_to_destination", "s4_dry_run")
 _LIST_TREND_POINTS = 12  # sparkline points shown per wave in the wave list
