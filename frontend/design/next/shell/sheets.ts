@@ -14,3 +14,6 @@ registerSheet("run", ({ id, step, setStep, close, under }) =>
     : createElement(RunDetailSheet, { id, close, under }));
 registerSheet("compare", ({ id, close, under }) => createElement(CompareSheet, { id, close, under }));
 // story-feed: work (Batch E) end
+
+// story-feed: object
+import "../object/register";

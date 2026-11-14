@@ -97,7 +97,7 @@ describe("Admin, Digests", () => {
   it("sends a digest now, previews it in a sandboxed frame and as numbers, and shows its delivery log", async () => {
     page("digest:dg-1");
     const insp = await screen.findByTestId("inspector");
-    await waitFor(() => expect(norm(insp)).toContain("Monday leadership digest"));
+    await waitFor(() => expect(norm(screen.getByRole("dialog"))).toContain("Monday leadership digest"));
     expect(norm(insp)).toContain("steering@demo-corp.example");
     const log = await within(insp).findByTestId("digest-deliveries");
     expect(norm(log)).toContain("1 recipient refused: mailbox full");
