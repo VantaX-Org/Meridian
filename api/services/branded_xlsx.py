@@ -356,6 +356,9 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
             cell = ws.cell(row=row_idx, column=col_idx, value=value)
             if number_format:
                 cell.number_format = number_format
+            elif col.kind in ("mono", "raw") or (col.editable and col.kind == "text"):
+                # Text, so Excel keeps a code's leading zeros, a long number's digits and a typed date as typed
+                cell.number_format = "@"
             cell.font = _BODY_FONT
             if col.kind in ("mono", "raw"):
                 cell.font = Font(name=MONO_FONT, size=MONO_SIZE, color=_INK3 if col.muted else _INK)
