@@ -164,3 +164,17 @@ def test_column_guide_covers_every_record_column():
     assert list(guide) == cols and all(g["what"] for g in guide.values())
     assert {h for h, g in guide.items() if g["who"] == "You fill this in"} == {
         "Corrected value", "Owner", "Status", "Comment"}
+
+
+def test_one_workbook_has_instructions_template_records_and_fingerprint_sheet():
+    sheets, _ = cw.cleaning_context(_data(RECS), RULES)
+    names = [x.title for x in sheets]
+    assert {"Start here", "Instructions", "Allowed values", "Fix template", "Records to clean"} <= set(names)
+    assert names.index("Fix template") < names.index("Records to clean")
+    tpl = next(x for x in sheets if x.title == "Fix template")
+    assert [c.header for c in tpl.columns] == ["Field", "Description", "Required", "Allowed values", "Rules", "Rows to fix"]
+    assert {r["field"] for r in tpl.rows} == {"PERINFO.GENDER", "PERINFO.FIRSTNAME"}
+    rec = _records_sheet(sheets)
+    assert rec.protect and {c.header for c in rec.columns if not c.editable} >= {"Rule", "Record key", "Current value"}
+    assert {c.header for c in rec.columns if c.editable} == {"Corrected value", "Owner", "Status", "Comment"}
+    assert any(c.header == "Rule" for c in rec.columns) and any(c.header == "Rule text" for c in rec.columns)

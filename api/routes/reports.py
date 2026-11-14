@@ -523,12 +523,15 @@ async def cleaning_xlsx(version_id: uuid.UUID, module: str, request: Request, db
                         tenant: Tenant = Depends(get_tenant)) -> Response:
     """Cleaning workbook for one object: every failing record with its value, suggestion and instructions."""
     from api.services.branded_xlsx import xlsx_response
+    from api.services.cleaning_workbook import DownloadRefused
 
     await _rls(db, tenant)
     if module not in _modules():
         raise HTTPException(status_code=422, detail=f"Unknown module: {module}")
     try:
         out = await asyncio.to_thread(_cleaning_sync, str(tenant.id), str(version_id), module)
+    except DownloadRefused as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
     except Exception:
         raise server_failure("The cleaning workbook could not be generated.", log=logger, what="cleaning workbook") from None
     if out is None:
