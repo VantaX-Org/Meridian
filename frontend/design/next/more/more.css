@@ -21,3 +21,31 @@
 .nx-row { display: flex; align-items: center; gap: var(--nx-s3); min-width: 0; }
 .nx-row-main { flex: 1; min-width: 0; }
 .nx-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--nx-s3); }
+
+/* story-feed G: chart-led cards. The chart region is three fifths of the card's rows and never under 7.5rem. */
+.nx-chartcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: var(--nx-s3); padding: var(--nx-s5) var(--nx-gutter) 0; }
+.nx-body > .nx-chartcards { padding: 0 0 var(--nx-s3); }
+.nx-chartcard { display: grid; grid-template-rows: minmax(7.5rem, 3fr) minmax(0, 2fr); min-block-size: 15rem; min-inline-size: 0; background: var(--nx-surface); color: var(--nx-ink); border: 1px solid var(--nx-border); border-radius: var(--nx-r-card); overflow: hidden; }
+.nx-chartcard:hover { border-color: var(--nx-border-strong); }
+.nx-chartcard-viz { display: grid; align-items: center; justify-items: stretch; padding: var(--nx-s4); background: var(--nx-surface-2); border-block-end: 1px solid var(--nx-border); min-inline-size: 0; }
+.nx-chartcard-viz .nx-ring { justify-self: center; }
+.nx-chartcard-body { display: flex; flex-direction: column; gap: var(--nx-s1); padding: var(--nx-s3) var(--nx-s4) var(--nx-s4); min-inline-size: 0; }
+.nx-chartcard-body h2 { margin: 0; font-size: var(--nx-fs-title); }
+.nx-chartcard-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nx-chartcard-figure { margin: 0; font-size: var(--nx-fs-h1); font-weight: 600; font-variant-numeric: tabular-nums; }
+.nx-chartcard-line { margin: 0; overflow-wrap: anywhere; }
+.nx-chartcard-body .nx-btn { align-self: flex-start; margin-block-start: auto; }
+.nx-chartcard-empty { margin: 0; display: grid; gap: var(--nx-s2); justify-items: center; text-align: center; }
+.nx-chartcard-shape { display: flex; align-items: flex-end; gap: var(--nx-s2); block-size: 4rem; }
+.nx-chartcard-shape i { inline-size: 1.25rem; border-radius: 4px; background: var(--nx-border); }
+.nx-chartcard-shape i:nth-child(1) { block-size: 40%; }
+.nx-chartcard-shape i:nth-child(2) { block-size: 70%; }
+.nx-chartcard-shape i:nth-child(3) { block-size: 55%; }
+.nx-chartcard-shape i:nth-child(4) { block-size: 90%; }
+.nx-chartcard-shape i:nth-child(5) { block-size: 65%; }
+.nx-chartcard[data-state="failed"] .nx-chartcard-shape i, .nx-chartcard[data-state="denied"] .nx-chartcard-shape i { background: var(--nx-border-strong); }
+.nx-chartcard[data-state="stale"] .nx-chartcard-viz { opacity: 0.72; }
+.nx-more-links { list-style: none; margin: 0; padding: var(--nx-s5) var(--nx-gutter); display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: var(--nx-s2) var(--nx-s4); }
+.nx-more-links li { display: grid; gap: 2px; min-inline-size: 0; }
+.nx-more-links p { margin: 0; color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-chartcard-list { list-style: none; margin: var(--nx-s2) 0 0; padding: 0; display: grid; gap: var(--nx-s1); }

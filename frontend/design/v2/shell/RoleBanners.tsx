@@ -7,8 +7,12 @@ import { resolveShareLink, stopViewAs } from "@/lib/api/v2/roles";
 import { failureText } from "@/lib/v2/errors";
 import { useV2Href, useV2Session } from "@/lib/v2/hooks";
 import { installViewAsHeader, ROLE_NAMES, setShareMode, setViewAs } from "@/lib/v2/view-as";
-import { EmptyFrame, PageTitle, Skeleton } from "../parts";
+import { PageTitle } from "../parts";
+import { Mark } from "../marks";
 import "../roles.css";
+import "@/design/next/tokens.css";
+import "@/design/next/motion.css";
+import "@/design/next/frames.css";
 import { t } from "@/lib/v2/i18n";
 
 /**
@@ -81,15 +85,23 @@ export function ShareLanding() {
     };
   }, [token, router, href]);
   return (
-    <>
-      <PageTitle>{t("Shared view")}</PageTitle>
-      <p className="m2-prov">{t("Opens a shared view of one page, read only, then takes you to it.")}</p>
-      {error ? (
-        <>
-          <EmptyFrame>{error}</EmptyFrame>
-          <p className="m2-prov">{t("Ask the person who shared it for a new link, or sign in to open the page directly.")}</p>
-        </>
-      ) : <Skeleton width={320} height={14} />}
-    </>
+    <div className="nx-root nx-frame nx-share" data-testid="share-frame">
+      <section className="nx-share-card" aria-busy={!error || undefined}>
+        <Mark />
+        <PageTitle>{t("Shared view")}</PageTitle>
+        <p>{t("Opens a shared view of one page, read only, then takes you to it.")}</p>
+        {error ? (
+          <>
+            <p className="nx-share-failed" role="alert">{error}</p>
+            <p>{t("Ask the person who shared it for a new link, or sign in to open the page directly.")}</p>
+          </>
+        ) : (
+          <div className="nx-share-story" role="status" aria-label={t("Opening the shared page")}>
+            <span className="nx-skeleton-bar" aria-hidden="true" />
+            <span className="nx-skeleton-bar" aria-hidden="true" />
+          </div>
+        )}
+      </section>
+    </div>
   );
 }

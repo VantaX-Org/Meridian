@@ -11,6 +11,8 @@ import { productName, useTenantTheme } from "@/lib/v2/theme";
 import { Mark, VerdictMark } from "../marks";
 import { ErrorFrame, Mono, PageTitle, Skeleton, V2Link } from "../parts";
 import "../status.css";
+import "@/design/next/tokens.css";
+import "@/design/next/frames.css";
 import { t } from "@/lib/v2/i18n";
 import { TableExport } from "@/design/v2/TableExport";
 
@@ -156,6 +158,7 @@ export function StatusScreen({ signedIn = false }: { signedIn?: boolean }) {
   const page = q.data;
   const overall = page?.status ?? null;
   return (
+    <div className="nx-root nx-frame nx-status" data-testid="status-frame">
     <div className="m2-stat-page">
       <a className="m2-skip" href="#m2-status-main">
         {t("Skip to content")}
@@ -216,6 +219,7 @@ export function StatusScreen({ signedIn = false }: { signedIn?: boolean }) {
           </>
         )}
       </main>
+    </div>
     </div>
   );
 }
