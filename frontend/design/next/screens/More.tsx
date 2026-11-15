@@ -77,9 +77,6 @@ function Frame({ title, back, children }: { title: string; back?: { to: string; 
 }
 
 export function More({ slug }: { slug?: string[] }) {
-  const router = useRouter();
-  const path = usePathname();
-  const sp = useSearchParams();
   const key = (slug ?? []).join("/");
   const [a, b] = slug ?? [];
   if (!key) return <Home />;
