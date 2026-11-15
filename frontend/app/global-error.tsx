@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import "../design/tokens.css";
 import "../design/global-error.css";
-import { clientErrorId, reportClientError } from "@/lib/client-errors";
+import { clientErrorId, reloadOnChunkError, reportClientError } from "@/lib/client-errors";
 import { Attribution } from "@/design/brand/Attribution";
 import { themeBootScript } from "@/lib/theme";
 import { writeClipboard } from "@/lib/browser";
@@ -17,6 +17,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
 
   useEffect(() => {
+    if (reloadOnChunkError(error)) return;
     reportClientError(error, { digest: error.digest });
   }, [error]);
 

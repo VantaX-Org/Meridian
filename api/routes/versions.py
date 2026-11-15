@@ -6,7 +6,7 @@ from typing import Annotated, Any, Literal, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 
 from api.middleware.licence import licensed_module
-from api.services.rbac import require_permission, scope_from_path
+from api.services.rbac import current_user_id, require_permission, scope_from_path
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -774,7 +774,8 @@ async def analyse_version(version_id: str, request: Request, db: AsyncSession = 
     await db.commit()
     jobs.start_job(str(tenant.id), version_id, "analysis",
                    f"{'Analysis' if row[0] == 'extracted' else 'Re-analysis'}{f' | {row[3]}' if row[3] else ''}",
-                   status="queued", progress_key=version_id, version_id=version_id, system_id=row[2])
+                   status="queued", progress_key=version_id, version_id=version_id, system_id=row[2],
+                   started_by=current_user_id(request))
     job = run_checks.delay(version_id, str(tenant.id), row[1], reanalyse=row[0] != "extracted")
     jobs.set_task_ids(str(tenant.id), version_id, [job.id])
     return {"version_id": version_id, "task_id": job.id, "job_id": version_id, "status": "pending"}

@@ -524,7 +524,8 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
         if analyse:
             from workers.tasks.run_checks import run_checks
             jobs.start_job(tenant_id, version_id, "analysis", label or ", ".join(modules), status="queued",
-                           progress_key=version_id, system_id=system_id, version_id=version_id)
+                           progress_key=version_id, system_id=system_id, version_id=version_id,
+                           started_by=(jobs.get_job(tenant_id, job_id) or {}).get("started_by"))
             run_checks.delay(version_id, tenant_id, prefix)
         jobs.finish_job(tenant_id, job_id, result={"version_id": version_id, "coverage": coverage,
                                                    "analysis": "queued" if analyse else "on_request"},

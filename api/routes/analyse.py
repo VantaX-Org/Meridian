@@ -5,7 +5,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api.services.rbac import require_permission
+from api.services.rbac import current_user_id, require_permission
 from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,7 +57,8 @@ async def run_agents_endpoint(
     # does, so the run page's progress banner and the jobs tray show it the moment this returns.
     label = f"AI analysis{f' | {version.label}' if version.label else ''}"
     jobs.start_job(str(tenant.id), str(vid), "analysis", label, status="queued", progress_key=str(vid),
-                   version_id=str(vid), system_id=(version.metadata_ or {}).get("system_id"))
+                   version_id=str(vid), system_id=(version.metadata_ or {}).get("system_id"),
+                   started_by=current_user_id())
     step_num, _ = STEP_AI_INSIGHTS
     update_task_progress(str(vid), status="queued", current_step="Waiting for worker to start AI insights",
                          step_number=step_num, total_steps=TOTAL_STEPS,

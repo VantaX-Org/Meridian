@@ -181,3 +181,31 @@ def test_findings_check_class_resolved_from_rule_yaml():
     assert check_class_of("accounts_payable", "AP001") == "null_check"
     assert check_class_of("material_master", "AP001") is None   # module is part of the key
     assert check_class_of("accounts_payable", "CUSTOM-1") is None
+
+
+def test_finish_notifies_the_starter_once(redis, monkeypatch):
+    from api.services import notifications
+    sent = []
+    monkeypatch.setattr(notifications, "notify_run_finished", lambda *a: sent.append(a))
+    jobs.start_job("t1", "dl-v9", "extraction", "Vendors", status="queued", version_id="v9", started_by="u1")
+    jobs.finish_job("t1", "dl-v9", "failed", error="RFC down")
+    jobs.finish_job("t1", "dl-v9", "failed", error="again")  # a repeat finish does not notify twice
+    jobs.start_job("t1", "up-1", "upload", "file.csv", started_by="u1")
+    jobs.finish_job("t1", "up-1")  # uploads are not run notifications
+    assert len(sent) == 1
+    tid, uid, what, label, failed, link, error = sent[0]
+    assert (tid, uid, what, label, failed, error) == ("t1", "u1", "Extraction", "Vendors", True, "RFC down")
+    assert "v9" in link
+
+
+def test_migration_finish_notifies_the_requester(monkeypatch):
+    from unittest.mock import MagicMock
+
+    from api.services import notifications
+    from workers.tasks import run_migration
+    sent = []
+    monkeypatch.setattr(notifications, "notify_run_finished", lambda *a: sent.append(a))
+    session = MagicMock()
+    session.execute.return_value.first.return_value = ("t1", "u1")
+    run_migration._finish(session, "abcdef1234", "failed", "time limit reached", {})
+    assert sent and sent[0][:2] == ("t1", "u1") and sent[0][4] is True and sent[0][6] == "time limit reached"
