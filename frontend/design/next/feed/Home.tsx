@@ -11,7 +11,7 @@ import { errorSentence } from "@/lib/api/v2/client";
 import { analyseRun } from "@/lib/api/v2/runs";
 import { fixtureAllowed, useFixture } from "@/lib/api/v2/fixture";
 import { getFindings, type AletheiaFinding } from "@/lib/api/v2/insights";
-import { actionOf, downloadWorkbook, startObjects, usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
+import { actionOf, downloadWorkbooks, startObjects, usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { Confirm, EmptyState, ErrorState, Sheet, useToast, Button } from "../kit";
 import { CompareObjects } from "../portfolio/CompareObjects";
 import { BulkBar, type PortfolioActions } from "../portfolio/BulkBar";
@@ -80,15 +80,20 @@ export function Home() {
       if (rs.length > 6) toast({ text: t("Compare shows six objects at most; the first six are shown."), tone: "neutral" });
     },
     download: async (rs) => {
-      for (const r of rs) {
+      for (let i = 0; i < rs.length; i += 50) {
         try {
-          await downloadWorkbook(r);
+          await downloadWorkbooks(rs.slice(i, i + 50));
         } catch (err) {
           toast({ text: errorSentence(err, t("The workbook could not be downloaded. Try again.")), tone: "bad" });
           return;
         }
       }
-      toast({ text: rs.length === 1 ? t("Workbook for run {n} downloaded. Upload it when you are done.", { n: formatInt(rs[0].run_number ?? 0) }) : t("{n} workbooks downloaded. Upload them when you are done.", { n: formatInt(rs.length) }), tone: "good" });
+      toast({
+        text: rs.length === 1 ? t("Workbook for run {n} downloaded. Upload it when you are done.", { n: formatInt(rs[0].run_number ?? 0) }) : t("{n} workbooks downloaded. Upload them when you are done.", { n: formatInt(rs.length) }),
+        tone: "good",
+        timeout: 12000,
+        action: { label: t("Open Upload"), onClick: () => setUploadFor(rs) },
+      });
     },
     score: async (rs) => {
       setScoring((s) => new Set([...s, ...rs.map((r) => r.version_id)]));

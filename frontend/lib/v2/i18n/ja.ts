@@ -11141,6 +11141,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "different roles": "別のロール",
   "Removed {role_name} from {name}. They will be notified.": "{name} から {role_name} を削除しました。本人に通知されます。",
   "Added {role} to {name}. They will be notified.": "{name} に {role} を追加しました。本人に通知されます。",
+  "Open Upload": "アップロードを開く",
+  "Add to load": "ロードに追加",
   "Connect a system to start": "開始するにはシステムを接続してください",
   "Use the demo data": "デモデータを使う",
   "Meridian pulls your master data once, scores it, and gives you a workbook to clean it in Excel.": "Meridian はマスターデータを一度取り込んでスコアを付け、Excel でクレンジングするためのワークブックを用意します。",

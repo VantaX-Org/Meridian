@@ -11140,6 +11140,8 @@ export const en = {
   "different roles": "different roles",
   "Removed {role_name} from {name}. They will be notified.": "Removed {role_name} from {name}. They will be notified.",
   "Added {role} to {name}. They will be notified.": "Added {role} to {name}. They will be notified.",
+  "Open Upload": "Open Upload",
+  "Add to load": "Add to load",
   "Connect a system to start": "Connect a system to start",
   "Use the demo data": "Use the demo data",
   "Meridian pulls your master data once, scores it, and gives you a workbook to clean it in Excel.": "Meridian pulls your master data once, scores it, and gives you a workbook to clean it in Excel.",

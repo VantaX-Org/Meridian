@@ -514,6 +514,75 @@ async def workbook_xlsx(version_id: uuid.UUID, request: Request, module: Optiona
     return xlsx_response(*out)
 
 
+_ZIP_MAX = 50
+_ZIP_MAX_BYTES = 512 * 1024 * 1024  # ponytail: in-memory bundle; spool to disk if 512 MB is not enough
+
+
+def _zip_sync(tenant_id: str, pairs: list[tuple[str, str]]) -> bytes:
+    """Every pair's cleaning workbook in one ZIP; a pair that cannot make one refuses the whole bundle."""
+    import io
+    import zipfile
+
+    from api.services.cleaning_workbook import DownloadRefused
+
+    buf = io.BytesIO()
+    seen: set[str] = set()
+    total = 0
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for vid, module in pairs:
+            out = _cleaning_sync(tenant_id, vid, module)
+            if out is None:
+                raise DownloadRefused(404, f"Run {vid} not found for {module}.")
+            data, name = out
+            if name in seen:  # two runs of one object: keep both files apart
+                stem, dot, ext = name.rpartition(".")
+                name = f"{stem} ({vid[:8]}){dot}{ext}"
+            seen.add(name)
+            total += len(data)
+            if total > _ZIP_MAX_BYTES:
+                raise DownloadRefused(413, "The workbooks are too large for one download. Choose fewer runs.")
+            zf.writestr(name, data)
+    return buf.getvalue()
+
+
+@router.get("/reports/cleaning.zip", response_class=Response)
+async def cleaning_zip(request: Request,
+                       runs: str = Query(..., description="Comma-separated version_id:module pairs, 1 to 50"),
+                       db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Several cleaning workbooks in one ZIP, one per run and object, for a bulk download from the portfolio."""
+    from datetime import date
+
+    from api.middleware.licence import enforce_licensed_modules
+    from api.services.cleaning_workbook import DownloadRefused
+
+    await _rls(db, tenant)
+    pairs: dict[tuple[str, str], None] = {}
+    for part in (p.strip() for p in runs.split(",") if p.strip()):
+        vid, _, module = part.partition(":")
+        try:
+            vid = str(uuid.UUID(vid))
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"Not a run id: {vid}") from None
+        if module not in _modules():
+            raise HTTPException(status_code=422, detail=f"Unknown module: {module}")
+        pairs[(vid, module)] = None
+        if len(pairs) > _ZIP_MAX:
+            raise HTTPException(status_code=422, detail=f"Give 1 to {_ZIP_MAX} workbooks.")
+    if not pairs:
+        raise HTTPException(status_code=422, detail=f"Give 1 to {_ZIP_MAX} workbooks.")
+    enforce_licensed_modules(request, sorted({m for _, m in pairs}))
+    try:
+        data = await asyncio.to_thread(_zip_sync, str(tenant.id), list(pairs))
+    except DownloadRefused as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
+    except Exception:
+        raise server_failure("The cleaning workbooks could not be generated.", log=logger, what="cleaning zip") from None
+    for vid, module in pairs:
+        await _audit_export(request, tenant, "cleaning_workbook", uuid.UUID(vid), module)
+    name = f"Cleaning workbooks {date.today().isoformat()}.zip"
+    return Response(data, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
 def _cleaning_sync(tenant_id: str, vid: str, module: str) -> Optional[tuple[bytes, str]]:
     from api.services.cleaning_workbook import build
     from workers.db import get_sync_engine, tenant_session

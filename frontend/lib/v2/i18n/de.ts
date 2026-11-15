@@ -11141,6 +11141,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "different roles": "andere Rollen",
   "Removed {role_name} from {name}. They will be notified.": "{role_name} von {name} entfernt. Die Person wird benachrichtigt.",
   "Added {role} to {name}. They will be notified.": "{role} zu {name} hinzugefügt. Die Person wird benachrichtigt.",
+  "Open Upload": "Upload öffnen",
+  "Add to load": "Zum Laden hinzufügen",
   "Connect a system to start": "Verbinden Sie ein System, um zu beginnen",
   "Use the demo data": "Demodaten verwenden",
   "Meridian pulls your master data once, scores it, and gives you a workbook to clean it in Excel.": "Meridian liest Ihre Stammdaten einmal, bewertet sie und gibt Ihnen eine Arbeitsmappe, um sie in Excel zu bereinigen.",
