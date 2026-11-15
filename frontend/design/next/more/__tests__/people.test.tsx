@@ -12,9 +12,9 @@ vi.mock("../cards", () => ({ PeopleCard: () => <div data-testid="people-card" />
 const Q = vi.hoisted(() => ({
   people: [] as unknown[],
   open: 10,
-  can: (_: string): boolean => true,
+  can: (a: string): boolean => a !== "",
   shared: false,
-  remind: vi.fn((_: string) => Promise.resolve({})),
+  remind: vi.fn((id: string) => Promise.resolve({ id })),
   exportGrid: vi.fn(() => Promise.resolve("people.xlsx")),
   downloadCsv: vi.fn(() => "people.csv"),
 }));
