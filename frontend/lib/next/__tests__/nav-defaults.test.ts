@@ -16,6 +16,11 @@ describe("nav defaults", () => {
     expect(redirectFor("/monitor")).toBe("/work/monitor");
     expect(redirectFor("/next/work/approve")).toBe("/work/approve");
     expect(redirectFor("/load/compare")).toBe("/load?tab=compare");
+    // Configuration is a page under Systems; reference data and links are Master data tabs.
+    expect(redirectFor("/config")).toBe("/more/systems/config");
+    expect(redirectFor("/reference-data")).toBe("/more/master-data?tab=reference");
+    expect(redirectFor("/links")).toBe("/more/master-data?tab=links");
+    expect(redirectFor("/people")).toBe("/more/people");
     // Administration has one entry, under More.
     expect(redirectFor("/admin")).toBe("/more/admin");
     expect(redirectFor("/admin/users")).toBe("/more/admin/users");

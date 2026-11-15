@@ -20,6 +20,8 @@
 .nx-body { padding: var(--nx-s4) var(--nx-gutter); display: flex; flex-direction: column; gap: var(--nx-s4); }
 .nx-row { display: flex; align-items: center; gap: var(--nx-s3); min-width: 0; }
 .nx-row-main { flex: 1; min-width: 0; }
+.nx-cell-stack { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--nx-s2); }
+.nx-wrap { flex-wrap: wrap; padding: 0 var(--nx-gutter); }
 .nx-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--nx-s3); }
 
 /* story-feed G: chart-led cards. The chart region is three fifths of the card's rows and never under 7.5rem. */
