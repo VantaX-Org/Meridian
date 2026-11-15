@@ -2110,17 +2110,43 @@ async def upload_template(module: str, request: Request, file: UploadFile = File
     return {"id": new_id, "name": label, "version": version, "coverage": cov}
 
 
-@router.get("/templates/{module}/fields")
-async def template_fields(module: str, tenant: Tenant = Depends(get_tenant),
-                          _=Depends(require_permission("view", scope=scope_from_path))) -> dict[str, Any]:
-    """The dictionary fields of the module's tables, which an unresolved column may be mapped to."""
-    from checks.frames import tables_of
-    from checks.runner import get_required_columns
+# Where the load files go: the dictionary release the target reads. SuccessFactors entities are canonical tables
+# present in every release, so they resolve against the S/4 baseline plus what the target system's workbooks taught.
+DESTINATIONS = {"s4hana": "s4hana", "ecc": "ecc", "successfactors": "s4hana"}
+Destination = Literal["s4hana", "ecc", "successfactors"]
+
+
+def target_dictionary(tenant_id, system_id: Optional[str], destination: Optional[str]):
+    """The dictionary of the load's target: the destination's release, overlaid with the target system's live DDIC
+    and learned workbook fields when one is named. Neither given keeps the S/4 baseline."""
+    from api.services.source_design import dictionary_for
     from sap.ddic import get_dictionary
 
+    release = DESTINATIONS.get(destination) if destination else None
+    if not system_id:
+        return get_dictionary(release or "s4hana")
+    from workers.db import get_sync_engine, tenant_session
+
+    with tenant_session(get_sync_engine(), tenant_id) as s:
+        return dictionary_for(s, system_id, release)
+
+
+@router.get("/templates/{module}/fields")
+async def template_fields(module: str, system_id: Optional[str] = Query(None),
+                          destination: Optional[Destination] = Query(None),
+                          tenant: Tenant = Depends(get_tenant),
+                          _=Depends(require_permission("view", scope=scope_from_path))) -> dict[str, Any]:
+    """The dictionary fields of the module's tables, which an unresolved column may be mapped to.
+
+    `destination` (s4hana, ecc, successfactors) and `system_id` pick the target's dictionary; the S/4 baseline otherwise."""
+    from starlette.concurrency import run_in_threadpool
+    from checks.frames import tables_of
+    from checks.runner import get_required_columns
+
     _module_rules(module)
-    d = get_dictionary("s4hana")
-    return {"fields": [{"field": f.qualified, "description": f.description, "key": f.key,
+    d = await run_in_threadpool(target_dictionary, tenant.id, system_id, destination)
+    return {"destination": destination or "s4hana", "release": d.release,
+            "fields": [{"field": f.qualified, "description": f.description, "key": f.key,
                         "table_description": d.tables[t].description}
                        for t in sorted(tables_of(get_required_columns(module))) if t in d.tables
                        for f in d.tables[t].fields.values()]}
@@ -2128,16 +2154,18 @@ async def template_fields(module: str, tenant: Tenant = Depends(get_tenant),
 
 @router.get("/templates/{module}/blank", response_class=Response)
 async def blank_template(module: str, request: Request, system_id: Optional[str] = Query(None),
-                         all_entities: bool = Query(False),
+                         all_entities: bool = Query(False), destination: Optional[Destination] = Query(None),
                          tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
                          _=Depends(require_permission("export", scope=scope_from_path))):
     """A blank template for the module: every field its rules read, with description, required flag and values.
 
     Value lists come from the rules, the domain and the target's check tables (`system_id`, else the S/4 baseline).
-    `all_entities` gives every SuccessFactors entity the dictionary describes, each marked as generated."""
+    `all_entities` gives every SuccessFactors entity the dictionary describes, each marked as generated.
+    `destination` picks the target's dictionary release; successfactors gives the entity import templates."""
     from starlette.concurrency import run_in_threadpool
 
     rules = _module_rules(module)
+    all_entities = all_entities or destination == "successfactors"
 
     def _build() -> bytes:
         from api.services.migration import workbook as wb
@@ -2148,14 +2176,14 @@ async def blank_template(module: str, request: Request, system_id: Optional[str]
 
         with tenant_session(get_sync_engine(), tenant.id) as s:
             values, _basis = load_target_config(s, system_id)
-            dictionary = dictionary_for(s, system_id)
+            dictionary = dictionary_for(s, system_id, DESTINATIONS.get(destination) if destination else None)
         tabs = wb.sf_load_templates(dictionary, values) if all_entities else wb.blank_template(dictionary, rules, values)
         return to_xlsx(with_layout_note(tabs), sanitize_formulas=True, keep_order=True)
 
     content = await run_in_threadpool(_build)
     await _set_rls(db, tenant.id)
     await write_audit(db, tenant.id, request, "migration.template.blank", "module", module, None,
-                      {"system_id": system_id, "all_entities": all_entities})
+                      {"system_id": system_id, "all_entities": all_entities, "destination": destination})
     await db.commit()
     return Response(content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f"attachment; filename={module}_template.xlsx"})
@@ -2177,15 +2205,15 @@ class TemplateMapping(BaseModel):
 
 @router.put("/templates/{module}/{template_id}/mapping")
 async def map_template(module: str, template_id: str, body: TemplateMapping, request: Request,
+                       system_id: Optional[str] = Query(None), destination: Optional[Destination] = Query(None),
                        tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db),
                        _=Depends(require_permission("analyse", scope=scope_from_path))) -> dict[str, Any]:
-    """Save a person's corrections to unresolved columns. Every field must exist in the dictionary."""
+    """Save a person's corrections to unresolved columns. Every field must exist in the target's dictionary."""
     import json
     from starlette.concurrency import run_in_threadpool
-    from sap.ddic import get_dictionary
 
     t = await _template(db, tenant, module, template_id, content=True)
-    d = get_dictionary("s4hana")
+    d = await run_in_threadpool(target_dictionary, tenant.id, system_id, destination)
     unknown = [ref for ref in body.columns.values() if ref and d.resolve(ref.upper()) is None]
     if unknown:
         raise HTTPException(status_code=422, detail=f"Not a dictionary field: {', '.join(sorted(set(unknown)))}")

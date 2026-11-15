@@ -86,6 +86,9 @@ class _DB:
     async def commit(self):
         pass
 
+    async def rollback(self):
+        pass
+
 
 def _row(status="complete", modules=("employee_central",), path="staging/x/parent/"):
     return (status, "Run 1", {"modules": list(modules), "dataset_path": path})
@@ -400,3 +403,42 @@ def test_confirm_required_for_warnings_and_failures_block(env):
     assert _post(env, _good(extra={"template_version": ""}), confirm_warnings="true").status_code == 200
     r = _post(env, _good(extra={"template_version": "0"}), confirm_warnings="true")  # confirm never overrides a fail
     assert r.status_code == 422 and r.json()["detail"]["error"] == "checks_failed"
+
+
+class _LenDict:
+    """jobTitle holds at most 3 characters; nothing is a key."""
+
+    def field(self, t, f):
+        return SimpleNamespace(length=3, type="CHAR", description="Job title") if f == "jobTitle" else None
+
+    def keys(self, t):
+        return []
+
+
+def test_flagged_cells_are_listed_and_skip_flagged_applies_the_rest(env, monkeypatch):
+    monkeypatch.setattr(upload, "_dictionary", lambda t, s: _LenDict())
+    head = ["Table", "Record key", "Field", "Corrected value"]
+    two = _xlsx({"Records to clean": [head, ["EmpJob", "userId=u1", "jobTitle", "Lead"],
+                                      ["EmpJob", "userId=u2", "jobTitle", "Bo"]]})
+    body, by = _checks(env, two)
+    assert by["values"]["status"] == "fail" and body["flagged_total"] == 1
+    assert body["flagged"] == [{"table": "EmpJob", "key": "userId=u1", "field": "jobTitle",
+                                "description": "Job title", "reason": "long"}]
+    assert "Lead" not in str(body)
+    r = _post(env, two)
+    assert r.status_code == 422 and r.json()["detail"]["error"] == "checks_failed"
+    assert r.json()["detail"]["flagged_total"] == 1
+    r = _post(env, two, skip_flagged="true")  # left out, so values warns and needs a confirm
+    assert r.status_code == 422 and r.json()["detail"]["error"] == "confirm_required"
+    r = _post(env, two, skip_flagged="true", confirm_warnings="true")
+    assert r.status_code == 200, r.text
+    assert [e["key"] for e in env.applied_with[0][2]] == ["userId=u2"]
+
+
+def test_batch_forwards_confirm_warnings(env):
+    files = [("files", ("a.xlsx", _good(extra={"template_version": ""}), XLSX))]
+    r = env.client.post("/api/v1/upload/roundtrip/batch", files=files, headers={"X-User-Role": "analyst"})
+    assert r.json()["failed"] == 1
+    r = env.client.post("/api/v1/upload/roundtrip/batch", files=files, data={"confirm_warnings": "true"},
+                        headers={"X-User-Role": "analyst"})
+    assert r.json()["succeeded"] == 1, r.text
