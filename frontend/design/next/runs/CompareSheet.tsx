@@ -96,6 +96,7 @@ export function ComparePage({ a, b, runs, objects }: { a: string; b: string; run
   return (
     <main className="nx-rn-page">
       <h1 className="nx-rn-h1">{t("Compare runs")}</h1>
+      <p><Link className="nx-rn-link" href={`/run/${a}/vs/${b}?view=full`} data-testid="compare-full">{t("Rules and records")}</Link></p>
       <CompareMatrix ids={ids} objects={objects ? objects.split(",") : undefined} />
     </main>
   );

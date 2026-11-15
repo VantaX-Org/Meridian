@@ -8137,6 +8137,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{rowsCount} {rowsCount, plural, one {run} other {runs}}, {failed} failed": "{rowsCount} 件の実行、うち {failed} 件が失敗",
   "{rowsCount} {rowsCount, plural, one {run} other {runs}}": "{rowsCount} 件の実行",
   "A new run measures the data again, so you can compare it with the last one.": "新しい実行はデータを再測定するので、前回と比較できます。",
+  "Export, baseline and more": "エクスポート、ベースラインなど",
+  "Rules and records": "ルールとレコード",
   "Compare with previous": "前回と比較",
   "Every run of every system, newest first within each system. Open a run to see what it scored, or compare it with the one before to see what changed.": "全システムの全実行を、システムごとに新しい順で表示します。実行を開いて結果を確認するか、前回と比較して変化を確認します。",
   "How many objects this run gave a score": "この実行でスコアが付いたオブジェクトの数",

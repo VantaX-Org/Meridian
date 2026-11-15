@@ -150,7 +150,7 @@
       {
         "route": "/o/_/material-master",
         "control": "Rules",
-        "expect": "out of 100"
+        "expect": "How this is scored"
       },
       {
         "route": "/o/_/material-master/rules",
@@ -375,7 +375,7 @@
       {
         "route": "/people",
         "control": "Open {name}'s overdue work",
-        "expect": "Owners and stewards"
+        "expect": "Open work"
       },
       {
         "route": "/work",
@@ -390,7 +390,7 @@
     "object": null,
     "steps": [
       {
-        "route": "/migration",
+        "route": "/load/analysis",
         "control": null,
         "expect": "Migration"
       }
@@ -427,18 +427,18 @@
     "object": "employee_central",
     "steps": [
       {
-        "route": "/migration",
+        "route": "/load/analysis",
         "control": "Check the workbook",
         "expect": "Workbook from the new system"
       },
       {
-        "route": "/migration",
+        "route": "/load/analysis",
         "control": "Export in the same format",
         "expect": "Check what fits",
         "needs": "a workbook from the new system uploaded and checked"
       },
       {
-        "route": "/migration",
+        "route": "/load/analysis",
         "control": null,
         "expect": "Export the data",
         "needs": "a workbook from the new system uploaded and checked"
@@ -459,7 +459,7 @@
       {
         "route": "/o/_/employee-central",
         "control": "Rules",
-        "expect": "out of 100",
+        "expect": "How this is scored",
         "needs": "a SuccessFactors system connected and analysed"
       },
       {
@@ -478,7 +478,7 @@
       {
         "route": "/o/_/sd-customer-master",
         "control": "Rules",
-        "expect": "out of 100"
+        "expect": "How this is scored"
       },
       {
         "route": "/o/_/sd-customer-master/rules",
@@ -499,12 +499,12 @@
     "object": null,
     "steps": [
       {
-        "route": "/migration",
+        "route": "/load/analysis",
         "control": "Start an analysis",
         "expect": "Migration"
       },
       {
-        "route": "/migration",
+        "route": "/load/analysis",
         "control": null,
         "expect": "Source to target system"
       }
@@ -518,10 +518,15 @@
       {
         "route": "/runs",
         "control": "Compare with previous",
-        "expect": "Every run of every system"
+        "expect": "Runs, newest first"
       },
       {
         "route": "/run/{a}/vs/{b}",
+        "control": "Rules and records",
+        "expect": "Compare runs"
+      },
+      {
+        "route": "/run/{a}/vs/{b}?view=full",
         "control": null,
         "expect": "What changed between"
       }
@@ -535,7 +540,7 @@
       {
         "route": "/o/_/material-master",
         "control": "Trend",
-        "expect": "out of 100"
+        "expect": "How this is scored"
       },
       {
         "route": "/o/_/material-master/trend",
@@ -552,15 +557,20 @@
       {
         "route": "/runs",
         "control": "{run}",
-        "expect": "Every run of every system"
+        "expect": "Runs, newest first"
       },
       {
         "route": "/run/{run_id}",
+        "control": "Export, baseline and more",
+        "expect": "Back to runs"
+      },
+      {
+        "route": "/run/{run_id}?view=full",
         "control": "Export findings",
         "expect": "What this run scored"
       },
       {
-        "route": "/run/{run_id}",
+        "route": "/run/{run_id}?view=full",
         "control": null,
         "expect": "What this run scored"
       }
@@ -649,7 +659,7 @@
       {
         "route": "/o/{system}/{object}",
         "control": null,
-        "expect": "out of 100"
+        "expect": "How this is scored"
       }
     ]
   },

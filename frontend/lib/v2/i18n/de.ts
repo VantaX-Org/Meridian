@@ -8137,6 +8137,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{rowsCount} {rowsCount, plural, one {run} other {runs}}, {failed} failed": "{rowsCount} {rowsCount, plural, one {Lauf} other {Läufe}}, {failed} fehlgeschlagen",
   "{rowsCount} {rowsCount, plural, one {run} other {runs}}": "{rowsCount} {rowsCount, plural, one {Lauf} other {Läufe}}",
   "A new run measures the data again, so you can compare it with the last one.": "Ein neuer Lauf misst die Daten erneut, sodass Sie ihn mit dem letzten vergleichen können.",
+  "Export, baseline and more": "Export, Basislinie und mehr",
+  "Rules and records": "Regeln und Datensätze",
   "Compare with previous": "Mit vorherigem vergleichen",
   "Every run of every system, newest first within each system. Open a run to see what it scored, or compare it with the one before to see what changed.": "Jeder Lauf jedes Systems, je System der neueste zuerst. Öffnen Sie einen Lauf, um seine Bewertung zu sehen, oder vergleichen Sie ihn mit dem vorherigen.",
   "How many objects this run gave a score": "Für wie viele Objekte dieser Lauf eine Bewertung vergeben hat",

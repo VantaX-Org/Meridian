@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { RunsCanvas } from "@/design/v2/screens/Runs";
 import { SmallMultiples, scoreDomain } from "@/design/v2/charts";
 import { shortDate } from "@/design/v2/RunTimeline";
 import { useRunsPage, type RunStatusFilter } from "@/lib/api/next/runs";
@@ -15,6 +16,7 @@ import { useLandscape } from "@/lib/v2/queries";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { runLabel, runStatusWord } from "@/lib/v2/run-label";
 import { Button, Chip, DataTable, EmptyState, LargeTitle, SegmentedControl, type Column } from "../kit";
+import { LegacyMount } from "../shell/LegacyMount";
 import { useSheets } from "../shell/SheetHost";
 import { MAX_COMPARE_RUNS } from "./CompareSheet";
 import { isForbidden } from "./draft";
@@ -33,6 +35,12 @@ export function runScore(h: VersionHead): number | null {
 }
 
 export function Runs() {
+  // ?view=jobs keeps the extraction and analysis job queue the old Runs screen showed.
+  const jobs = useSearchParams().get("view") === "jobs";
+  return jobs ? <LegacyMount><RunsCanvas /></LegacyMount> : <RunList />;
+}
+
+function RunList() {
   const router = useRouter();
   const sheets = useSheets();
   const { can } = useV2Session();
@@ -66,6 +74,11 @@ export function Runs() {
     { id: "status", label: t("Status"), cell: (r) => <Chip tone={TONE[r.status as keyof typeof TONE] ?? "neutral"}>{runStatusWord(r.status)}</Chip> },
     { id: "objects", label: t("Objects"), align: "end", cell: (r) => formatInt(Object.keys(r.dqs_summary ?? r.metadata?.module_rows ?? {}).length) },
     { id: "score", label: t("Score"), align: "end", cell: (r) => { const s = runScore(r); return s == null ? <span className="nx-rn-sub">{t("Not scored")}</span> : s.toFixed(1); } },
+    { id: "compare", label: t("Compare"), cell: (r) => {
+      // The run before this one on the same system, when it is on this page.
+      const prev = rows.slice(rows.indexOf(r) + 1).find((o) => (o.metadata?.system_id ?? "") === (r.metadata?.system_id ?? ""));
+      return prev ? <Link className="nx-rn-link" href={`/next/run/${prev.id}/vs/${r.id}`} data-testid="compare-previous" onClick={(e) => e.stopPropagation()}>{t("Compare with previous")}</Link> : null;
+    } },
   ];
 
   const systems = landscape?.systems ?? [];
@@ -94,6 +107,7 @@ export function Runs() {
           </select>
         </label>
         <SegmentedControl label={t("Status")} value={status} onChange={reset(setStatus)} items={STATUSES.map((s) => ({ value: s, label: STATUS_WORD[s]() }))} />
+        <Link className="nx-rn-link" href="/runs?view=jobs">{t("Jobs")}</Link>
         {anyFilter ? <Button variant="quiet" size={32} onClick={() => { reset(setSystem)(""); reset(setModule)(""); reset(setStatus)("all"); }}>{t("Clear filters")}</Button> : null}
       </div>
 

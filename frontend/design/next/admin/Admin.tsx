@@ -12,7 +12,6 @@ import { EmptyState } from "../kit";
 import { ChartCard } from "../more/ChartCard";
 import { SeatsCard, UsersCard } from "../more/cards";
 import { Roles } from "./Roles";
-import { Users } from "./Users";
 
 /** Administration: five chart-led cards, one per group, each listing the sections this person may open. The one entry to admin. */
 export function AdminHome() {
@@ -43,13 +42,20 @@ export function AdminHome() {
   );
 }
 
-/** One section in the new frame. Users and roles are native; the rest mount the existing section behind the same permission check. */
+/** One section in the new frame. Roles are native; the rest mount the existing section behind the same permission check. */
 export function AdminSectionView({ slug }: { slug: string }) {
   const { can } = useV2Session();
+  const href = useV2Href();
   if (!isAdminSlug(slug)) return <EmptyState heading={t("Nothing at this address")} />;
   const section = ADMIN_SECTIONS.find((s) => s.slug === slug)!;
   if (!section.needs.some((n) => can(n))) return <Denied what={section.label} />;
-  if (slug === "users") return <Users />;
+  // Users keeps the full screen: filters, import, bulk suspend and reactivate, password resets and SCIM provisioning.
+  if (slug === "users") return (
+    <>
+      <div className="nx-row"><Link className="nx-link" href={href("/more/admin/roles")}>{t("Roles and permissions")}</Link></div>
+      <LegacyMount><AdminCanvas section="users" /></LegacyMount>
+    </>
+  );
   if (slug === "roles") return <Roles />;
   return <LegacyMount><AdminCanvas section={slug} /></LegacyMount>;
 }

@@ -8136,6 +8136,8 @@ export const en = {
   "{rowsCount} {rowsCount, plural, one {run} other {runs}}, {failed} failed": "{rowsCount} {rowsCount, plural, one {run} other {runs}}, {failed} failed",
   "{rowsCount} {rowsCount, plural, one {run} other {runs}}": "{rowsCount} {rowsCount, plural, one {run} other {runs}}",
   "A new run measures the data again, so you can compare it with the last one.": "A new run measures the data again, so you can compare it with the last one.",
+  "Export, baseline and more": "Export, baseline and more",
+  "Rules and records": "Rules and records",
   "Compare with previous": "Compare with previous",
   "Every run of every system, newest first within each system. Open a run to see what it scored, or compare it with the one before to see what changed.": "Every run of every system, newest first within each system. Open a run to see what it scored, or compare it with the one before to see what changed.",
   "How many objects this run gave a score": "How many objects this run gave a score",
