@@ -60,6 +60,8 @@ export function RunBody({ id }: { id: string }) {
   const failed = h.status === "failed";
   const running = h.status === "running";
   const runs = [...(timeline.data?.runs ?? [])].reverse();
+  // This run beside up to five other runs of the timeline, oldest first.
+  const cmp = [...runs.map((r) => r.id).filter((x) => x !== h.id).slice(-5), h.id];
   const trend = runs.flatMap((r) => {
     const sc = Object.values(r.objects).map((o) => o.score).filter((n): n is number => typeof n === "number");
     return sc.length ? [{ label: shortDate(r.run_at), value: sc.reduce((a, b) => a + b, 0) / sc.length }] : [];
@@ -78,6 +80,7 @@ export function RunBody({ id }: { id: string }) {
         <div>
           <h2 className="nx-rn-h2 nx-rn-trunc" title={name}>{name}</h2>
           <p className="nx-rn-sub">{shortDate(h.run_at)} <Chip tone={failed ? "bad" : running ? "warn" : "good"}>{runStatusWord(h.status)}</Chip></p>
+          {cmp.length > 1 ? <Link className="nx-rn-link" data-testid="run-compare" href={`/next/run/${cmp[0]}/vs/${h.id}?runs=${cmp.join(",")}`}>{t("Compare with the last {n} runs", { n: cmp.length - 1 })}</Link> : null}
         </div>
         <ScoreRing value={hero} size={132} label={hero == null ? t("This run has no score yet") : t("Run score {n} out of 100", { n: hero.toFixed(1) })} />
       </header>

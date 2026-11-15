@@ -250,3 +250,15 @@ async def test_runs_are_tenant_scoped(owner, monkeypatch):
         ids = {x["id"] for x in (await client.get("/api/v1/runs/timeline", headers=headers())).json()["runs"]}
         assert ids == {t2["run0"], t2["run_mid"], t2["run_spare"], t2["run"]} and not ids & {s["run"], s["run0"]}
         assert (await client.get(f"/api/v1/runs/{s['run0']}/vs/{t2['run']}/summary", headers=headers())).status_code == 404
+def test_multi_rules():
+    from api.routes.run_timeline import multi_rules
+    found = [("r1", "A", 0, "high", "validity"), ("r2", "A", 4, "high", "validity"), ("r3", "A", 0, "high", "validity"),
+             ("r1", "B", 100, "low", "completeness"), ("r2", "B", 200, "low", "completeness"),
+             ("r3", "C", 7, None, None)]
+    rules, steps = multi_rules(["r1", "r2", "r3"], found)
+    by = {r["check_id"]: r for r in rules}
+    assert by["A"]["failing"] == [0, 4, 0] and by["A"]["change"] == ["newly_failing", "fixed"]
+    assert by["B"]["failing"] == [100, 200, None] and by["B"]["change"] == ["worse", None]
+    assert by["C"]["failing"] == [None, None, 7] and by["C"]["change"] == [None, None]
+    assert steps == [{"a": "r1", "b": "r2", "newly_failing": 1, "fixed": 0, "worse": 1, "better": 0},
+                     {"a": "r2", "b": "r3", "newly_failing": 0, "fixed": 1, "worse": 0, "better": 0}]

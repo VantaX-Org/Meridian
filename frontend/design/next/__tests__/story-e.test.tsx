@@ -142,6 +142,17 @@ describe("Compare", () => {
     wrap(<CompareSheet id={ids} close={() => undefined} />);
     expect(await screen.findByText("Showing the first 6 runs. 2 more were left out.")).toBeInTheDocument();
   });
+
+  it("puts one object of the runs side by side: trend, scores, dimensions and rule changes", async () => {
+    wrap(<CompareSheet id={`${fixtureRunId(1)},${fixtureRunId(2)},${fixtureRunId(3)}`} close={() => undefined} />);
+    const sec = await screen.findByTestId("compare-object");
+    expect(await within(sec).findByTestId("compare-trend")).toBeInTheDocument();
+    const side = await within(sec).findByTestId("compare-side");
+    expect(within(side).getAllByRole("columnheader").length).toBe(4);
+    const rules = within(sec).getByTestId("compare-rules");
+    expect(within(rules).getAllByRole("row").length).toBeGreaterThan(1);
+    expect(within(rules).queryByText("No description")).toBeNull();
+  });
 });
 
 describe("Start a run", () => {

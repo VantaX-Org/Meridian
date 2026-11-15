@@ -30,6 +30,7 @@ import { DASH, int } from "@/lib/v2/score";
 import { Dash, EmptyFrame, ErrorFrame, Mono, SapCode, Skeleton } from "../parts";
 import { useToast } from "../Toast";
 import { RunChip } from "../RunChip";
+import { FlowGraph } from "./FlowGraph";
 import { Guide } from "./Guide";
 import { CcBanner, CcDelta, CcHBars, CcPage } from "./cc-parts";
 import { ScrollFrame } from "./object/ScrollFrame";
@@ -340,20 +341,11 @@ function RunDetail({ entry, runId }: { entry: CatalogueEntry; runId: string }) {
           <EmptyFrame>{t("No steps below this one. This is the deepest level mined for this step.")}</EmptyFrame>
         ) : (
           <>
-            <CcHBars
+            <FlowGraph
               testId="pd-steps"
-              label={t("Cases per step")}
-              rows={dfg.data.nodes.map((n) => ({
-                key: n.id,
-                label: (
-                  <button type="button" className="m2-linkbtn" onClick={() => setPath([...path, { id: n.id, name: n.name }])} data-testid={`pd-node-${n.id}`}>
-                    <Mono>{n.id}</Mono> {n.name}
-                  </button>
-                ),
-                value: n.case_count,
-                text: n.observed ? `${int(n.case_count)}  ${secs(n.median_seconds)}` : t("Not observed"),
-                tone: n.observed ? "data" : "warn",
-              }))}
+              dfg={dfg.data}
+              variant={variants.data?.items.find((v) => v.hash === variant)?.activities ?? null}
+              onOpen={(n) => setPath([...path, { id: n.id, name: n.name }])}
             />
             {dfg.data.edges.length ? (
               <ScrollFrame label={t("Hand-offs")}>

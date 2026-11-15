@@ -6,7 +6,7 @@
 import type { VersionHead } from "@/lib/api/v2/runs";
 import type { RoundTripResult } from "@/lib/api/v2/roundtrip";
 import type { TargetTemplate } from "@/lib/api/v2/migration";
-import type { Change, CompareRecord, CompareSetsPage, CompareSummary, ObjectCycle, RunsPage, RunsQuery, SetsQuery } from "./runs";
+import type { Change, CompareRecord, CompareSetsPage, CompareSummary, MultiCompare, MultiRule, ObjectCycle, RuleChange, RunsPage, RunsQuery, SetsQuery } from "./runs";
 
 export const FIXTURE_SYSTEM = "a1b2c3d4-0001-4000-8000-000000000001";
 export const FIXTURE_MODULE = "material_master";
@@ -163,4 +163,41 @@ export function fixtureUpload(fileName: string): RoundTripResult {
     no_table: [],
     no_field: [],
   };
+}
+
+/** The same rule as the server's change_kind: a move counts at 10 records and 10 percent. */
+export function changeKind(a: number, b: number): RuleChange | null {
+  if (a === 0 && b > 0) return "newly_failing";
+  if (a > 0 && b === 0) return "fixed";
+  const moved = Math.abs(b - a);
+  if (a > 0 && b > 0 && moved >= 10 && moved * 100 >= 10 * a) return b > a ? "worse" : "better";
+  return null;
+}
+
+const DIM_KEYS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"];
+const RULE_DIM = ["completeness", "accuracy", "uniqueness", "validity"];
+
+export function fixtureMultiCompare(ids: readonly string[], module: string): MultiCompare {
+  const heads = ids.map(fixtureRun).filter((h): h is VersionHead => h !== null).sort((x, y) => (x.run_at ?? "").localeCompare(y.run_at ?? ""));
+  const runs = heads.map((h) => {
+    const m = h.dqs_summary?.[module] ?? null;
+    const s = m?.composite_score ?? null;
+    return {
+      id: h.id, run_at: h.run_at, label: h.label, run_number: h.run_number ?? null, system_id: String(h.metadata?.system_id ?? ""), system_name: h.system_name ?? null,
+      score: s, raw_score: m?.raw_score ?? null, capped: false, coverage: s == null ? null : 0.9,
+      dimension_scores: s == null ? {} : Object.fromEntries(DIM_KEYS.map((k, i) => [k, Math.max(0, Math.min(100, s + (i % 3) * 4 - 4))])),
+      records_checked: s == null ? null : 12_000 + (h.run_number ?? 0) * 3,
+    };
+  });
+  const rules: MultiRule[] = CHECKS.map((c, i) => {
+    const failing = runs.map((r) => (r.score == null ? null : i === 2 && (r.run_number ?? 0) % 2 === 0 ? 0 : Math.max(0, Math.round((100 - r.score) * (i + 1) * 3))));
+    const change = runs.slice(1).map((_, k) => (failing[k] != null && failing[k + 1] != null ? changeKind(failing[k] as number, failing[k + 1] as number) : null));
+    return { check_id: c.id, title: c.reason, severity: i === 0 ? "high" : "medium", dimension: RULE_DIM[i], failing, change };
+  });
+  const steps = runs.slice(1).map((r, k) => {
+    const st = { a: runs[k].id, b: r.id, newly_failing: 0, fixed: 0, worse: 0, better: 0 };
+    rules.forEach((x) => { const kind = x.change[k]; if (kind) st[kind] += 1; });
+    return st;
+  });
+  return { module, label: module, runs, rules, steps };
 }
