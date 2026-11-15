@@ -848,6 +848,78 @@ def _dictionary(tenant_id, system_id):
         return dictionary_for(s, system_id)
 
 
+class AgreementResponse(BaseModel):
+    version_id: str
+    base_version_id: str
+    run_id: str
+    run_at: Optional[str] = None
+    total: int
+    matched: int
+    different: int
+    missing: int
+    score: Optional[float] = None
+    fields: list[dict]
+    rows: list[dict]
+    rows_total: int
+
+
+@router.get("/upload/roundtrip/{version_id}/agreement", response_model=AgreementResponse)
+async def roundtrip_agreement(
+    version_id: str,
+    request: Request,
+    run: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("view")),
+):
+    """How far a later extraction agrees with an uploaded cleaned file: each corrected cell matched, still
+    different or missing in that run. ``run`` defaults to the newest finished extraction after the file's base."""
+    from starlette.concurrency import run_in_threadpool
+
+    from api.middleware.licence import enforce_licensed_modules
+    from api.services import clean_agreement as ca
+
+    try:
+        version_id = str(uuid.UUID(version_id))
+        run = str(uuid.UUID(run)) if run else None
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
+    row = (await db.execute(text("SELECT metadata FROM analysis_versions WHERE id = CAST(:v AS uuid) AND tenant_id = :t"),
+                            {"v": version_id, "t": tenant.id})).fetchone()
+    meta = dict(row[0] or {}) if row else {}
+    if meta.get("source") != "roundtrip" or not meta.get("cleaned_overlay") or not meta.get("dataset_path"):
+        raise HTTPException(status_code=404, detail="Cleaned upload not found.")
+    enforce_licensed_modules(request, list(meta.get("modules") or []))
+    base = str((meta.get("roundtrip") or {}).get("base_version_id") or meta["cleaned_overlay"].get("base_version_id") or "")
+    if not run:
+        newer = (await db.execute(text(_NEWER_RUN_SQL), {"t": tenant.id, "b": base, "m": None})).fetchone() if base else None
+        if not newer:
+            raise HTTPException(status_code=404, detail={"error": "no_later_run", "detail":
+                                "No extraction has finished since this file's run.", "fix":
+                                "Extract the object again once the corrections are in SAP."})
+        run = str(newer[0])
+    later = (await db.execute(text("SELECT run_at, metadata FROM analysis_versions WHERE id = CAST(:v AS uuid) "
+                                   "AND tenant_id = :t AND status IN ('complete', 'agents_complete')"),
+                              {"v": run, "t": tenant.id})).fetchone()
+    later_path = str(dict(later[1] or {}).get("dataset_path") or "") if later else ""
+    if not later_path.endswith(("/", ".parquet")):
+        raise HTTPException(status_code=404, detail="That run has no stored data to compare.")
+    cells = await _cells(db, tenant.id, version_id, meta)
+    dictionary = await run_in_threadpool(_dictionary, tenant.id, meta.get("system_id"))
+    keys_of = (lambda t: list(dictionary.keys(t))) if dictionary is not None else (lambda t: [])
+
+    def describe(table: str, field: str) -> str:
+        f = dictionary.field(table, field) if dictionary is not None else None
+        return getattr(f, "description", "") or ""
+
+    cleaned = await run_in_threadpool(ca.read_cells, meta["dataset_path"], cells, keys_of)
+    current = await run_in_threadpool(ca.read_cells, later_path, cells, keys_of)
+    out = ca.agreement(cells, cleaned, current, describe)
+    return AgreementResponse(version_id=version_id, base_version_id=base, run_id=run,
+                             run_at=later[0].isoformat() if later[0] else None, **out)
+
+
 async def _tenant_system(db: AsyncSession, tenant_id: uuid.UUID, system_id: str) -> str:
     """The id of the tenant's sap_systems row, or 404."""
     try:
