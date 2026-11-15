@@ -7,6 +7,7 @@ import { useV2Href } from "@/lib/v2/hooks";
 import { EmptyState, Tabs } from "../kit";
 import { GROUPS, SINGLES, TILES } from "../more/groups";
 import { MoreCards } from "../more/cards";
+import { LEADS } from "../more/leads";
 import { Rules } from "../more/Rules";
 import { RuleBody } from "../more/RuleSheet";
 import { Reports } from "../more/Reports";
@@ -84,6 +85,7 @@ export function More({ slug }: { slug?: string[] }) {
   const group = GROUPS.find((g) => g.id === a && slug!.length === 1);
   if (group) {
     const tab = group.tabs.find((x) => x.id === sp.get("tab")) ?? group.tabs[0];
+    const Lead = LEADS[`${group.id}/${tab.id}`];
     return (
       <div className="nx-more">
         <header className="nx-strip">
@@ -91,12 +93,15 @@ export function More({ slug }: { slug?: string[] }) {
           <h1>{group.title()}</h1>
           <Tabs items={group.tabs.map((x) => ({ id: x.id, label: x.label() }))} value={tab.id} onChange={(id) => router.replace(`${path}?tab=${id}`)} label={group.title()} idBase="nx-more" />
         </header>
-        <div id={`nx-more-panel-${tab.id}`} role="tabpanel"><LegacyMount><tab.Screen /></LegacyMount></div>
+        <div id={`nx-more-panel-${tab.id}`} role="tabpanel">{Lead ? <Lead /> : null}<LegacyMount><tab.Screen /></LegacyMount></div>
       </div>
     );
   }
 
   const single = SINGLES[key];
-  if (single) return <Frame title={single.title()}><LegacyMount><single.Screen /></LegacyMount></Frame>;
+  if (single) {
+    const Lead = LEADS[key];
+    return <Frame title={single.title()}>{Lead ? <Lead /> : null}<LegacyMount><single.Screen /></LegacyMount></Frame>;
+  }
   return <EmptyState heading={t("Nothing at this address")} />;
 }

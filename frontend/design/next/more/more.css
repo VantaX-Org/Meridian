@@ -49,3 +49,10 @@
 .nx-more-links li { display: grid; gap: 2px; min-inline-size: 0; }
 .nx-more-links p { margin: 0; color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
 .nx-chartcard-list { list-style: none; margin: var(--nx-s2) 0 0; padding: 0; display: grid; gap: var(--nx-s1); }
+/* Lead cards above a ported screen, and the Aletheia evidence under each result. */
+.nx-lead-row { padding-block-end: var(--nx-s3); }
+.nx-lead-evidence { color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-lead-evidence summary { cursor: pointer; }
+.nx-lead-evidence dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--nx-s1) var(--nx-s2); margin: var(--nx-s1) 0 0; }
+.nx-lead-evidence dt { font-weight: 600; }
+.nx-lead-evidence dd { margin: 0; min-inline-size: 0; overflow-wrap: anywhere; }

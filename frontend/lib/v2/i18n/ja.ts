@@ -10429,7 +10429,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Each smaller scope is read and scored as a run of its own.": "小さな範囲はそれぞれ独立した実行として読み取り、評価されます。",
   "Start {n} downloads": "{n} 件のダウンロードを開始",
   "Splitting the scope needs the trigger sync permission.": "範囲の分割には同期実行の権限が必要です。",
-  // Batch 6: More and admin flows.
   "Add a user and role": "ユーザーとロールを追加",
   "Promote a rule": "ルールを昇格",
   "Test a logon, choose objects, then extract.": "ログオンをテストし、オブジェクトを選んで抽出します。",
@@ -10495,7 +10494,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "A workbook is checked, failed or waits for you to confirm its warnings.": "ブックがチェック中、不合格、または警告の確認待ちです。",
   "Add it with these warnings": "これらの警告を承知で追加する",
   "This run is no longer the latest.": "この実行はもう最新ではありません。",
-  // story-feed: frame
   "Write-back rejected. The requester has been told.": "書き戻しを却下しました。依頼者に通知しました。",
   "The write-back could not be rejected.": "書き戻しを却下できませんでした。",
   "Reject write-back": "書き戻しを却下",
@@ -10556,7 +10554,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Reactivate this user before setting a password.": "パスワードを設定する前に、このユーザーを再有効化してください。",
   "Set a password": "パスワードを設定",
   "They are signed out and must choose a new password. The emailed link works once and ends in 60 minutes; a copied link works once and ends in 24 hours.": "本人はサインアウトされ、新しいパスワードの設定が必要です。メールで送るリンクは一度だけ使え、60分で失効します。コピーしたリンクは一度だけ使え、24時間で失効します。",
-  // story-feed: frame
   "Step {n} of {total}, {label}": "ステップ {n}/{total}、{label}",
   "Leave without saving?": "保存せずに閉じますか？",
   "Your edits on this step are not saved yet.": "このステップの編集はまだ保存されていません。",
@@ -10572,7 +10569,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Shortcuts": "ショートカット",
   "Switch persona to {label}": "ペルソナを{label}に切り替え",
   "{n} need attention": "{n}件が要対応",
-  // story-feed: home
   "{word}, {name}": "{word}、{name}さん",
   "Home could not be read. Check that the API is reachable, then retry.": "ホームを読み込めませんでした。APIに接続できるか確認して、再試行してください。",
   "Nothing to show yet.": "表示するものはまだありません。",
@@ -10759,7 +10755,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "No rows to show": "表示する行はありません",
   "Target score over comparisons": "比較ごとのターゲットスコア",
   "Score trend": "スコアの推移",
-  // story-feed: work
   "Pick at least two runs": "2件以上の実行を選択",
   "Tick two or more runs on the Runs page, then choose Compare.": "実行ページで2件以上にチェックを入れ、比較を選択してください。",
   "Loading the runs to compare": "比較する実行を読み込み中",
@@ -10881,7 +10876,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The records could not be loaded.": "レコードを読み込めませんでした。",
   "Nothing here": "ここには何もありません",
   "No record is in this state right now.": "現在、この状態のレコードはありません。",
-  // story-feed: more
   "{n} of {m} seats used": "{m} 席中 {n} 席を使用中",
   "No usage figures for this group yet.": "このグループの利用状況の数値はまだありません。",
   "Users and roles": "ユーザーとロール",
@@ -11035,7 +11029,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Ask an administrator to give your role this permission.": "管理者に、あなたのロールへこの権限を付与するよう依頼してください。",
   "Your session ended. Your draft is kept. Sign in again, then send it.": "セッションが終了しました。下書きは保持されています。再度サインインしてから送信してください。",
   "Your draft was kept from before.": "以前の下書きが保持されています。",
-  // story-feed: frame
   "More views": "その他のビュー",
   "Aletheia evidence": "Aletheiaの根拠",
   "Loading the evidence": "根拠を読み込み中",
@@ -11134,8 +11127,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Users by status": "状態別のユーザー",
   "The licence has no seat count.": "ライセンスにシート数がありません。",
   "Opening the shared page": "共有ページを開いています",
-  // story-feed: frame
-  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "アクセス権が変更されました。現在のロール: {roles}。メニューを更新するには再読み込みしてください。",
   "Reload": "再読み込み",
   "different roles": "別のロール",
@@ -11151,4 +11142,33 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Per day, across the loaded findings": "日別、読み込んだ検出結果全体",
   "Showing the newest {n} days; {m} older days are not shown.": "最新の {n} 日分を表示しています。それより前の {m} 日分は表示されません。",
   "{n} runs without a date are not shown.": "日付のない {n} 件の実行は表示されません。",
+  "Materials": "資材",
+  "The go-live target is reached": "Go-live の目標に到達しています",
+  "The go-live target is projected": "Go-live の目標に到達する見込みです",
+  "The score is not moving toward the go-live target": "スコアは Go-live の目標に向かっていません",
+  "The go-live target is beyond the projection": "Go-live の目標は予測の範囲外です",
+  "by {when}": "{when} までに",
+  "No risk or unusual run found.": "リスクも異常な実行も見つかりません。",
+  "{count, plural, one {# unusual run} other {# unusual runs}}": "{count, plural, other {異常な実行 # 件}}",
+  "Risks by effect on the score": "スコアへの影響別のリスク",
+  "No golden value proposed yet.": "ゴールデン値はまだ提案されていません。",
+  "{n} waiting for a decision": "{n} 件が判断待ちです",
+  "Applied without review": "レビューなしで適用",
+  "Value shape, length and blanks per source system, counted per field": "ソースシステムごとの値の形式、長さ、空白をフィールドごとに集計",
+  "{v} verified, {r} rejected": "{v} 件確認済み、{r} 件却下",
+  "No health snapshot yet.": "ヘルスのスナップショットはまだありません。",
+  "Health score, last 90 days": "ヘルススコア（過去 90 日）",
+  "Master-data health score per day": "マスターデータのヘルススコア（日別）",
+  "No mining run yet.": "マイニングの実行はまだありません。",
+  "{p} stable, {a} new anomalies in {d} days": "{d} 日間で安定 {p} 件、新しい異常 {a} 件",
+  "{n}% of records covered": "レコードの {n}% をカバー",
+  "Composite per run, under today's weights": "実行ごとの総合スコア（現在の重み付け）",
+  "No value measured yet.": "価値はまだ測定されていません。",
+  "{n} times the subscription": "サブスクリプションの {n} 倍",
+  "Risk mitigated per month": "月ごとに軽減されたリスク",
+  "No object in the load plan.": "ロード計画にオブジェクトがありません。",
+  "{n} of {m} objects may load, in {s} steps": "{m} 件中 {n} 件のオブジェクトをロード可能（{s} ステップ）",
+  "No area measured yet.": "測定済みの領域はまだありません。",
+  "{count, plural, one {# blocking rule fails} other {# blocking rules fail}}": "{count, plural, other {ブロッキングルール # 件が不合格}}",
+  "Open issues per material": "資材ごとの未解決の問題",
 };

@@ -37,6 +37,7 @@ vi.mock("@/design/v2/screens/EntryGate", async () => (await import("./stub")).st
 vi.mock("@/design/v2/screens/ReferenceData", async () => (await import("./stub")).stub("ReferenceData"));
 vi.mock("@/design/v2/screens/Links", async () => (await import("./stub")).stub("Links"));
 vi.mock("@/design/v2/screens/Catalogue", async () => (await import("./stub")).stub("Catalogue"));
+vi.mock("@/design/v2/screens/Material", async () => (await import("./stub")).stub("Material"));
 vi.mock("@/design/v2/screens/Issues", async () => (await import("./stub")).stub("Issues"));
 vi.mock("@/design/v2/screens/Mining", async () => (await import("./stub")).stub("Mining"));
 vi.mock("@/design/v2/screens/ProcessDiscovery", async () => (await import("./stub")).stub("ProcessDiscovery"));
@@ -120,9 +121,9 @@ describe("More", () => {
     expect(screen.getByTestId("mounted")).toHaveTextContent("ScoreLens");
   });
 
-  it("mounts all eight master data tabs", () => {
+  it("mounts all nine master data tabs", () => {
     const master = GROUPS.find((g) => g.id === "master-data")!;
-    expect(master.tabs).toHaveLength(8);
+    expect(master.tabs).toHaveLength(9);
     for (const tab of master.tabs) {
       setUrl(`/more/master-data?tab=${tab.id}&fixture=1`);
       const { unmount } = renderWithQuery(<More slug={["master-data"]} />);

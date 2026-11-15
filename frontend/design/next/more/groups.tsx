@@ -11,6 +11,7 @@ import { EntryGate } from "@/design/v2/screens/EntryGate";
 import { ReferenceData } from "@/design/v2/screens/ReferenceData";
 import { Links } from "@/design/v2/screens/Links";
 import { Catalogue } from "@/design/v2/screens/Catalogue";
+import { Material } from "@/design/v2/screens/Material";
 import { Issues } from "@/design/v2/screens/Issues";
 import { Mining } from "@/design/v2/screens/Mining";
 import { ProcessDiscovery } from "@/design/v2/screens/ProcessDiscovery";
@@ -39,6 +40,7 @@ export const GROUPS: Group[] = [
     { id: "reference", label: () => t("Reference data"), Screen: ReferenceData },
     { id: "links", label: () => t("Links"), Screen: Links },
     { id: "catalogue", label: () => t("Catalogue"), Screen: Catalogue },
+    { id: "materials", label: () => t("Materials"), Screen: Material },
     { id: "issues", label: () => t("Issues"), Screen: Issues },
     { id: "mining", label: () => t("Mining"), Screen: Mining },
     { id: "processes", label: () => t("Processes"), Screen: ProcessDiscovery },

@@ -124,6 +124,17 @@ describe("palette places and redirects", () => {
     expect(redirectFor("/o/sap/material_master")).toBeNull();
     expect(redirectFor("/work/analytics")).toBeNull();
   });
+
+  it("sends each ported group D page to the tab that now holds it", () => {
+    expect(redirectFor("/s4")).toBe("/load?tab=s4");
+    expect(redirectFor("/go-live")).toBe("/load?tab=go-live");
+    expect(redirectFor("/migration/load-plan")).toBe("/load?tab=plan");
+    expect(redirectFor("/score")).toBe("/more/insights?tab=score");
+    expect(redirectFor("/catalogue")).toBe("/more/master-data?tab=catalogue");
+    expect(redirectFor("/materials")).toBe("/more/master-data?tab=materials");
+    expect(redirectFor("/aletheia/foresight")).toBe("/more/aletheia?tab=foresight");
+    expect(redirectFor("/aletheia-survivorship")).toBe("/more/aletheia?tab=survivorship");
+  });
 });
 
 describe("offline banner", () => {

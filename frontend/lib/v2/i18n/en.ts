@@ -10428,7 +10428,6 @@ export const en = {
   "Each smaller scope is read and scored as a run of its own.": "Each smaller scope is read and scored as a run of its own.",
   "Start {n} downloads": "Start {n} downloads",
   "Splitting the scope needs the trigger sync permission.": "Splitting the scope needs the trigger sync permission.",
-  // Batch 6: More and admin flows.
   "Add a user and role": "Add a user and role",
   "Promote a rule": "Promote a rule",
   "Test a logon, choose objects, then extract.": "Test a logon, choose objects, then extract.",
@@ -10494,7 +10493,6 @@ export const en = {
   "A workbook is checked, failed or waits for you to confirm its warnings.": "A workbook is checked, failed or waits for you to confirm its warnings.",
   "Add it with these warnings": "Add it with these warnings",
   "This run is no longer the latest.": "This run is no longer the latest.",
-  // story-feed: frame
   "Write-back rejected. The requester has been told.": "Write-back rejected. The requester has been told.",
   "The write-back could not be rejected.": "The write-back could not be rejected.",
   "Reject write-back": "Reject write-back",
@@ -10555,7 +10553,6 @@ export const en = {
   "Reactivate this user before setting a password.": "Reactivate this user before setting a password.",
   "Set a password": "Set a password",
   "They are signed out and must choose a new password. The emailed link works once and ends in 60 minutes; a copied link works once and ends in 24 hours.": "They are signed out and must choose a new password. The emailed link works once and ends in 60 minutes; a copied link works once and ends in 24 hours.",
-  // story-feed: frame
   "Step {n} of {total}, {label}": "Step {n} of {total}, {label}",
   "Leave without saving?": "Leave without saving?",
   "Your edits on this step are not saved yet.": "Your edits on this step are not saved yet.",
@@ -10571,7 +10568,6 @@ export const en = {
   "Shortcuts": "Shortcuts",
   "Switch persona to {label}": "Switch persona to {label}",
   "{n} need attention": "{n} need attention",
-  // story-feed: home
   "{word}, {name}": "{word}, {name}",
   "Home could not be read. Check that the API is reachable, then retry.": "Home could not be read. Check that the API is reachable, then retry.",
   "Nothing to show yet.": "Nothing to show yet.",
@@ -10758,7 +10754,6 @@ export const en = {
   "No rows to show": "No rows to show",
   "Target score over comparisons": "Target score over comparisons",
   "Score trend": "Score trend",
-  // story-feed: work
   "Pick at least two runs": "Pick at least two runs",
   "Tick two or more runs on the Runs page, then choose Compare.": "Tick two or more runs on the Runs page, then choose Compare.",
   "Loading the runs to compare": "Loading the runs to compare",
@@ -10880,7 +10875,6 @@ export const en = {
   "The records could not be loaded.": "The records could not be loaded.",
   "Nothing here": "Nothing here",
   "No record is in this state right now.": "No record is in this state right now.",
-  // story-feed: more
   "{n} of {m} seats used": "{n} of {m} seats used",
   "No usage figures for this group yet.": "No usage figures for this group yet.",
   "Users and roles": "Users and roles",
@@ -11034,7 +11028,6 @@ export const en = {
   "Ask an administrator to give your role this permission.": "Ask an administrator to give your role this permission.",
   "Your session ended. Your draft is kept. Sign in again, then send it.": "Your session ended. Your draft is kept. Sign in again, then send it.",
   "Your draft was kept from before.": "Your draft was kept from before.",
-  // story-feed: frame
   "More views": "More views",
   "Aletheia evidence": "Aletheia evidence",
   "Loading the evidence": "Loading the evidence",
@@ -11133,8 +11126,6 @@ export const en = {
   "Users by status": "Users by status",
   "The licence has no seat count.": "The licence has no seat count.",
   "Opening the shared page": "Opening the shared page",
-  // story-feed: frame
-  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "Your access changed: you now have {roles}. Reload to update the menu.",
   "Reload": "Reload",
   "different roles": "different roles",
@@ -11150,6 +11141,35 @@ export const en = {
   "Per day, across the loaded findings": "Per day, across the loaded findings",
   "Showing the newest {n} days; {m} older days are not shown.": "Showing the newest {n} days; {m} older days are not shown.",
   "{n} runs without a date are not shown.": "{n} runs without a date are not shown.",
+  "Materials": "Materials",
+  "The go-live target is reached": "The go-live target is reached",
+  "The go-live target is projected": "The go-live target is projected",
+  "The score is not moving toward the go-live target": "The score is not moving toward the go-live target",
+  "The go-live target is beyond the projection": "The go-live target is beyond the projection",
+  "by {when}": "by {when}",
+  "No risk or unusual run found.": "No risk or unusual run found.",
+  "{count, plural, one {# unusual run} other {# unusual runs}}": "{count, plural, one {# unusual run} other {# unusual runs}}",
+  "Risks by effect on the score": "Risks by effect on the score",
+  "No golden value proposed yet.": "No golden value proposed yet.",
+  "{n} waiting for a decision": "{n} waiting for a decision",
+  "Applied without review": "Applied without review",
+  "Value shape, length and blanks per source system, counted per field": "Value shape, length and blanks per source system, counted per field",
+  "{v} verified, {r} rejected": "{v} verified, {r} rejected",
+  "No health snapshot yet.": "No health snapshot yet.",
+  "Health score, last 90 days": "Health score, last 90 days",
+  "Master-data health score per day": "Master-data health score per day",
+  "No mining run yet.": "No mining run yet.",
+  "{p} stable, {a} new anomalies in {d} days": "{p} stable, {a} new anomalies in {d} days",
+  "{n}% of records covered": "{n}% of records covered",
+  "Composite per run, under today's weights": "Composite per run, under today's weights",
+  "No value measured yet.": "No value measured yet.",
+  "{n} times the subscription": "{n} times the subscription",
+  "Risk mitigated per month": "Risk mitigated per month",
+  "No object in the load plan.": "No object in the load plan.",
+  "{n} of {m} objects may load, in {s} steps": "{n} of {m} objects may load, in {s} steps",
+  "No area measured yet.": "No area measured yet.",
+  "{count, plural, one {# blocking rule fails} other {# blocking rules fail}}": "{count, plural, one {# blocking rule fails} other {# blocking rules fail}}",
+  "Open issues per material": "Open issues per material",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

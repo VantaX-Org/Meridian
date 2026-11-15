@@ -25,6 +25,7 @@ import { Validate } from "../load/Validate";
 import { Files } from "../load/Files";
 import { History } from "../load/History";
 import { LOAD_TABS, isStep, isTarget, loadTabLabel, type LoadTab, type Step } from "../load/tabs";
+import { LEADS } from "../more/leads";
 import "../load/load.css";
 
 const ID = "nx-load";
@@ -112,14 +113,16 @@ export function Load({ tab }: { tab: LoadTab }) {
     );
   };
 
+  const lead = (k: string) => { const L = LEADS[`load/${k}`]; return L ? <L /> : null; };
+
   const body = () => {
     switch (tab) {
       case "prepare": return prepare();
       case "analysis": return <Migration />;
       case "compare": return <SystemCompare />;
-      case "plan": return <LoadPlan />;
-      case "s4": return <S4Readiness />;
-      case "go-live": return <FlightDeck />;
+      case "plan": return <>{lead("plan")}<LoadPlan /></>;
+      case "s4": return <>{lead("s4")}<S4Readiness /></>;
+      case "go-live": return <>{lead("go-live")}<FlightDeck /></>;
       case "waves": return (
         <section className="nx-ld-step" data-testid="load-waves">
           <h2>{t("Waves")}</h2>

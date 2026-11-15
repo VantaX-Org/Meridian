@@ -10429,7 +10429,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Each smaller scope is read and scored as a run of its own.": "Jeder kleinere Umfang wird als eigener Lauf gelesen und bewertet.",
   "Start {n} downloads": "{n} Downloads starten",
   "Splitting the scope needs the trigger sync permission.": "Das Aufteilen des Umfangs erfordert die Berechtigung zum Auslösen der Synchronisierung.",
-  // Batch 6: More and admin flows.
   "Add a user and role": "Benutzer und Rolle hinzufügen",
   "Promote a rule": "Regel hochstufen",
   "Test a logon, choose objects, then extract.": "Anmeldung testen, Objekte wählen, dann extrahieren.",
@@ -10495,7 +10494,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "A workbook is checked, failed or waits for you to confirm its warnings.": "Eine Mappe wird geprüft, ist durchgefallen oder wartet auf Ihre Bestätigung der Warnungen.",
   "Add it with these warnings": "Mit diesen Warnungen hinzufügen",
   "This run is no longer the latest.": "Dieser Lauf ist nicht mehr der neueste.",
-  // story-feed: frame
   "Write-back rejected. The requester has been told.": "Rückschreibung abgelehnt. Der Antragsteller wurde informiert.",
   "The write-back could not be rejected.": "Die Rückschreibung konnte nicht abgelehnt werden.",
   "Reject write-back": "Rückschreibung ablehnen",
@@ -10556,7 +10554,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Reactivate this user before setting a password.": "Reaktivieren Sie diese Person, bevor Sie ein Passwort festlegen.",
   "Set a password": "Passwort festlegen",
   "They are signed out and must choose a new password. The emailed link works once and ends in 60 minutes; a copied link works once and ends in 24 hours.": "Die Person wird abgemeldet und muss ein neues Passwort wählen. Der per E-Mail gesendete Link funktioniert einmal und endet nach 60 Minuten; ein kopierter Link funktioniert einmal und endet nach 24 Stunden.",
-  // story-feed: frame
   "Step {n} of {total}, {label}": "Schritt {n} von {total}, {label}",
   "Leave without saving?": "Ohne Speichern verlassen?",
   "Your edits on this step are not saved yet.": "Ihre Änderungen in diesem Schritt sind noch nicht gespeichert.",
@@ -10572,7 +10569,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Shortcuts": "Tastenkürzel",
   "Switch persona to {label}": "Persona wechseln zu {label}",
   "{n} need attention": "{n} erfordern Aufmerksamkeit",
-  // story-feed: home
   "{word}, {name}": "{word}, {name}",
   "Home could not be read. Check that the API is reachable, then retry.": "Home konnte nicht gelesen werden. Prüfe, ob die API erreichbar ist, und versuche es erneut.",
   "Nothing to show yet.": "Noch nichts anzuzeigen.",
@@ -10759,7 +10755,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "No rows to show": "Keine Zeilen vorhanden",
   "Target score over comparisons": "Zielwert über die Vergleiche",
   "Score trend": "Verlauf des Werts",
-  // story-feed: work
   "Pick at least two runs": "Wähle mindestens zwei Läufe",
   "Tick two or more runs on the Runs page, then choose Compare.": "Hake auf der Seite Läufe zwei oder mehr Läufe an und wähle dann Vergleichen.",
   "Loading the runs to compare": "Die zu vergleichenden Läufe werden geladen",
@@ -10881,7 +10876,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The records could not be loaded.": "Die Datensätze konnten nicht geladen werden.",
   "Nothing here": "Hier ist nichts",
   "No record is in this state right now.": "Zurzeit befindet sich kein Datensatz in diesem Status.",
-  // story-feed: more
   "{n} of {m} seats used": "{n} von {m} Lizenzplätzen belegt",
   "No usage figures for this group yet.": "Für diese Gruppe gibt es noch keine Nutzungszahlen.",
   "Users and roles": "Benutzer und Rollen",
@@ -11035,7 +11029,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Ask an administrator to give your role this permission.": "Bitten Sie einen Administrator, Ihrer Rolle diese Berechtigung zu geben.",
   "Your session ended. Your draft is kept. Sign in again, then send it.": "Ihre Sitzung ist abgelaufen. Ihr Entwurf bleibt erhalten. Melden Sie sich erneut an und senden Sie ihn dann.",
   "Your draft was kept from before.": "Ihr Entwurf von zuvor wurde beibehalten.",
-  // story-feed: frame
   "More views": "Weitere Ansichten",
   "Aletheia evidence": "Aletheia-Belege",
   "Loading the evidence": "Belege werden geladen",
@@ -11134,8 +11127,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Users by status": "Benutzer nach Status",
   "The licence has no seat count.": "Die Lizenz hat keine Platzanzahl.",
   "Opening the shared page": "Die geteilte Seite wird geöffnet",
-  // story-feed: frame
-  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "Ihr Zugriff hat sich geändert: Sie haben jetzt {roles}. Laden Sie neu, um das Menü zu aktualisieren.",
   "Reload": "Neu laden",
   "different roles": "andere Rollen",
@@ -11151,4 +11142,33 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Per day, across the loaded findings": "Pro Tag, über die geladenen Befunde",
   "Showing the newest {n} days; {m} older days are not shown.": "Die neuesten {n} Tage werden gezeigt; {m} ältere Tage werden nicht gezeigt.",
   "{n} runs without a date are not shown.": "{n} Läufe ohne Datum werden nicht gezeigt.",
+  "Materials": "Materialien",
+  "The go-live target is reached": "Das Go-live-Ziel ist erreicht",
+  "The go-live target is projected": "Das Go-live-Ziel wird voraussichtlich erreicht",
+  "The score is not moving toward the go-live target": "Der Wert bewegt sich nicht auf das Go-live-Ziel zu",
+  "The go-live target is beyond the projection": "Das Go-live-Ziel liegt jenseits der Prognose",
+  "by {when}": "bis {when}",
+  "No risk or unusual run found.": "Kein Risiko und kein ungewöhnlicher Lauf gefunden.",
+  "{count, plural, one {# unusual run} other {# unusual runs}}": "{count, plural, one {# ungewöhnlicher Lauf} other {# ungewöhnliche Läufe}}",
+  "Risks by effect on the score": "Risiken nach Wirkung auf den Wert",
+  "No golden value proposed yet.": "Noch kein Golden-Wert vorgeschlagen.",
+  "{n} waiting for a decision": "{n} warten auf eine Entscheidung",
+  "Applied without review": "Ohne Prüfung angewendet",
+  "Value shape, length and blanks per source system, counted per field": "Wertform, Länge und Leerwerte je Quellsystem, je Feld gezählt",
+  "{v} verified, {r} rejected": "{v} bestätigt, {r} abgelehnt",
+  "No health snapshot yet.": "Noch kein Gesundheitsstand.",
+  "Health score, last 90 days": "Gesundheitswert, letzte 90 Tage",
+  "Master-data health score per day": "Gesundheitswert der Stammdaten pro Tag",
+  "No mining run yet.": "Noch kein Mining-Lauf.",
+  "{p} stable, {a} new anomalies in {d} days": "{p} stabil, {a} neue Auffälligkeiten in {d} Tagen",
+  "{n}% of records covered": "{n} % der Datensätze abgedeckt",
+  "Composite per run, under today's weights": "Gesamtwert je Lauf, mit den heutigen Gewichten",
+  "No value measured yet.": "Noch kein Nutzen gemessen.",
+  "{n} times the subscription": "{n}-fache Abonnementkosten",
+  "Risk mitigated per month": "Gemindertes Risiko pro Monat",
+  "No object in the load plan.": "Kein Objekt im Ladeplan.",
+  "{n} of {m} objects may load, in {s} steps": "{n} von {m} Objekten dürfen laden, in {s} Schritten",
+  "No area measured yet.": "Noch kein Bereich gemessen.",
+  "{count, plural, one {# blocking rule fails} other {# blocking rules fail}}": "{count, plural, one {# blockierende Regel schlägt fehl} other {# blockierende Regeln schlagen fehl}}",
+  "Open issues per material": "Offene Befunde je Material",
 };
