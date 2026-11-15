@@ -16,6 +16,7 @@ import { runLabel, runStatusWord } from "@/lib/v2/run-label";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { Chip, EmptyState, ErrorState, Sheet, Skeleton, Stepper, type StepItem } from "../kit";
 import { isForbidden } from "./draft";
+import { ReasonPanel } from "./ReasonPanel";
 import "./runs.css";
 
 /** Steps of a run, derived from what the run stored: pulled, scored, then checked by Aletheia. */
@@ -156,6 +157,7 @@ export function RunBody({ id }: { id: string }) {
             </>
           ) : null}
       </section>
+      <ReasonPanel versionId={h.id} systemId={h.metadata?.system_id ?? null} />
     </div>
   );
 }

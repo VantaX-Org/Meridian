@@ -21,6 +21,9 @@ import { Value } from "@/design/v2/screens/Value";
 import { Config } from "@/design/v2/screens/Config";
 import { RunsCanvas } from "@/design/v2/screens/Runs";
 import { Atlas } from "@/design/v2/screens/Atlas";
+import { Stewardship } from "./Stewardship";
+import { Automation } from "./Automation";
+import { ConfigImpact } from "./ConfigImpact";
 
 export interface Tab { id: string; label: () => string; Screen: ComponentType }
 export interface Group { id: string; title: () => string; blurb: () => string; tabs: Tab[] }
@@ -56,6 +59,9 @@ export const SINGLES: Record<string, { title: () => string; blurb: () => string;
   runs: { title: () => t("Runs"), blurb: () => t("Every run, across every system."), Screen: RunsCanvas },
   "systems/config": { title: () => t("Configuration"), blurb: () => t("Thresholds and settings."), Screen: Config },
   atlas: { title: () => t("Atlas"), blurb: () => t("The landscape and its flows."), Screen: Atlas },
+  stewardship: { title: () => t("Stewardship"), blurb: () => t("The work queue, approvals, exceptions and SLAs."), Screen: Stewardship },
+  automation: { title: () => t("Automation"), blurb: () => t("What runs on its own, when, and how it last went."), Screen: Automation },
+  "config-impact": { title: () => t("Configuration impact"), blurb: () => t("SAP features that configuration findings block or degrade."), Screen: ConfigImpact },
 };
 
 /** Screens that stay at their own address; More links to them so nothing is lost. */
