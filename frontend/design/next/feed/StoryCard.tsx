@@ -23,7 +23,7 @@ function Primary({ row, act }: { row: PortfolioRow; act: PortfolioActions }) {
     const running = act.scoring.has(row.version_id) || !!row.cycle?.parent_run;
     return <Button variant="primary" size={32} icon="refresh" onClick={() => act.score([row])} disabled={running || !!deny("analyse")} reason={running ? t("Scoring run {n}", { n }) : deny("analyse")}>{t("Score again")}</Button>;
   }
-  if (at === "ready") return <V2Link className="nx-btn nx-btn-primary nx-btn-sm" href={`/load?object=${encodeURIComponent(row.module)}&run=${row.version_id}`}>{t("Prepare load files")}</V2Link>;
+  if (at === "ready") return <V2Link className="nx-btn nx-btn-primary nx-btn-sm" href={`/load?objs=${encodeURIComponent(row.module)}`}>{t("Prepare load files")}</V2Link>;
   return <V2Link className="nx-btn nx-btn-primary nx-btn-sm" href={cycleHref(row, act.sysName, `?step=compare&run=${row.version_id}`)}>{t("Compare runs")}</V2Link>;
 }
 

@@ -3,6 +3,7 @@
  *   GET  /objects/portfolio          sort, q, readiness, step, system_id, owner, limit (1 to 500), offset
  *   POST /objects/portfolio/start    {module_ids} (1 to 200): pull those objects now; needs trigger_sync
  *   GET  /reports/{version_id}/cleaning/{module}.xlsx   the cleaning workbook of one run
+ *   GET  /reports/cleaning.zip       runs=version_id:module,... (1 to 50): several cleaning workbooks in one ZIP
  */
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { v2Get, v2Send } from "@/lib/api/v2/client";
@@ -92,6 +93,12 @@ export function startObjects(moduleIds: string[]): Promise<{ queued: string[]; s
 
 export function downloadWorkbook(row: Pick<PortfolioRow, "version_id" | "module">): Promise<string> {
   return v2Download(`/reports/${row.version_id}/cleaning/${row.module}.xlsx`, undefined, `${row.module}-cleaning.xlsx`);
+}
+
+/** One file for any number of rows: the workbook itself for one, a ZIP of them for more. */
+export function downloadWorkbooks(rows: readonly Pick<PortfolioRow, "version_id" | "module">[]): Promise<string> {
+  if (rows.length === 1) return downloadWorkbook(rows[0]);
+  return v2Download("/reports/cleaning.zip", { runs: rows.map((r) => `${r.version_id}:${r.module}`).join(",") }, "cleaning-workbooks.zip");
 }
 
 /** The step a card acts on: "ready" once a compared run passes the readiness band. */

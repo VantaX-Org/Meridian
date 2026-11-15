@@ -96,7 +96,7 @@ ENDPOINT_KINDS: dict[str, str] = {
     "executive_report_pdf": "executive", "comparison_report_pdf": "compare", "object_report_pdf": "object",
     "record_report_pdf": "record", "board_report_pdf": "board", "trend_report_pdf": "trend",
     "rules_report_pdf": "rules", "dictionary_report_pdf": "dictionary", "owners_report_pdf": "owners",
-    "workbook_xlsx": "workbook", "cleaning_xlsx": "cleaning_workbook",
+    "workbook_xlsx": "workbook", "cleaning_xlsx": "cleaning_workbook", "cleaning_zip": "cleaning_workbook",
 }
 
 

@@ -9,7 +9,7 @@ import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { V2Link } from "@/design/v2/parts";
 import { errorSentence } from "@/lib/api/v2/client";
 import { analyseRun } from "@/lib/api/v2/runs";
-import { downloadWorkbook, startObjects, usePortfolio, type CycleStep, type PortfolioQuery, type PortfolioRow } from "@/lib/api/next/portfolio";
+import { downloadWorkbooks, startObjects, usePortfolio, type CycleStep, type PortfolioQuery, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { Button, Confirm, EmptyState, ErrorState, SegmentedControl, Skeleton, Tabs, useToast } from "../kit";
 import { BulkBar, type PortfolioActions } from "../portfolio/BulkBar";
 import { Cards } from "../portfolio/Cards";
@@ -67,16 +67,21 @@ export function Portfolio() {
       if (rs.length > 6) toast({ text: t("Compare shows six objects at most; the first six are shown."), tone: "neutral" });
     },
     download: async (rs) => {
-      // ponytail: one file per run, no ZIP endpoint yet; a bundle endpoint is the upgrade past a handful of objects.
-      for (const r of rs) {
+      // The server bundles at most 50 workbooks per ZIP, so a bigger selection comes as several files.
+      for (let i = 0; i < rs.length; i += 50) {
         try {
-          await downloadWorkbook(r);
+          await downloadWorkbooks(rs.slice(i, i + 50));
         } catch (err) {
           toast({ text: errorSentence(err, t("The workbook could not be downloaded. Try again.")), tone: "bad" });
           return;
         }
       }
-      toast({ text: rs.length === 1 ? t("Workbook for run {n} downloaded. Upload it when you are done.", { n: formatInt(rs[0].run_number ?? 0) }) : t("{n} workbooks downloaded. Upload them when you are done.", { n: formatInt(rs.length) }), tone: "good" });
+      toast({
+        text: rs.length === 1 ? t("Workbook for run {n} downloaded. Upload it when you are done.", { n: formatInt(rs[0].run_number ?? 0) }) : t("{n} workbooks downloaded. Upload them when you are done.", { n: formatInt(rs.length) }),
+        tone: "good",
+        timeout: 12000,
+        action: { label: t("Open Upload"), onClick: () => setUploadFor(rs) },
+      });
     },
     score: async (rs) => {
       setScoring((s) => new Set([...s, ...rs.map((r) => r.version_id)]));

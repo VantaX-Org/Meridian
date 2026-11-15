@@ -10,6 +10,8 @@ export interface ToastInput {
   tone?: "neutral" | "good" | "bad";
   /** Shows an Undo button; the handler reverses the action. */
   onUndo?: () => void;
+  /** One more button that takes the next step (for example, open Upload after a download). */
+  action?: { label: string; onClick: () => void };
   /** Milliseconds before it leaves. 0 keeps it until dismissed. Default 6000. */
   timeout?: number;
 }
@@ -54,6 +56,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 }}
               >
                 {t("Undo")}
+              </Button>
+            ) : null}
+            {it.action ? (
+              <Button
+                variant="quiet"
+                size={32}
+                onClick={() => {
+                  it.action?.onClick();
+                  drop(it.id);
+                }}
+              >
+                {it.action.label}
               </Button>
             ) : null}
             <button type="button" className="nx-icon-btn" aria-label={t("Dismiss")} onClick={() => drop(it.id)}>
