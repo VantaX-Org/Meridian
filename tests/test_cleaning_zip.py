@@ -71,3 +71,17 @@ def test_missing_run_refuses_the_bundle(stubbed, monkeypatch):
     with pytest.raises(HTTPException) as e:
         _call(f"{V1}:material_master")
     assert e.value.status_code == 404
+
+
+def test_too_many_runs_is_refused(stubbed):
+    runs = ",".join(f"{uuid.uuid4()}:material_master" for _ in range(reports._ZIP_MAX + 1))
+    with pytest.raises(HTTPException) as e:
+        _call(runs)
+    assert e.value.status_code == 422
+
+
+def test_oversized_bundle_is_refused(stubbed, monkeypatch):
+    monkeypatch.setattr(reports, "_ZIP_MAX_BYTES", 10)
+    with pytest.raises(HTTPException) as e:
+        _call(f"{V1}:material_master,{V2}:customer_master")
+    assert e.value.status_code == 413

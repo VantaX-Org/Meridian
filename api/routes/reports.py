@@ -515,6 +515,7 @@ async def workbook_xlsx(version_id: uuid.UUID, request: Request, module: Optiona
 
 
 _ZIP_MAX = 50
+_ZIP_MAX_BYTES = 512 * 1024 * 1024  # ponytail: in-memory bundle; spool to disk if 512 MB is not enough
 
 
 def _zip_sync(tenant_id: str, pairs: list[tuple[str, str]]) -> bytes:
@@ -526,6 +527,7 @@ def _zip_sync(tenant_id: str, pairs: list[tuple[str, str]]) -> bytes:
 
     buf = io.BytesIO()
     seen: set[str] = set()
+    total = 0
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for vid, module in pairs:
             out = _cleaning_sync(tenant_id, vid, module)
@@ -536,6 +538,9 @@ def _zip_sync(tenant_id: str, pairs: list[tuple[str, str]]) -> bytes:
                 stem, dot, ext = name.rpartition(".")
                 name = f"{stem} ({vid[:8]}){dot}{ext}"
             seen.add(name)
+            total += len(data)
+            if total > _ZIP_MAX_BYTES:
+                raise DownloadRefused(413, "The workbooks are too large for one download. Choose fewer runs.")
             zf.writestr(name, data)
     return buf.getvalue()
 
@@ -551,7 +556,7 @@ async def cleaning_zip(request: Request,
     from api.services.cleaning_workbook import DownloadRefused
 
     await _rls(db, tenant)
-    pairs: list[tuple[str, str]] = []
+    pairs: dict[tuple[str, str], None] = {}
     for part in (p.strip() for p in runs.split(",") if p.strip()):
         vid, _, module = part.partition(":")
         try:
@@ -560,13 +565,14 @@ async def cleaning_zip(request: Request,
             raise HTTPException(status_code=422, detail=f"Not a run id: {vid}") from None
         if module not in _modules():
             raise HTTPException(status_code=422, detail=f"Unknown module: {module}")
-        if (vid, module) not in pairs:
-            pairs.append((vid, module))
-    if not 1 <= len(pairs) <= _ZIP_MAX:
+        pairs[(vid, module)] = None
+        if len(pairs) > _ZIP_MAX:
+            raise HTTPException(status_code=422, detail=f"Give 1 to {_ZIP_MAX} workbooks.")
+    if not pairs:
         raise HTTPException(status_code=422, detail=f"Give 1 to {_ZIP_MAX} workbooks.")
     enforce_licensed_modules(request, sorted({m for _, m in pairs}))
     try:
-        data = await asyncio.to_thread(_zip_sync, str(tenant.id), pairs)
+        data = await asyncio.to_thread(_zip_sync, str(tenant.id), list(pairs))
     except DownloadRefused as e:
         raise HTTPException(status_code=e.status, detail=str(e))
     except Exception:
