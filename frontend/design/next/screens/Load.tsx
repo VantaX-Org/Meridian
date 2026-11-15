@@ -24,7 +24,7 @@ import { ChooseTarget } from "../load/ChooseTarget";
 import { Validate } from "../load/Validate";
 import { Files } from "../load/Files";
 import { History } from "../load/History";
-import { LOAD_TABS, isStep, isTarget, loadTabLabel, type LoadTab, type Step } from "../load/tabs";
+import { LOAD_TABS, destinationOf, isStep, isTarget, loadTabLabel, type LoadTab, type Step } from "../load/tabs";
 import "../load/load.css";
 
 const ID = "nx-load";
@@ -87,7 +87,7 @@ export function Load({ tab }: { tab: LoadTab }) {
         <div className="nx-ld-actions" data-testid="load-actions">
           <Button variant="primary" disabled={!run || Boolean(failedRun)} reason={t("Choose a run first.")} onClick={() => run && openSheet("load", run.id)}>{t("Open the load")}</Button>
           <Button variant="secondary" disabled={!mod} onClick={() => openSheet("templates", mod)}>{t("Migration templates")}</Button>
-          <Button variant="secondary" icon="download" disabled={!mod} onClick={() => void downloadBlankTemplate(mod)}>{t("Download templates")}</Button>
+          <Button variant="secondary" icon="download" disabled={!mod} onClick={() => void downloadBlankTemplate(mod, false, { destination: destinationOf(target), system_id: run?.dest_system_id })}>{t("Download templates")}</Button>
         </div>
         <PairedTrio />
         <Stepper steps={steps} label={t("Steps")} onSelect={(id) => (id === "target" || ready) && set({ step: id })} />

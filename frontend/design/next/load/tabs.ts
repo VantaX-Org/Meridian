@@ -1,4 +1,5 @@
 import { t } from "@/lib/v2/i18n";
+import type { Destination } from "@/lib/api/v2/migration";
 
 export const LOAD_TABS = ["prepare", "analysis", "compare", "plan", "s4", "go-live", "waves", "history"] as const;
 export type LoadTab = (typeof LOAD_TABS)[number];
@@ -20,6 +21,8 @@ export function loadTabLabel(id: LoadTab): string {
 export type TargetId = "s4" | "sf" | "ecc" | "workbook";
 export const TARGETS: TargetId[] = ["s4", "sf", "ecc", "workbook"];
 export const isTarget = (v: string | null): v is TargetId => !!v && (TARGETS as string[]).includes(v);
+/** The API destination of a target card. The new system's own workbook carries its columns, so it names none. */
+export const destinationOf = (id: TargetId): Destination | null => (id === "s4" ? "s4hana" : id === "sf" ? "successfactors" : id === "ecc" ? "ecc" : null);
 
 /** Modules that live in SuccessFactors. They load through its import templates, never through S/4 or ECC. */
 export const SF_MODULES = ["employee_central", "compensation", "benefits", "payroll_integration", "performance_goals", "succession_planning", "recruiting_onboarding", "learning_management", "time_attendance"];

@@ -5,10 +5,11 @@ import { ToastProvider } from "@/design/next/kit";
 import { Load } from "@/design/next/screens/Load";
 import { getUrl, push, setUrl } from "@/design/v2/__tests__/nav-store";
 import { effectOf, verdictOf } from "../Validate";
-import { isLoadTab } from "../tabs";
+import { destinationOf, isLoadTab } from "../tabs";
 
 const exportLoadFiles = vi.fn(async () => undefined);
-vi.mock("@/lib/api/v2/migration", async (orig) => ({ ...(await orig<typeof import("@/lib/api/v2/migration")>()), exportLoadFiles: (...a: unknown[]) => (exportLoadFiles as (...b: unknown[]) => unknown)(...a) }));
+const downloadBlankTemplate = vi.fn(async () => undefined);
+vi.mock("@/lib/api/v2/migration", async (orig) => ({ ...(await orig<typeof import("@/lib/api/v2/migration")>()), exportLoadFiles: (...a: unknown[]) => (exportLoadFiles as (...b: unknown[]) => unknown)(...a), downloadBlankTemplate: (...a: unknown[]) => (downloadBlankTemplate as (...b: unknown[]) => unknown)(...a) }));
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
@@ -53,6 +54,23 @@ describe("step 1, choose the target", () => {
     open("prepare", "&objs=");
     await screen.findByTestId("choose-target");
     expect(within(screen.getByTestId("choose-target")).getByRole("button", { name: /Check what fits/ }).getAttribute("aria-disabled")).toBe("true");
+  });
+});
+
+describe("destination", () => {
+  it("maps each target card to the API destination", () => {
+    expect(destinationOf("s4")).toBe("s4hana");
+    expect(destinationOf("sf")).toBe("successfactors");
+    expect(destinationOf("ecc")).toBe("ecc");
+    expect(destinationOf("workbook")).toBeNull();
+  });
+
+  it("asks for the blank templates of the chosen target", async () => {
+    open("prepare", "&target=ecc");
+    await screen.findByTestId("choose-target");
+    fireEvent.click(screen.getByRole("button", { name: "Download templates" }));
+    await waitFor(() => expect(downloadBlankTemplate).toHaveBeenCalled());
+    expect(downloadBlankTemplate.mock.calls[0]).toMatchObject([expect.any(String), false, { destination: "ecc" }]);
   });
 });
 
