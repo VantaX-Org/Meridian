@@ -14,12 +14,12 @@ const warn: UploadChecks = {
   flagged: [{ table: "MARA", key: "000000000000000042", field: "MATKL", description: "Material Group", reason: "long" }],
   flagged_total: 1,
 };
-const check = vi.fn(async (_f: File, _p?: string, _m?: string, _skip?: boolean): Promise<UploadChecks> => warn);
+const check = vi.fn<(f: File, p?: string, m?: string, skip?: boolean) => Promise<UploadChecks>>(async () => warn);
 vi.mock("@/lib/api/v2/upload-checks", async (orig) => ({
   ...(await orig<typeof import("@/lib/api/v2/upload-checks")>()),
   checkWorkbook: (f: File, p?: string, m?: string, s?: boolean) => check(f, p, m, s),
 }));
-const upload = vi.fn(async (..._a: unknown[]) => ({ version_id: "v2", job_id: null, status: "pending", parent_version_id: "v1", kind: "template", applied: 2, unchanged: 0, unmatched: 0, unmapped: {}, skipped: {}, no_table: [], no_field: [] }));
+const upload = vi.fn<(...a: unknown[]) => Promise<unknown>>(async () => ({ version_id: "v2", job_id: null, status: "pending", parent_version_id: "v1", kind: "template", applied: 2, unchanged: 0, unmatched: 0, unmapped: {}, skipped: {}, no_table: [], no_field: [] }));
 vi.mock("@/lib/api/v2/roundtrip", async (orig) => ({
   ...(await orig<typeof import("@/lib/api/v2/roundtrip")>()),
   uploadCleaned: (...a: unknown[]) => upload(...a),
