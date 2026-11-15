@@ -26,6 +26,8 @@ def _client(monkeypatch: pytest.MonkeyPatch, db: dict[str, Any] | None = None,
     if redis is not None:
         monkeypatch.setattr(health, "_probe_redis", lambda: redis)
     monkeypatch.setattr(health, "_probe_workers", lambda: workers or UP)
+    monkeypatch.setattr(health, "_probe_beat", lambda: UP)
+    monkeypatch.setattr(health, "_probe_disk", lambda: UP)
     app = FastAPI()
     app.include_router(health.router)
     return TestClient(app)
@@ -36,7 +38,7 @@ def test_ready_when_both_answer(monkeypatch: pytest.MonkeyPatch) -> None:
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok"  # scripts/update.sh greps for "status":"ok"
-    assert body["components"] == {"db": UP, "redis": UP, "workers": UP}
+    assert body["components"] == {"db": UP, "redis": UP, "workers": UP, "beat": UP, "disk": UP}
     assert body["degraded"] == []
     assert {"version", "llm_provider", "licence", "email_backend", "timestamp"} <= set(body)
 
@@ -96,3 +98,22 @@ def test_real_probes_against_the_test_services(monkeypatch: pytest.MonkeyPatch) 
     assert r.status_code == 200, r.text
     comps = r.json()["components"]
     assert comps["db"]["status"] == comps["redis"]["status"] == "up"  # no worker runs beside the test services
+
+
+def test_beat_and_disk_are_degraded_when_stale_or_low(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A stopped beat or a nearly full disk is reported (edge-ops #41) and never gates readiness."""
+    import time
+
+    from api.services import health_probe
+
+    stamp: dict[str, Any] = {}
+    monkeypatch.setattr(health_probe, "_redis_client", lambda: type("R", (), {"get": lambda s, k: stamp.get(k)})())
+    assert health_probe.probe_beat().status == "degraded"  # never ticked
+    stamp[health_probe.BEAT_KEY] = str(time.time() - 60)
+    assert health_probe.probe_beat().status == "up"
+    stamp[health_probe.BEAT_KEY] = str(time.time() - health_probe.BEAT_STALE_S - 60)
+    assert health_probe.probe_beat().status == "degraded"
+    monkeypatch.setenv("MERIDIAN_DISK_WARN_GB", "1e9")
+    assert health_probe.probe_disk().status == "degraded"
+    monkeypatch.setenv("MERIDIAN_DISK_WARN_GB", "0")
+    assert health_probe.probe_disk().status == "up"

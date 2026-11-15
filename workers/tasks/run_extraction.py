@@ -166,7 +166,18 @@ def _touch_system_lock(system_id: str) -> None:
         pass
 
 
-def _acquire_system_lock(system_id: str, owner: str = "1") -> bool:
+class JobCancelled(Exception):
+    """The job was cancelled while the extraction was reading."""
+
+
+def _raise_if_cancelled(tenant_id: str, job_id: str) -> None:
+    """The cancel route frees the system lock, so a run the revoke missed must stop at its next progress report;
+    reading on would put a second set of RFC sessions on the system once another download takes the lock."""
+    if (jobs.get_job(tenant_id, job_id) or {}).get("status") == jobs.CANCELLED:
+        raise JobCancelled(job_id)
+
+
+def _acquire_system_lock(system_id: str, owner: str = "1") -> Optional[bool]:
     """One extraction per SYSTEM at a time, not merely per version.
 
     A version lock stops a redelivered copy of the same run, but every dispatch gets a fresh
@@ -178,6 +189,8 @@ def _acquire_system_lock(system_id: str, owner: str = "1") -> bool:
 
     Returns False when another extraction already holds this system. ``owner`` (the version id) is stored as the
     value so a release on behalf of one version never frees a system another version holds.
+    Returns None when Redis cannot be reached: the lock fails closed, because without it nothing stops two runs
+    logging on to one SAP system at once. With no broker configured at all (dev and tests) it is True.
     """
     try:
         import redis  # type: ignore
@@ -189,7 +202,8 @@ def _acquire_system_lock(system_id: str, owner: str = "1") -> bool:
         client = redis.from_url(url)
         return bool(client.set(f"extract-lock:system:{system_id}", owner, nx=True, ex=SYSTEM_LOCK_TTL))
     except Exception:
-        return True
+        logger.exception("system lock for %s could not be taken; refusing the extraction", system_id)
+        return None
 
 
 def _release_system_lock(system_id: Optional[str], version_id: Optional[str] = None) -> None:
@@ -276,15 +290,18 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             "extraction for version %s is already running (redelivered after a restart); "
             "exiting rather than starting a second read of the same system", version_id)
         return {"version_id": str(version_id), "status": "duplicate_ignored"}
-    if not _acquire_system_lock(str(system_id), str(version_id or "1")):
+    held_system = _acquire_system_lock(str(system_id), str(version_id or "1"))
+    if not held_system:
         logger.warning(
             "an extraction is already running against system %s; not starting a second one. "
             "Concurrent extractions multiply RFC sessions for one SAP user and SAP refuses the "
             "surplus logons, which locks the account.", system_id)
         if version_id:
             _release_system_lock(None, str(version_id))  # the version only; the system belongs to the other run
-            jobs.finish_job(tenant_id, f"dl-{version_id}", "failed", error="Another download is running on this system")
-        return {"version_id": str(version_id), "status": "system_busy"}
+            jobs.finish_job(tenant_id, f"dl-{version_id}", "failed",
+                            error="Another download is running on this system" if held_system is False
+                            else "The download lock service (Redis) is unavailable; try again shortly")
+        return {"version_id": str(version_id), "status": "system_busy" if held_system is False else "lock_unavailable"}
 
     try:
         return _extract(self, tenant_id, system_id, modules, include_config, sync_type, scope, analyse, label,
@@ -330,6 +347,7 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
                 return result
 
             def _progress(p: dict) -> None:
+                _raise_if_cancelled(tenant_id, job_id)
                 progress({"step": "reading", **p})
                 tables = p.get("tables") or []
                 jobs.update_job(tenant_id, job_id, stage="read", tables=tables,
@@ -534,6 +552,9 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
         logger.info(f"Extraction {version_id}: {len(stored_rows)} tables, analysis {'enqueued' if analyse else 'on request'}")
         return {"status": "success", "version_id": version_id, "coverage": coverage}
 
+    except JobCancelled:
+        logger.warning("extraction %s cancelled; stopped reading", version_id)
+        return {"version_id": version_id, "status": jobs.CANCELLED}
     except SoftTimeLimitExceeded:
         logger.error("Extraction task timed out")
         progress({"status": "failed", "error": f"Timed out after {EXTRACT_TIME_LIMIT // 60} minutes"}, 3600)
