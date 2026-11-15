@@ -255,6 +255,23 @@ describe("Home", () => {
     expect(screen.getByRole("heading", { name: "Connect a system to start" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Use the demo data" })).toHaveAttribute("href", expect.stringContaining("fixture=1"));
   });
+  it("offers the demo data only on a build that allows it", () => {
+    page = pageOf([]);
+    systems = [];
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      vi.stubEnv("NEXT_PUBLIC_MERIDIAN_DEMO", "");
+      const { unmount } = wrap(<Home />);
+      expect(screen.getByRole("heading", { name: "Connect a system to start" })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Use the demo data" })).not.toBeInTheDocument();
+      unmount();
+      vi.stubEnv("NEXT_PUBLIC_MERIDIAN_DEMO", "1");
+      wrap(<Home />);
+      expect(screen.getByRole("link", { name: "Use the demo data" })).toBeInTheDocument();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
   it("says when the feed is capped and offers to show all", async () => {
     page = pageOf([row()], 640);
     wrap(<Home />);

@@ -9,7 +9,7 @@ import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { V2Link } from "@/design/v2/parts";
 import { errorSentence } from "@/lib/api/v2/client";
 import { analyseRun } from "@/lib/api/v2/runs";
-import { useFixture } from "@/lib/api/v2/fixture";
+import { fixtureAllowed, useFixture } from "@/lib/api/v2/fixture";
 import { getFindings, type AletheiaFinding } from "@/lib/api/v2/insights";
 import { actionOf, downloadWorkbook, startObjects, usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { Confirm, EmptyState, ErrorState, useToast, Button } from "../kit";
@@ -129,7 +129,7 @@ export function Home() {
             {t("A system is connected. Pull its objects to see their quality here.")}
           </EmptyState>
         ) : rows.length === 0 ? (
-          <EmptyState heading={t("Connect a system to start")} action={<><Button variant="primary" onClick={() => sheets.open({ kind: "connect", id: "" })}>{t("Connect a system")}</Button> <V2Link className="nx-btn nx-btn-quiet" href="/portfolio?fixture=1">{t("Use the demo data")}</V2Link></>}>
+          <EmptyState heading={t("Connect a system to start")} action={<><Button variant="primary" onClick={() => sheets.open({ kind: "connect", id: "" })}>{t("Connect a system")}</Button>{fixtureAllowed() ? <> <V2Link className="nx-btn nx-btn-quiet" href="/portfolio?fixture=1">{t("Use the demo data")}</V2Link></> : null}</>}>
             {t("Meridian pulls your master data once, scores it, and gives you a workbook to clean it in Excel.")}
           </EmptyState>
         ) : (
