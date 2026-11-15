@@ -1,5 +1,5 @@
-import { LandscapeCanvas } from "@/design/v2/screens/Landscape";
+import { Home } from "@/design/next/feed/Home";
 
-export default function LandscapePage() {
-  return <LandscapeCanvas />;
+export default function HomePage() {
+  return <Home />;
 }

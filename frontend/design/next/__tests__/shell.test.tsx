@@ -121,7 +121,8 @@ describe("palette places and redirects", () => {
     expect(redirectFor("/cleansing")).toBe("/work/approvals");
     expect(redirectFor("/portfolio")).toBe("/");
     expect(redirectFor("/run/abc")).toBeNull();
-    expect(redirectFor("/o/sap/material_master")).toBeNull();
+    expect(redirectFor("/o/sap/material_master")).toBe("/next/o/sap/material_master");
+    expect(redirectFor("/o/sap/material_master/records/K")).toBeNull();
     expect(redirectFor("/work/analytics")).toBeNull();
   });
 });

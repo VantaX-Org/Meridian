@@ -26,7 +26,7 @@ describe("nav defaults", () => {
     expect(redirectFor("/admin/users")).toBe("/more/admin/users");
   });
   it("leaves screens that stay", () => {
-    for (const p of ["/", "/work", "/work/triage", "/work/monitor", "/runs", "/run/a", "/run/a/vs/b", "/o/a/b", "/share/x", "/status", "/more", "/more/rules", "/more/admin", "/more/admin/users"]) {
+    for (const p of ["/", "/work", "/work/triage", "/work/monitor", "/runs", "/run/a", "/run/a/vs/b", "/o/a/b/records/K", "/share/x", "/status", "/more", "/more/rules", "/more/admin", "/more/admin/users"]) {
       expect(redirectFor(p)).toBeNull();
     }
   });

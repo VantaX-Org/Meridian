@@ -12,7 +12,6 @@ import { Runs, runScore } from "../runs/Runs";
 import { RunDetail, RunDetailSheet } from "../runs/RunDetail";
 import { CompareSheet, MAX_COMPARE_RUNS, capRuns } from "../runs/CompareSheet";
 import { RunSheet, EMPTY_DRAFT, SHEET_ID, firstInvalidStep, scopeOf } from "../runs/RunSheet";
-import { NextSwap } from "../runs/NextSwap";
 import { loadDraft, saveDraft } from "../runs/draft";
 import { Work, Ledger } from "../work/Work";
 import { segmentOf, WORK_SEGMENTS } from "../work/segments";
@@ -218,15 +217,3 @@ describe("Work", () => {
   });
 });
 
-describe("NextSwap", () => {
-  const Old = () => <p>old screen</p>;
-  const Next = () => <p>new screen</p>;
-  it("shows the new screen when ui_next is on and the old one when it is off", () => {
-    const a = render(<NextSwap next={Next} old={Old} />);
-    expect(screen.getByText("new screen")).toBeInTheDocument();
-    a.unmount();
-    prefs.value = { ui_next: false };
-    render(<NextSwap next={Next} old={Old} />);
-    expect(screen.getByText("old screen")).toBeInTheDocument();
-  });
-});

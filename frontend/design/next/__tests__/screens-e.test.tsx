@@ -150,12 +150,7 @@ describe("NextRedirect", () => {
     expect(replace.mock.calls[0][0]).toContain("run=r1");
   });
 
-  it("does nothing with the flag off or on a screen that stays", () => {
-    prefs.value = { ui_next: false };
-    setUrl("/cleansing");
-    render(<NextRedirect />);
-    expect(replace).not.toHaveBeenCalled();
-    prefs.value = { ui_next: true };
+  it("does nothing on a screen that stays", () => {
     setUrl("/run/abc");
     render(<NextRedirect />);
     expect(replace).not.toHaveBeenCalled();
