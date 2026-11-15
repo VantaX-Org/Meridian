@@ -55,6 +55,8 @@ const PREFIXES: readonly (readonly [string, string])[] = [
   ["/s/", "/more/systems/"],
   ["/next/work/", "/work/"],
   ["/load/", "/load?tab="],
+  // Every object view lives in the new object page; its segments keep the old path segments.
+  ["/o/", "/next/o/"],
 ];
 
 /** The new address for an old one, or null when the screen stays where it is. */

@@ -5,7 +5,7 @@
  * `?run=`; both survive a reload and a shared link.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Denied, isDenied } from "../object/edge";
 import { Popover, Skeleton, ErrorState, EmptyState } from "@/design/next/kit";
 import { V2Link } from "@/design/v2/parts";
@@ -18,12 +18,21 @@ import { useObjectRun } from "../object/useObjectRun";
 import { MORE, SEGMENTS, renderTab, tabLabel, type TabId } from "../object/tabs";
 import { LegacyScope } from "../shell/LegacyMount";
 import { withSheets } from "@/lib/next/sheet";
+import { ProcessDesigner } from "@/design/v2/screens/ProcessDesigner";
+import { RecordCanvas } from "@/design/v2/screens/RecordCanvas";
+import { ANY_SYSTEM, systemForModule, systemSlug } from "@/lib/v2/score";
 import "../object/object.css";
 
 const ID = "nx-object";
 
-export function ObjectPage({ system, module, tab }: { system: string; module: string; tab: TabId }) {
+/**
+ * `sub` is the path under the segment: `records/{key}` opens one record, `processes/design` the process designer.
+ * `/o/_/{module}` (an old link without its system) is replaced with the system that holds the object, and the old
+ * `?as_of=` with `?run=`.
+ */
+export function ObjectPage({ system, module, tab, sub }: { system: string; module: string; tab: TabId; sub?: string }) {
   const router = useRouter();
+  const pathname = usePathname();
   const params = useSearchParams();
   const o = useObjectRun(system, module);
   const { cycle } = useObjectCycle(o.runId, o.module);
@@ -60,6 +69,22 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
     return () => { window.removeEventListener("nx:run-step", step); window.removeEventListener("nx:upload", up); window.removeEventListener("nx:download", down); };
   }, [heads, runId, setRun, go]);
 
+  const L = o.landscape.data;
+  const holder = system === ANY_SYSTEM && L ? systemForModule(L.systems, L.cells, o.module) : undefined;
+  useEffect(() => {
+    if (!holder) return;
+    const qs = params.toString();
+    router.replace(`${pathname.replace(`/o/${ANY_SYSTEM}/`, `/o/${systemSlug(holder.name)}/`)}${qs ? `?${qs}` : ""}`);
+  }, [holder, pathname, params, router]);
+  const asOf = params.get("as_of");
+  useEffect(() => {
+    if (!asOf) return;
+    const q = new URLSearchParams(params.toString());
+    q.delete("as_of");
+    q.set("run", asOf);
+    router.replace(`${pathname}?${q.toString()}`);
+  }, [asOf, pathname, params, router]);
+
   const inMore = MORE.includes(tab);
 
   // The old cycle tab is now a sheet; an old link lands on the overview with the sheet open.
@@ -74,7 +99,7 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  if (o.landscape.isLoading) return <div className="nx-object"><Skeleton lines={6} label={t("Loading the object")} /></div>;
+  if (o.landscape.isLoading || holder) return <div className="nx-object"><Skeleton lines={6} label={t("Loading the object")} /></div>;
   if (o.landscape.isError && isDenied(o.landscape.error)) return <div className="nx-object"><Denied what={t("this object")} /></div>;
   if (o.landscape.isError) return <div className="nx-object"><ErrorState sentence={t("The object could not be loaded.")} error={o.landscape.error} onRetry={() => void o.landscape.refetch()} /></div>;
   if (!o.systemId) {
@@ -110,7 +135,10 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
         className="nx-opanel"
         tabIndex={-1}
       >
-        <LegacyScope>{renderTab(tab, o, go)}<Inspector /></LegacyScope>
+        <LegacyScope>
+          {tab === "records" && sub ? <RecordCanvas module={module} recordKey={sub} /> : tab === "processes" && sub === "design" ? <ProcessDesigner system={system} module={module} /> : renderTab(tab, o, go)}
+          <Inspector />
+        </LegacyScope>
       </section>
     </div>
   );

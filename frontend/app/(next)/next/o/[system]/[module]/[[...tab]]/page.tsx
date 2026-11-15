@@ -7,5 +7,6 @@ import { isTab } from "@/design/next/object/tabs";
 export default function Page() {
   const p = useParams<{ system: string; module: string; tab?: string[] }>();
   const tab = p.tab?.[0];
-  return <ObjectPage system={String(p.system)} module={String(p.module)} tab={isTab(tab) ? tab : "overview"} />;
+  // `records/{key}` and `processes/design` carry a second segment.
+  return <ObjectPage system={String(p.system)} module={String(p.module)} tab={isTab(tab) ? tab : "overview"} sub={p.tab?.[1]} />;
 }

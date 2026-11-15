@@ -19,9 +19,13 @@ describe("nav defaults", () => {
     // Administration has one entry, under More.
     expect(redirectFor("/admin")).toBe("/more/admin");
     expect(redirectFor("/admin/users")).toBe("/more/admin/users");
+    // Object views move to the new object page, segments and sub-paths kept.
+    expect(redirectFor("/o/a/b")).toBe("/next/o/a/b");
+    expect(redirectFor("/o/a/b/records/K1")).toBe("/next/o/a/b/records/K1");
+    expect(redirectFor("/o/_/b/processes/design")).toBe("/next/o/_/b/processes/design");
   });
   it("leaves screens that stay", () => {
-    for (const p of ["/", "/work", "/work/triage", "/work/monitor", "/runs", "/run/a", "/run/a/vs/b", "/o/a/b", "/share/x", "/status", "/more", "/more/rules", "/more/admin", "/more/admin/users"]) {
+    for (const p of ["/", "/work", "/work/triage", "/work/monitor", "/runs", "/run/a", "/run/a/vs/b", "/share/x", "/status", "/more", "/more/rules", "/more/admin", "/more/admin/users"]) {
       expect(redirectFor(p)).toBeNull();
     }
   });

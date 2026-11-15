@@ -19,7 +19,7 @@ import { dimsOf } from "../shell/ObjectsTree";
 import { TableExport } from "@/design/v2/TableExport";
 
 /** The lowest measured score on the board, with its system, so the primary action has a target. */
-function worst(L: Landscape): { cell: LandscapeCell; system: LandscapeSystem; label: string } | null {
+export function worst(L: Landscape): { cell: LandscapeCell; system: LandscapeSystem; label: string } | null {
   let best: { cell: LandscapeCell; system: LandscapeSystem; label: string } | null = null;
   for (const c of L.cells) {
     const v = c.raw_score ?? c.score;
@@ -30,7 +30,7 @@ function worst(L: Landscape): { cell: LandscapeCell; system: LandscapeSystem; la
   return best;
 }
 
-function SystemBlock({ L, system, pinned }: { L: Landscape; system: LandscapeSystem; pinned: boolean }) {
+export function SystemBlock({ L, system, pinned }: { L: Landscape; system: LandscapeSystem; pinned: boolean }) {
   const runs = useTimeline(system.id, 50).data?.runs ?? [];
   const cells = L.cells.filter((c) => c.system_id === system.id).sort((a, b) => (a.raw_score ?? a.score ?? 101) - (b.raw_score ?? b.score ?? 101));
   const inactive = system.is_active === false;

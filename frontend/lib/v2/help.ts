@@ -56,8 +56,12 @@ export const SCREEN_LABEL: Record<Screen, string> = {
   get reports() { return t("Reports"); },
 };
 
+/** The new interface serves the same canvases under "/next/...": its pages share the old route's chapter. */
+const unNext = (pathname: string) => pathname.replace(/^\/next(?=\/)/, "");
+
 /** Which canvas the viewer is on, from the address. */
-export function screenOf(pathname: string): Screen | null {
+export function screenOf(path: string): Screen | null {
+  const pathname = unNext(path);
   if (pathname === "/" || pathname === "") return "landscape";
   if (pathname.startsWith("/o/")) return "object";
   if (pathname.startsWith("/r/")) return "rule";
@@ -228,7 +232,7 @@ const OPEN_CHAPTERS: Readonly<Record<string, string>> = {
 
 /** The route pattern of an address: "/o/ecc-production/material-master/golden" is "/o/[system]/[module]/golden". */
 export function routeOf(pathname: string): string | null {
-  const seg = (pathname.replace(/\/+$/, "") || "/").split("/").slice(1);
+  const seg = (unNext(pathname).replace(/\/+$/, "") || "/").split("/").slice(1);
   const [a, b, c, d, e] = seg;
   if (!a) return "/";
   if (a === "o" && b && c) return `/o/[system]/[module]${d ? `/${d}` : ""}${e ? (d === "records" ? "/[key]" : `/${e}`) : ""}`;

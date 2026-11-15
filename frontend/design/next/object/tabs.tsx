@@ -15,6 +15,8 @@ import { FailingRecords } from "../report/FailingRecords";
 import { SteeringReport } from "../report/SteeringReport";
 import { LoadFilesPanel } from "../load/LoadFilesPanel";
 import type { ObjectRun } from "./useObjectRun";
+import { TabLead } from "./TabLeads";
+import { FrameFoot, FrameHead, OldRunGate } from "./FrameParts";
 
 export const TAB_IDS = ["overview", "why", "fix", "records", "rules", "fixes", "runs", "readiness", "processes", "failing", "report", "golden", "glossary", "lineage", "profile", "cycle", "trend"] as const;
 export type TabId = (typeof TAB_IDS)[number];
@@ -48,16 +50,20 @@ export function tabLabel(id: TabId): string {
 }
 
 export function renderTab(id: TabId, o: ObjectRun, go: (tab: TabId) => void): ReactNode {
+  return <><TabLead id={id} o={o} /><FrameHead id={id} o={o} />{body(id, o, go)}<FrameFoot o={o} /></>;
+}
+
+function body(id: TabId, o: ObjectRun, go: (tab: TabId) => void): ReactNode {
   switch (id) {
     case "overview":
     case "cycle":
-      return <><WhySection o={o} limit={5} /><FixSection o={o} /><ObjectOverviewRoute /></>;
+      return <><WhySection o={o} limit={5} /><FixSection o={o} /><OldRunGate o={o}><ObjectOverviewRoute /></OldRunGate></>;
     case "why": return <WhySection o={o} />;
     case "fix": return <FixSection o={o} />;
     case "runs": return <RunsTab o={o} onOpen={(run) => { o.setRun(run); go("overview"); }} />;
-    case "rules": return <ObjectRulesRoute />;
+    case "rules": return <OldRunGate o={o}><ObjectRulesRoute /></OldRunGate>;
     case "failing": return <FailingRecords o={o} />;
     case "report": return <><SteeringReport o={o} /><LoadFilesPanel module={o.module} /></>;
-    default: return <ObjectTabRoute tab={id} />;
+    default: return <OldRunGate o={o}><ObjectTabRoute tab={id} /></OldRunGate>;
   }
 }

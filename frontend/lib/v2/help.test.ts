@@ -97,6 +97,14 @@ describe("every v2 route has a chapter", () => {
     expect(chapterFor("/work", "open=help")).toBe("v2:work");
     expect(chapterFor("/inbox")).toBeNull();
   });
+
+  it("a page of the new interface under /next shares the chapter of its old route", () => {
+    expect(chapterFor("/next/o/ecc-production/material-master/golden")).toBe("v2:golden-records");
+    expect(chapterFor("/next/o/ecc-production/material-master/records/MATNR%3D100")).toBe("v2:work");
+    expect(chapterFor("/next/o/ecc-production/material-master/processes/design")).toBe("v2:processes");
+    expect(chapterFor("/next/objects")).toBe("v2:objects");
+    expect(screenOf("/next/o/ecc-production/material-master")).toBe("object");
+  });
 });
 
 describe("every chapter has a recording", () => {
