@@ -17,7 +17,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from croniter import croniter
+from croniter import croniter  # type: ignore[import-untyped]
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
