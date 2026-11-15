@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "@/__tests__/render";
 import { setUrl } from "@/design/v2/__tests__/nav-store";
 import type { PortfolioRow } from "@/lib/api/next/portfolio";
-import type { Finding } from "@/lib/api/next/monitor";
+import { perDay, type Finding, type RunGroup } from "@/lib/api/next/monitor";
 import { Monitor, Watched } from "../screens/Monitor";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
@@ -55,5 +55,20 @@ describe("Monitor watched objects", () => {
     await userEvent.selectOptions(screen.getByLabelText("Severity"), "low");
     expect(screen.queryByRole("heading", { name: "Material master" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Customer master" })).toBeInTheDocument();
+  });
+});
+
+describe("Monitor per-day strip", () => {
+  it("sums run groups per day, oldest first, and skips undated groups", () => {
+    const g = (detected_at: string | null, n: number, r: number, x: number) => ({ detected_at, newCount: n, resolvedCount: r, regressedCount: x }) as unknown as RunGroup;
+    expect(perDay([g("2026-11-02T08:00:00Z", 1, 0, 0), g("2026-11-01T00:00:00Z", 2, 3, 1), g("2026-11-02T09:00:00Z", 1, 1, 0), g(null, 9, 9, 9)])).toEqual([
+      { day: "2026-11-01", newCount: 2, resolvedCount: 3, regressedCount: 1 },
+      { day: "2026-11-02", newCount: 2, resolvedCount: 1, regressedCount: 0 },
+    ]);
+  });
+  it("draws the strip on the Monitor", () => {
+    setUrl("/monitor");
+    renderWithQuery(<Monitor />);
+    expect(screen.getByTestId("mon-days")).toBeInTheDocument();
   });
 });

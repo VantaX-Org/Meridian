@@ -59,6 +59,19 @@ Use **Back** to return to an earlier step. Every other tab of the object stays r
 
 Press `d` or open **Downloads** in the bar. Each item says what it is for: the **cleaning workbook** for the cycle, the **fix workbook** for approved fixes, and **Export in load order** for the target load.
 
+## The next cycle: download, clean, upload, score again
+
+Most objects need more than one pass. Each pass is one cycle, and you can run it for one object or for many at once from Home.
+
+1. **Choose the objects**: on Home, tick the box on each card you want to clean. A bar appears at the bottom of the feed with the count and the actions for the whole selection. **Clear selection** empties it.
+2. **Download**: select **Download workbooks**. You get one cleaning workbook per object, each for its newest run. The notice says how many were downloaded.
+3. **Clean in Excel**: open each workbook, read its instructions sheet, and correct the failing records in place. Keep the sheet names, the columns and the marker that names the run; Meridian uses them to match the file to its run.
+4. **Upload**: select **Upload cleaned workbooks** and drop all the files at once. Each row shows the file, the run it came from and its state: Ready, Needs a run, Uploading, Scoring, Done or Failed. A file that does not say which run it came from shows **Choose a run** so you can pick it.
+5. **Score again**: each workbook becomes the next run of the run it came from and is scored at once. When a row says Done, select **Open the new run** to see it. **Score again** in the bar re-scores the selected objects without a new file, for example after a rule changed.
+6. **Check what changed**: open **Monitor** to see what is new, resolved or regressed, run by run. The strip at the top charts new, resolved and regressed records per day.
+
+Then start again from step 1 for the objects that still need work.
+
 ## The numbers and where they come from
 
 - **Score by dimension** reads the dimension scores of the run in the top bar; the shares are the dimension weights under Administration, Settings.

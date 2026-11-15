@@ -38,3 +38,6 @@
 .nx-fd-os-list { list-style: none; margin: 0; padding: 0; }
 .nx-fd-os-list li { display: flex; justify-content: space-between; gap: var(--nx-s3); padding: var(--nx-s2) 0; border-bottom: 1px solid var(--nx-border); }
 .nx-fd-capnote { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--nx-s3); color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-fd-first { margin: 0; padding: var(--nx-s3) var(--nx-s4); border-radius: var(--nx-r-control); background: var(--nx-accent-soft); color: var(--nx-ink); }
+.nx-fd-bulk { position: sticky; bottom: var(--nx-s4); z-index: 5; }
+.nx-fd-bulk .nx-pf-bulk { margin-bottom: 0; }

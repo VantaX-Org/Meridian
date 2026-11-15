@@ -7,13 +7,14 @@ import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { useV2Href } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
-import { groupByRun, useFeed, type RunGroup } from "@/lib/api/next/monitor";
+import { groupByRun, perDay, useFeed, type DayCount, type RunGroup } from "@/lib/api/next/monitor";
 import { usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { LearnedMonitors } from "@/design/v2/screens/LearnedMonitors";
 import { LegacyMount } from "../shell/LegacyMount";
 import { Button, Chip, Code, EmptyState, ErrorState, Skeleton, Sparkline, Tabs } from "../kit";
 import "../shell/shell.css";
 import "../monitor/monitor.css";
+import "../kit/viz/charts.css";
 
 const STEP = 100;
 const TOP = 5;
@@ -58,6 +59,41 @@ function Run({ g, open, onToggle }: { g: RunGroup; open: boolean; onToggle: () =
         </Button>
       ) : null}
     </li>
+  );
+}
+
+/** New, resolved and regressed records per day across the loaded feed, one stacked bar per day. */
+export function DayStrip({ days }: { days: DayCount[] }) {
+  if (days.length === 0) return null;
+  const max = Math.max(1, ...days.map((d) => d.newCount + d.resolvedCount + d.regressedCount));
+  const W = 12;
+  const H = 56;
+  const label = days.map((d) => t("{day}: {a} new, {b} resolved, {c} regressed", { day: d.day, a: formatInt(d.newCount), b: formatInt(d.resolvedCount), c: formatInt(d.regressedCount) })).join("; ");
+  return (
+    <figure className="nx-chart nx-mon-days" data-testid="mon-days">
+      <svg viewBox={`0 0 ${days.length * W} ${H}`} preserveAspectRatio="none" width="100%" height={H} role="img" aria-label={label}>
+        {days.map((d, i) => {
+          let y = H;
+          return (
+            <g key={d.day}>
+              <title>{t("{day}: {a} new, {b} resolved, {c} regressed", { day: d.day, a: formatInt(d.newCount), b: formatInt(d.resolvedCount), c: formatInt(d.regressedCount) })}</title>
+              {([["warn", d.newCount], ["good", d.resolvedCount], ["bad", d.regressedCount]] as const).map(([tone, v]) => {
+                const h = (v / max) * H;
+                y -= h;
+                return v > 0 ? <rect key={tone} x={i * W + 1} y={y} width={W - 2} height={h} className={`nx-seg-${tone}`} /> : null;
+              })}
+            </g>
+          );
+        })}
+      </svg>
+      <figcaption>
+        <ul className="nx-seg-legend">
+          <li><i className="nx-seg-dot nx-seg-warn" aria-hidden="true" />{t("New")}</li>
+          <li><i className="nx-seg-dot nx-seg-good" aria-hidden="true" />{t("Resolved")}</li>
+          <li><i className="nx-seg-dot nx-seg-bad" aria-hidden="true" />{t("Regressed")}</li>
+        </ul>
+      </figcaption>
+    </figure>
   );
 }
 
@@ -144,6 +180,7 @@ function Feed() {
         <Chip tone="regressed" pressed={only === "regressed"} onClick={() => setOnly(only === "regressed" ? "" : "regressed")}>{t("Only regressions")}</Chip>
         <Chip tone="new" pressed={only === "new"} onClick={() => setOnly(only === "new" ? "" : "new")}>{t("Only new")}</Chip>
       </div>
+      {q.isLoading ? null : <DayStrip days={perDay(groups)} />}
       <Watched rows={watched} />
       {q.isLoading ? (
         <Skeleton lines={4} />

@@ -77,3 +77,20 @@ export function groupByRun(items: Finding[], runs: FeedRun[] = []): RunGroup[] {
   }
   return [...by.values()];
 }
+
+export interface DayCount { day: string; newCount: number; resolvedCount: number; regressedCount: number }
+
+/** Sums run groups per calendar day (UTC, from detected_at), oldest first; groups without a date are left out. */
+export function perDay(groups: RunGroup[]): DayCount[] {
+  const by = new Map<string, DayCount>();
+  for (const g of groups) {
+    const day = g.detected_at?.slice(0, 10);
+    if (!day) continue;
+    const d = by.get(day) ?? { day, newCount: 0, resolvedCount: 0, regressedCount: 0 };
+    d.newCount += g.newCount;
+    d.resolvedCount += g.resolvedCount;
+    d.regressedCount += g.regressedCount;
+    by.set(day, d);
+  }
+  return [...by.values()].sort((a, b) => a.day.localeCompare(b.day));
+}

@@ -234,6 +234,27 @@ describe("Home", () => {
     expect(screen.getByRole("heading", { name: "No run yet." })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Run your first pull" })).toHaveAttribute("href", expect.stringContaining("/s/sys1"));
   });
+  it("ticks cards into a floating bulk bar and clears it", async () => {
+    page = pageOf([row({ regressed: 2, composite_score: 40 })]);
+    wrap(<Home />);
+    expect(screen.queryByTestId("pf-bulk")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: /^Select Material master/ }));
+    expect(screen.getByTestId("pf-bulk")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Clear/ }));
+    expect(screen.queryByTestId("pf-bulk")).not.toBeInTheDocument();
+  });
+  it("shows the first-run line when every object still waits for its first pull", () => {
+    page = pageOf([row({ step: "pull", composite_score: null as unknown as number, trend: [], run_number: 0 })]);
+    wrap(<Home />);
+    expect(screen.getByTestId("fd-first-run")).toHaveTextContent("Pull your first object to see its score.");
+  });
+  it("asks to connect a system when none is connected", () => {
+    page = pageOf([]);
+    systems = [];
+    wrap(<Home />);
+    expect(screen.getByRole("heading", { name: "Connect a system to start" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Use the demo data" })).toHaveAttribute("href", expect.stringContaining("fixture=1"));
+  });
   it("says when the feed is capped and offers to show all", async () => {
     page = pageOf([row()], 640);
     wrap(<Home />);

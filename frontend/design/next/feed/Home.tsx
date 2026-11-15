@@ -11,9 +11,9 @@ import { errorSentence } from "@/lib/api/v2/client";
 import { analyseRun } from "@/lib/api/v2/runs";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getFindings, type AletheiaFinding } from "@/lib/api/v2/insights";
-import { downloadWorkbook, startObjects, usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
+import { actionOf, downloadWorkbook, startObjects, usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { Confirm, EmptyState, ErrorState, useToast, Button } from "../kit";
-import type { PortfolioActions } from "../portfolio/BulkBar";
+import { BulkBar, type PortfolioActions } from "../portfolio/BulkBar";
 import { UploadPanel } from "../panels/UploadPanel";
 import { registerSheet, useSheets } from "../shell/SheetHost";
 import { Greeting } from "./Greeting";
@@ -42,6 +42,7 @@ export function Home() {
   const [pulling, setPulling] = useState<PortfolioRow[] | null>(null);
   const [uploadFor, setUploadFor] = useState<PortfolioRow[] | null>(null);
   const [scoring, setScoring] = useState<Set<string>>(new Set());
+  const [picked, setPicked] = useState<Map<string, PortfolioRow>>(new Map());
   const pullBusy = useRef(false);
 
   const rows = useMemo(() => feed.data?.objects ?? [], [feed.data]);
@@ -75,7 +76,7 @@ export function Home() {
           return;
         }
       }
-      toast({ text: t("Workbook for run {n} downloaded. Upload it when you are done.", { n: formatInt(rs[0]?.run_number ?? 0) }), tone: "good" });
+      toast({ text: rs.length === 1 ? t("Workbook for run {n} downloaded. Upload it when you are done.", { n: formatInt(rs[0].run_number ?? 0) }) : t("{n} workbooks downloaded. Upload them when you are done.", { n: formatInt(rs.length) }), tone: "good" });
     },
     score: async (rs) => {
       setScoring((s) => new Set([...s, ...rs.map((r) => r.version_id)]));
@@ -105,8 +106,17 @@ export function Home() {
     }
   };
 
+  const toggle = (r: PortfolioRow) =>
+    setPicked((m) => {
+      const n = new Map(m);
+      if (n.has(r.version_id)) n.delete(r.version_id);
+      else n.set(r.version_id, r);
+      return n;
+    });
+  const firstRun = rows.length > 0 && rows.every((r) => actionOf(r) === "pull");
+
   const card = (r: PortfolioRow) => (
-    <StoryCard key={r.version_id} row={r} act={act} finding={top.get(r.module)} evidence={count.get(r.module) ?? 0} onEvidence={() => { const f = top.get(r.module); if (f) sheets.open({ kind: "evidence", id: f.id }); }} />
+    <StoryCard key={r.version_id} row={r} act={act} selected={picked.has(r.version_id)} onSelect={() => toggle(r)} finding={top.get(r.module)} evidence={count.get(r.module) ?? 0} onEvidence={() => { const f = top.get(r.module); if (f) sheets.open({ kind: "evidence", id: f.id }); }} />
   );
 
   return (
@@ -119,14 +129,16 @@ export function Home() {
             {t("A system is connected. Pull its objects to see their quality here.")}
           </EmptyState>
         ) : rows.length === 0 ? (
-          <EmptyState heading={t("Nothing to show yet.")} action={<><Button variant="primary" onClick={() => sheets.open({ kind: "connect", id: "" })}>{t("Connect a system")}</Button> <V2Link className="nx-btn nx-btn-quiet" href="/portfolio?fixture=1">{t("See the sample")}</V2Link></>}>
-            {t("Connect a system and run the first analysis.")}
+          <EmptyState heading={t("Connect a system to start")} action={<><Button variant="primary" onClick={() => sheets.open({ kind: "connect", id: "" })}>{t("Connect a system")}</Button> <V2Link className="nx-btn nx-btn-quiet" href="/portfolio?fixture=1">{t("Use the demo data")}</V2Link></>}>
+            {t("Meridian pulls your master data once, scores it, and gives you a workbook to clean it in Excel.")}
           </EmptyState>
         ) : (
           <>
             <CapNotice page={feed.data} onAll={() => setAll(true)} loading={all && feed.isFetching} />
+            {firstRun ? <p className="nx-fd-first" role="status" data-testid="fd-first-run">{t("Pull your first object to see its score.")}</p> : null}
             <div className="nx-fd-feed">{needs.map(card)}</div>
             <QuietRow rows={quiet} sysName={sysName} />
+            {picked.size ? <div className="nx-fd-bulk"><BulkBar rows={[...picked.values()]} act={act} onClear={() => setPicked(new Map())} /></div> : null}
           </>
         )}
       <Confirm open={!!pulling} title={t("Pull {n} objects now?", { n: formatInt(new Set((pulling ?? []).map((r) => r.module)).size) })} consequence={t("Meridian reads {n} objects from their systems again and scores the new runs. Nothing is written to the systems.", { n: formatInt(new Set((pulling ?? []).map((r) => r.module)).size) })} confirmLabel={t("Pull now")} onConfirm={() => void confirmPull()} onCancel={() => setPulling(null)} />

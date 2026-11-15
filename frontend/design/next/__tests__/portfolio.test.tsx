@@ -23,6 +23,13 @@ vi.mock("@/lib/api/v2/roundtrip", async (orig) => ({ ...(await orig<typeof impor
 const marker = vi.fn<(f: File) => Promise<{ version_id?: string; module?: string }>>(async () => ({}));
 vi.mock("@/lib/api/next/upload", async (orig) => ({ ...(await orig<typeof import("@/lib/api/next/upload")>()), readMarker: (f: File) => marker(f) }));
 
+// A test may set `systems` to an extra connected system list; null keeps the fixture data.
+let systems: { id: string; name: string }[] | null = null;
+vi.mock("@/lib/v2/runs-queries", async (orig) => {
+  const m = await orig<typeof import("@/lib/v2/runs-queries")>();
+  return { ...m, useSystemsExtended: () => (systems ? { data: systems } : m.useSystemsExtended()) };
+});
+
 let undo: () => void = () => undefined;
 beforeEach(() => {
   window.sessionStorage.setItem("mn_v2_fixture", "1");
@@ -31,6 +38,7 @@ beforeEach(() => {
   start.mockClear();
   upload.mockClear();
   marker.mockReset();
+  systems = null;
   marker.mockResolvedValue({});
 });
 afterEach(() => {
@@ -91,6 +99,11 @@ describe("Objects list", () => {
     const groups = await screen.findAllByTestId("ol-system");
     expect(groups.length).toBeGreaterThan(0);
     expect(within(groups[0]).getAllByRole("link").length).toBeGreaterThan(0);
+  });
+  it("offers a pull link on a system with no objects", async () => {
+    systems = [{ id: "sys-empty", name: "Empty test system" }];
+    renderWithQuery(<ToastProvider><ObjectsList /></ToastProvider>);
+    expect(await screen.findByRole("link", { name: "Pull from Empty test system" })).toHaveAttribute("href", expect.stringContaining("/s/sys-empty"));
   });
 });
 
