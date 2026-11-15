@@ -46,5 +46,5 @@ def test_feed_publishes_severity_owner_and_runs():
 
     schemas = app.openapi()["components"]["schemas"]
     assert {"severity", "owner"} <= set(schemas["FeedItemOut"]["properties"])
-    assert {"version_id", "resolved"} <= set(schemas["FeedRunOut"]["properties"])
+    assert {"version_id", "resolved", "module", "label", "baseline_version_id", "detected_at", "owner"} <= set(schemas["FeedRunOut"]["properties"])
     assert "runs" in schemas["FeedOut"]["properties"]

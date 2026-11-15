@@ -11147,4 +11147,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Pull your first object to see its score.": "Lesen Sie Ihr erstes Objekt, um seinen Score zu sehen.",
   "{day}: {a} new, {b} resolved, {c} regressed": "{day}: {a} neu, {b} behoben, {c} verschlechtert",
   "Pull from {system}": "Aus {system} lesen",
+  "Compare objects": "Objekte vergleichen",
+  "Per day, across the loaded findings": "Pro Tag, über die geladenen Befunde",
+  "Showing the newest {n} days; {m} older days are not shown.": "Die neuesten {n} Tage werden gezeigt; {m} ältere Tage werden nicht gezeigt.",
+  "{n} runs without a date are not shown.": "{n} Läufe ohne Datum werden nicht gezeigt.",
 };

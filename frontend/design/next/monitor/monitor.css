@@ -18,3 +18,4 @@
 .nx-mon-watched li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s3); }
 .nx-mon-wname { min-width: 12ch; font-weight: 600; }
 .nx-mon-days { margin: 0; display: grid; gap: var(--nx-s2); }
+.nx-mon-days-h, .nx-mon-days-note { margin: 0; color: var(--nx-ink-2); }

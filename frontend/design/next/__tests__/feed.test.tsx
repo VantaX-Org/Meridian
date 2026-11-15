@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "@/__tests__/render";
 import { setUrl } from "@/design/v2/__tests__/nav-store";
@@ -241,6 +242,44 @@ describe("Home", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: /^Select Material master/ }));
     expect(screen.getByTestId("pf-bulk")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Clear/ }));
+    expect(screen.queryByTestId("pf-bulk")).not.toBeInTheDocument();
+  });
+  it("opens Compare on the ticked objects", async () => {
+    const u = userEvent.setup();
+    page = pageOf([row({ regressed: 2, composite_score: 40 }), row({ module: "customer_master", label: "Customer master", version_id: "v2", regressed: 1, composite_score: 50 })]);
+    wrap(<Home />);
+    await u.click(screen.getByRole("checkbox", { name: /^Select Material master/ }));
+    await u.click(screen.getByRole("checkbox", { name: /^Select Customer master/ }));
+    await u.click(within(screen.getByTestId("pf-bulk")).getByRole("button", { name: /^Compare/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Compare objects" });
+    const table = within(dialog).getByRole("table", { name: "Objects compared side by side" });
+    expect(table).toHaveTextContent("Material master");
+    expect(table).toHaveTextContent("Customer master");
+  });
+  it("clears the ticked objects after a pull", async () => {
+    const u = userEvent.setup();
+    page = pageOf([row({ regressed: 2, composite_score: 40 })]);
+    wrap(<Home />);
+    await u.click(screen.getByRole("checkbox", { name: /^Select Material master/ }));
+    await u.click(within(screen.getByTestId("pf-bulk")).getByRole("button", { name: /^Pull now/ }));
+    await u.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Pull now" }));
+    await waitFor(() => expect(start).toHaveBeenCalledWith(["material_master"]));
+    await waitFor(() => expect(screen.queryByTestId("pf-bulk")).not.toBeInTheDocument());
+  });
+  it("drops a ticked object the refetched feed no longer holds", async () => {
+    page = pageOf([row({ regressed: 2, composite_score: 40 })]);
+    const qc = new QueryClient();
+    const tree = () => <QueryClientProvider client={qc}><ToastProvider><SheetHost><Home /></SheetHost></ToastProvider></QueryClientProvider>;
+    const view = render(tree());
+    await userEvent.click(screen.getByRole("checkbox", { name: /^Select Material master/ }));
+    expect(screen.getByTestId("pf-bulk")).toBeInTheDocument();
+    // A new run replaces v1; the old id must not linger and come back.
+    page = pageOf([row({ version_id: "v9", regressed: 2, composite_score: 40 })]);
+    view.rerender(tree());
+    await waitFor(() => expect(screen.queryByTestId("pf-bulk")).not.toBeInTheDocument());
+    expect(screen.getByRole("checkbox", { name: /^Select Material master/ })).not.toBeChecked();
+    page = pageOf([row({ regressed: 2, composite_score: 40 })]);
+    view.rerender(tree());
     expect(screen.queryByTestId("pf-bulk")).not.toBeInTheDocument();
   });
   it("shows the first-run line when every object still waits for its first pull", () => {

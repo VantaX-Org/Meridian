@@ -11147,4 +11147,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Pull your first object to see its score.": "最初のオブジェクトを取り込むと、スコアが表示されます。",
   "{day}: {a} new, {b} resolved, {c} regressed": "{day}: 新規 {a}、解決 {b}、悪化 {c}",
   "Pull from {system}": "{system} から取り込む",
+  "Compare objects": "オブジェクトを比較",
+  "Per day, across the loaded findings": "日別、読み込んだ検出結果全体",
+  "Showing the newest {n} days; {m} older days are not shown.": "最新の {n} 日分を表示しています。それより前の {m} 日分は表示されません。",
+  "{n} runs without a date are not shown.": "日付のない {n} 件の実行は表示されません。",
 };

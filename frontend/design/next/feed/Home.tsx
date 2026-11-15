@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
@@ -12,7 +12,8 @@ import { analyseRun } from "@/lib/api/v2/runs";
 import { fixtureAllowed, useFixture } from "@/lib/api/v2/fixture";
 import { getFindings, type AletheiaFinding } from "@/lib/api/v2/insights";
 import { actionOf, downloadWorkbook, startObjects, usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
-import { Confirm, EmptyState, ErrorState, useToast, Button } from "../kit";
+import { Confirm, EmptyState, ErrorState, Sheet, useToast, Button } from "../kit";
+import { CompareObjects } from "../portfolio/CompareObjects";
 import { BulkBar, type PortfolioActions } from "../portfolio/BulkBar";
 import { UploadPanel } from "../panels/UploadPanel";
 import { registerSheet, useSheets } from "../shell/SheetHost";
@@ -42,10 +43,18 @@ export function Home() {
   const [pulling, setPulling] = useState<PortfolioRow[] | null>(null);
   const [uploadFor, setUploadFor] = useState<PortfolioRow[] | null>(null);
   const [scoring, setScoring] = useState<Set<string>>(new Set());
-  const [picked, setPicked] = useState<Map<string, PortfolioRow>>(new Map());
+  // Ticked runs by version_id; the rows come from the current feed, so a refetch never shows a stale snapshot.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [compared, setCompared] = useState<PortfolioRow[] | null>(null);
   const pullBusy = useRef(false);
 
   const rows = useMemo(() => feed.data?.objects ?? [], [feed.data]);
+  const selected = useMemo(() => rows.filter((r) => picked.has(r.version_id)), [rows, picked]);
+  // Drop ticked ids the current feed no longer holds (a new run, or the `all` toggle).
+  useEffect(() => {
+    if (selected.length !== picked.size) setPicked(new Set(selected.map((r) => r.version_id)));
+  }, [selected, picked]);
+  const unpick = (ids: string[]) => setPicked((s) => new Set([...s].filter((id) => !ids.includes(id))));
   const { needs, quiet } = useMemo(() => orderFeed(rows, session.persona), [rows, session.persona]);
   const top = useMemo(() => {
     const m = new Map<string, AletheiaFinding>();
@@ -66,7 +75,10 @@ export function Home() {
     scoring,
     pull: (rs) => setPulling(rs),
     upload: (rs) => setUploadFor(rs),
-    compare: () => sheets.open({ kind: "compare", id: "" }),
+    compare: (rs) => {
+      setCompared(rs.slice(0, 6));
+      if (rs.length > 6) toast({ text: t("Compare shows six objects at most; the first six are shown."), tone: "neutral" });
+    },
     download: async (rs) => {
       for (const r of rs) {
         try {
@@ -84,6 +96,7 @@ export function Home() {
       // A failed score frees its button again; a started one stays locked until the refreshed row shows the new run.
       const freed = rs.filter((_, i) => out[i].status === "rejected").map((r) => r.version_id);
       if (freed.length) setScoring((s) => new Set([...s].filter((id) => !freed.includes(id))));
+      unpick(rs.map((r) => r.version_id).filter((id) => !freed.includes(id)));
       const failed = out.filter((o) => o.status === "rejected").length;
       toast(failed ? { text: t("{n} of {m} runs could not be scored. Try again.", { n: formatInt(failed), m: formatInt(rs.length) }), tone: "bad" } : { text: t("Scoring {n} runs.", { n: formatInt(rs.length) }), tone: "good" });
       refresh();
@@ -98,6 +111,7 @@ export function Home() {
     try {
       const res = await startObjects([...new Set(rs.map((r) => r.module))]);
       toast({ text: res.skipped.length ? t("{n} objects queued to pull, {m} already running.", { n: formatInt(res.queued.length), m: formatInt(res.skipped.length) }) : t("{n} objects queued to pull.", { n: formatInt(res.queued.length) }), tone: "good" });
+      unpick(rs.map((r) => r.version_id));
       refresh();
     } catch (err) {
       toast({ text: errorSentence(err, t("The pull could not start. Try again.")), tone: "bad" });
@@ -107,10 +121,9 @@ export function Home() {
   };
 
   const toggle = (r: PortfolioRow) =>
-    setPicked((m) => {
-      const n = new Map(m);
-      if (n.has(r.version_id)) n.delete(r.version_id);
-      else n.set(r.version_id, r);
+    setPicked((s) => {
+      const n = new Set(s);
+      if (!n.delete(r.version_id)) n.add(r.version_id);
       return n;
     });
   const firstRun = rows.length > 0 && rows.every((r) => actionOf(r) === "pull");
@@ -138,11 +151,14 @@ export function Home() {
             {firstRun ? <p className="nx-fd-first" role="status" data-testid="fd-first-run">{t("Pull your first object to see its score.")}</p> : null}
             <div className="nx-fd-feed">{needs.map(card)}</div>
             <QuietRow rows={quiet} sysName={sysName} />
-            {picked.size ? <div className="nx-fd-bulk"><BulkBar rows={[...picked.values()]} act={act} onClear={() => setPicked(new Map())} /></div> : null}
+            {selected.length ? <div className="nx-fd-bulk"><BulkBar rows={selected} act={act} onClear={() => setPicked(new Set())} /></div> : null}
           </>
         )}
       <Confirm open={!!pulling} title={t("Pull {n} objects now?", { n: formatInt(new Set((pulling ?? []).map((r) => r.module)).size) })} consequence={t("Meridian reads {n} objects from their systems again and scores the new runs. Nothing is written to the systems.", { n: formatInt(new Set((pulling ?? []).map((r) => r.module)).size) })} confirmLabel={t("Pull now")} onConfirm={() => void confirmPull()} onCancel={() => setPulling(null)} />
-      <UploadPanel open={!!uploadFor} expected={uploadFor ?? []} onClose={() => setUploadFor(null)} onDone={() => { setUploadFor(null); refresh(); }} />
+      <UploadPanel open={!!uploadFor} expected={uploadFor ?? []} onClose={() => setUploadFor(null)} onDone={(res) => { unpick(res.map((r) => r.parent_version_id)); setUploadFor(null); refresh(); }} />
+      <Sheet open={!!compared} onClose={() => setCompared(null)} title={t("Compare objects")} size="large">
+        <CompareObjects rows={compared ?? []} sysName={sysName} />
+      </Sheet>
     </main>
   );
 }

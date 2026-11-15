@@ -39,6 +39,8 @@ export function Portfolio() {
   const [pulling, setPulling] = useState<PortfolioRow[] | null>(null);
   const [uploadFor, setUploadFor] = useState<PortfolioRow[] | null>(null);
   const [scoring, setScoring] = useState<Set<string>>(new Set());
+  // The selection spans pages ("Select this page" adds to it), so it keeps row snapshots; acted rows leave it.
+  const unpick = (ids: string[]) => setPicked((m) => new Map([...m].filter(([id]) => !ids.includes(id))));
   const [compared, setCompared] = useState<PortfolioRow[]>([]);
 
   const page = usePortfolio({ ...f, limit: PAGE, offset });
@@ -79,6 +81,10 @@ export function Portfolio() {
     score: async (rs) => {
       setScoring((s) => new Set([...s, ...rs.map((r) => r.version_id)]));
       const out = await Promise.allSettled(rs.map((r) => analyseRun(r.version_id)));
+      // A failed score frees its button again; a started one stays locked until the refreshed row shows the new run.
+      const freed = rs.filter((_, i) => out[i].status === "rejected").map((r) => r.version_id);
+      if (freed.length) setScoring((s) => new Set([...s].filter((id) => !freed.includes(id))));
+      unpick(rs.map((r) => r.version_id).filter((id) => !freed.includes(id)));
       const failed = out.filter((o) => o.status === "rejected").length;
       toast(failed ? { text: t("{n} of {m} runs could not be scored. Try again.", { n: formatInt(failed), m: formatInt(rs.length) }), tone: "bad" } : { text: t("Scoring {n} runs.", { n: formatInt(rs.length) }), tone: "good" });
       refresh();
@@ -91,6 +97,7 @@ export function Portfolio() {
     try {
       const res = await startObjects([...new Set(rs.map((r) => r.module))]);
       toast({ text: res.skipped.length ? t("{n} objects queued to pull, {m} already running.", { n: formatInt(res.queued.length), m: formatInt(res.skipped.length) }) : t("{n} objects queued to pull.", { n: formatInt(res.queued.length) }), tone: "good" });
+      unpick(rs.map((r) => r.version_id));
       refresh();
     } catch (err) {
       toast({ text: errorSentence(err, t("The pull could not start. Try again.")), tone: "bad" });
@@ -217,6 +224,7 @@ export function Portfolio() {
         onDone={(res) => {
           const scoringN = res.filter((r) => r.status === "pending" || r.status === "running").length;
           toast({ text: t("{n} workbooks uploaded. {m} new runs scoring.", { n: formatInt(res.length), m: formatInt(scoringN) }), tone: "good" });
+          unpick(res.map((r) => r.parent_version_id));
           refresh();
         }}
       />
