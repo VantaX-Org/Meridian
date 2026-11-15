@@ -43,6 +43,8 @@ import { materialsRead, NONE_MATERIALS } from "./materials";
 import { issuesRead, issuesWrite, NONE_ISSUES, resetIssuesFixture } from "./issues";
 import { exceptionsRead, exceptionsWrite, NONE_EXCEPTIONS, resetExceptionsFixture } from "./exceptions";
 import { NONE_TRIAGE, resetTriageFixture, triageRead, triageWrite } from "./triage";
+import { NONE_STEWARD, resetStewardFixture, stewardRead, stewardWrite } from "./stewardship";
+import { automationRead, NONE_AUTOMATION } from "./automation";
 import { NONE_MAINTENANCE, maintenanceRead, maintenanceWrite, resetMaintenanceFixture } from "./maintenance";
 import { NONE_LLM, llmRead, llmWrite, resetLlmFixture } from "./llm";
 import { NONE_PROFILE, profileRead, profileWrite, resetProfileFixture } from "./profile";
@@ -223,6 +225,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (xw !== NONE_EXCEPTIONS) return xw as T;
   const tw = triageWrite(method, path, body);
   if (tw !== NONE_TRIAGE) return tw as T;
+  const swq = stewardWrite(method, path, body);
+  if (swq !== NONE_STEWARD) return swq as T;
   const mw = maintenanceWrite(method, path, body);
   if (mw !== NONE_MAINTENANCE) return mw as T;
   const lw = llmWrite(method, path, body);
@@ -304,6 +308,7 @@ export const resetWorkFixture = (): void => {
   resetIssuesFixture();
   resetExceptionsFixture();
   resetTriageFixture();
+  resetStewardFixture();
   resetMaintenanceFixture();
   resetLlmFixture();
   resetProfileFixture();
@@ -491,6 +496,10 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (exc !== NONE_EXCEPTIONS) return exc as T;
   const tri = triageRead(path, params);
   if (tri !== NONE_TRIAGE) return tri as T;
+  const stw = stewardRead(path, params);
+  if (stw !== NONE_STEWARD) return stw as T;
+  const aut = automationRead(path);
+  if (aut !== NONE_AUTOMATION) return aut as T;
   const mnt = maintenanceRead(path);
   if (mnt !== NONE_MAINTENANCE) return mnt as T;
   const llm = llmRead(path);
