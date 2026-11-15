@@ -385,10 +385,10 @@ def apply_edits(parent_prefix: str, new_prefix: str, edits: list[dict], dictiona
     if parent_prefix.endswith(".parquet"):
         # a file upload: one flat object with TABLE.FIELD columns, written back as one object at new_prefix
         df = read(parent_prefix)
-        for table in sorted(by_table):
-            if any(c.startswith(f"{table}.") for c in df.columns):
-                out["no_table"].remove(table)
-                _edit_table(df, table, by_table[table], dictionary, field_of, conflicts, out)
+        for flat_table in sorted(by_table):
+            if any(c.startswith(f"{flat_table}.") for c in df.columns):
+                out["no_table"].remove(flat_table)
+                _edit_table(df, flat_table, by_table[flat_table], dictionary, field_of, conflicts, out)
         save(df, new_prefix)
         return _totals(out, edits)
 
@@ -430,8 +430,8 @@ def _edit_table(df, table: str, edits: list[dict], dictionary, field_of, conflic
     for i, k in enumerate(record_keys(df, key_cols)):
         index.setdefault(k, []).append(i)
     for e in edits:
-        c = col(e["field"])
-        if c is None:
+        column = col(e["field"])
+        if column is None:
             if e["field"] not in out["no_field"]:
                 out["no_field"].append(e["field"])
             continue
@@ -439,7 +439,7 @@ def _edit_table(df, table: str, edits: list[dict], dictionary, field_of, conflic
         if not rows:
             out["unmatched"].append({"table": table, "key": e["key"], "field": e["field"]})
             continue
-        old = df[c].iloc[rows[0]]
+        old = df[column].iloc[rows[0]]
         old_text = "" if pd.isna(old) else _text(old)
         meta = None
         if field_of:
@@ -454,7 +454,7 @@ def _edit_table(df, table: str, edits: list[dict], dictionary, field_of, conflic
             out["conflicts"].append({"table": table, "key": e["key"], "field": e["field"], "value": value,
                                      "current": old_text})
             continue
-        _write(df, rows, c, value)
+        _write(df, rows, column, value)
         out["applied"] += len(rows)
         out["edited"].append({"table": table, "key": e["key"], "field": e["field"]})
 
