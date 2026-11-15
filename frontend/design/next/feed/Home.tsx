@@ -11,7 +11,7 @@ import { errorSentence } from "@/lib/api/v2/client";
 import { analyseRun } from "@/lib/api/v2/runs";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getFindings, type AletheiaFinding } from "@/lib/api/v2/insights";
-import { downloadWorkbook, startObjects, usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
+import { downloadWorkbooks, startObjects, usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { Confirm, EmptyState, ErrorState, useToast, Button } from "../kit";
 import type { PortfolioActions } from "../portfolio/BulkBar";
 import { UploadPanel } from "../panels/UploadPanel";
@@ -67,15 +67,20 @@ export function Home() {
     upload: (rs) => setUploadFor(rs),
     compare: () => sheets.open({ kind: "compare", id: "" }),
     download: async (rs) => {
-      for (const r of rs) {
+      for (let i = 0; i < rs.length; i += 50) {
         try {
-          await downloadWorkbook(r);
+          await downloadWorkbooks(rs.slice(i, i + 50));
         } catch (err) {
           toast({ text: errorSentence(err, t("The workbook could not be downloaded. Try again.")), tone: "bad" });
           return;
         }
       }
-      toast({ text: t("Workbook for run {n} downloaded. Upload it when you are done.", { n: formatInt(rs[0]?.run_number ?? 0) }), tone: "good" });
+      toast({
+        text: rs.length === 1 ? t("Workbook for run {n} downloaded. Upload it when you are done.", { n: formatInt(rs[0].run_number ?? 0) }) : t("{n} workbooks downloaded. Upload them when you are done.", { n: formatInt(rs.length) }),
+        tone: "good",
+        timeout: 12000,
+        action: { label: t("Open Upload"), onClick: () => setUploadFor(rs) },
+      });
     },
     score: async (rs) => {
       setScoring((s) => new Set([...s, ...rs.map((r) => r.version_id)]));

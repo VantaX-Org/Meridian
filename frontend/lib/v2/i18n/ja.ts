@@ -11141,4 +11141,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "different roles": "別のロール",
   "Removed {role_name} from {name}. They will be notified.": "{name} から {role_name} を削除しました。本人に通知されます。",
   "Added {role} to {name}. They will be notified.": "{name} に {role} を追加しました。本人に通知されます。",
+  "Open Upload": "アップロードを開く",
+  "Add to load": "ロードに追加",
 };

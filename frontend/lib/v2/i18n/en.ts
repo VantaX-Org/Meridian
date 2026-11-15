@@ -11140,6 +11140,8 @@ export const en = {
   "different roles": "different roles",
   "Removed {role_name} from {name}. They will be notified.": "Removed {role_name} from {name}. They will be notified.",
   "Added {role} to {name}. They will be notified.": "Added {role} to {name}. They will be notified.",
+  "Open Upload": "Open Upload",
+  "Add to load": "Add to load",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -11141,4 +11141,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "different roles": "andere Rollen",
   "Removed {role_name} from {name}. They will be notified.": "{role_name} von {name} entfernt. Die Person wird benachrichtigt.",
   "Added {role} to {name}. They will be notified.": "{role} zu {name} hinzugefügt. Die Person wird benachrichtigt.",
+  "Open Upload": "Upload öffnen",
+  "Add to load": "Zum Laden hinzufügen",
 };

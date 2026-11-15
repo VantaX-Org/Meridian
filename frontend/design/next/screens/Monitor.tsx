@@ -9,6 +9,8 @@ import { useV2Href } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
 import { groupByRun, useFeed, type RunGroup } from "@/lib/api/next/monitor";
 import { usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
+import { f1 } from "@/lib/v2/score";
+import { deltaOf } from "../feed/model";
 import { LearnedMonitors } from "@/design/v2/screens/LearnedMonitors";
 import { LegacyMount } from "../shell/LegacyMount";
 import { Button, Chip, Code, EmptyState, ErrorState, Skeleton, Sparkline, Tabs } from "../kit";
@@ -27,14 +29,24 @@ function when(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 }
 
-function Run({ g, open, onToggle }: { g: RunGroup; open: boolean; onToggle: () => void }) {
+/** "DQS 77 (+6)": the run's score and its change against the run before; null when the run has no score. */
+export function runScore(row: PortfolioRow | undefined): string | null {
+  if (!row || row.composite_score == null) return null;
+  const d = deltaOf(row);
+  if (d == null) return t("DQS {score}", { score: f1(row.composite_score) });
+  return t("DQS {score} ({delta})", { score: f1(row.composite_score), delta: `${d >= 0 ? "+" : "-"}${f1(Math.abs(d))}` });
+}
+
+function Run({ g, row, open, onToggle }: { g: RunGroup; row?: PortfolioRow; open: boolean; onToggle: () => void }) {
   const href = useV2Href();
+  const score = runScore(row);
   const shown = open ? g.findings : g.findings.slice(0, TOP);
   return (
     <li className="nx-mon-run">
       <div className="nx-mon-run-h">
         <h3>{g.label}</h3>
         <span className="nx-mon-when">{when(g.detected_at)}</span>
+        {score ? <span className="nx-mon-score">{score}</span> : null}
         {g.newCount ? <Chip tone="new" count={g.newCount}>{t("new")}</Chip> : null}
         {g.regressedCount ? <Chip tone="regressed" count={g.regressedCount}>{t("regressed")}</Chip> : null}
         {g.resolvedCount ? <Chip tone="resolved" count={g.resolvedCount}>{t("resolved")}</Chip> : null}
@@ -95,6 +107,7 @@ function Feed() {
   const owners = useMemo(() => [...new Set((portfolio ?? []).map((r) => r.owner).filter((o): o is string => !!o))].sort(), [portfolio]);
   const watched = useMemo(() => (portfolio ?? []).filter((r) => (!module || r.module === module) && (!system || r.system_id === system) && (!owner || r.owner === owner)), [portfolio, module, system, owner]);
   const q = useFeed({ module: module || undefined, limit });
+  const byRun = useMemo(() => new Map((portfolio ?? []).map((r) => [r.version_id, r])), [portfolio]);
 
   const inSystem = useMemo(() => {
     if (!system || !landscape) return null;
@@ -153,7 +166,7 @@ function Feed() {
         <EmptyState heading={t("Nothing new")}>{t("No object has a new or regressed finding since its baseline.")}</EmptyState>
       ) : (
         <ul className="nx-mon-list">
-          {groups.map((g) => <Run key={g.version_id} g={g} open={openRuns.has(g.version_id)} onToggle={() => toggle(g.version_id)} />)}
+          {groups.map((g) => <Run key={g.version_id} g={g} row={byRun.get(g.version_id)} open={openRuns.has(g.version_id)} onToggle={() => toggle(g.version_id)} />)}
         </ul>
       )}
       {total > 0 ? (
