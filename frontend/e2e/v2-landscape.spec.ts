@@ -1,5 +1,5 @@
 /**
- * Meridian 2, step 0: the landscape, the object canvas and the inspector in fixture mode (`/?fixture=1`), so the
+ * Meridian 2, step 0: the landscape (now under More, `/more/landscape?fixture=1`), the object canvas and the inspector in fixture mode, so the
  * spec needs no API and no recording. At 1440 and 390, light and dark: the coverage matrix is there, an object
  * opens, the inspector opens and closes by keyboard, axe finds no critical or serious violation, and a screenshot of
  * each lands in e2e/__screenshots__/v2/. A last test gives the Rules tab 100,000 rules.
@@ -19,6 +19,7 @@ const SIZES = [
 const SCHEMES = ["light", "dark"] as const;
 /** A route compiled on demand by `next dev` can take a while the first time; a production build answers at once. */
 const NAV = { timeout: 90_000 };
+test.describe.configure({ timeout: 180_000 });
 
 /** The fixture needs no API: every /api/v1 read is answered empty so the root providers settle quietly. */
 async function prepare(page: Page, scheme: "light" | "dark") {
@@ -50,7 +51,7 @@ for (const size of SIZES) {
 
       test("landscape for SAP Basis: connections, extractions, failed jobs, authorisation errors and schedules", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/?fixture=1&persona=basis", { waitUntil: "load" });
+        await page.goto("/more/landscape?fixture=1&persona=basis", { waitUntil: "load" });
         const home = page.getByTestId("basis-home");
         await expect(home).toBeVisible(NAV);
         await expect(home.getByTestId("basis-connections")).toContainText("Refused the credentials");
@@ -64,7 +65,7 @@ for (const size of SIZES) {
 
       test("landscape: the sentence, the next step and the coverage matrix", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/?fixture=1", { waitUntil: "load" });
+        await page.goto("/more/landscape?fixture=1", { waitUntil: "load" });
         await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Landscape/);
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
         await expect(page.getByTestId("landscape-sentence")).toContainText("11 of 15 objects cannot reach 85 yet, because 30 critical rules fail on too many records");
@@ -101,17 +102,22 @@ for (const size of SIZES) {
 
       test("an object opens from the landscape, with its ruler, receipt and tabs", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/?fixture=1", { waitUntil: "load" });
+        await page.goto("/more/landscape?fixture=1", { waitUntil: "load" });
         if (phone) await page.locator(".m2-mlist .m2-lrow").first().click();
         else await page.getByTestId("matrix-cell").first().click();
         await expect(page).toHaveURL(/\/o\/ecc-production\/material-master/, NAV);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Material master", NAV);
         await expect(page.getByTestId("cap-sentence")).toContainText("Held at 70 because");
-        await expect(page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link")).toHaveCount(11); // spec 2.4: Overview plus ten more tabs
-        // The ruler, the receipt and the rules grid moved to the Rules tab (design spec 2.4: Overview is the default tab).
-        await page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link", { name: /^Rules/ }).click(NAV);
-        await expect(page).toHaveURL(/\/material-master\/rules/, NAV);
-        await expect(page.locator('svg[data-size="240"]')).toBeVisible();
+        const views = page.getByRole("tablist", { name: "Object views" });
+        // Overview plus the nine most used views; the rest sit under More.
+        await expect(views.getByRole("tab")).toHaveCount(10);
+        // The ruler, the receipt and the rules grid live on the Rules tab (design spec 2.4: Overview is the default tab).
+        // A click that lands before hydration does nothing, so it is retried until the route changes.
+        await expect(async () => {
+          await views.getByRole("tab", { name: /^Rules/ }).click();
+          await expect(page).toHaveURL(/\/material-master\/rules/, { timeout: 20_000 });
+        }).toPass(NAV);
+        await expect(page.getByTestId("hero-viz")).toBeVisible();
         await expect(page.getByTestId("receipt")).toBeVisible();
         await expect(page.getByTestId("receipt-footer")).toContainText("tolerance 10% of rows or 25 rows");
         await expect(page.getByRole(phone ? "list" : "grid", { name: "Rules for Material master" })).toBeVisible(); // two-line rows on a phone
@@ -119,15 +125,16 @@ for (const size of SIZES) {
         await shot(page, "object");
         await axe(page, `object ${size.name} ${scheme}`);
 
-        // The tab is a route segment; since step 6b it draws the lineage of the failing rules.
-        await page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link", { name: "Lineage" }).click();
+        // The tab is a route segment; since step 6b it draws the lineage of the failing rules. It sits under More.
+        await views.getByRole("tab", { name: "More" }).click();
+        await page.getByRole("menuitem", { name: "Lineage" }).click();
         await expect(page).toHaveURL(/\/material-master\/lineage/, NAV);
         await expect(page.locator('[aria-label^="Lineage of Material master:"]')).toBeVisible(NAV);
       });
 
       test("the inspector opens from a link, traps focus, closes with Esc and returns focus", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/o/ecc-production/material-master?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/next/o/ecc-production/material-master?fixture=1", { waitUntil: "load", timeout: 90_000 });
         const rule = page.getByTestId("cap-sentence").getByRole("link", { name: "MM035" });
         await expect(rule).toBeVisible(NAV);
         await rule.focus();
@@ -162,7 +169,7 @@ for (const size of SIZES) {
 
       test("the command line opens with the shortcut and finds a rule", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/?fixture=1", { waitUntil: "load" });
+        await page.goto("/more/landscape?fixture=1", { waitUntil: "load" });
         await expect(page.getByTestId("landscape-sentence")).toBeVisible();
         await page.keyboard.press("Control+k");
         const palette = page.getByRole("dialog", { name: "Search, ask, or type a command" });
@@ -191,7 +198,7 @@ test.describe("a long list of rules", () => {
         for (const e of list.getEntries() as unknown as { hadRecentInput: boolean; value: number }[]) if (!e.hadRecentInput) (window as unknown as { __cls: number }).__cls += e.value;
       }).observe({ type: "layout-shift", buffered: true });
     });
-    await page.goto("/o/ecc-production/material-master/rules?fixture=1&rows=100000", { waitUntil: "load", timeout: 90_000 });
+    await page.goto("/next/o/ecc-production/material-master/rules?fixture=1&rows=100000", { waitUntil: "load", timeout: 90_000 });
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
     await expect(grid).toBeVisible(NAV);
     await expect(grid).toContainText("and 99,975 more rules");
@@ -207,7 +214,7 @@ test.describe("a long list of rules", () => {
 
   test("j and k move through the rules and Enter opens one in the inspector", async ({ page }) => {
     await prepare(page, "light");
-    await page.goto("/o/ecc-production/material-master/rules?fixture=1", { waitUntil: "load", timeout: 90_000 });
+    await page.goto("/next/o/ecc-production/material-master/rules?fixture=1", { waitUntil: "load", timeout: 90_000 });
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
     await expect(grid.getByRole("row")).toHaveCount(11, NAV);
     await grid.focus();
@@ -220,25 +227,26 @@ test.describe("a long list of rules", () => {
   });
 });
 
-test("the rail's flyout opens once under a moving pointer and does not flash", async ({ page }) => {
+test("the tab bar stays put under a moving pointer and does not flash", async ({ page }) => {
+  // The v2 rail and its hover flyout gave way to the Story tab bar; a pointer moving over a tab must not re-render it.
   await page.setViewportSize({ width: 1440, height: 900 });
   await prepare(page, "light");
-  await page.goto("/?fixture=1", NAV);
-  const link = page.getByTestId("rail").getByRole("link", { name: "Fix" });
+  await page.goto("/more/landscape?fixture=1", NAV);
+  const tabs = page.locator("#nx-tabs");
+  const link = tabs.getByRole("link").nth(1);
   await expect(link).toBeVisible(NAV);
   await page.evaluate(() => {
-    document.body.dataset.flyChanges = "0";
+    document.body.dataset.tabChanges = "0";
     new MutationObserver((records) => {
-      const changes = records.flatMap((r) => [...r.addedNodes, ...r.removedNodes]).filter((n) => n instanceof HTMLElement && n.dataset.testid === "flyout");
-      document.body.dataset.flyChanges = String(Number(document.body.dataset.flyChanges) + changes.length);
-    }).observe(document.querySelector(".m2-railwrap") as Element, { childList: true });
+      const changes = records.flatMap((r) => [...r.addedNodes, ...r.removedNodes]).filter((n) => n instanceof HTMLElement);
+      document.body.dataset.tabChanges = String(Number(document.body.dataset.tabChanges) + changes.length);
+    }).observe(document.querySelector("#nx-tabs") as Element, { childList: true, subtree: true });
   });
   const box = (await link.boundingBox())!;
   for (let i = 0; i < 12; i++) {
     await page.mouse.move(box.x + box.width / 2 + (i % 3), box.y + box.height / 2);
     await page.waitForTimeout(60);
   }
-  await expect(page.getByTestId("flyout")).toBeVisible();
-  expect(await page.evaluate(() => document.body.dataset.flyChanges)).toBe("1");
-  expect(await page.evaluate(([x, y]) => Boolean(document.elementFromPoint(x, y)?.closest(".m2-rail")), [box.x + 4, box.y + 4])).toBe(true);
+  expect(await page.evaluate(() => document.body.dataset.tabChanges)).toBe("0");
+  expect(await page.evaluate(([x, y]) => Boolean(document.elementFromPoint(x, y)?.closest("#nx-tabs")), [box.x + box.width / 2, box.y + box.height / 2])).toBe(true);
 });

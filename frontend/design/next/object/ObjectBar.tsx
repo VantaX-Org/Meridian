@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PointSpark, Button, LargeTitle, Popover, Ring } from "@/design/next/kit";
 import { writeClipboard } from "@/lib/browser";
 import { Coded, V2Link } from "@/design/v2/parts";
+import { CapSentence } from "@/design/v2/screens/Object";
 import { useSheets } from "@/design/next/shell/SheetHost";
 import { getPairs } from "@/lib/api/v2/compare";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -132,9 +133,9 @@ export function ObjectBar({ o, cycle, downloads }: { o: ObjectRun; cycle: Object
       </div>
       {receipt ? (
         <p className="nx-hero-cap">
-          {receipt.capped && receipt.cap_level !== null
-            ? t("Capped at {cap} by {n} critical rules.", { cap: score(receipt.cap_level), n: receipt.breaches.length })
-            : t("No critical rule caps this score.")}{" "}
+          <span data-testid="cap-sentence">
+            <CapSentence capped={receipt.capped} cap={receipt.cap_level} ids={receipt.breaches.map((b) => b.check_id)} />
+          </span>{" "}
           <Button variant="quiet" size={32} onClick={() => open({ kind: "score", id: o.module })}>{t("How this is scored")}</Button>
           <span className="nx-aletheia-by">{t("Scored by Aletheia")}</span>
         </p>

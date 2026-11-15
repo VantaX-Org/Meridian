@@ -61,5 +61,6 @@
 
 /* A strip of tabs above mounted screens (Work, More, Monitor). */
 .nx-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2) var(--nx-s5); padding: var(--nx-s4) var(--nx-gutter) 0; border-bottom: 1px solid var(--nx-border); }
-.nx-strip h1 { margin: 0; font-size: var(--nx-fs-h1); line-height: var(--nx-lh-h1); }
+.nx-strip h1, .nx-strip .nx-strip-title { margin: 0; font-weight: var(--nx-w-heading); font-size: var(--nx-fs-h1); line-height: var(--nx-lh-h1); }
+.nx-more-body { display: contents; }
 .nx-strip .nx-tabs { margin-bottom: -1px; }

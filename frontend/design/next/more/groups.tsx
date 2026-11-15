@@ -22,6 +22,12 @@ import { Config } from "@/design/v2/screens/Config";
 import { RunsCanvas } from "@/design/v2/screens/Runs";
 import { Atlas } from "@/design/v2/screens/Atlas";
 import { LandscapeCanvas } from "@/design/v2/screens/Landscape";
+import { StatusStrip } from "@/design/v2/shell/StatusStrip";
+
+/** The landscape keeps the old shell's status strip: run, records, rules, cost model, licence. */
+function LandscapeWithStatus() {
+  return <><LandscapeCanvas /><StatusStrip /></>;
+}
 
 export interface Tab { id: string; label: () => string; Screen: ComponentType }
 export interface Group { id: string; title: () => string; blurb: () => string; tabs: Tab[] }
@@ -54,7 +60,7 @@ export const GROUPS: Group[] = [
 
 /** Single screens, addressed by their path under /more. */
 export const SINGLES: Record<string, { title: () => string; blurb: () => string; Screen: ComponentType }> = {
-  landscape: { title: () => t("Landscape"), blurb: () => t("Every system and object at its newest run, with your next step."), Screen: LandscapeCanvas },
+  landscape: { title: () => t("Landscape"), blurb: () => t("Every system and object at its newest run, with your next step."), Screen: LandscapeWithStatus },
   runs: { title: () => t("Runs"), blurb: () => t("Every run, across every system."), Screen: RunsCanvas },
   "systems/config": { title: () => t("Configuration"), blurb: () => t("Thresholds and settings."), Screen: Config },
   atlas: { title: () => t("Atlas"), blurb: () => t("The landscape and its flows."), Screen: Atlas },

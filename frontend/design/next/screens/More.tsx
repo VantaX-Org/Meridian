@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { t } from "@/lib/v2/i18n";
 import { useV2Href } from "@/lib/v2/hooks";
@@ -45,11 +46,32 @@ function Back({ to = "/more", label }: { to?: string; label?: string }) {
   return <Link className="nx-link" href={href(to)}>{label ?? t("More")}</Link>;
 }
 
+/** A screen mounted inside the strip often brings its own h1; the strip title then steps down so a page keeps one h1. */
+function useOwnH1() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [own, setOwn] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setOwn(!!el.querySelector("h1"));
+    check();
+    const mo = new MutationObserver(check);
+    mo.observe(el, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, []);
+  return { ref, own };
+}
+
+function StripTitle({ own, title }: { own: boolean; title: string }) {
+  return own ? <p className="nx-strip-title">{title}</p> : <h1>{title}</h1>;
+}
+
 function Frame({ title, back, children }: { title: string; back?: { to: string; label: string }; children: React.ReactNode }) {
+  const { ref, own } = useOwnH1();
   return (
     <div className="nx-more">
-      <header className="nx-strip"><Back to={back?.to} label={back?.label} /><h1>{title}</h1></header>
-      {children}
+      <header className="nx-strip"><Back to={back?.to} label={back?.label} /><StripTitle own={own} title={title} /></header>
+      <div ref={ref} className="nx-more-body">{children}</div>
     </div>
   );
 }
@@ -82,21 +104,29 @@ export function More({ slug }: { slug?: string[] }) {
   }
 
   const group = GROUPS.find((g) => g.id === a && slug!.length === 1);
-  if (group) {
+  if (group) return <GroupView group={group} />;
+
+  const single = SINGLES[key];
+  if (single) return <Frame title={single.title()}><LegacyMount><single.Screen /></LegacyMount></Frame>;
+  return <EmptyState heading={t("Nothing at this address")} />;
+}
+
+function GroupView({ group }: { group: (typeof GROUPS)[number] }) {
+  const router = useRouter();
+  const path = usePathname();
+  const sp = useSearchParams();
+  const { ref, own } = useOwnH1();
+  {
     const tab = group.tabs.find((x) => x.id === sp.get("tab")) ?? group.tabs[0];
     return (
       <div className="nx-more">
         <header className="nx-strip">
           <Back />
-          <h1>{group.title()}</h1>
+          <StripTitle own={own} title={group.title()} />
           <Tabs items={group.tabs.map((x) => ({ id: x.id, label: x.label() }))} value={tab.id} onChange={(id) => router.replace(`${path}?tab=${id}`)} label={group.title()} idBase="nx-more" />
         </header>
-        <div id={`nx-more-panel-${tab.id}`} role="tabpanel"><LegacyMount><tab.Screen /></LegacyMount></div>
+        <div ref={ref} id={`nx-more-panel-${tab.id}`} role="tabpanel"><LegacyMount><tab.Screen /></LegacyMount></div>
       </div>
     );
   }
-
-  const single = SINGLES[key];
-  if (single) return <Frame title={single.title()}><LegacyMount><single.Screen /></LegacyMount></Frame>;
-  return <EmptyState heading={t("Nothing at this address")} />;
 }

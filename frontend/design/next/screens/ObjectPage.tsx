@@ -9,7 +9,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Denied, isDenied } from "../object/edge";
 import { Popover, Skeleton, ErrorState, EmptyState } from "@/design/next/kit";
 import { V2Link } from "@/design/v2/parts";
-import { Inspector } from "@/design/v2/Inspector";
 import { t } from "@/lib/v2/i18n";
 import { useObjectCycle } from "@/lib/api/next/runs";
 import { DownloadsMenu } from "../object/DownloadsMenu";
@@ -122,7 +121,7 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
         className="nx-opanel"
         tabIndex={-1}
       >
-        <LegacyScope>{renderTab(tab, o, go)}<Inspector /></LegacyScope>
+        <LegacyScope>{renderTab(tab, o, go)}</LegacyScope>
       </section>
     </div>
   );

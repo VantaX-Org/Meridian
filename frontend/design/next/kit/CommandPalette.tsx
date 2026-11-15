@@ -16,20 +16,22 @@ export interface CommandGroup {
   id: string;
   label: string;
   items: Command[];
+  /** Already matched by the caller (a server search), so typing does not filter it again. */
+  found?: boolean;
 }
 
 /**
  * Ctrl or Cmd K, in the caller. Type to filter across groups; a leading ? lists what the palette can do. Combobox
  * pattern: focus stays in the input, aria-activedescendant names the highlighted result.
  */
-type PaletteProps = { open: boolean; onClose: () => void; groups: CommandGroup[] };
+type PaletteProps = { open: boolean; onClose: () => void; groups: CommandGroup[]; label?: string; onQuery?: (q: string) => void };
 
 /** Mounts the palette body only while open, so the query and selection reset by remounting. */
 export function CommandPalette(props: PaletteProps) {
   return props.open ? <PaletteBody {...props} /> : null;
 }
 
-function PaletteBody({ onClose, groups }: PaletteProps) {
+function PaletteBody({ onClose, groups, label, onQuery }: PaletteProps) {
   const [q, setQ] = useState("");
   const [at, setAt] = useState(0);
   const box = useRef<HTMLDivElement>(null);
@@ -47,7 +49,7 @@ function PaletteBody({ onClose, groups }: PaletteProps) {
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return groups
-      .map((g) => ({ ...g, items: help || !needle ? g.items : g.items.filter((c) => c.label.toLowerCase().includes(needle)) }))
+      .map((g) => ({ ...g, items: help || !needle || g.found ? g.items : g.items.filter((c) => c.label.toLowerCase().includes(needle)) }))
       .filter((g) => g.items.length > 0);
   }, [groups, q, help]);
   const flat = shown.flatMap((g) => g.items);
@@ -64,7 +66,7 @@ function PaletteBody({ onClose, groups }: PaletteProps) {
         ref={box}
         role="dialog"
         aria-modal="true"
-        aria-label={t("Command palette")}
+        aria-label={label ?? t("Command palette")}
         className="nx-dialog nx-palette"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
@@ -89,6 +91,7 @@ function PaletteBody({ onClose, groups }: PaletteProps) {
             onChange={(e) => {
               setQ(e.target.value);
               setAt(0);
+              onQuery?.(e.target.value);
             }}
             onKeyDown={(e) => {
               if (e.key === "ArrowDown") {
