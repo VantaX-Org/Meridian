@@ -1,0 +1,48 @@
+/*
+ * The signed-out pages (app/(auth)) in the next look. AuthFrame and the forms keep their m2 class names, so the
+ * forced password change and the not-found page, which still sit in the v2 shell, are untouched; under .nx-auth the
+ * same names are drawn with the next tokens: one centred surface card on the next ground, pill buttons, 40 px fields.
+ * The selectors carry .nx-root.nx-auth so they win over design/v2/auth/auth.css whatever order the chunks load in.
+ */
+.nx-root.nx-auth { background: var(--nx-bg); min-height: 100dvh; }
+.nx-root.nx-auth .m2-auth { background: var(--nx-bg); padding: var(--nx-s6) var(--nx-s4); font-family: var(--nx-font); }
+.nx-root.nx-auth .m2-auth-wrap { gap: var(--nx-s5); }
+.nx-root.nx-auth .m2-auth-brand { gap: var(--nx-s2); font-size: var(--nx-fs-title); line-height: var(--nx-lh-title); font-weight: var(--nx-w-heading); color: var(--nx-ink); }
+.nx-root.nx-auth .m2-auth-col { gap: var(--nx-s3); }
+.nx-root.nx-auth .m2-auth-card { gap: var(--nx-s4); padding: var(--nx-s6) var(--nx-s5); background: var(--nx-surface); border: 1px solid var(--nx-border); border-radius: var(--nx-r-card); box-shadow: var(--nx-elev-1); }
+.nx-root.nx-auth .m2-auth-card h1 { font-size: var(--nx-fs-h1); line-height: var(--nx-lh-h1); font-weight: var(--nx-w-heading); color: var(--nx-ink); }
+.nx-root.nx-auth .m2-auth-lead { font-size: var(--nx-fs-body); line-height: var(--nx-lh-body); color: var(--nx-ink-2); }
+.nx-root.nx-auth .m2-auth-meta { font-size: var(--nx-fs-micro); line-height: var(--nx-lh-micro); color: var(--nx-ink-3); }
+.nx-root.nx-auth .m2-auth-link { font-size: var(--nx-fs-small); color: var(--nx-accent); }
+.nx-root.nx-auth .m2-auth-note { border-color: var(--nx-border); background: var(--nx-surface-2); border-radius: var(--nx-r-control); padding: var(--nx-s2) var(--nx-s3); font-size: var(--nx-fs-small); line-height: var(--nx-lh-small); color: var(--nx-ink-2); }
+.nx-root.nx-auth .m2-auth-note strong { color: var(--nx-ink); }
+.nx-root.nx-auth .m2-auth-note[data-tone="danger"] { background: var(--nx-bad-soft); border-color: transparent; color: var(--nx-bad-ink); }
+.nx-root.nx-auth .m2-auth-note[data-tone="warning"] { background: var(--nx-warn-soft); border-color: transparent; color: var(--nx-warn-ink); }
+.nx-root.nx-auth .m2-auth-note[data-tone="info"] { background: var(--nx-accent-soft); border-color: transparent; color: var(--nx-ink); }
+.nx-root.nx-auth .m2-auth-note[data-tone] strong { color: inherit; }
+.nx-root.nx-auth .m2-auth-facts { font-size: var(--nx-fs-small); line-height: var(--nx-lh-small); }
+.nx-root.nx-auth .m2-auth-facts dt { color: var(--nx-ink-3); }
+
+/* Fields */
+.nx-root.nx-auth .m2-fld { gap: var(--nx-s1); }
+.nx-root.nx-auth .m2-fld > label { font-size: var(--nx-fs-small); font-weight: var(--nx-w-label); color: var(--nx-ink-2); }
+.nx-root.nx-auth .m2-auth-form .m2-fld input { height: var(--nx-h-control); padding: 0 var(--nx-s3); border: 1px solid var(--nx-control-edge); border-radius: var(--nx-r-control); background: var(--nx-surface); color: var(--nx-ink); font-size: var(--nx-fs-body); }
+.nx-root.nx-auth .m2-fld input:focus-visible { outline: var(--nx-ring) solid var(--nx-focus); outline-offset: 1px; }
+.nx-root.nx-auth .m2-fld .m2-ferr { font-size: var(--nx-fs-small); color: var(--nx-bad-ink); }
+.nx-root.nx-auth .m2-fld .m2-fhint { font-size: var(--nx-fs-small); color: var(--nx-ink-3); }
+.nx-root.nx-auth .m2-auth-pw .m2-auth-show { color: var(--nx-ink-2); font-size: var(--nx-fs-small); border-radius: var(--nx-r-pill); }
+.nx-root.nx-auth .m2-auth-pw .m2-auth-show:hover { background: var(--nx-surface-2); }
+.nx-root.nx-auth .m2-auth-pw .m2-auth-show:focus-visible { outline: var(--nx-ring) solid var(--nx-focus); }
+
+/* Buttons: the kit's .nx-btn sizes, plus the shared set-password form, which still names m2-btn */
+.nx-root.nx-auth .nx-btn.m2-wide,
+.nx-root.nx-auth .m2-btn.m2-wide { width: 100%; }
+.nx-root.nx-auth .m2-auth-row > .nx-btn { flex: 1 1 0; }
+.nx-root.nx-auth .nx-btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+.nx-root.nx-auth .m2-btn { display: inline-flex; align-items: center; justify-content: center; height: auto; min-height: var(--nx-h-control); padding: 0 var(--nx-s5); border: 1px solid var(--nx-control-edge); border-radius: var(--nx-r-pill); background: var(--nx-surface); color: var(--nx-ink); font: inherit; font-size: var(--nx-fs-body); font-weight: var(--nx-w-label); }
+.nx-root.nx-auth .m2-btn.m2-next { background: var(--nx-accent); border-color: var(--nx-accent); color: var(--nx-accent-ink); }
+.nx-root.nx-auth .m2-btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+@media (max-width: 480px) {
+  .nx-root.nx-auth .m2-auth-card { padding: var(--nx-s5) var(--nx-s4); }
+}

@@ -97,7 +97,7 @@ export default function SignInPage() {
     <AuthFrame title={t("Sign in")}>
       {ssoError ? <AuthNote tone="danger">{ssoError}</AuthNote> : null}
       {sso?.enabled ? (
-        <a className="m2-btn m2-wide" href={ssoStartHref(next)}>
+        <a className="nx-btn nx-btn-secondary m2-wide" href={ssoStartHref(next)}>
           {t("Continue with {provider}", { provider: sso.display_name ?? t("single sign-on") })}
         </a>
       ) : null}
@@ -117,7 +117,7 @@ export default function SignInPage() {
           </AuthField>
           <PasswordField label={t("Password")} value={password} onChange={setPassword} autoComplete="current-password" error={passwordError} readOnly={loading} />
           <Link className="m2-auth-link" href="/forgot-password">{t("Forgot password?")}</Link>
-          <button type="submit" className="m2-btn m2-next m2-wide" disabled={loading}>
+          <button type="submit" className="nx-btn nx-btn-primary m2-wide" disabled={loading}>
             {loading ? t("Signing in…") : t("Sign in")}
           </button>
         </form>
