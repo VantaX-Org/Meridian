@@ -4,8 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "@/__tests__/render";
 import { setUrl } from "@/design/v2/__tests__/nav-store";
 import type { PortfolioRow } from "@/lib/api/next/portfolio";
-import type { Finding } from "@/lib/api/next/monitor";
-import { Monitor, Watched } from "../screens/Monitor";
+import { groupByRun, MAX_DAYS, perDay, type Finding, type RunGroup } from "@/lib/api/next/monitor";
+import { DayStrip, Monitor, Watched } from "../screens/Monitor";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("@/design/v2/screens/LearnedMonitors", async () => (await import("./stub")).stub("LearnedMonitors"));
@@ -55,5 +55,46 @@ describe("Monitor watched objects", () => {
     await userEvent.selectOptions(screen.getByLabelText("Severity"), "low");
     expect(screen.queryByRole("heading", { name: "Material master" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Customer master" })).toBeInTheDocument();
+  });
+});
+
+describe("Monitor per-day strip", () => {
+  it("sums run groups per day, oldest first, and counts undated groups", () => {
+    const g = (detected_at: string | null, n: number, r: number, x: number) => ({ detected_at, newCount: n, resolvedCount: r, regressedCount: x }) as unknown as RunGroup;
+    expect(perDay([g("2026-11-02T08:00:00Z", 1, 0, 0), g("2026-11-01T00:00:00Z", 2, 3, 1), g("2026-11-02T09:00:00Z", 1, 1, 0), g(null, 9, 9, 9)])).toEqual({
+      days: [
+        { day: "2026-11-01", newCount: 2, resolvedCount: 3, regressedCount: 1 },
+        { day: "2026-11-02", newCount: 2, resolvedCount: 1, regressedCount: 0 },
+      ],
+      undated: 1,
+      hiddenDays: 0,
+    });
+  });
+  it("counts a run that only resolved records, dated from the run", () => {
+    const groups = groupByRun([fnd("material_master", "Material master", "v1")], [
+      { version_id: "v1", resolved: 6 },
+      { version_id: "v3", resolved: 4, module: "vendor_master", label: "Vendor master", baseline_version_id: "b3", detected_at: "2026-11-03T10:00:00Z", owner: null },
+    ]);
+    expect(groups.map((x) => x.version_id)).toEqual(["v3", "v1"]);
+    expect(groups[0]).toMatchObject({ label: "Vendor master", findings: [], resolvedCount: 4, baseline_version_id: "b3" });
+    expect(perDay(groups).days).toEqual([
+      { day: "2026-11-01", newCount: 2, resolvedCount: 6, regressedCount: 0 },
+      { day: "2026-11-03", newCount: 0, resolvedCount: 4, regressedCount: 0 },
+    ]);
+  });
+  it("keeps the newest days only and says what it leaves out", () => {
+    const g = (i: number) => ({ detected_at: new Date(Date.UTC(2026, 0, 1 + i)).toISOString(), newCount: 1, resolvedCount: 0, regressedCount: 0 }) as unknown as RunGroup;
+    const spread = perDay([...Array.from({ length: MAX_DAYS + 5 }, (_, i) => g(i)), { detected_at: null } as unknown as RunGroup]);
+    expect(spread.days).toHaveLength(MAX_DAYS);
+    expect(spread.days[0].day).toBe("2026-01-06");
+    renderWithQuery(<DayStrip spread={spread} />);
+    expect(screen.getByText("Per day, across the loaded findings")).toBeInTheDocument();
+    expect(screen.getByText(`Showing the newest ${MAX_DAYS} days; 5 older days are not shown.`)).toBeInTheDocument();
+    expect(screen.getByText("1 runs without a date are not shown.")).toBeInTheDocument();
+  });
+  it("draws the strip on the Monitor", () => {
+    setUrl("/monitor");
+    renderWithQuery(<Monitor />);
+    expect(screen.getByTestId("mon-days")).toBeInTheDocument();
   });
 });

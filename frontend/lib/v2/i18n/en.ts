@@ -11142,6 +11142,16 @@ export const en = {
   "Added {role} to {name}. They will be notified.": "Added {role} to {name}. They will be notified.",
   "Open Upload": "Open Upload",
   "Add to load": "Add to load",
+  "Connect a system to start": "Connect a system to start",
+  "Use the demo data": "Use the demo data",
+  "Meridian pulls your master data once, scores it, and gives you a workbook to clean it in Excel.": "Meridian pulls your master data once, scores it, and gives you a workbook to clean it in Excel.",
+  "Pull your first object to see its score.": "Pull your first object to see its score.",
+  "{day}: {a} new, {b} resolved, {c} regressed": "{day}: {a} new, {b} resolved, {c} regressed",
+  "Pull from {system}": "Pull from {system}",
+  "Compare objects": "Compare objects",
+  "Per day, across the loaded findings": "Per day, across the loaded findings",
+  "Showing the newest {n} days; {m} older days are not shown.": "Showing the newest {n} days; {m} older days are not shown.",
+  "{n} runs without a date are not shown.": "{n} runs without a date are not shown.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

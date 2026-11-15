@@ -43,7 +43,7 @@ export function ObjectsList() {
               <Chip tone="new">{t("{n} new issues", { n: formatInt(list.reduce((a, r) => a + r.new_issues, 0)) })}</Chip>
             </summary>
             <div>
-              {list.length === 0 ? <p>{t("{system} is connected but nothing has been pulled yet.", { system: sysName(id || null) })}</p> : (
+              {list.length === 0 ? <p>{t("{system} is connected but nothing has been pulled yet.", { system: sysName(id || null) })} {id ? <V2Link className="nx-btn nx-btn-primary" href={`/s/${id}`}>{t("Pull from {system}", { system: sysName(id) })}</V2Link> : null}</p> : (
                 <ul className="nx-ol-list">
                   {list.map((r) => (
                     <li key={r.version_id}>

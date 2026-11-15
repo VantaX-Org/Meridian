@@ -482,6 +482,11 @@ class FeedItemOut(BaseModel):
 class FeedRunOut(BaseModel):
     version_id: str
     resolved: int                       # records failing in the baseline and passing in this run (compare_sets)
+    module: Optional[str] = None
+    label: Optional[str] = None
+    baseline_version_id: Optional[str] = None
+    detected_at: Optional[datetime] = None   # the run's last_run_at, the same value its feed items carry
+    owner: Optional[str] = None
 
 
 class FeedOut(BaseModel):
@@ -526,7 +531,9 @@ async def monitor_feed(limit: int = Query(50, ge=1, le=500), offset: int = Query
             {"t": str(tenant.id), "v": row["last_version_id"]})).fetchall()}
         got, resolved = _feed_rows(row, res, sev, owners.get(row["module"]))
         items += got
-        runs.append({"version_id": str(row["last_version_id"]), "resolved": resolved})
+        runs.append({"version_id": str(row["last_version_id"]), "resolved": resolved, "module": row["module"],
+                     "label": _label(row["module"]), "baseline_version_id": str(row["baseline"]["version_id"]),
+                     "detected_at": row["last_run_at"], "owner": owners.get(row["module"])})
     items.sort(key=lambda i: (-(i["detected_at"].timestamp() if i["detected_at"] else 0), -i["records"], i["module"], i["check_id"]))
     return {"items": items[offset:offset + limit], "runs": runs, **page_meta(len(items), limit, offset)}
 
