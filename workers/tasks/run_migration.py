@@ -318,10 +318,15 @@ def _count_rules(gaps: list["Gap"]) -> dict[str, int]:
 
 
 def _finish(session, run_id, status, error, summary) -> dict:
-    session.execute(
+    row = session.execute(
         text("UPDATE migration_runs SET status = :st, error_detail = :err, gap_summary = CAST(:gs AS jsonb), "
-             "completed_at = now() WHERE id = :rid"),
+             "completed_at = now() WHERE id = :rid RETURNING tenant_id, requested_by"),
         {"rid": run_id, "st": status, "err": error, "gs": json.dumps(summary)},
-    )
+    ).first()
     session.commit()
+    if row:
+        from api.services import app_links
+        from api.services.notifications import notify_run_finished
+        notify_run_finished(str(row[0]), row[1], "Migration", f"run {str(run_id)[:8]}", status == "failed",
+                            app_links.RUNS, error)
     return {"run_id": run_id, "status": status, "error": error}

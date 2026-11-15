@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import apiClient from "@/lib/api/client";
-import { clientErrorId, reportClientError, resetClientErrorGuard } from "../client-errors";
+import { clientErrorId, reloadOnChunkError, reportClientError, resetClientErrorGuard } from "../client-errors";
 
 describe("reportClientError", () => {
   const post = vi.spyOn(apiClient, "post");
@@ -54,5 +54,19 @@ describe("reportClientError", () => {
     await Promise.resolve();
     reportClientError(new Error("x"), { digest: "d10" });
     expect(post).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("reloadOnChunkError", () => {
+  it("reloads once for a stale chunk, not again within a minute, and never for other errors", () => {
+    const reload = vi.fn();
+    vi.stubGlobal("location", { ...window.location, reload });
+    window.sessionStorage.clear();
+    const stale = Object.assign(new Error("Loading chunk 412 failed."), { name: "ChunkLoadError" });
+    expect(reloadOnChunkError(new Error("boom"))).toBe(false);
+    expect(reloadOnChunkError(stale)).toBe(true);
+    expect(reloadOnChunkError(new TypeError("Failed to fetch dynamically imported module: /_next/x.js"))).toBe(false);
+    expect(reload).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
   });
 });

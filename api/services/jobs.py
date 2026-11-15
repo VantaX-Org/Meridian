@@ -184,6 +184,7 @@ def finish_job(tenant_id: str, job_id: str, status: str = "completed", *, error:
         if job is None or job.get("status") == CANCELLED:
             return
         failed = status == "failed"
+        was_active = job.get("status") in ACTIVE
         job.update({"status": status, "error": (error or None) and str(error)[:500], "result": result,
                     "finished_at": _now(), "percent": job["percent"] if failed else 100,
                     "message": message or ("Failed" if failed else "Complete")})
@@ -199,6 +200,13 @@ def finish_job(tenant_id: str, job_id: str, status: str = "completed", *, error:
         _save(client, tenant_id, job)
     except Exception as exc:
         logger.warning("finish_job %s failed: %s", job_id, exc)
+        return
+    if was_active and status in ("completed", "failed") and job["kind"] in ("extraction", "analysis"):
+        from api.services import app_links
+        from api.services.notifications import notify_run_finished
+        vid = job.get("version_id")
+        notify_run_finished(tenant_id, job.get("started_by"), job["kind"].capitalize(), job.get("label") or job_id,
+                            failed, app_links.run(str(vid)) if vid else app_links.job(job_id), job.get("error"))
 
 
 def set_task_ids(tenant_id: str, job_id: str, task_ids: list[str]) -> None:

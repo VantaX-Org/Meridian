@@ -80,3 +80,20 @@ def create_notification_sync(
         session.execute(text(_INSERT), {"id": str(uuid.uuid4()), "tid": tenant_id, "uid": copy[0], "type": type,
                                         "title": delegation.copy_title(title, str(copy[1])), "body": body, "link": link})
     return notif_id
+
+
+def notify_run_finished(tenant_id: str, user_id: Optional[str], what: str, label: str, failed: bool,
+                        link: Optional[str], error: Optional[str] = None) -> None:
+    """Tell the person who started a run that it finished or failed (in-app). Never raises."""
+    if not user_id:
+        return
+    try:
+        from workers.db import get_sync_engine, tenant_session
+        with tenant_session(get_sync_engine(), tenant_id) as session:
+            create_notification_sync(
+                tenant_id, str(user_id), "run", f"{what} {'failed' if failed else 'finished'}: {label}",
+                (str(error)[:300] if failed and error else f"Your {what.lower()} {'failed' if failed else 'finished'}."),
+                link, session)
+            session.commit()
+    except Exception as exc:
+        logger.warning("run notification for %s failed: %s", label, exc)

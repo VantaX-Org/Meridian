@@ -62,3 +62,26 @@ export function reportClientError(err: unknown, ctx: ClientErrorContext = {}): v
     /* reporting must never throw */
   }
 }
+
+const CHUNK_ERROR = /ChunkLoadError|Loading (CSS )?chunk [\w-]+ failed|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i;
+const RELOAD_KEY = "meridian.chunk-reload-at";
+const RELOAD_GAP_MS = 60_000;
+
+/**
+ * After a deploy an open tab still asks for the old build's chunks, which are gone. On that error, reload once
+ * so the tab picks up the new build. A second chunk error within a minute shows the error page instead of looping.
+ * Returns true when a reload was started.
+ */
+export function reloadOnChunkError(err: unknown): boolean {
+  try {
+    const e = err as { name?: string; message?: string } | null;
+    if (!e || !CHUNK_ERROR.test(`${e.name ?? ""} ${e.message ?? ""}`)) return false;
+    const last = Number(window.sessionStorage.getItem(RELOAD_KEY) || 0);
+    if (Date.now() - last < RELOAD_GAP_MS) return false;
+    window.sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+    window.location.reload();
+    return true;
+  } catch {
+    return false; // no sessionStorage (private mode, blocked): never reload without the loop guard
+  }
+}
