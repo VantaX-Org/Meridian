@@ -1,16 +1,16 @@
 # The menu
 
-The rail on the left is the menu. It has seven places: **Home**, **Objects**, **Runs**, **Fix**, **Rules**, **Master data** and **Migration**. Point at one, or move to it with the keyboard, and its menu opens beside the rail.
+The rail on the left is the menu. It has seven places: **Home**, **Objects**, **Runs**, **Fix**, **Rules**, **Master data** and **Load**. Point at one, or move to it with the keyboard, and its menu opens beside the rail.
 
 ## What is on it
 
 - **Home** (`/`) is the landscape: every system and object with its score.
 - **Objects** (`/objects`) lists the systems and their objects as a tree, with a link to connect a system. See the Objects chapter.
 - **Runs** (`/runs`) is the timeline of every measurement.
-- **Fix** holds the Action centre, Work, verified fixes from Aletheia, Cleansing, Requests and People. A count on Fix, and on Work in its menu, shows the records still to fix.
+- **Fix** holds the Action centre, Work, verified fixes from Aletheia, Cleansing, Requests, Approvals and People. A count on Fix, and on Work in its menu, shows the records still to fix.
 - **Rules** holds Rules, rule promotion from Aletheia, the rule dry run, anomaly rules, learned monitors, verified survivorship from Aletheia and the evidence ledger.
 - **Master data** holds MDM health, the entry gate, reference data, record links, the data catalogue, Material 360, issues, data mining and process discovery.
-- **Migration** holds Migration, S/4HANA readiness, go-live, the forecast and plan, value delivered, the score lens, cost and causes, and configuration. See the Migration chapter.
+- **Load** holds Prepare, the migration analysis, waves, system comparison, the load plan, S/4HANA readiness, go-live, the history of files handed over, the forecast and plan, value delivered, the score lens, cost and causes, and configuration. See the Migration chapter.
 - **More**, below the rail, links to Reports, the Atlas and Administration.
 
 Each menu has a **Pin the menu open** button and a **Close menu** button. On a narrow screen the rail becomes a bar at the bottom with the same seven places, and each opens a sheet.
@@ -30,6 +30,6 @@ The count on Fix adds up the records still to fix in the work lists, with each o
 
 ## Keyboard
 
-- `g` then `h`, `o`, `r`, `f`, `u`, `m` or `i` goes to Home, Objects, Runs, Fix, Rules, Master data or Migration.
+- `g` then `h`, `o`, `r`, `f`, `u`, `m` or `l` goes to Home, Objects, Runs, Fix, Rules, Master data or Load. `g` then `i` still goes to Load.
 - `g` then `w` goes to Work, and `g` then `p` goes to People.
 - `?` shows every shortcut.

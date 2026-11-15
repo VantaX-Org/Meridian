@@ -11,7 +11,7 @@ import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { usePeople } from "@/lib/v2/approvals-queries";
 import { userStatus } from "@/lib/users";
 import type { HealthStatus } from "@/types/api";
-import { AreaSpark, Ring, SegBar, type SparkPoint } from "../kit";
+import { PointSpark, Ring, PartBar, type SparkPoint } from "../kit";
 import { ChartCard, cardState, compact } from "./ChartCard";
 import { healthText } from "./Systems";
 
@@ -43,7 +43,7 @@ export function RulesCard({ href }: { href?: string }) {
       emptyLine={t("No rule is loaded yet.")}
       figure={compact(on.length)} figureTitle={whole(on.length)}
       line={t("{n} of {m} rules are on", { n: compact(on.length), m: compact(rules.length) })}
-      chart={<SegBar label={t("Rules that are on, by severity")} format={compact} segments={SEVERITY.map((s) => ({ label: sev[s], value: on.filter((r) => r.severity === s).length }))} />} />
+      chart={<PartBar label={t("Rules that are on, by severity")} format={compact} segments={SEVERITY.map((s) => ({ label: sev[s], value: on.filter((r) => r.severity === s).length }))} />} />
   );
 }
 
@@ -73,7 +73,7 @@ export function FilesCard({ href }: { href?: string }) {
       emptyLine={t("No report has been made yet.")}
       figure={compact(total)} figureTitle={whole(total)}
       line={total > items.length ? t("Trend from the latest {n} of {m} files", { n: compact(items.length), m: compact(total) }) : t("Files made per week, last eight weeks")}
-      chart={<AreaSpark points={points} label={t("Report files made per week")} />} />
+      chart={<PointSpark points={points} label={t("Report files made per week")} />} />
   );
 }
 
@@ -88,7 +88,7 @@ export function SchedulesCard() {
       emptyLine={t("Nothing is scheduled yet.")}
       figure={compact(items.length)} figureTitle={whole(items.length)}
       line={t("{count, plural, one {# schedule is on} other {# schedules are on}}", { count: items.filter((s) => s.enabled).length })}
-      chart={<SegBar label={t("Last run of each schedule")} format={compact} segments={[...keys.map((k) => ({ label: st[k], value: items.filter((s) => s.last_status === k).length })), { label: t("Not run yet"), value: items.filter((s) => !s.last_status).length }]} />} />
+      chart={<PartBar label={t("Last run of each schedule")} format={compact} segments={[...keys.map((k) => ({ label: st[k], value: items.filter((s) => s.last_status === k).length })), { label: t("Not run yet"), value: items.filter((s) => !s.last_status).length }]} />} />
   );
 }
 
@@ -103,7 +103,7 @@ export function SystemsCard({ href }: { href?: string }) {
       emptyLine={t("No system is connected yet.")}
       figure={compact(all.length)} figureTitle={whole(all.length)}
       line={t("{n} of {m} healthy", { n: compact(ok), m: compact(all.length) })}
-      chart={<SegBar label={t("Health of the systems")} format={compact} segments={kinds.map((h) => ({ label: healthText(h), value: all.filter((s) => s.health_status === h).length }))} />} />
+      chart={<PartBar label={t("Health of the systems")} format={compact} segments={kinds.map((h) => ({ label: healthText(h), value: all.filter((s) => s.health_status === h).length }))} />} />
   );
 }
 
@@ -120,7 +120,7 @@ export function PeopleCard({ href }: { href?: string }) {
       emptyLine={people.length ? t("Nobody holds open work.") : t("No people yet.")}
       figure={compact(open)} figureTitle={whole(open)}
       line={t("{count, plural, one {# person holds open work} other {# people hold open work}}", { count: holders.length })}
-      chart={<SegBar label={t("Open work by person")} format={compact} segments={rest ? [...top, { label: t("Everyone else"), value: rest }] : top} />} />
+      chart={<PartBar label={t("Open work by person")} format={compact} segments={rest ? [...top, { label: t("Everyone else"), value: rest }] : top} />} />
   );
 }
 
@@ -136,7 +136,7 @@ export function UsersCard({ href, title, children }: { href?: string; title?: st
       emptyLine={t("No user yet.")}
       figure={compact(users.length)} figureTitle={whole(users.length)}
       line={t("{n} active", { n: compact(n("active")) })}
-      chart={<SegBar label={t("Users by status")} format={compact} segments={[{ label: t("Active"), value: n("active") }, { label: t("Invited"), value: n("invited", "invite_expired") }, { label: t("Locked"), value: n("locked", "suspended") }]} />}>{children}</ChartCard>
+      chart={<PartBar label={t("Users by status")} format={compact} segments={[{ label: t("Active"), value: n("active") }, { label: t("Invited"), value: n("invited", "invite_expired") }, { label: t("Locked"), value: n("locked", "suspended") }]} />}>{children}</ChartCard>
   );
 }
 

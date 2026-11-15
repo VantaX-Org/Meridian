@@ -41,7 +41,16 @@ def _batch(created_by: str, status: str = "approved"):
             c.execute(text("INSERT INTO remediation_items (tenant_id, batch_id, scope, module, check_id, record_key, "
                            "field, current_value, proposed_value) VALUES (:t, :b, :s, 'material_master', :c, :k, "
                            ":f, '', :v)"), {"t": tid, "b": bid, "s": sid, "c": check, "k": KEY, "f": fld, "v": value})
+        seal_approval(c, bid)
     return engine, tid, bid, sid
+
+
+def seal_approval(c, bid) -> None:
+    """Store the approval hash of the batch's items, as an approval does; a send refuses an approval without one."""
+    from api.routes.remediation import items_sha256
+
+    items = [dict(r) for r in c.execute(text("SELECT * FROM remediation_items WHERE batch_id = :b"), {"b": bid}).mappings()]
+    c.execute(text("UPDATE remediation_batches SET approved_sha256 = :h WHERE id = :b"), {"h": items_sha256(items), "b": bid})
 
 
 def _drop(engine, tid, sid):

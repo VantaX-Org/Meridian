@@ -152,6 +152,12 @@ export const REDIRECTS: Redirect[] = [
   r("/match-rules/constraints", "/"),
   r("/match-rules/tuning", "/"),
 
+  // Load: its tabs took the addresses of the pages that used to sit at the top level.
+  r("/system-compare", "/load/compare"),
+  r("/migration/load-plan", "/load/plan"),
+  r("/s4", "/load/s4"),
+  r("/go-live", "/load/go-live"),
+
   // Migration: the landscape's Waves view and the waves panel (gates, sign-off, certificate).
   r("/migration/dry-run", "/?view=waves&open=waves"),
   r("/migration/:waveId", "/?view=waves&open=waves"),

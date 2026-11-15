@@ -7,7 +7,7 @@ import { f1 } from "@/lib/v2/score";
 import { V2Link } from "@/design/v2/parts";
 import type { AletheiaFinding } from "@/lib/api/v2/insights";
 import { actionOf, type PortfolioRow } from "@/lib/api/next/portfolio";
-import { AreaSpark, Button, Ring, SegBar } from "../kit";
+import { PointSpark, Button, Ring, PartBar } from "../kit";
 import { cycleHref, objectHref, type PortfolioActions } from "../portfolio/BulkBar";
 import { deltaOf, deltaSentence } from "./model";
 
@@ -53,8 +53,8 @@ function Visual({ row, delta }: { row: PortfolioRow; delta: number | null }) {
           {v == null ? t("Score this run to see its quality.") : deltaSentence(row)}
           {verdict ? <> <span className="nx-fd-verdict" data-readiness={row.readiness}>{verdict}</span></> : null}
         </p>
-        <AreaSpark points={points} label={t("DQS trend of {name}", { name: row.label })} empty={t("The trend shows after the second run.")} />
-        <SegBar label={t("Records that need a fix")} format={formatInt} segments={segments} />
+        <PointSpark points={points} label={t("DQS trend of {name}", { name: row.label })} empty={t("The trend shows after the second run.")} />
+        <PartBar label={t("Records that need a fix")} format={formatInt} segments={segments} />
         {moved ? null : <p className="nx-fd-capnote">{v == null ? t("Record counts show once the run is scored.") : t("No records changed since the last run.")}</p>}
       </div>
     </div>

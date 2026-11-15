@@ -197,6 +197,17 @@ Master data: the Glossary and Golden records tabs of an object; one term or gold
 | `/match-rules/constraints` | always | `/` |
 | `/match-rules/tuning` | always | `/` |
 
+### Load
+
+The Load tabs took the addresses of the pages that used to sit at the top level; the old ones redirect.
+
+| Old address | When | New address |
+|---|---|---|
+| `/system-compare` | always | `/load/compare` |
+| `/migration/load-plan` | always | `/load/plan` |
+| `/s4` | always | `/load/s4` |
+| `/go-live` | always | `/load/go-live` |
+
 ### Migration
 
 Migration: the landscape's Waves view and the waves panel (gates, sign-off, certificate).

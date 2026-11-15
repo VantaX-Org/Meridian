@@ -327,6 +327,19 @@ def test_send_of_items_changed_after_approval_is_refused(monkeypatch):
     assert e.value.status_code == 409 and "differ from the ones that were approved" in e.value.detail
 
 
+@pytest.mark.parametrize("sha", [None, ""])
+def test_send_of_an_approval_without_a_stored_hash_is_refused(monkeypatch, sha):
+    """Approvals from before the hash column (NULL) cannot be verified: refused, never treated as unchanged."""
+    with pytest.raises(HTTPException) as e:
+        _guards(monkeypatch, _batch(approved_sha256=sha), ITEMS)
+    assert e.value.status_code == 409 and "cannot be verified" in e.value.detail
+    b = _batch()
+    del b["approved_sha256"]  # a row read without the column at all
+    with pytest.raises(HTTPException) as e:
+        _guards(monkeypatch, b, ITEMS)
+    assert e.value.status_code == 409
+
+
 def test_send_of_an_expired_approval_is_refused(monkeypatch):
     with pytest.raises(HTTPException) as e:
         _guards(monkeypatch, _batch(approved_at=(datetime.now(timezone.utc) - timedelta(days=8)).isoformat()), ITEMS)

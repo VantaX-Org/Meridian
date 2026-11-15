@@ -143,6 +143,18 @@ def check_formulas(edits) -> dict:
         _c("formulas", "pass", "No value would run as a formula.")
 
 
+def check_refused(rows: list) -> list:
+    """keys, values and formulas when the file's own cell check refused cells (sf_roundtrip.InvalidValues):
+    the keys cannot be matched until those cells are fixed."""
+    formulas = sum(1 for r in rows if "formula" in r["reason"])
+    other = len(rows) - formulas
+    return [_c("keys", "warn", "The record keys are checked once the refused cells are fixed."),
+            _c("values", "fail", f"{other} value(s) cannot be applied as typed.") if other else
+            _c("values", "pass", "Value lengths and types fit the field definitions."),
+            _c("formulas", "fail", f"{formulas} value(s) start with = + - or @ and would run as a formula.") if formulas
+            else _c("formulas", "pass", "No value would run as a formula.")]
+
+
 def verdict(checks: list) -> str:
     s = {c["status"] for c in checks}
     return "fail" if "fail" in s else "warn" if "warn" in s else "pass"

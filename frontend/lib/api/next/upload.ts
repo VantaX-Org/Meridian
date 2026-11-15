@@ -46,27 +46,3 @@ export async function pool<T>(items: T[], size: number, work: (item: T) => Promi
   };
   await Promise.all(Array.from({ length: Math.min(size, items.length) }, lane));
 }
-
-/** What the pre-upload checks read from a cleaned workbook; null for a CSV, a foreign workbook or one that cannot be read. */
-export async function readCleanedRows(file: File): Promise<import("@/design/next/object/cycle/uploadGate").CleanedInput | null> {
-  if (!/\.xlsx$/i.test(file.name)) return null;
-  try {
-    const XLSX = await import("xlsx");
-    const book = XLSX.read(await file.arrayBuffer(), { type: "array" });
-    const sheet = book.Sheets["Records to clean"];
-    if (!sheet) return null;
-    const grid = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
-    const headers = (grid[0] ?? []).map(String);
-    const rows = grid.slice(1).map((r) => Object.fromEntries(headers.map((h, i) => [h, r[i] == null ? "" : String(r[i])])));
-    const allowed: Record<string, string[]> = {};
-    const av = book.Sheets["Allowed values"];
-    if (av) for (const r of XLSX.utils.sheet_to_json<Record<string, unknown>>(av)) {
-      const f = String(r.Field ?? "");
-      if (f) (allowed[f] ??= []).push(String(r["Allowed value"] ?? ""));
-    }
-    const rowsMarker = Number((await readMarker(file)).rows);
-    return { headers, rows, allowed, exportedRows: Number.isFinite(rowsMarker) && rowsMarker > 0 ? rowsMarker : undefined };
-  } catch {
-    return null;
-  }
-}

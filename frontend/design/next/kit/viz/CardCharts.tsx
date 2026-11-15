@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Chart parts for cards, inline SVG and CSS only. Colours come from the accent and ink ramps, never the status
+ * Chart parts for cards (ring, point trend, part bar), inline SVG and CSS only. Colours come from the accent and ink ramps, never the status
  * colours. Every mark has a tooltip and the whole chart has a text label. With no data each part draws its own empty
  * shape and one line of copy, never a made-up number.
  */
@@ -29,7 +29,7 @@ export function Ring({ value, max = 100, label, size = 128, children }: { value:
 export interface SparkPoint { label: string; value: number }
 
 /** A 2px line over a soft area, a dot with a tooltip per point. Needs two points; fewer draws the empty shape. */
-export function AreaSpark({ points, label, empty }: { points: SparkPoint[]; label: string; empty?: string }) {
+export function PointSpark({ points, label, empty }: { points: SparkPoint[]; label: string; empty?: string }) {
   const w = 320;
   const h = 88;
   if (points.length < 2) {
@@ -60,10 +60,10 @@ export function AreaSpark({ points, label, empty }: { points: SparkPoint[]; labe
   );
 }
 
-export interface Seg { label: string; value: number }
+export interface Part { label: string; value: number }
 
 /** One bar split in parts, 4px rounded ends, the parts and their numbers written under it. */
-export function SegBar({ segments, label, format }: { segments: Seg[]; label: string; format: (n: number) => string }) {
+export function PartBar({ segments, label, format }: { segments: Part[]; label: string; format: (n: number) => string }) {
   const total = segments.reduce((n, s) => n + s.value, 0);
   return (
     <div className="nx-segbar" role="img" aria-label={`${label}: ${segments.map((s) => `${s.label} ${format(s.value)}`).join(", ")}`} data-empty={total === 0 ? "" : undefined}>

@@ -11,7 +11,7 @@ from sqlalchemy import create_engine, text
 from api.config import settings
 from tests.route_auth import patch_tenant
 from tests.test_vendor_writeback import BPC, CVI_TABLES, LIFNR, VendorRFC
-from tests.test_writeback_batch_route_pg import _call, _drop, send_and_drive
+from tests.test_writeback_batch_route_pg import _call, _drop, seal_approval, send_and_drive
 
 pytestmark = pytest.mark.skipif(not os.getenv("MERIDIAN_TEST_DB_URL"), reason="requires MERIDIAN_TEST_DB_URL")
 
@@ -36,6 +36,7 @@ def ap_batch():
             c.execute(text("INSERT INTO remediation_items (tenant_id, batch_id, scope, module, check_id, record_key, "
                            "field, current_value, proposed_value) VALUES (:t, :b, :s, 'accounts_payable', :c, :k, "
                            ":f, '', :v)"), {"t": tid, "b": bid, "s": sid, "c": check, "k": KEY, "f": fld, "v": value})
+        seal_approval(c, bid)
     yield tid, bid
     _drop(engine, tid, sid)
 

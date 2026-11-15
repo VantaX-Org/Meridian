@@ -14,7 +14,7 @@ from api.main import app
 from sap.base import SAPConnectorError
 from tests.route_auth import patch_tenant
 from tests.test_writeback_safety import ReadRFC
-from tests.test_writeback_batch_route_pg import HEADERS, ME, drive
+from tests.test_writeback_batch_route_pg import HEADERS, ME, drive, seal_approval
 from workers.db import tenant_session
 from workers.tasks import run_batch_writeback as worker
 
@@ -46,6 +46,7 @@ def env(monkeypatch):
             c.execute(text("INSERT INTO remediation_items (tenant_id, batch_id, scope, module, check_id, record_key, "
                            "field, current_value, proposed_value) VALUES (:t, :b, :s, 'material_master', 'MM_PLIFZ', "
                            ":k, 'MARC.PLIFZ', '', '12')"), {"t": tid, "b": bid, "s": sid, "k": _key(i)})
+        seal_approval(c, bid)
     patch_tenant(monkeypatch, tid)
     monkeypatch.setattr(settings, "live_writeback_enabled", True)
     monkeypatch.setattr(settings, "writeback_chunk_size", 2)
