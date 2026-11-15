@@ -134,3 +134,22 @@ export async function uploadCleaned(file: File, parentVersionId?: string, module
   const { data } = await uploadApiClient.post<RoundTripResult>("/api/v1/upload/roundtrip", form, { headers: { "Content-Type": "multipart/form-data" } });
   return data;
 }
+
+export type AgreementStatus = "matched" | "different" | "missing";
+/** One cleaned cell: the value uploaded in the clean file and the value the later run holds (null when the record is gone). */
+export interface AgreementRow { table: string; key: string; field: string; description: string; status: AgreementStatus; cleaned: string | null; current: string | null }
+export interface AgreementField { table: string; field: string; description: string; matched: number; different: number; missing: number }
+export interface Agreement {
+  version_id: string; base_version_id: string | null; run_id: string; run_at: string | null;
+  total: number; matched: number; different: number; missing: number; score: number | null;
+  fields: AgreementField[]; rows: AgreementRow[]; rows_total: number;
+}
+
+/** GET /upload/roundtrip/{version}/agreement: how far a later run (the latest when `run` is unset) agrees with the uploaded clean file. */
+export async function getAgreement(versionId: string, run?: string): Promise<Agreement> {
+  const { data } = await uploadApiClient.get<Agreement>(`/api/v1/upload/roundtrip/${encodeURIComponent(versionId)}/agreement`, { params: run ? { run } : undefined });
+  return data;
+}
+
+/** True when the API says no run was extracted after the clean file was uploaded. */
+export const noLaterRun = (err: unknown): boolean => (detailOf(err) as Detail | null)?.error === "no_later_run";

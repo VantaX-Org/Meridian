@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { DIMENSIONS } from "@/lib/api/v2/types";
@@ -164,6 +165,11 @@ function Outcome({ result, module, ready, failed, systemId }: { result: RoundTri
       {ready && systemId ? (
         <p className="m2-meta">
           <V2Link href={`/migration?start=1&system=${encodeURIComponent(systemId)}&source_version=${encodeURIComponent(result.version_id)}`} data-testid="cleaned-to-migration">{tr("Check what will load from this run")}</V2Link>
+        </p>
+      ) : null}
+      {ready ? (
+        <p className="m2-meta">
+          <Link href={`/next/run/${encodeURIComponent(result.version_id)}/agreement`} data-testid="cleaned-to-agreement">{tr("Check the clean file against a later run")}</Link>
         </p>
       ) : null}
     </div>
