@@ -187,3 +187,79 @@ def test_two_objects_across_two_runs_build_on_each_other(monkeypatch):
     assert read("r2/KNA1.parquet")["KNA1.LAND1"].tolist() == [""]
     assert read("r1/KNA1.parquet")["KNA1.LAND1"].tolist() == ["XX"]
     assert read("r0/MARA.parquet")["MARA.MATKL"].tolist() == ["A", "B"]
+
+
+def _pq(df) -> bytes:
+    b = io.BytesIO()
+    df.to_parquet(b, index=False)
+    return b.getvalue()
+
+
+def _fake_store(monkeypatch, store):
+    from api.services import storage
+
+    monkeypatch.setattr(storage, "get_minio_client", lambda: _Client(store))
+    monkeypatch.setattr(storage, "list_prefix", lambda b, p: [(n, 0) for n in list(store) if n.startswith(p)])
+    monkeypatch.setattr(storage, "upload_file", lambda b, n, d, c: store.__setitem__(n, d))
+
+
+@needs_calamine
+def test_built_mara_workbook_round_trips_to_one_applied_edit(monkeypatch):
+    """Audit item 1: the workbook Meridian builds, filled in and read back, lands its edit on the MARA bundle."""
+    import uuid
+
+    from api.services import cleaning_workbook as cw
+    from checks import base
+
+    mara = pd.DataFrame({"MARA.MATNR": ["SYN-1", "SYN-2"], "MARA.MATKL": ["", "G2"]})
+    key = base.record_keys(mara, ["MARA.MATNR"])[0]
+    rules = {"MM-T1": {"id": "MM-T1", "field": "MARA.MATKL", "severity": "high", "message": "Material group is required.",
+                       "fix_map": {"__blank__": "Set the material group."}}}
+    data = {"module": "material_master", "tenant_name": "Tenant",
+            "run": {"id": str(uuid.uuid4()), "label": "Run 1", "status": "completed"},
+            "findings": [{"check_id": "MM-T1", "severity": "high", "dimension": "completeness", "affected_count": 1,
+                          "total_count": 2, "pass_rate": 50.0, "field": "MARA.MATKL", "message": "",
+                          "value_fix_map": {}, "record_fixes": []}],
+            "records": [{"check_id": "MM-T1", "grain": "MARA", "record_key": key,
+                         "field_values": {"MARA.MATKL": ""}}]}
+    monkeypatch.setattr(cw, "load", lambda *a: data)
+    monkeypatch.setattr(cw, "rule_meta", lambda m: rules)
+    monkeypatch.setattr(cw, "aletheia_plan_sheet", lambda *a: None)
+    body, name = cw.build(None, "t", "v", "material_master")
+    up = rt.read_upload(body, name)
+    assert up["marker"]["kind"] == "cleaning"
+
+    def fill(rows):  # the user types the corrected value into the record's row
+        col = [str(h) for h in rows[0]].index("Corrected value")
+        return [rows[0]] + [[*r[:col], "G1", *r[col + 1:]] if key in [str(v) for v in r] else r for r in rows[1:]]
+
+    sheets = [(n, fill(rows) if n.startswith("Records") else rows) for n, rows in up["sheets"]]
+    edits, _ = rt.cleaning_edits(sheets, lambda t: ["MATNR"])
+    assert edits == [{"table": "MARA", "key": key, "field": "MATKL", "value": "G1"}]
+
+    store = {"r0/MARA.parquet": _pq(mara)}
+    _fake_store(monkeypatch, store)
+    dictionary = type("D", (), {"keys": lambda self, t: ["MATNR"]})()
+    out = rt.apply_edits("r0/", "r1/", edits, dictionary)
+    assert (out["applied"], out["unmatched_total"], out["no_field"], out["no_table"]) == (1, 0, [], [])
+    assert pd.read_parquet(io.BytesIO(store["r1/MARA.parquet"]))["MARA.MATKL"].tolist() == ["G1", "G2"]
+
+
+def test_file_upload_parent_is_edited_as_one_flat_object(monkeypatch):
+    """Audit item 9: a run from a file upload stores one flat TABLE.FIELD parquet; edits land in a flat copy."""
+    from checks import base
+
+    flat = pd.DataFrame({"MARA.MATNR": ["SYN-1", "SYN-2"], "MARA.MATKL": ["", "G2"], "MAKT.MAKTX": ["a", "b"]})
+    store = {"staging/t/up.parquet": _pq(flat)}
+    _fake_store(monkeypatch, store)
+    dictionary = type("D", (), {"keys": lambda self, t: ["MATNR"]})()
+    key = base.record_keys(flat, ["MARA.MATNR"])[0]
+    edits = [{"table": "MARA", "key": key, "field": "MATKL", "value": "G1"},
+             {"table": "KNA1", "key": "KUNNR=C1", "field": "LAND1", "value": "XX"}]
+    assert rt.apply_edits("staging/t/up.parquet", "", edits, dictionary, dry=True)["applied"] == 1
+    assert list(store) == ["staging/t/up.parquet"]  # a dry run writes nothing
+    out = rt.apply_edits("staging/t/up.parquet", "staging/t/v2.parquet", edits, dictionary)
+    assert (out["applied"], out["no_table"]) == (1, ["KNA1"])
+    got = pd.read_parquet(io.BytesIO(store["staging/t/v2.parquet"]))
+    assert got["MARA.MATKL"].tolist() == ["G1", "G2"] and got["MAKT.MAKTX"].tolist() == ["a", "b"]
+    assert pd.read_parquet(io.BytesIO(store["staging/t/up.parquet"]))["MARA.MATKL"].tolist() == ["", "G2"]

@@ -645,8 +645,8 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
     modules = list(meta.get("modules") or [])
     if "complete" not in status:
         raise HTTPException(status_code=409, detail="That run has not finished.")
-    if not str(meta.get("dataset_path") or "").endswith("/"):
-        raise HTTPException(status_code=422, detail="Only a run extracted from a system can take an edited file.")
+    if not str(meta.get("dataset_path") or "").endswith(("/", ".parquet")):  # an extraction bundle or a file upload
+        raise HTTPException(status_code=422, detail="This run has no stored data to edit.")
     if marker.get("module") and marker["module"] not in modules:
         raise HTTPException(status_code=422, detail={"error": "module_mismatch", "detail":
                             f"This file was exported from {marker['module']}, which is not an object of the chosen run."})
@@ -749,7 +749,9 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
                                        "edits": len(edits), "module": module}})
         version = await versions.create_version(db, tenant.id, new_meta,
                                                 label=f"{label or 'Run'} (cleaned)"[:120])
-        prefix = f"staging/{tenant.id}/{version.id}/"
+        # a file upload's data is one flat parquet object; its cleaned copy is one object too
+        flat = str(source_meta["dataset_path"]).endswith(".parquet")
+        prefix = f"staging/{tenant.id}/{version.id}" + (".parquet" if flat else "/")
         try:
             result = await run_in_threadpool(rt.apply_edits, source_meta["dataset_path"], prefix, edits,
                                              dictionary, frozenset(stale))
