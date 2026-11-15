@@ -2,7 +2,7 @@
 
 import { usePreferences } from "@/hooks/use-preferences";
 
-/** Whether this person chose "Try the new Meridian" in Preferences. Off until they do. */
+/** Whether the new Meridian is on for this person. On unless they turned it off in Preferences. */
 export function useUiNext(): boolean {
-  return usePreferences().prefs.ui_next === true;
+  return usePreferences().prefs.ui_next !== false;
 }

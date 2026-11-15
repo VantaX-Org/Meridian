@@ -6,8 +6,8 @@ vi.mock("@/hooks/use-preferences", () => ({ usePreferences: () => ({ prefs: pref
 import { useUiNext } from "../useUiNext";
 
 describe("useUiNext", () => {
-  it("is off by default", () => { prefs.value = {}; expect(renderHook(() => useUiNext()).result.current).toBe(false); });
-  it("is on only when ui_next is true", () => {
+  it("is on by default", () => { prefs.value = {}; expect(renderHook(() => useUiNext()).result.current).toBe(true); });
+  it("is off only when ui_next is false", () => {
     prefs.value = { ui_next: true }; expect(renderHook(() => useUiNext()).result.current).toBe(true);
     prefs.value = { ui_next: false }; expect(renderHook(() => useUiNext()).result.current).toBe(false);
   });
