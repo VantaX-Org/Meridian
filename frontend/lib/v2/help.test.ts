@@ -248,6 +248,9 @@ describe("the next More addresses", () => {
     ["/more/admin/flow/users", "v2:administration"],
     ["/more/admin/flow/rules", "v2:rules"],
     ["/more/rules", "v2:administration"],
+    ["/more/custom-objects", "v2:systems"],
+    ["/more/writeback", "v2:approvals"],
+    ["/more/golden-writeback", "v2:golden-records"],
   ])("%s opens %s", (p, id) => {
     expect(chapterFor(p)).toBe(id);
     expect(byId(id)).toBeDefined();

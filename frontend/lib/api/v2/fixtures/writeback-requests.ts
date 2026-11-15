@@ -32,7 +32,21 @@ const seed = (): RequestDetail[] => [base("WB-1", "Test Requester", true, "pendi
 let rows = seed();
 export const resetWbFixture = () => { rows = seed(); };
 
+/** One failing rule whose record fixes are structured (auto_fix, record_key, field, proposed_value): what POST /writeback takes. */
+const FINDING_FIXES = CHANGES.map((c) => ({ record_key: c.record_key, field: c.field, invalid_value: c.before, proposed_value: c.after, auto_fix: true }));
+export const WB_FINDINGS = {
+  findings: [
+    { id: "F-WB-1", version_id: "run-1", module: "material_master", check_id: "MM142", finding_type: "rule", severity: "high", affected_count: 3, total_count: 1284,
+      details: { message: "Base unit of measure is not a valid ISO unit" }, record_fixes: FINDING_FIXES },
+    { id: "F-WB-2", version_id: "run-1", module: "material_master", check_id: "MM077", finding_type: "rule", severity: "medium", affected_count: 12, total_count: 1284,
+      details: { message: "Material description is empty" }, record_fixes: [{ record_id: "100300", id_field: "MATNR", invalid_value: "", fix_instruction: "Enter a description", sql_statement: null }] },
+  ],
+  total: 2,
+};
+
 export function wbRead(path: string, params: Record<string, string | number | boolean | undefined>): unknown {
+  // The write-back screen's read: failing rules across every object (no module), with their record fixes.
+  if (path === "/findings" && params.failing === true && params.type === "rule" && params.module === undefined) return WB_FINDINGS;
   if (path === "/writeback/requests") {
     // The list sends RequestRow only; the viewer's verdict, errors and undo note come with the detail.
     const items = rows.filter((r) => !params.state || r.state === params.state)
@@ -47,6 +61,17 @@ export function wbRead(path: string, params: Record<string, string | number | bo
 }
 
 export function wbWrite(method: string, path: string, body: unknown): unknown {
+  if (method === "POST" && path === "/writeback") {
+    const b = body as { finding_id: string; record_fixes: { record_key: string; field: string; proposed_value: unknown }[]; system_id: string; dry_run?: boolean };
+    const fields = b.record_fixes.map((f) => {
+      const c = CHANGES.find((x) => x.record_key === f.record_key && x.field === f.field);
+      return { record_key: f.record_key, field: f.field, supported: c?.delivery === "bapi", bapi: c?.bapi ?? null, reason: c?.reason ?? null, delivery: c?.delivery ?? "export" };
+    });
+    const dry = b.dry_run !== false;
+    const id = `WB-${rows.length + 1}`;
+    if (!dry) rows.push({ ...base(id, "You", true, "pending"), finding_id: b.finding_id });
+    return { applied: 0, skipped: 0, errors: [], dry_run: dry, pending_approval_id: id, fields };
+  }
   const m = /^\/writeback\/(approve|reject)\/([^/]+)$/.exec(path);
   if (method !== "POST" || !m) return NONE_WB;
   const r = rows.find((x) => x.id === m[2]);

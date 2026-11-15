@@ -61,6 +61,12 @@ export interface RequestDetail extends RequestRow {
 export const getRequests = (state?: RequestState): Promise<RequestList> => v2Get<RequestList>("/writeback/requests", { state, limit: 200 });
 export const getRequest = (id: string): Promise<RequestDetail> => v2Get<RequestDetail>(`/writeback/requests/${encodeURIComponent(id)}`);
 export const approveRequest = (id: string) => v2Send<{ applied: number; errors: string[]; status: string }>("POST", `/writeback/approve/${encodeURIComponent(id)}`);
+export interface FieldSupport { record_key: string; field: string; supported: boolean; bapi: string | null; reason: string | null; delivery: "bapi" | "export" }
+export interface WritebackResult { applied: number; skipped: number; errors: string[]; dry_run: boolean; pending_approval_id: string | null; fields: FieldSupport[] }
+export interface StructuredFix { record_key: string; field: string; proposed_value: unknown; invalid_value?: unknown; auto_fix: unknown }
+/** POST /writeback: dry_run true checks each field (BAPI or export); false files a pending request that a second person approves. */
+export const createWriteback = (body: { finding_id: string; record_fixes: StructuredFix[]; system_id: string; dry_run: boolean }) =>
+  v2Send<WritebackResult>("POST", "/writeback", body);
 export const rejectRequest = (id: string, reason: string) => v2Send<{ status: string }>("POST", `/writeback/reject/${encodeURIComponent(id)}`, { reason });
 
 const key = (fx: boolean) => ["v2", "wb-requests", fx] as const;

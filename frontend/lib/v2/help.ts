@@ -192,6 +192,9 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/more/admin/flow/connect": "v2:systems",
   "/more/admin/flow/users": "v2:administration",
   "/more/admin/flow/rules": "v2:rules",
+  "/more/custom-objects": "v2:systems",
+  "/more/writeback": "v2:approvals",
+  "/more/golden-writeback": "v2:golden-records",
 };
 
 /** The panels a `?open=` value opens, by its kind, and the chapter that explains each. They win over the route. */
@@ -239,6 +242,7 @@ export function routeOf(pathname: string): string | null {
   if (a === "share" && b) return "/share/[token]";
   if (a === "requests" && b) return b === "analytics" ? "/requests/analytics" : b === "new" ? "/requests/new" : "/requests/[id]";
   if (a === "migration" && b === "load-plan") return "/migration/load-plan";
+  if (a === "more" && b && !c && ROUTE_CHAPTERS[`/more/${b}`]) return `/more/${b}`;
   if (a === "more") return b === "admin" && c === "flow" && d ? `/more/admin/flow/${d}` : "/more";
   if (a === "admin") return b ? "/admin/[section]" : "/admin";
   if (a === "work" && b === "monitor") return "/work/monitor";
