@@ -12,6 +12,7 @@ import { useWorkRows, useWorkSummary } from "@/lib/v2/work-queries";
 import type { Landscape, WorkRow } from "@/lib/api/v2/types";
 import { Attention } from "@/design/v2/screens/Attention";
 import { Cleansing } from "@/design/v2/screens/Cleansing";
+import { DataRequests } from "@/design/v2/screens/DataRequests";
 import { Exceptions } from "@/design/v2/screens/Exceptions";
 import { FixDrafts } from "@/design/v2/screens/FixDrafts";
 import { ProcessAnalytics } from "@/design/v2/screens/ProcessAnalytics";
@@ -47,7 +48,7 @@ const SCREENS: Record<string, ComponentType> = {
   exceptions: Exceptions,
   analytics: WorkAnalytics,
 };
-const DEEP: Record<string, ComponentType> = { "requests/new": RequestFormCanvas, "requests/analytics": ProcessAnalytics };
+const DEEP: Record<string, ComponentType> = { "requests/new": RequestFormCanvas, "requests/analytics": ProcessAnalytics, "data-requests": DataRequests };
 
 /** The ledger: every open record, one row each, with the state pills and the actions for a selection. */
 export function Ledger() {

@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { t } from "@/lib/v2/i18n";
 import { AdminCanvas } from "@/design/v2/admin/Admin";
 import { RulePromotion } from "@/design/v2/screens/RulePromotion";
+import { AnomalyRules } from "@/design/v2/screens/AnomalyRules";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAllDrafts, useRuleList } from "@/lib/v2/sys-queries";
 import type { Rule } from "@/lib/api/rules";
 import { Chip, SegmentedControl } from "../kit";
@@ -11,8 +13,10 @@ import { useSheets } from "../shell/SheetHost";
 import { LegacyMount } from "../shell/LegacyMount";
 import { LongText, ListSearch, QueryView, VirtualList } from "./states";
 import { PassRateCard, RulesCard } from "./cards";
+import { RuleDryRun } from "./RuleDryRun";
 
-type Seg = "active" | "drafts" | "promotion" | "learned" | "packs";
+type Seg = "active" | "drafts" | "promotion" | "learned" | "packs" | "dryrun" | "anomaly";
+const SEGS: Seg[] = ["active", "drafts", "promotion", "learned", "packs", "dryrun", "anomaly"];
 const TONE = { critical: "bad", high: "bad", medium: "warn", low: "neutral", info: "neutral" } as const;
 
 const SEVERITY = () => ({ critical: t("Critical"), high: t("High"), medium: t("Medium"), low: t("Low"), info: t("Info") });
@@ -50,9 +54,22 @@ function RuleRows({ rules, label, empty }: { rules: Rule[]; label: string; empty
   );
 }
 
-/** Rules in five segments. Active and Learned are drawn here; Promotion and Packs reuse the existing screens. */
+/**
+ * Rules in seven segments, chosen by `?tab=` so old addresses land on the right one. Active, Learned, Drafts and Dry run
+ * are drawn here; Promotion, Packs and Anomaly rules reuse the existing screens.
+ */
 export function Rules() {
-  const [seg, setSeg] = useState<Seg>("active");
+  const params = useSearchParams();
+  const router = useRouter();
+  const path = usePathname();
+  const tab = params.get("tab") as Seg | null;
+  const seg: Seg = tab && SEGS.includes(tab) ? tab : "active";
+  const setSeg = (v: Seg) => {
+    const next = new URLSearchParams(params.toString());
+    if (v === "active") next.delete("tab"); else next.set("tab", v);
+    const qs = next.toString();
+    router.replace(qs ? `${path}?${qs}` : path, { scroll: false });
+  };
   const list = useRuleList();
   const drafts = useAllDrafts(seg === "drafts");
   const rules = list.data?.rules ?? [];
@@ -69,6 +86,8 @@ export function Rules() {
           { value: "promotion", label: t("Promotion") },
           { value: "learned", label: t("Learned") },
           { value: "packs", label: t("Packs") },
+          { value: "dryrun", label: t("Dry run") },
+          { value: "anomaly", label: t("Anomaly rules") },
         ]}
       />
       {seg === "active" || seg === "learned" ? (
@@ -91,6 +110,8 @@ export function Rules() {
       ) : null}
       {seg === "promotion" ? <LegacyMount><RulePromotion /></LegacyMount> : null}
       {seg === "packs" ? <LegacyMount><AdminCanvas section="policypacks" /></LegacyMount> : null}
+      {seg === "dryrun" ? <RuleDryRun /> : null}
+      {seg === "anomaly" ? <LegacyMount><AnomalyRules /></LegacyMount> : null}
     </div>
   );
 }

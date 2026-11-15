@@ -1,7 +1,7 @@
 import { t } from "@/lib/v2/i18n";
 
 /**
- * The segments of Work, in order. `slug` is the path after /next/work; the first segment is the landing ledger.
+ * The segments of Work, in order. `slug` is the path after /work; the first segment is the landing ledger.
  * Deeper pages hang off a segment and keep its tab selected.
  */
 export interface Segment {
@@ -25,6 +25,7 @@ export const WORK_SEGMENTS: readonly Segment[] = [
 export const DEEP_SEGMENTS: ReadonlyArray<{ slug: string; parent: string }> = [
   { slug: "requests/new", parent: "requests" },
   { slug: "requests/analytics", parent: "requests" },
+  { slug: "data-requests", parent: "requests" },
 ];
 
 export function segmentOf(slug: string[] | undefined): { id: string; deep: string | null } | null {
@@ -35,5 +36,5 @@ export function segmentOf(slug: string[] | undefined): { id: string; deep: strin
   return seg ? { id: seg.id, deep: null } : null;
 }
 
-export const WORK_BASE = "/next/work";
+export const WORK_BASE = "/work";
 export const segmentHref = (s: Segment): string => (s.slug ? `${WORK_BASE}/${s.slug}` : WORK_BASE);
