@@ -58,7 +58,7 @@ const ICON: Record<Destination["id"], string> = {
   fix: "M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM5.5 8l1.8 1.8L10.8 6", // i18n-ignore: SVG path data
   rules: "M3 4.5h10M3 8h10M3 11.5h6",
   master: "M3 4.5c0-1.1 2.2-2 5-2s5 .9 5 2-2.2 2-5 2-5-.9-5-2ZM3 4.5v7c0 1.1 2.2 2 5 2s5-.9 5-2v-7", // i18n-ignore: SVG path data
-  migration: "M2.5 8h10M9 4.5 12.5 8 9 11.5",
+  load: "M2.5 8h10M9 4.5 12.5 8 9 11.5",
 };
 
 function Glyph({ id }: { id: Destination["id"] }) {

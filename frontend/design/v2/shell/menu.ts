@@ -8,7 +8,7 @@ export interface MenuLink {
 }
 
 export interface Destination {
-  id: "home" | "objects" | "runs" | "fix" | "rules" | "master" | "migration";
+  id: "home" | "objects" | "runs" | "fix" | "rules" | "master" | "load";
   href: string;
   label: string;
   /** One line, shown in the flyout before the click. */
@@ -40,6 +40,7 @@ export function destinations(): Destination[] {
         { href: "/data-requests", label: t("Data requests") },
         { href: "/cleansing", label: t("Cleansing") },
         { href: "/requests", label: t("Requests") },
+        { href: "/next/approvals", label: t("Approvals") },
         { href: "/requests/new", label: t("Data collection form") },
         { href: "/requests/analytics", label: t("Process analytics") },
         { href: "/people", label: t("People") },
@@ -86,18 +87,20 @@ export function destinations(): Destination[] {
       also: [],
     },
     {
-      id: "migration",
-      href: "/migration",
-      label: t("Migration"),
-      about: t("Readiness for S/4, value, forecast and go-live."),
-      key: "i",
+      id: "load",
+      href: "/load",
+      label: t("Load"),
+      about: t("Readiness for S/4, the load files, value, forecast and go-live."),
+      key: "l",
       kids: [
-        { href: "/migration", label: t("Migration") },
+        { href: "/load", label: t("Prepare") },
+        { href: "/load/analysis", label: t("Analysis") },
         { href: "/?view=waves", label: t("Waves") },
-        { href: "/system-compare", label: t("System comparison") },
-        { href: "/migration/load-plan", label: t("Load plan") },
-        { href: "/s4", label: t("S/4HANA readiness") },
-        { href: "/go-live", label: t("Go-live") },
+        { href: "/load/compare", label: t("System comparison") },
+        { href: "/load/plan", label: t("Load plan") },
+        { href: "/load/s4", label: t("S/4HANA readiness") },
+        { href: "/load/go-live", label: t("Go-live") },
+        { href: "/load/history", label: t("History") },
         { href: "/forecast", label: t("Forecast and plan") },
         { href: "/value", label: t("Value delivered") },
         { href: "/score", label: t("Score lens") },

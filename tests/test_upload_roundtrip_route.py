@@ -367,12 +367,19 @@ def test_check_formula_values_fail_and_numbers_pass(env):
     head = ["Table", "Record key", "Field", "Corrected value"]
     bad = _xlsx({"Records to clean": [head, ["EmpJob", "userId=u1", "jobTitle", "@SUM(A1)"],
                                       ["EmpJob", "userId=u2", "jobTitle", "-5"]]})
-    # the file's own cell check (sf_roundtrip.cell_problem) refuses the formula row before the check list runs
+    # the dry path reports the cell check's refusal as the formulas check, the same verdict the upload reaches
     r = env.client.post("/api/v1/upload/roundtrip/check", files={"file": ("c.xlsx", bad, XLSX)},
                         headers={"X-User-Role": "analyst"})
+    assert r.status_code == 200, r.text
+    by = {c["id"]: c for c in r.json()["checks"]}
+    assert r.json()["verdict"] == "fail" and by["formulas"]["status"] == "fail"
+    assert by["formulas"]["detail"].startswith("1 value") and by["values"]["status"] == "pass"
+    assert by["keys"]["status"] == "warn" and set(by) == set(uc.CHECK_IDS)
+    assert "SUM" not in r.text  # never echo a cell value
+    r = _post(env, bad)  # the real upload refuses the same file
     d = r.json()["detail"]
     assert r.status_code == 422 and d["error"] == "invalid_values" and [x["row"] for x in d["rows"]] == [2]
-    assert "SUM" not in r.text  # never echo a cell value
+    assert "SUM" not in r.text
     assert uc.check_formulas([{"value": "@SUM(A1)"}, {"value": "-5"}])["detail"].startswith("1 value")
     assert not uc.unsafe("-5") and uc.unsafe("@SUM(A1)") and uc.unsafe("+cmd") and uc.unsafe("-cmd|x")
 

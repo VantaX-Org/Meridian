@@ -5,7 +5,7 @@
  * and the field's words, how many records fail. "Why" opens the rule sheet. One Aletheia sentence and its evidence close it.
  */
 import { useMemo } from "react";
-import { Button, EmptyState, ErrorState, SegBar, Skeleton } from "@/design/next/kit";
+import { Button, EmptyState, ErrorState, PartBar, Skeleton } from "@/design/next/kit";
 import { useSheets } from "@/design/next/shell/SheetHost";
 import { Coded, Mono } from "@/design/v2/parts";
 import { SeverityMark } from "@/design/v2/marks";
@@ -40,7 +40,7 @@ export function WhySection({ o, limit }: { o: ObjectRun; limit?: number }) {
       {rules.isError && !isDenied(rules.error) ? <ErrorState sentence={t("The rules could not be loaded.")} error={rules.error} onRetry={() => void rules.refetch()} /> : null}
       {rules.data && rows.length === 0 ? <EmptyState heading={t("No rule fails in this run")}>{t("Every rule that was measured passed for every record.")}</EmptyState> : null}
       {rows.length ? (
-        <SegBar label={t("Records failing, by rule")} format={compactCount} segments={[...rows.slice(0, 2).map((r) => ({ label: r.check_id, value: r.affected_count })), { label: t("Other rules"), value: rows.slice(2).reduce((n, r) => n + r.affected_count, 0) }]} />
+        <PartBar label={t("Records failing, by rule")} format={compactCount} segments={[...rows.slice(0, 2).map((r) => ({ label: r.check_id, value: r.affected_count })), { label: t("Other rules"), value: rows.slice(2).reduce((n, r) => n + r.affected_count, 0) }]} />
       ) : null}
       {shown.length ? (
         <table className="nx-table nx-why-table">

@@ -465,6 +465,17 @@ async def _apply_notes(db: AsyncSession, tenant_id, request: Request, role: str,
     return out
 
 
+def _kind_of(parsed: dict) -> str:
+    """cleaning or template: what the marker says, else whether a record sheet is present."""
+    from api.services import sf_roundtrip as rt
+    from api.services.cycle_limits import is_record_sheet
+
+    kind = parsed["marker"].get("kind") or ("cleaning" if any(is_record_sheet(n, r) for n, r in parsed["sheets"]) else "template")
+    if kind not in rt.KINDS:
+        raise rt.RoundTripError("The marker in this file is damaged. Choose the run it came from.")
+    return kind
+
+
 def _roundtrip_edits(tenant_id, parent_id: str, system_id: Optional[str], parent_modules: list[str], parsed: dict,
                      filename: str, data: bytes, dictionary=None) -> tuple[str, list[dict], dict]:
     """Which kind of file this is, its edits, and what could not be mapped (blocking; run in a thread).
@@ -474,12 +485,9 @@ def _roundtrip_edits(tenant_id, parent_id: str, system_id: Optional[str], parent
     def keys_of(table: str) -> list[str]:
         return list(dictionary.keys(table)) if dictionary is not None else []
 
-    sheets, marker = parsed["sheets"], parsed["marker"]
-    from api.services.cycle_limits import is_record_sheet, rename_by_header
+    from api.services.cycle_limits import rename_by_header
 
-    kind = marker.get("kind") or ("cleaning" if any(is_record_sheet(n, r) for n, r in sheets) else "template")
-    if kind not in rt.KINDS:
-        raise rt.RoundTripError("The marker in this file is damaged. Choose the run it came from.")
+    sheets, marker, kind = parsed["sheets"], parsed["marker"], _kind_of(parsed)
     if kind == "cleaning":
         edits, blank = rt.cleaning_edits(sheets, keys_of)
         return kind, edits, {"unmapped": {}, "skipped": {}, "blank": blank, "notes": rt.cleaning_notes(sheets)}
@@ -660,13 +668,17 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
     try:
         kind, edits, report = await run_in_threadpool(_roundtrip_edits, tenant.id, parent, system_id, modules, parsed,
                                                       file.filename or "", data, dictionary)
+        refused: list[dict] = []
     except rt.InvalidValues as e:
-        raise HTTPException(status_code=422, detail={"error": "invalid_values", "detail": str(e),
-                                                     "rows": e.rows[:50], "total": len(e.rows)})
+        if not check_only:
+            raise HTTPException(status_code=422, detail={"error": "invalid_values", "detail": str(e),
+                                                         "rows": e.rows[:50], "total": len(e.rows)})
+        # a check run reports the refused cells as failed checks, as the upload's own checks would
+        kind, edits, report, refused = _kind_of(parsed), [], {}, e.rows
     except rt.RoundTripError as e:
         raise HTTPException(status_code=422, detail=str(e))
     notes = report.pop("notes", [])
-    if not edits and not notes:
+    if not edits and not notes and not refused:
         detail, fix = cl.no_edit_reason(kind, report)
         raise HTTPException(status_code=422, detail={"error": "no_edits", "detail": detail, "fix": fix})
 
@@ -686,6 +698,8 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
     checks = [uc.check_fingerprint(marker, str(tenant.id)), run_check, uc.check_template(marker, kind),
               uc.check_columns(parsed["sheets"], marker, kind, marker.get("map")), uc.check_rows(parsed["sheets"], marker, kind),
               uc.check_keys(dry), uc.check_values(edits, dictionary), uc.check_formulas(edits)]
+    if refused:
+        checks[-3:] = uc.check_refused(refused)
     verdict = uc.verdict(checks)
     if check_only:
         return RoundTripCheckResponse(verdict=verdict, checks=[RoundTripCheck(**c) for c in checks], parent_version_id=parent,

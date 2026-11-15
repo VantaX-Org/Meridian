@@ -188,6 +188,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/admin/[section]": "v2:administration",
   // Batch 6 (next More): guided admin tasks and the More frame.
   "/more": "v2:administration",
+  "/load": "v2:migration",
   "/more/admin/flow/connect": "v2:systems",
   "/more/admin/flow/users": "v2:administration",
   "/more/admin/flow/rules": "v2:rules",

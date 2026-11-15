@@ -826,7 +826,12 @@ async def _send_guards(request: Request, db: AsyncSession, tenant: Tenant, batch
         raise HTTPException(status_code=409, detail=f"This approval is older than {APPROVAL_TTL_DAYS} days and has "
                                                     "expired. Send the batch back and approve it again before sending.")
     # the items must be the ones approved: a change edited after approval is never sent under that approval
-    if b.get("approved_sha256") and items_sha256(items) != b["approved_sha256"]:
+    # an approval from before the hash was stored (NULL) cannot be verified, so it never counts as unchanged
+    if not b.get("approved_sha256"):
+        raise HTTPException(status_code=409, detail="This approval was given before Meridian recorded which changes "
+                                                    "were approved, so it cannot be verified. Send the batch back and "
+                                                    "approve it again before sending.")
+    if items_sha256(items) != b["approved_sha256"]:
         raise HTTPException(status_code=409, detail="The batch's changes differ from the ones that were approved. "
                                                     "Send the batch back and approve it again before sending.")
     if await held_back(db, str(tenant.id), "write_back", "bapi", str(batch_id)):

@@ -4,7 +4,7 @@
  * What to fix in this object: the records that need a fix, how many already have a proposed fix and how many have none
  * and need a person. Sums of the work groups of the shown run. A count the work groups do not carry is not shown.
  */
-import { EmptyState, ErrorState, SegBar, Skeleton } from "@/design/next/kit";
+import { EmptyState, ErrorState, PartBar, Skeleton } from "@/design/next/kit";
 import { V2Link } from "@/design/v2/parts";
 import { useWorkGroups } from "@/lib/v2/object-queries";
 import { t } from "@/lib/v2/i18n";
@@ -27,7 +27,7 @@ export function FixSection({ o }: { o: ObjectRun }) {
       {groups.data && open === 0 ? <EmptyState heading={t("Nothing to fix")}>{t("No record of this object has an open fix.")}</EmptyState> : null}
       {groups.data && open > 0 ? (
         <div className="nx-card nx-fix-card">
-          <SegBar label={t("Records that need a fix")} format={compactCount} segments={[{ label: t("Proposed"), value: proposed }, { label: t("Needs a person"), value: person }]} />
+          <PartBar label={t("Records that need a fix")} format={compactCount} segments={[{ label: t("Proposed"), value: proposed }, { label: t("Needs a person"), value: person }]} />
           <p className="nx-fix-total"><strong><Count n={open} /></strong> {t("records need a fix")}</p>
           <ul className="nx-fix-rows">
             <li>

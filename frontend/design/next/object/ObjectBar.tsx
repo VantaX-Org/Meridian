@@ -7,7 +7,7 @@
  */
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AreaSpark, Button, LargeTitle, Popover, Ring } from "@/design/next/kit";
+import { PointSpark, Button, LargeTitle, Popover, Ring } from "@/design/next/kit";
 import { writeClipboard } from "@/lib/browser";
 import { Coded, V2Link } from "@/design/v2/parts";
 import { useSheets } from "@/design/next/shell/SheetHost";
@@ -128,7 +128,7 @@ export function ObjectBar({ o, cycle, downloads }: { o: ObjectRun; cycle: Object
             ) : null}
           </span>
         </Ring>
-        <AreaSpark points={series} label={t("DQS over the last {n} runs", { n: series.length })} empty={t("Not enough runs for a trend yet")} />
+        <PointSpark points={series} label={t("DQS over the last {n} runs", { n: series.length })} empty={t("Not enough runs for a trend yet")} />
       </div>
       {receipt ? (
         <p className="nx-hero-cap">

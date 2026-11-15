@@ -2,7 +2,7 @@
 
 /** A list of checks with a status in words (never colour alone), and the "Checks before this step" gate list. */
 import { t } from "@/lib/v2/i18n";
-import type { CheckStatus } from "./uploadGate";
+import type { CheckStatus } from "@/lib/api/v2/roundtrip";
 
 export interface CheckRow { id: string; label: string; status: CheckStatus; detail?: string }
 
