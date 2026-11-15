@@ -48,3 +48,13 @@ def test_marker_carries_the_fingerprint():
     keys = {r["key"] for r in marker_rows("v", "m", "cleaning", None, uc.fingerprint("cleaning", "t", "s", ["A"], 1))}
     assert {"version_id", "module", "tenant", "system", "template_id", "template_version", "columns", "rows",
             "generated_at"} <= keys
+
+
+def test_flagged_lists_failing_cells_by_id_and_reason_never_the_value():
+    d = _Dict(Field("T", "C", False, "CHAR", 3), Field("T", "N", False, "NUMC", 4))
+    edits = [_e("abc", "C"), _e("abcdef", "C"), _e("12a", "N"), _e("=HYPERLINK(1)", "C")]
+    out = uc.flagged(edits, d)
+    assert [f["reason"] for f in out] == ["long", "type", "formula"]
+    assert all(set(f) == {"table", "key", "field", "description", "reason"} for f in out)
+    assert "abcdef" not in str(out) and "HYPERLINK" not in str(out)
+    assert uc.check_values(edits[:1], d, skipped=2)["status"] == "warn"

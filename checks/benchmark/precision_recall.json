@@ -2,24 +2,24 @@
  "method": "per-rule synthetic injection, truth derived from the rule's own YAML",
  "modules": {
   "business_partner": {
-   "benchmarked": 146,
-   "perfect": 146,
-   "rules": 264
+   "benchmarked": 147,
+   "perfect": 147,
+   "rules": 267
   },
   "employee_central": {
-   "benchmarked": 410,
-   "perfect": 410,
-   "rules": 795
+   "benchmarked": 412,
+   "perfect": 412,
+   "rules": 798
   },
   "material_master": {
-   "benchmarked": 255,
-   "perfect": 255,
-   "rules": 947
+   "benchmarked": 260,
+   "perfect": 260,
+   "rules": 960
   },
   "sd_customer_master": {
-   "benchmarked": 324,
-   "perfect": 324,
-   "rules": 661
+   "benchmarked": 327,
+   "perfect": 327,
+   "rules": 668
   }
  },
  "records_per_rule": 40,
@@ -8437,6 +8437,132 @@
    "records": 40,
    "rule_id": "MM1167",
    "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1168",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1169",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "condition not modelled: ~(`MARA.ERGEW`.fillna(0) > 0)",
+   "rule_id": "MM1170"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "condition not modelled: ~(`MARA.ERVOL`.fillna(0) > 0)",
+   "rule_id": "MM1171"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "a field appears in more than one condition",
+   "rule_id": "MM1172"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "character comparison MARD.PRCTL/MARC.PRCTR not modelled",
+   "rule_id": "MM1173"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "condition not modelled: ~(`MARC.VBAMG`.fillna(0) > 0)",
+   "rule_id": "MM1174"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "condition not modelled: `MARC.XCHPF`.fillna('') != 'X'",
+   "rule_id": "MM1175"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1176",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1177",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "a field appears in more than one condition",
+   "rule_id": "MM1178"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "material_master",
+   "reason": "condition not modelled: (@today - `MARA.LAEDA`).dt.days > 1825",
+   "rule_id": "MM1179"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "uniqueness_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 20,
+   "module": "material_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "MM1180",
+   "true_positives": 20
   },
   {
    "benchmarkable": true,
@@ -16875,6 +17001,41 @@
   },
   {
    "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC904",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "employee_central",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "EC905",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "employee_central",
+   "reason": "condition not modelled: `EMPJOBHIST.IS_SHIFT_EMPLOYEE`.str.lower().isin(['true','y',",
+   "rule_id": "EC906"
+  },
+  {
+   "benchmarkable": true,
    "check_class": "null_check",
    "f1": 1.0,
    "false_negatives": 0,
@@ -23769,6 +23930,76 @@
    "rule_id": "SDCM942"
   },
   {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "sd_customer_master",
+   "reason": "fail_when is not a conjunction of simple conditions",
+   "rule_id": "SDCM943"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "sd_customer_master",
+   "reason": "condition not modelled: `KNA1.STKZN`.fillna('')!='X'",
+   "rule_id": "SDCM944"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM945",
+   "true_positives": 10
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "sd_customer_master",
+   "reason": "condition not modelled: `KNB1.BEGRU` != `KNA1.BEGRU`.fillna('')",
+   "rule_id": "SDCM946"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "sd_customer_master",
+   "reason": "condition not modelled: `KNVV.BEGRU` != `KNA1.BEGRU`.fillna('')",
+   "rule_id": "SDCM947"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "uniqueness_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 20,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM948",
+   "true_positives": 20
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "sd_customer_master",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "SDCM949",
+   "true_positives": 10
+  },
+  {
    "benchmarkable": true,
    "check_class": "null_check",
    "f1": 1.0,
@@ -26637,6 +26868,34 @@
    "module": "business_partner",
    "reason": "KNA1.KUNNR is a key or join field",
    "rule_id": "BP401"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "business_partner",
+   "reason": "condition not modelled: `BUT000.XDELE`.fillna('')!='X'",
+   "rule_id": "BP905"
+  },
+  {
+   "benchmarkable": false,
+   "check_class": "cross_field_check",
+   "module": "business_partner",
+   "reason": "condition not modelled: `KNA1.BEGRU` != `BUT000.AUGRP`.fillna('')",
+   "rule_id": "BP906"
+  },
+  {
+   "benchmarkable": true,
+   "check_class": "cross_field_check",
+   "f1": 1.0,
+   "false_negatives": 0,
+   "false_positives": 0,
+   "injected": 10,
+   "module": "business_partner",
+   "precision": 1.0,
+   "recall": 1.0,
+   "records": 40,
+   "rule_id": "BP907",
+   "true_positives": 10
   }
  ]
 }

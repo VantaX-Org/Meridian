@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.services.branded_xlsx import content_disposition
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
 from api.services import readiness_certificate as rc
@@ -170,4 +171,4 @@ async def certificate_pdf(wave_id: uuid.UUID, cert_id: uuid.UUID, db: AsyncSessi
         raise HTTPException(status_code=404, detail="Certificate file not found.")
     data = await asyncio.to_thread(read_report_file, row[1], row[2])
     return Response(content=data, media_type="application/pdf",
-                    headers={"Content-Disposition": f"attachment; filename={row[0]}"})
+                    headers={"Content-Disposition": content_disposition(str(row[0]))})

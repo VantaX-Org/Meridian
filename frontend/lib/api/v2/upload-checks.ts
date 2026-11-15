@@ -30,6 +30,14 @@ export const CHECK_SENTENCE: Record<CheckId, () => string> = {
   formulas: () => t("No formulas in edited cells"),
 };
 
+/** The sentence of a flagged cell's reason code; the file's own refusal comes as a sentence already. */
+export function flagReason(reason: string): string {
+  if (reason === "long") return t("Longer than the field allows");
+  if (reason === "type") return t("Wrong type for the field");
+  if (reason === "formula") return t("Would run as a formula");
+  return reason;
+}
+
 export const STATUS_SENTENCE: Record<CheckStatus, () => string> = { pass: () => t("Passed"), warn: () => t("Warning"), fail: () => t("Failed") };
 
 /** The check's sentence; an id the client does not know yet shows as it came, never as a blank. */
@@ -57,12 +65,13 @@ export function fixtureWorkbookChecks(name: string, parent: string): UploadCheck
 }
 
 /** POST /upload/roundtrip/check: run every check on the file and change nothing. A 422 that carries checks is an answer too. */
-export async function checkWorkbook(file: File, parentVersionId?: string, module?: string): Promise<UploadChecks> {
+export async function checkWorkbook(file: File, parentVersionId?: string, module?: string, skipFlagged = false): Promise<UploadChecks> {
   if (fixtureActive()) return fixtureWorkbookChecks(file.name, parentVersionId ?? "");
   const form = new FormData();
   form.append("file", file);
   if (parentVersionId) form.append("parent_version_id", parentVersionId);
   if (module) form.append("module", module);
+  if (skipFlagged) form.append("skip_flagged", "true");
   try {
     const { data } = await uploadApiClient.post<UploadChecks>("/api/v1/upload/roundtrip/check", form, { headers: { "Content-Type": "multipart/form-data" } });
     return data;
