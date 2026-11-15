@@ -85,7 +85,21 @@ CASES = {
     "SDCM937": keyed("ADR6", COMM, FLGDEFAULT=["X", "X"], FLG_NOUSE=["", "X"]),
     "SDCM938": keyed("KNBK", {"KUNNR": ["OK", "BAD"], "BANKS": ["ZA"] * 2, "BANKL": ["250655"] * 2},
                      BANKN=["123", "456"], KOINH=["Acme", ""]),
+    "SDCM943": kna1(XCPDK=["", "X"], CCC01=["X", ""], CCC02=["", ""], CCC03=["", "X"], CCC04=["", ""]),
+    "SDCM944": kna1(DEAR6=["X", "X"], STKZN=["X", ""]),
+    "SDCM945": kna1(XCPDK=["X", "X"], KONZS=["", "GRP1"]),
+    "SDCM946": {**kna1(BEGRU=["A1", "A1"]), **keyed("KNB1", KNB1, BEGRU=["A1", "B2"])},
+    "SDCM947": {**kna1(BEGRU=["A1", ""]), **keyed("KNVV", KNVV, BEGRU=["A1", "B2"])},
+    "SDCM949": keyed("KNKK", KNKK, CRBLB=["X", "X"], NXTRV=[_day(30), ""]),
 }
+
+
+def test_sdcm948_one_employee_two_customers_flags_both():
+    rule = {**next(r for r in module_rules(M) if r["id"] == "SDCM948"), "module": M}
+    frames = keyed("KNB1", {"KUNNR": ["A", "B", "C", "D"], "BUKRS": ["1000"] * 4}, PERNR=["100", "100", "200", ""])
+    _, res = run_rule(rule, TableFrames(frames, D, module=M))
+    assert res.error is None, res.error
+    assert (res.total_count, res.affected_count) == (3, 2)
 
 
 @pytest.mark.parametrize("check_id", list(CASES))
