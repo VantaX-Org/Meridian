@@ -10,6 +10,7 @@ import { Button, Chip, SegmentedControl, useToast } from "../kit";
 import { useSheets } from "../shell/SheetHost";
 import { LegacyMount } from "../shell/LegacyMount";
 import { failureText } from "@/lib/v2/errors";
+import { useOpenItem } from "@/lib/v2/hooks";
 import { ListSearch, LongText, QueryView, VirtualList } from "./states";
 import { FilesCard, SchedulesCard } from "./cards";
 
@@ -53,13 +54,15 @@ function Schedules() {
     return n ? items.filter((s) => `${s.name} ${s.summary}`.toLowerCase().includes(n)) : items;
   }, [items, find]);
   const status = { sent: t("Sent"), running: t("Running"), partial: t("Partly sent"), failed: t("Failed"), skipped: t("Skipped") };
+  const { openItem } = useOpenItem();
   return (
     <QueryView loading={q.isLoading} error={q.error} onRetry={() => void q.refetch()} empty={items.length === 0} emptyHeading={t("Nothing is scheduled")} emptyText={t("Schedule a report and it arrives on its own.")} label={t("Loading schedules")}>
       <ListSearch value={find} onChange={setFind} label={t("Search schedules")} />
       {shown.length === 0 ? <p className="nx-sub">{t("No schedule matches this search.")}</p> : (
         <VirtualList rows={shown} rowKey={(s) => s.id} label={t("Schedules")} render={(s) => (
           <div className="nx-row">
-            <LongText text={s.name} className="nx-row-main" />
+            {/* The name opens the schedule's inspector: pause, resume, run now, edit. */}
+            <button type="button" className="nx-link nx-linkbtn nx-row-main" onClick={() => openItem({ kind: "schedule", id: s.id })}><LongText text={s.name} /></button>
             <LongText text={s.summary} className="nx-sub" />
             {s.enabled ? null : <Chip>{t("Paused")}</Chip>}
             {s.last_status ? <Chip tone={STATUS_TONE[s.last_status]}>{status[s.last_status]}</Chip> : null}

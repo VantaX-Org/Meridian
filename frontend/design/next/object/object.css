@@ -10,6 +10,7 @@
 .nx-details summary { cursor: pointer; color: var(--nx-ink-2); }
 .nx-details[open] summary { margin-block-end: var(--nx-s2); }
 .nx-link { color: var(--nx-accent); text-underline-offset: 2px; }
+.nx-linkbtn { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-align: start; min-width: 0; }
 .nx-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--nx-s3); }
 .nx-actions { display: flex; flex-wrap: wrap; gap: var(--nx-s2); align-items: center; }
 .nx-pager { display: flex; gap: var(--nx-s3); align-items: center; justify-content: flex-end; flex-wrap: wrap; }

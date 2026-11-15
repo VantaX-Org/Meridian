@@ -16,6 +16,9 @@ import { ObjectBar } from "../object/ObjectBar";
 import { useObjectRun } from "../object/useObjectRun";
 import { MORE, SEGMENTS, renderTab, tabLabel, type TabId } from "../object/tabs";
 import { LegacyScope } from "../shell/LegacyMount";
+import { OldRunBand } from "@/design/v2/RunParts";
+import { useObjectRun as useRunSpine } from "@/lib/v2/scope";
+import { useTimeline } from "@/lib/v2/runs-queries";
 import { withSheets } from "@/lib/next/sheet";
 import { ANY_SYSTEM, moduleFromSlug, systemForModule, systemSlug } from "@/lib/v2/score";
 import "../object/object.css";
@@ -121,8 +124,20 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
         className="nx-opanel"
         tabIndex={-1}
       >
-        <LegacyScope>{renderTab(tab, o, go)}</LegacyScope>
+        <LegacyScope>
+          {/* An older run on screen says so, with the way back to the current one. */}
+          <OldRun systemId={o.systemId} module={o.module} system={o.systemName} />
+          {renderTab(tab, o, go)}
+        </LegacyScope>
       </section>
     </div>
   );
+}
+
+/** The band over an older run: read from the run timeline, which also knows runs older than the loaded page of heads. */
+function OldRun({ systemId, module, system }: { systemId: string | null; module: string; system: string }) {
+  const spine = useRunSpine(systemId, module);
+  const runs = useTimeline(systemId, 50, module).data?.runs ?? [];
+  if (spine.isLatest || !runs.length) return null;
+  return <OldRunBand shown={spine.chip} system={system} latest={runs[runs.length - 1]} />;
 }

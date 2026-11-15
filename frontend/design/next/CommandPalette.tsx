@@ -10,7 +10,9 @@ import { useV2Href, useRunParam, useV2Session } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
 import { useVersionsPage } from "@/lib/v2/runs-queries";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
-import { placeIndex } from "@/design/v2/CommandLine";
+import { NlPanel, placeIndex } from "@/design/v2/CommandLine";
+import { nlQuestion, nlTarget } from "@/lib/v2/step10";
+import { useNl } from "@/lib/v2/step10-queries";
 import { PATHS, redirectFor } from "@/lib/next/nav-defaults";
 import { withSheets } from "@/lib/next/sheet";
 import { t, tx } from "@/lib/v2/i18n";
@@ -50,6 +52,16 @@ export function NextPalette({ open, onClose }: { open: boolean; onClose: () => v
     placeholderData: keepPreviousData,
     staleTime: 10_000,
   }).data?.groups;
+
+  // Natural language mode: a leading ? asks in a sentence and shows the filter that will run before it runs.
+  const question = nlQuestion(debounced);
+  const nlMode = q.trimStart().startsWith("?");
+  const nl = useNl(question ?? "", nlMode && Boolean(question));
+  const openNl = () => {
+    if (!nl.data) return;
+    onClose();
+    router.push(href(nlTarget(nl.data)));
+  };
 
   const groups = useMemo<CommandGroup[]>(() => {
     const out: CommandGroup[] = (debounced ? found ?? [] : []).map((g, i) => ({
@@ -93,5 +105,10 @@ export function NextPalette({ open, onClose }: { open: boolean; onClose: () => v
     // eslint-disable-next-line react-hooks/exhaustive-deps -- go closes over router and href only
   }, [can, L, runs, pathname, sp, href, router, debounced, found]);
 
-  return <KitPalette open={open} onClose={onClose} groups={groups} label={t("Search, ask, or type a command")} onQuery={setQ} />;
+  return (
+    <KitPalette
+      open={open} onClose={onClose} groups={groups} label={t("Search, ask, or type a command")} onQuery={setQ}
+      ask={{ panel: <NlPanel question={question} answer={nl.data} pending={nl.isFetching} failed={nl.isError} onOpen={openNl} />, onEnter: openNl }}
+    />
+  );
 }

@@ -18,6 +18,7 @@ import { V2Link } from "@/design/v2/parts";
 import { Button, Chip, DataTable, useToast, type Column } from "../kit";
 import { ListSearch, QueryView } from "./states";
 import { PeopleCard } from "./cards";
+import { sentenceOf } from "@/design/v2/screens/People";
 
 const num = (a: number | null, b: number | null): number => (a ?? -1) - (b ?? -1);
 const lastAt = (p: Person): number | null => (p.last_action_at ? Date.parse(p.last_action_at) : null);
@@ -133,6 +134,7 @@ export function People() {
     <div className="nx-body" data-testid="people-page">
       <QueryView loading={q.isLoading} error={q.error} onRetry={() => void q.refetch()} empty={people.length === 0} emptyHeading={t("No people yet")} emptyText={t("Nobody owns an object or holds work yet. Set an owner on an object, or assign records, and people appear here with their open work.")} label={t("Loading people")}>
         <div className="nx-chartcards"><PeopleCard /></div>
+        <p className="nx-sub" data-testid="people-sentence">{sentenceOf(people)}</p>
         <div className="nx-row nx-wrap" data-testid="people-actions">
           {worst ? (
             <V2Link href={overdueHref(worst.id)} className="nx-btn nx-btn-primary" data-testid="people-next">

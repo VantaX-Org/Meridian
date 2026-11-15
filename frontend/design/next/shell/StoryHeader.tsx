@@ -13,6 +13,8 @@ import { Popover } from "../kit/Popover";
 import { useSheets } from "./SheetHost";
 import { useStatusPage } from "@/lib/v2/enterprise-queries";
 import { overallWord } from "@/lib/v2/status";
+import { useUnread } from "@/lib/v2/approvals-queries";
+import { int } from "@/lib/v2/score";
 
 const PERSONAS: V2Persona[] = ["lead", "steward", "basis", "owner", "process", "admin", "analyst", "auditor", "viewer"];
 
@@ -51,6 +53,7 @@ function AccountMenu({ onShortcuts }: { onShortcuts: () => void }) {
         {canAdminister(session.can) ? (
           <Link role="menuitem" className="nx-pop-item" href="/admin" onClick={() => setOpen(false)}>{t("Administration")}</Link>
         ) : null}
+        <button type="button" role="menuitem" className="nx-pop-item" onClick={pick(() => openItem({ kind: "triage", id: "" }))}>{t("Triage and SLA")}</button>
         <button type="button" role="menuitem" className="nx-pop-item" onClick={pick(onShortcuts)}>{t("Shortcuts")}</button>
         <button type="button" role="menuitem" className="nx-pop-item" onClick={pick(() => openItem({ kind: "help", id: "" }))}>{t("Help")}</button>
         {session.fixture ? (
@@ -79,6 +82,20 @@ function HealthWord() {
   );
 }
 
+/** The unread count; opens the inbox panel (Today and Earlier, mark read), as the old top bar did. */
+function InboxButton() {
+  const unread = useUnread().data;
+  const { open, openItem, close } = useOpenItem();
+  const inbox = unread ? int(unread.count) : "\u2014";
+  const on = open?.kind === "inbox";
+  return (
+    <button type="button" className="nx-header-btn" aria-haspopup="dialog" aria-expanded={on} aria-label={t("Inbox {inbox}, unread", { inbox })} onClick={() => (on ? close() : openItem({ kind: "inbox", id: "" }))}>
+      <Icon name="inbox" size={16} />
+      <span className="nx-header-label">{t("Inbox")} <b>{inbox}</b></span>
+    </button>
+  );
+}
+
 /** The 56 px glass bar: wordmark, the title slot a collapsed large title fills, search, Ask Aletheia, account. */
 export function StoryHeader({ onShortcuts }: { onShortcuts: () => void }) {
   const name = productName(useTenantTheme());
@@ -90,6 +107,7 @@ export function StoryHeader({ onShortcuts }: { onShortcuts: () => void }) {
       <div id="nx-title-slot" className="nx-title-slot" />
       <div className="nx-header-r">
         <HealthWord />
+        <InboxButton />
         <button type="button" id="nx-search" className="nx-header-btn" aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" aria-label={t("Search, ask, or type a command")} onClick={() => sheets.open({ kind: "command", id: "" })}>
           <Icon name="search" size={16} />
           <span className="nx-header-label">{t("Search")}</span>

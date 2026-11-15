@@ -17,6 +17,7 @@ const SIZES = [
   { name: "390", width: 390, height: 844 },
 ] as const;
 const SCHEMES = ["light", "dark"] as const;
+// Admin pages live under More; going straight there avoids the client redirect drawing the page twice mid-test.
 const NAV = { timeout: 90_000 };
 
 const OBJECT = "/o/ecc-production/material-master";
@@ -63,11 +64,11 @@ for (const size of SIZES) {
 
       test("policy packs: the Admin section, the pack inspector, the mark and the receipt", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/admin/policypacks?fixture=1", { waitUntil: "load" });
+        await page.goto("/more/admin/policypacks?fixture=1", { waitUntil: "load" });
         await expect(page.getByTestId("pack-sox")).toContainText("Applied 5 Oct 2026 by R. Govender", NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "policy-packs");
-        await page.goto("/admin/policypacks?fixture=1&open=policypack:sox", { waitUntil: "load" });
+        await page.goto("/more/admin/policypacks?fixture=1&open=policypack:sox", { waitUntil: "load" });
         await expect(page.getByTestId("class-vendor_bank")).toContainText("Breached", NAV);
         await shot(page, "policy-pack");
         await page.goto(`${OBJECT}/rules?fixture=1`, { waitUntil: "load" });
@@ -76,7 +77,8 @@ for (const size of SIZES) {
         expect(await noSideways(page)).toBe(true);
         await shot(page, "receipt-policy");
         if (size.width >= 500) {
-          await page.goto("/?fixture=1", { waitUntil: "load" });
+          // The coverage matrix lives on the landscape, under More.
+          await page.goto("/more/landscape?fixture=1", { waitUntil: "load" });
           await expect(page.getByTestId("coverage-matrix").getByTestId("policy-mark").first()).toBeVisible(NAV);
           await shot(page, "matrix-policy");
         }
@@ -92,14 +94,14 @@ for (const size of SIZES) {
 
       test("digests: the Admin section, a new digest, Send now and the preview", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/admin/digests?fixture=1", { waitUntil: "load" });
+        await page.goto("/more/admin/digests?fixture=1", { waitUntil: "load" });
         await expect(page.getByRole("list", { name: "Digests" })).toContainText("Monday leadership digest", NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "digests");
-        await page.goto("/admin/digests?fixture=1&open=digest:new", { waitUntil: "load" });
+        await page.goto("/more/admin/digests?fixture=1&open=digest:new", { waitUntil: "load" });
         await page.getByTestId("digest-form").getByRole("button", { name: "A migration wave" }).click(NAV);
         await shot(page, "digest-new");
-        await page.goto("/admin/digests?fixture=1&open=digest:dg-1", { waitUntil: "load" });
+        await page.goto("/more/admin/digests?fixture=1&open=digest:dg-1", { waitUntil: "load" });
         await page.getByRole("button", { name: "Send now" }).click(NAV);
         await expect(page.getByTestId("action-result")).toContainText("Digest sent", NAV);
         await shot(page, "digest");
@@ -117,7 +119,7 @@ for (const size of SIZES) {
         await expect(page.getByTestId("sandbox-banner")).toContainText("Sandbox: nothing leaves this deployment.", NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "sandbox-banner");
-        await page.goto("/admin/settings?fixture=1#sandbox", { waitUntil: "load" });
+        await page.goto("/more/admin/settings?fixture=1#sandbox", { waitUntil: "load" });
         const block = page.getByRole("region", { name: "Sandbox mode" });
         await block.getByRole("switch", { name: "Enter sandbox mode" }).click(NAV);
         await page.getByRole("dialog", { name: "Enter sandbox mode" }).getByRole("button", { name: "Copy the latest run and enter" }).click();
@@ -165,7 +167,7 @@ for (const size of SIZES) {
 
       test("prediction: the start forms and a queued job", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/admin/runs?fixture=1", { waitUntil: "load" });
+        await page.goto("/more/admin/runs?fixture=1", { waitUntil: "load" });
         const ext = page.getByRole("region", { name: "Start an extraction" });
         // The form can draw again once the systems list lands; tick until the prediction shows.
         await expect(async () => {
@@ -175,16 +177,21 @@ for (const size of SIZES) {
         const p = ext.getByTestId("run-prediction");
         await expect(p.getByTestId("prediction-queue")).toContainText("Starts next", NAV);
         await expect(p.getByTestId("prediction-cost")).toContainText("ZAR");
-        await p.scrollIntoViewIfNeeded();
+        // The form can still draw again here; retry the scroll until it holds.
+        await expect(async () => p.scrollIntoViewIfNeeded({ timeout: 5_000 })).toPass(NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "prediction-admin");
         await page.goto("/runs?fixture=1&queue=busy", { waitUntil: "load" });
-        await page.getByRole("button", { name: "Start a run" }).click(NAV);
-        await expect(page.getByTestId("start-run").getByTestId("prediction-queue")).toContainText("Position 3 in the queue", NAV);
+        await page.getByRole("button", { name: "Start a run" }).first().click(NAV);
+        // The start is a sheet now: the prediction shows once a source system is chosen.
+        const sheet = page.getByTestId("run-sheet");
+        await sheet.getByRole("combobox", { name: "Source system" }).selectOption({ index: 1 }, NAV);
+        await expect(sheet.getByTestId("prediction-queue")).toContainText("Position 3 in the queue", NAV);
         await shot(page, "prediction-runs");
         await page.goto("/runs?fixture=1&job=queued&open=job:an-q0000000-0000-4000-8000-0000000000q1", { waitUntil: "load" });
         await expect(page.getByTestId("inspector")).toContainText("Position 2 in the queue", NAV);
-        await expect(page.getByTestId("job-line")).toContainText("queued, position 2");
+        // The job line is the hairline under the header in the new shell.
+        await expect(page.getByTestId("job-hairline")).toContainText("queued, position 2");
         await shot(page, "job-queued");
       });
 

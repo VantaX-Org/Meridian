@@ -169,7 +169,8 @@ for (const size of SIZES) {
         await expect(page.getByTestId("pin-refusal")).toContainText("This run breaches an enforced data contract", NAV);
         await shot(page, "pin-refused");
         if (size.width >= 500) {
-          await page.goto("/?fixture=1", { waitUntil: "load" });
+          // The coverage matrix lives on the landscape, under More.
+          await page.goto("/more/landscape?fixture=1", { waitUntil: "load" });
           await expect(page.getByTestId("coverage-matrix").getByTestId("contract-mark").first()).toBeVisible(NAV);
           await shot(page, "matrix-mark");
         }

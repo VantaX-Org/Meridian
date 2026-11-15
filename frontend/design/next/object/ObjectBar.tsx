@@ -101,7 +101,8 @@ export function ObjectBar({ o, cycle, downloads }: { o: ObjectRun; cycle: Object
           <Button variant="secondary" size={32} onClick={() => open({ kind: "cycle", id: step })}>{t("Try again")}</Button>
         </div>
       ) : null}
-      {stale && newest ? (
+      {/* A run outside the loaded heads has no number here; the old-run band under the tabs names it instead. */}
+      {stale && newest && o.run ? (
         <div className="nx-banner" role="status" data-testid="run-stale">
           <span>{t("A newer run exists: run {n}. You are looking at run {m}.", { n: newest.run_number ?? "", m: o.run?.run_number ?? "" })}</span>
           <Button variant="secondary" size={32} onClick={() => o.setRun(newest.id)}>{t("Show run {n}", { n: newest.run_number ?? "" })}</Button>

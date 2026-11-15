@@ -17,6 +17,7 @@ const SIZES = [
   { name: "390", width: 390, height: 844 },
 ] as const;
 const SCHEMES = ["light", "dark"] as const;
+// People lives at /more/people in the glass shell; the old /people address redirects on the client, which re-renders the page.
 const NAV = { timeout: 90_000 };
 
 async function prepare(page: Page, scheme: "light" | "dark") {
@@ -51,24 +52,18 @@ for (const size of SIZES) {
 
       test("the People canvas: the table, the caller's row first and marked", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/more/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("People", NAV);
         await expect(page.getByTestId("people-sentence")).toContainText("2 batches wait for your approval", NAV);
-        if (phone) {
-          const list = page.getByRole("list", { name: "People" });
-          await expect(list.getByRole("listitem").first()).toContainText("Demo user");
-          await expect(list.getByRole("listitem").first()).toContainText("you");
-          await expect(list.getByRole("listitem")).toHaveCount(7); // six people and the unassigned open records
-        } else {
-          const table = page.getByRole("table", { name: "People" });
-          await expect(table).toBeVisible(NAV);
-          await expect(table.getByRole("columnheader")).toHaveCount(8);
-          const first = table.getByRole("row").nth(1);
-          await expect(first).toContainText("Demo user");
-          await expect(first).toContainText("you");
-          await expect(table.getByRole("row").nth(2)).toContainText("A. Naidoo");
-        }
+        // The glass shell keeps the one sortable table at every width (it scrolls inside its frame on a phone).
+        const table = page.getByRole("table", { name: "People" });
+        await expect(table).toBeVisible(NAV);
+        await expect(table.getByRole("columnheader")).toHaveCount(8);
+        const first = table.getByRole("row").nth(1);
+        await expect(first).toContainText("Demo user");
+        await expect(first).toContainText("you");
+        await expect(table.getByRole("row").nth(2)).toContainText("A. Naidoo");
         expect(await noSideScroll(page)).toBe(true);
         await page.waitForLoadState("networkidle");
         await shot(page, "people-canvas");
@@ -77,7 +72,7 @@ for (const size of SIZES) {
 
       test("a person opens in the inspector: facts, objects, work, waiting approvals, Reassign…", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/people?fixture=1&persona=owner&open=person%3Au-tm", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/more/people?fixture=1&persona=owner&open=person%3Au-tm", { waitUntil: "load", timeout: 90_000 });
         const insp = page.getByTestId("inspector");
         await expect(insp.getByRole("heading", { level: 2, name: "T. Mokoena" })).toBeVisible(NAV);
         await expect(insp.getByTestId("person-approvals").getByRole("listitem")).toHaveCount(3, NAV);
@@ -168,7 +163,7 @@ for (const size of SIZES) {
 
       test("the inbox panel: Today and Earlier, mark read, the count follows", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/more/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
         await page.getByRole("button", { name: "Inbox 7, unread" }).click();
         const panel = page.getByTestId("inbox-panel");
         await expect(panel.getByRole("heading", { name: "Today" })).toBeVisible(NAV);
@@ -183,7 +178,7 @@ for (const size of SIZES) {
 
       test("triage and SLA from the account menu", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/more/people?fixture=1&persona=owner", { waitUntil: "load", timeout: 90_000 });
         await page.getByRole("button", { name: /^Account/ }).click();
         await page.getByRole("menuitem", { name: "Triage and SLA" }).click();
         const insp = page.getByTestId("inspector");

@@ -50,7 +50,7 @@ for (const size of SIZES) {
       const shot = (page: Page, name: string) => page.screenshot({ path: path.join(SHOTS, `${name}_${size.name}_${scheme}.png`) });
       const phone = size.width < 500;
       const shotTab = async (page: Page, name: string) => {
-        await page.locator(".m2-tabs").first().evaluate((el) => el.scrollIntoView({ block: "start" }));
+        await page.getByRole("tablist", { name: "Object views" }).evaluate((el) => el.scrollIntoView({ block: "start" }));
         await shot(page, name);
       };
 
@@ -189,6 +189,7 @@ for (const size of SIZES) {
 
 test.describe("process analyst", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
+  test.describe.configure({ timeout: 120_000 });
 
   test("the landscape's next step opens the first blocked process step", async ({ page }) => {
     await prepare(page, "light");

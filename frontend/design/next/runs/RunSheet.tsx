@@ -14,6 +14,7 @@ import { startRun, useRunsPage, useTemplatesFor } from "@/lib/api/next/runs";
 import type { DownloadScope } from "@/lib/api/system-objects";
 import { Button, EmptyState, ErrorState, Sheet, Skeleton, useToast } from "../kit";
 import { clearDraft, loadDraft, saveDraft } from "./draft";
+import { RunForecast } from "@/design/v2/screens/step10/Prediction";
 import "./runs.css";
 
 export interface RunDraft {
@@ -272,6 +273,8 @@ export function RunSheet({ step, setStep, close, under }: { step: number; setSte
             <p className="nx-rs-note">{t("Aletheia checks the run once it is scored.")}</p>
           </div>
         )}
+        {/* How long, how many records, what it costs and where it queues, before it is started (GET /runs/predict). */}
+        {draft.system && draft.when === "now" ? <RunForecast systemId={draft.system} modules={draft.objects} delta={draft.delta} what="extraction" /> : null}
       </div>
     </Sheet>
   );

@@ -93,7 +93,7 @@ for (const size of SIZES) {
         await block.getByRole("button", { name: "Save the appearance" }).click();
         await expect(block.getByText("Appearance saved")).toBeVisible(NAV);
         await expect(page.locator(".m2-root")).toHaveAttribute("data-tenant-accent", "");
-        await expect(page.getByRole("link", { name: "Acme Data Quality, go to the landscape" })).toBeAttached();
+        await expect(page.getByRole("link", { name: "Acme Data Quality", exact: true }) /* the wordmark in the top bar carries the saved product name */).toBeAttached();
         const data = await page.locator(".m2-root").evaluate((el) => getComputedStyle(el).getPropertyValue("--m2-data").trim().toLowerCase());
         expect(data).toBe(scheme === "light" ? "#0b5d4b" : data);
         await page.screenshot({ path: path.join(SHOTS, `admin-appearance-applied_${size.name}_${scheme}.png`) });
