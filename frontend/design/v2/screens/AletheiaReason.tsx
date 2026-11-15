@@ -25,7 +25,7 @@ const metricName = (d: Reason, m: string) => <Coded code={m} text={m.startsWith(
 
 function useReason() {
   const fixture = useFixture();
-  return useQuery({ queryKey: ["aletheia", "reason", fixture], queryFn: getReason, staleTime: 60_000, retry });
+  return useQuery({ queryKey: ["aletheia", "reason", fixture], queryFn: () => getReason(), staleTime: 60_000, retry });
 }
 
 function AnomalyPanel({ q }: { q: ReturnType<typeof useReason> }) {

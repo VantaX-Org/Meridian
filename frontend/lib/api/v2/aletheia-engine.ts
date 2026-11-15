@@ -93,7 +93,8 @@ export interface Reason {
   engine: { available: boolean; reason?: EngineOffReason | null; anomalies: Anomaly[]; risks: CausalRisk[]; evidence: Evidence };
 }
 
-export const getReason = () => v2Get<Reason>("/aletheia/reason", { limit: 12 });
+/** Reasoning over the tenant's run history; narrow it to one run (version_id) or one system (system_id). Aggregates only. */
+export const getReason = (p: { version_id?: string; system_id?: string } = {}) => v2Get<Reason>("/aletheia/reason", { limit: 12, ...p });
 
 /** Pattern counts over a rule's listed failing values (shape masks such as "AA9", never a value itself). */
 export interface CleaningPattern { listed: number; blank: number; masks: { mask: string; count: number }[]; leading_ws: number; trailing_ws: number; inner_ws: number; case: Record<string, number> }

@@ -93,6 +93,7 @@ from api.routes.business_process import router as business_process_router
 from api.routes.events import router as events_router
 from api.routes.jobs import router as jobs_router
 from api.routes.schedules import router as schedules_router
+from api.routes.automation_chain import router as automation_chain_router
 from api.routes.simulation import router as simulation_router
 from api.routes.simulate import router as simulate_router
 from api.routes.wave_certificates import router as wave_certificates_router
@@ -577,6 +578,7 @@ app.include_router(auth_router)
 from api.routes.auth_oidc import admin_router as sso_admin_router, router as auth_oidc_router
 app.include_router(auth_oidc_router)
 app.include_router(sso_admin_router)
+app.include_router(automation_chain_router)
 
 from api.openapi_meta import install as _install_openapi
 
