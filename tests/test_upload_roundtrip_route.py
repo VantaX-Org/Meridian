@@ -269,11 +269,21 @@ def test_nothing_matching_marks_the_new_run_failed(env):
     assert env.dropped == []  # stopped before any copy was written
 
 
-def test_run_that_has_not_finished_or_is_not_an_extraction_is_refused(env):
+def test_run_that_has_not_finished_or_has_no_stored_data_is_refused(env):
     env.db.row = _row(status="running")
     assert _post(env, _good()).status_code == 409
-    env.db.row = _row(path="uploads/file.parquet")
+    env.db.row = _row(path="")
     assert _post(env, _good()).status_code == 422
+
+
+def test_run_from_a_file_upload_takes_an_edited_file_as_one_flat_copy(env):
+    """Audit item 9: a file upload's run stores one parquet object; its cleaned copy is one object too."""
+    env.db.row = _row(path="staging/x/upload.parquet")
+    r = _post(env, _good())
+    assert r.status_code == 200, r.text
+    parent, prefix, _ = env.applied_with[0]
+    assert parent == "staging/x/upload.parquet" and prefix == f"staging/{TID}/{NEW}.parquet"
+    assert env.enqueued == [prefix]
 
 
 def test_file_from_another_object_than_the_run_is_refused(env):

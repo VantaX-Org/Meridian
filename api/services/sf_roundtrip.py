@@ -356,7 +356,6 @@ def apply_edits(parent_prefix: str, new_prefix: str, edits: list[dict], dictiona
 
     from api.config import settings
     from api.services.storage import get_minio_client, list_prefix, upload_file
-    from checks.base import record_keys
 
     from minio.commonconfig import CopySource
 
@@ -368,6 +367,31 @@ def apply_edits(parent_prefix: str, new_prefix: str, edits: list[dict], dictiona
     out: dict[str, Any] = {"applied": 0, "unchanged": 0, "unmatched": [], "no_table": sorted(set(by_table)), "no_field": [],
                            "edited": [], "conflicts": []}
     field_of = getattr(dictionary, "field", None)
+
+    def read(name: str):
+        resp = client.get_object(bucket, name)
+        try:
+            return pd.read_parquet(io.BytesIO(resp.read()))
+        finally:
+            resp.close()
+
+    def save(df, target: str) -> None:
+        if dry:  # a check run: nothing is written
+            return
+        buf = io.BytesIO()
+        df.to_parquet(buf, index=False)
+        upload_file(bucket, target, buf.getvalue(), "application/octet-stream")
+
+    if parent_prefix.endswith(".parquet"):
+        # a file upload: one flat object with TABLE.FIELD columns, written back as one object at new_prefix
+        df = read(parent_prefix)
+        for flat_table in sorted(by_table):
+            if any(c.startswith(f"{flat_table}.") for c in df.columns):
+                out["no_table"].remove(flat_table)
+                _edit_table(df, flat_table, by_table[flat_table], dictionary, field_of, conflicts, out)
+        save(df, new_prefix)
+        return _totals(out, edits)
+
     objects = list_prefix(bucket, parent_prefix)
     if not any(n.endswith(".parquet") for n, _ in objects):
         raise RoundTripError("The run has no extracted tables to edit.")
@@ -379,55 +403,60 @@ def apply_edits(parent_prefix: str, new_prefix: str, edits: list[dict], dictiona
                 client.copy_object(bucket, target, CopySource(bucket, name))
             continue
         out["no_table"].remove(table)
-        resp = client.get_object(bucket, name)
-        try:
-            df = pd.read_parquet(io.BytesIO(resp.read()))
-        finally:
-            resp.close()
-        col = lambda f: next((c for c in (f"{table}.{f}", f) if c in df.columns), None)  # noqa: E731
-        key_cols = [c for c in (col(k) for k in dictionary.keys(table)) if c]
-        index: dict[str, list[int]] = {}
-        for i, k in enumerate(record_keys(df, key_cols)):
-            index.setdefault(k, []).append(i)
-        for e in by_table[table]:
-            c = col(e["field"])
-            if c is None:
-                if e["field"] not in out["no_field"]:
-                    out["no_field"].append(e["field"])
-                continue
-            rows = index.get(e["key"])
-            if not rows:
-                out["unmatched"].append({"table": table, "key": e["key"], "field": e["field"]})
-                continue
-            old = df[c].iloc[rows[0]]
-            old_text = "" if pd.isna(old) else _text(old)
-            meta = None
-            if field_of:
-                t, f = e["field"].split(".", 1) if "." in e["field"] else (table, e["field"])
-                meta = field_of(t, f)
-            value = normalise(e["value"], getattr(meta, "type", None), getattr(meta, "length", 0) or 0, old_text,
-                              getattr(meta, "conversion_exit", None) == "ALPHA")
-            if old_text == value:
-                out["unchanged"] += 1
-                continue
-            if (table, e["key"], e["field"]) in conflicts:
-                out["conflicts"].append({"table": table, "key": e["key"], "field": e["field"], "value": value,
-                                         "current": old_text})
-                continue
-            _write(df, rows, c, value)
-            out["applied"] += len(rows)
-            out["edited"].append({"table": table, "key": e["key"], "field": e["field"]})
-        if dry:  # a check run: nothing is written
-            continue
-        buf = io.BytesIO()
-        df.to_parquet(buf, index=False)
-        upload_file(bucket, target, buf.getvalue(), "application/octet-stream")
+        df = read(name)
+        _edit_table(df, table, by_table[table], dictionary, field_of, conflicts, out)
+        save(df, target)
+    return _totals(out, edits)
+
+
+def _totals(out: dict, edits: list[dict]) -> dict:
     out["total"] = len(edits)
     out["unmatched_total"] = len(out["unmatched"])
     out["unmatched"] = out["unmatched"][:200]
     out["conflicts_total"] = len(out["conflicts"])
     out["conflicts"] = out["conflicts"][:200]
     return out
+
+
+def _edit_table(df, table: str, edits: list[dict], dictionary, field_of, conflicts, out: dict) -> None:
+    """Write one table's edits into ``df`` in place, counting each into ``out``."""
+    import pandas as pd
+
+    from checks.base import record_keys
+
+    col = lambda f: next((c for c in (f"{table}.{f}", f) if c in df.columns), None)  # noqa: E731
+    key_cols = [c for c in (col(k) for k in dictionary.keys(table)) if c]
+    index: dict[str, list[int]] = {}
+    for i, k in enumerate(record_keys(df, key_cols)):
+        index.setdefault(k, []).append(i)
+    for e in edits:
+        column = col(e["field"])
+        if column is None:
+            if e["field"] not in out["no_field"]:
+                out["no_field"].append(e["field"])
+            continue
+        rows = index.get(e["key"])
+        if not rows:
+            out["unmatched"].append({"table": table, "key": e["key"], "field": e["field"]})
+            continue
+        old = df[column].iloc[rows[0]]
+        old_text = "" if pd.isna(old) else _text(old)
+        meta = None
+        if field_of:
+            t, f = e["field"].split(".", 1) if "." in e["field"] else (table, e["field"])
+            meta = field_of(t, f)
+        value = normalise(e["value"], getattr(meta, "type", None), getattr(meta, "length", 0) or 0, old_text,
+                          getattr(meta, "conversion_exit", None) == "ALPHA")
+        if old_text == value:
+            out["unchanged"] += 1
+            continue
+        if (table, e["key"], e["field"]) in conflicts:
+            out["conflicts"].append({"table": table, "key": e["key"], "field": e["field"], "value": value,
+                                     "current": old_text})
+            continue
+        _write(df, rows, column, value)
+        out["applied"] += len(rows)
+        out["edited"].append({"table": table, "key": e["key"], "field": e["field"]})
 
 
 def drop_staging(prefix: str) -> None:
