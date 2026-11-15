@@ -8,7 +8,7 @@ import { EmptyState, Tabs } from "../kit";
 import { GROUPS, SINGLES, TILES } from "../more/groups";
 import { MoreCards } from "../more/cards";
 import { Rules } from "../more/Rules";
-import { RuleBody } from "../more/RuleSheet";
+import { RuleCanvas } from "@/design/v2/screens/Rule";
 import { Reports } from "../more/Reports";
 import { Systems } from "../more/Systems";
 import { SystemPage } from "../more/SystemPage";
@@ -64,7 +64,7 @@ export function More({ slug }: { slug?: string[] }) {
 
   if (a === "rules" && slug!.length <= 2) {
     return b
-      ? <Frame title={t("Rule")} back={{ to: "/more/rules", label: t("Rules") }}><RuleBody id={b} /></Frame>
+      ? <Frame title={t("Rule")} back={{ to: "/more/rules", label: t("Rules") }}><LegacyMount><RuleCanvas id={decodeURIComponent(b)} /></LegacyMount></Frame>
       : <Frame title={t("Rules")}><Rules /></Frame>;
   }
   if (key === "reports") return <Frame title={t("Reports")}><Reports /></Frame>;

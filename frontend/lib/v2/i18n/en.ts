@@ -6,6 +6,7 @@
 export const en = {
   "Go to": "Go to",
   "Landscape": "Landscape",
+  "Every system and object at its newest run, with your next step.": "Every system and object at its newest run, with your next step.",
   "Work": "Work",
   "Runs": "Runs",
   "People": "People",

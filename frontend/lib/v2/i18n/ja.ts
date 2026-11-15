@@ -7,6 +7,7 @@ import type { MessageKey } from "./en";
 export const ja: Readonly<Record<MessageKey, string>> = {
   "Go to": "移動先",
   "Landscape": "ランドスケープ",
+  "Every system and object at its newest run, with your next step.": "すべてのシステムとオブジェクトの最新の実行と、次のステップ。",
   "Work": "作業",
   "Runs": "実行",
   "People": "担当者",

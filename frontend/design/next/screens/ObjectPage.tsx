@@ -5,7 +5,7 @@
  * `?run=`; both survive a reload and a shared link.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Denied, isDenied } from "../object/edge";
 import { Popover, Skeleton, ErrorState, EmptyState } from "@/design/next/kit";
 import { V2Link } from "@/design/v2/parts";
@@ -18,6 +18,7 @@ import { useObjectRun } from "../object/useObjectRun";
 import { MORE, SEGMENTS, renderTab, tabLabel, type TabId } from "../object/tabs";
 import { LegacyScope } from "../shell/LegacyMount";
 import { withSheets } from "@/lib/next/sheet";
+import { ANY_SYSTEM, moduleFromSlug, systemForModule, systemSlug } from "@/lib/v2/score";
 import "../object/object.css";
 
 const ID = "nx-object";
@@ -25,6 +26,7 @@ const ID = "nx-object";
 export function ObjectPage({ system, module, tab }: { system: string; module: string; tab: TabId }) {
   const router = useRouter();
   const params = useSearchParams();
+  const pathname = usePathname();
   const o = useObjectRun(system, module);
   const { cycle } = useObjectCycle(o.runId, o.module);
   const moreRef = useRef<HTMLButtonElement>(null);
@@ -74,7 +76,17 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  if (o.landscape.isLoading) return <div className="nx-object"><Skeleton lines={6} label={t("Loading the object")} /></div>;
+  // An address without its system (`/o/_/{module}`, from an old link or /objects/{module}): replace it with the system
+  // that holds the object.
+  const L = o.landscape.data;
+  const holder = system === ANY_SYSTEM && L ? systemForModule(L.systems, L.cells, moduleFromSlug(module)) : undefined;
+  useEffect(() => {
+    if (!holder) return;
+    const qs = params.toString();
+    router.replace(`${pathname.replace(`/o/${ANY_SYSTEM}/`, `/o/${systemSlug(holder.name)}/`)}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [holder, params, router, pathname]);
+
+  if (o.landscape.isLoading || holder) return <div className="nx-object"><Skeleton lines={6} label={t("Loading the object")} /></div>;
   if (o.landscape.isError && isDenied(o.landscape.error)) return <div className="nx-object"><Denied what={t("this object")} /></div>;
   if (o.landscape.isError) return <div className="nx-object"><ErrorState sentence={t("The object could not be loaded.")} error={o.landscape.error} onRetry={() => void o.landscape.refetch()} /></div>;
   if (!o.systemId) {

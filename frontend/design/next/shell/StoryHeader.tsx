@@ -11,6 +11,8 @@ import { t } from "@/lib/v2/i18n";
 import { Icon } from "../Icon";
 import { Popover } from "../kit/Popover";
 import { useSheets } from "./SheetHost";
+import { useStatusPage } from "@/lib/v2/enterprise-queries";
+import { overallWord } from "@/lib/v2/status";
 
 const PERSONAS: V2Persona[] = ["lead", "steward", "basis", "owner", "process", "admin", "analyst", "auditor", "viewer"];
 
@@ -65,6 +67,18 @@ function AccountMenu({ onShortcuts }: { onShortcuts: () => void }) {
   );
 }
 
+/** The platform's health in one word, a link to the status page; nothing shows until the status page has answered. */
+function HealthWord() {
+  const q = useStatusPage();
+  if (!q.data) return null;
+  const word = overallWord(q.data.status);
+  return (
+    <Link href="/status" className="nx-header-btn" data-testid="status-health" aria-label={t("Platform {statusWord}, open the status page", { statusWord: word })}>
+      {word}
+    </Link>
+  );
+}
+
 /** The 56 px glass bar: wordmark, the title slot a collapsed large title fills, search, Ask Aletheia, account. */
 export function StoryHeader({ onShortcuts }: { onShortcuts: () => void }) {
   const name = productName(useTenantTheme());
@@ -75,6 +89,7 @@ export function StoryHeader({ onShortcuts }: { onShortcuts: () => void }) {
       <Link href="/" className="nx-wordmark">{name}</Link>
       <div id="nx-title-slot" className="nx-title-slot" />
       <div className="nx-header-r">
+        <HealthWord />
         <button type="button" id="nx-search" className="nx-header-btn" aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" aria-label={t("Search, ask, or type a command")} onClick={() => sheets.open({ kind: "command", id: "" })}>
           <Icon name="search" size={16} />
           <span className="nx-header-label">{t("Search")}</span>

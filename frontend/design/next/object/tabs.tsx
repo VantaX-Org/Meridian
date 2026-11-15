@@ -15,6 +15,9 @@ import { FailingRecords } from "../report/FailingRecords";
 import { SteeringReport } from "../report/SteeringReport";
 import { LoadFilesPanel } from "../load/LoadFilesPanel";
 import type { ObjectRun } from "./useObjectRun";
+import { ReceiptTable } from "@/design/v2/screens/Object";
+import { useReceipt } from "@/lib/v2/queries";
+import { f1 } from "@/lib/v2/score";
 
 export const TAB_IDS = ["overview", "why", "fix", "records", "rules", "fixes", "runs", "readiness", "processes", "failing", "report", "golden", "glossary", "lineage", "profile", "cycle", "trend"] as const;
 export type TabId = (typeof TAB_IDS)[number];
@@ -55,9 +58,21 @@ export function renderTab(id: TabId, o: ObjectRun, go: (tab: TabId) => void): Re
     case "why": return <WhySection o={o} />;
     case "fix": return <FixSection o={o} />;
     case "runs": return <RunsTab o={o} onOpen={(run) => { o.setRun(run); go("overview"); }} />;
-    case "rules": return <ObjectRulesRoute />;
+    case "rules": return <><RulesReceipt o={o} /><ObjectRulesRoute /></>;
     case "failing": return <FailingRecords o={o} />;
     case "report": return <><SteeringReport o={o} /><LoadFilesPanel module={o.module} /></>;
     default: return <ObjectTabRoute tab={id} />;
   }
+}
+
+/** The receipt of the shown run above its rules: every dimension's weight, score, points, rules, records and coverage. */
+function RulesReceipt({ o }: { o: ObjectRun }) {
+  const r = useReceipt(o.module, o.runId).data;
+  if (!r) return null;
+  return (
+    <details className="m2-rdet" open>
+      <summary>{t("How {score} is made", { score: f1(r.score) })}</summary>
+      <ReceiptTable receipt={r} />
+    </details>
+  );
 }

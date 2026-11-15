@@ -12,11 +12,11 @@
 .nx-header-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--nx-s2); min-width: var(--nx-h-control); height: var(--nx-h-control); padding: 0 var(--nx-s3); background: transparent; border: 0; border-radius: var(--nx-r-pill); color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); cursor: pointer; text-decoration: none; }
 .nx-header-btn:hover { background: var(--nx-surface-2); color: var(--nx-ink); }
 .nx-header-btn:focus-visible, .nx-account-btn:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: 1px; }
-.nx-header-btn[aria-expanded="true"] { background: var(--nx-accent-soft); color: var(--nx-accent-ink); }
+.nx-header-btn[aria-expanded="true"] { background: var(--nx-accent-soft); color: var(--nx-ink); }
 .nx-header-label { white-space: nowrap; }
 .nx-account-btn { display: inline-flex; align-items: center; gap: var(--nx-s2); height: var(--nx-h-control); padding: 0 var(--nx-s2); background: transparent; border: 0; border-radius: var(--nx-r-pill); color: var(--nx-ink); font: inherit; font-size: var(--nx-fs-small); cursor: pointer; }
 .nx-account-btn:hover { background: var(--nx-surface-2); }
-.nx-avatar { flex: none; width: var(--nx-h-control-sm); height: var(--nx-h-control-sm); border-radius: var(--nx-r-pill); background: var(--nx-accent-soft); color: var(--nx-accent-ink); display: grid; place-items: center; font-size: var(--nx-fs-micro); font-weight: var(--nx-w-label); }
+.nx-avatar { flex: none; width: var(--nx-h-control-sm); height: var(--nx-h-control-sm); border-radius: var(--nx-r-pill); background: var(--nx-accent-soft); color: var(--nx-ink); display: grid; place-items: center; font-size: var(--nx-fs-micro); font-weight: var(--nx-w-label); }
 .nx-account-name { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Tabs: text pills under the header on a desktop, a fixed bar with glyphs on a phone. */
@@ -24,7 +24,7 @@
 .nx-stab { position: relative; display: inline-flex; align-items: center; gap: var(--nx-s2); height: var(--nx-h-control-sm); padding: 0 var(--nx-s4); border-radius: var(--nx-r-pill); color: var(--nx-ink-2); font-size: var(--nx-fs-small); font-weight: var(--nx-w-label); text-decoration: none; }
 .nx-stab:hover { background: var(--nx-surface-2); color: var(--nx-ink); }
 .nx-stab:focus-visible { outline: 2px solid var(--nx-focus); outline-offset: -2px; }
-.nx-stab[aria-current="page"] { background: var(--nx-accent-soft); color: var(--nx-accent-ink); }
+.nx-stab[aria-current="page"] { background: var(--nx-accent-soft); color: var(--nx-ink); }
 .nx-tab-glyph { display: none; flex: none; width: 1.5rem; height: 1.5rem; }
 .nx-stab-badge { min-width: 1.25rem; padding: 0 var(--nx-s1); text-align: center; border-radius: var(--nx-r-pill); background: var(--nx-bad); color: var(--nx-bg); font-size: var(--nx-fs-micro); line-height: var(--nx-lh-micro); font-variant-numeric: tabular-nums; }
 

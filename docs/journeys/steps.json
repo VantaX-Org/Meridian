@@ -6,7 +6,7 @@
     "target_clicks": 30,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Open Administration",
         "expect": "Landscape"
       },
@@ -85,17 +85,17 @@
     "object": null,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Extract",
         "expect": "Landscape"
       },
       {
-        "route": "/?open=system:{system_id}",
+        "route": "/more/landscape?open=system:{system_id}",
         "control": "Extract",
         "expect": "Test connection"
       },
       {
-        "route": "/?open=system:{system_id}",
+        "route": "/more/landscape?open=system:{system_id}",
         "control": "Extract {n} objects",
         "expect": "Analyse straight after extracting",
         "needs": "Extract pressed on the system card"
@@ -114,12 +114,12 @@
     "target_clicks": 3,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Fix the {system} sign-in",
         "expect": "Landscape"
       },
       {
-        "route": "/?open=connection:{system_id}",
+        "route": "/more/landscape?open=connection:{system_id}",
         "control": null,
         "expect": "Test connection"
       }
@@ -131,7 +131,7 @@
     "object": null,
     "steps": [
       {
-        "route": "/?open=system:{system_id}",
+        "route": "/more/landscape?open=system:{system_id}",
         "control": "Schedule",
         "expect": "Test connection"
       },
@@ -171,7 +171,7 @@
     "target_clicks": 5,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Accept {count} suggested values for {check}",
         "expect": "Landscape"
       },
@@ -251,29 +251,29 @@
     "target_clicks": 4,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Approve batch {label}",
         "expect": "for your approval"
       },
       {
-        "route": "/?open=batch:{batch_id}",
+        "route": "/more/landscape?open=batch:{batch_id}",
         "control": "Approve",
         "expect": "Send back"
       },
       {
-        "route": "/?open=batch:{batch_id}",
+        "route": "/more/landscape?open=batch:{batch_id}",
         "control": "Export load file",
         "expect": "Export load file",
         "needs": "the batch approved"
       },
       {
-        "route": "/?open=batch:{batch_id}",
+        "route": "/more/landscape?open=batch:{batch_id}",
         "control": "Loaded in SAP",
         "expect": "Who loads it in SAP",
         "needs": "the batch approved"
       },
       {
-        "route": "/?open=batch:{batch_id}",
+        "route": "/more/landscape?open=batch:{batch_id}",
         "control": null,
         "expect": "Sent to SAP",
         "needs": "the batch approved"
@@ -338,12 +338,12 @@
     "target_clicks": 12,
     "steps": [
       {
-        "route": "/?view=waves",
+        "route": "/more/landscape?view=waves",
         "control": "Open {wave}",
         "expect": "Waves"
       },
       {
-        "route": "/?view=waves&open=waves",
+        "route": "/more/landscape?view=waves&open=waves",
         "control": null,
         "expect": "Analyse the whole wave"
       }
@@ -355,7 +355,7 @@
     "object": null,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Clear the {n} no-go objects in {wave}",
         "expect": "Landscape"
       },
@@ -572,7 +572,7 @@
     "object": null,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Open {l1} step {n}",
         "expect": "Landscape"
       },
@@ -602,7 +602,7 @@
     "target_clicks": 12,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Open the rules library",
         "expect": "Landscape"
       },

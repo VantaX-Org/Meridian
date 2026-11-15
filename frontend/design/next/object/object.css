@@ -97,7 +97,7 @@
 .nx-aletheia { margin: 0; padding: var(--nx-s3) var(--nx-s4); background: var(--nx-accent-soft); border-radius: var(--nx-r-card); }
 .nx-segs { display: flex; gap: var(--nx-s2); align-items: center; min-inline-size: 0; overflow-x: auto; padding-block: var(--nx-s2); }
 .nx-seg { flex: none; min-block-size: var(--nx-h-control-sm); padding-inline: var(--nx-s4); border: 1px solid var(--nx-border); border-radius: var(--nx-r-pill); background: var(--nx-surface); color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); cursor: pointer; }
-.nx-seg[aria-selected="true"] { background: var(--nx-accent-soft); border-color: var(--nx-accent); color: var(--nx-accent-ink); font-weight: var(--nx-w-label); }
+.nx-seg[aria-selected="true"] { background: var(--nx-accent-soft); border-color: var(--nx-accent); color: var(--nx-ink); font-weight: var(--nx-w-label); }
 .nx-menuitem { display: block; inline-size: 100%; min-block-size: var(--nx-h-control); padding-inline: var(--nx-s4); border: 0; background: transparent; color: var(--nx-ink); font: inherit; text-align: start; cursor: pointer; }
 .nx-menuitem:disabled { color: var(--nx-ink-3); cursor: default; }
 .nx-sec-h { margin: 0 0 var(--nx-s3); font-size: var(--nx-fs-h2); line-height: var(--nx-lh-h2); font-weight: var(--nx-w-heading); }

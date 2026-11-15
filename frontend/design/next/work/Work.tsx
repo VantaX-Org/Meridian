@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ComponentType } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
@@ -18,6 +18,7 @@ import { ProcessAnalytics } from "@/design/v2/screens/ProcessAnalytics";
 import { RequestFormCanvas } from "@/design/v2/screens/RequestForm";
 import { RequestsCanvas } from "@/design/v2/screens/Requests";
 import { Triage } from "@/design/v2/screens/Triage";
+import { WorkCanvas } from "@/design/v2/screens/Work";
 import { WorkAnalytics } from "@/design/v2/screens/WorkAnalytics";
 import { LegacyMount, LegacyScope } from "../shell/LegacyMount";
 import { MonitorBody } from "../screens/Monitor";
@@ -157,6 +158,10 @@ function severityWord(s: string): string {
 /** Work: the ledger first, then the segments that decide what happens to it. */
 export function Work({ slug }: { slug?: string[] }) {
   const router = useRouter();
+  const params = useSearchParams();
+  // A filtered address (?module=, ?rule=, ?filter=approvals, ?batch=, a saved ?view=, the old /fix and /inbox links)
+  // opens the record ledger with its per-record decisions, new values and batch approvals.
+  const filtered = [...params.keys()].some((k) => k !== "fixture");
   const hit = segmentOf(slug);
   const items: TabItem[] = WORK_SEGMENTS.map((s) => ({ id: s.id, label: s.label() }));
   const key = (slug ?? []).join("/");
@@ -175,6 +180,8 @@ export function Work({ slug }: { slug?: string[] }) {
       <div id={`nx-work-panel-${active}`} role="tabpanel" data-segment={key}>
         {!hit ? (
           <EmptyState heading={t("Nothing at this address")} />
+        ) : active === "ledger" && filtered ? (
+          <LegacyMount><WorkCanvas /></LegacyMount>
         ) : active === "ledger" ? (
           <>
             <LegacyMount><Attention /></LegacyMount>

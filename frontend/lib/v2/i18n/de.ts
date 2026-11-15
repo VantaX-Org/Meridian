@@ -7,6 +7,7 @@ import type { MessageKey } from "./en";
 export const de: Readonly<Record<MessageKey, string>> = {
   "Go to": "Gehe zu",
   "Landscape": "Landschaft",
+  "Every system and object at its newest run, with your next step.": "Jedes System und Objekt im neuesten Lauf, mit Ihrem nächsten Schritt.",
   "Work": "Arbeit",
   "Runs": "Läufe",
   "People": "Personen",
