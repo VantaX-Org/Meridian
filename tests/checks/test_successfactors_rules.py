@@ -19,7 +19,7 @@ EXPECTED_COUNTS = {
     "recruiting_onboarding": 82,
     "learning_management": 81,
     "performance_goals": 82,
-    "succession_planning": 81,
+    "succession_planning": 86,
     "time_attendance": 82,
     "benefits": 98,
     "payroll_integration": 263,
@@ -146,7 +146,7 @@ def test_total_sf_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 1785, f"Expected 1785 total SF rules, got {total}"
+    assert total == 1790, f"Expected 1785 total SF rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

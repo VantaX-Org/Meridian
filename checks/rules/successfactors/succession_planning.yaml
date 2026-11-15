@@ -1664,3 +1664,85 @@ rules:
         duplicate in the Succession Planning nomination screen.
     record_fix_template: 'Position {SUCCESSIONCANDIDATE.POSITION_ID}: successor
       {SUCCESSIONCANDIDATE.NOMINEE_ID} is nominated more than once for {SUCCESSIONCANDIDATE.NOMINATED_DATE}.'
+  - id: SUC086
+    field: SUCCESSIONCANDIDATE.READINESS
+    check_class: cross_field_check
+    fail_when: (`SUCCESSIONCANDIDATE.READINESS` == 'READY_NOW') & (`SUCCESSIONCANDIDATE.POTENTIAL_RATING` == 'LOW')
+    severity: medium
+    dimension: accuracy
+    message: Ready-now successor is rated low potential
+    why_it_matters: A nominee who can take the role today is by definition able to work at the next level. A LOW potential rating
+      on the same nomination says the opposite, so either the readiness was not lowered after calibration or the potential rating
+      was not raised.
+    rule_authority: best_practice
+    sap_impact: Bench-strength and emergency coverage reports count a nominee the talent review does not back.
+    fix_map:
+      __other__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Review readiness against
+        the calibrated potential rating and update the one that is out of date.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: ready now
+      but potential LOW.'
+  - id: SUC087
+    field: SUCCESSIONCANDIDATE.READINESS
+    check_class: cross_field_check
+    fail_when: (`SUCCESSIONCANDIDATE.READINESS` == 'READY_NOW') & (`SUCCESSIONCANDIDATE.PERFORMANCE_RATING` == '1')
+    severity: medium
+    dimension: accuracy
+    message: Ready-now successor is rated unsatisfactory on performance
+    why_it_matters: Performance rating 1 means the nominee is not meeting the requirements of the current role. Declaring the
+      same person ready to step into a bigger role today is contradictory and would not survive a calibration session.
+    rule_authority: best_practice
+    sap_impact: Emergency succession falls back on a nominee who is failing in the current job.
+    fix_map:
+      __other__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Lower the readiness
+        or correct the performance rating from the latest review.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: ready now
+      but performance rating 1.'
+  - id: SUC088
+    field: SUCCESSIONCANDIDATE.ELIGIBLE_SUCCESSOR_FLAG
+    check_class: cross_field_check
+    fail_when: (`SUCCESSIONCANDIDATE.READINESS` == 'READY_NOW') & `SUCCESSIONCANDIDATE.ELIGIBLE_SUCCESSOR_FLAG`.str.lower().isin(['n','false'])
+    severity: medium
+    dimension: accuracy
+    message: Ready-now successor is flagged not eligible
+    why_it_matters: The eligibility flag records whether the nominee may be considered at all, for example because of mobility,
+      tenure or a disciplinary hold. A nominee who is not eligible cannot be ready now, so one of the two values is wrong.
+    rule_authority: best_practice
+    sap_impact: Succession reports list a ready-now successor who cannot be appointed.
+    fix_map:
+      __other__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Confirm eligibility
+        and lower the readiness, or correct the eligibility flag.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: ready now
+      but not eligible.'
+  - id: SUC089
+    field: SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG
+    check_class: cross_field_check
+    fail_when: (`SUCCESSIONCANDIDATE.APPROVAL_STATUS` == 'REJECTED') & `SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG`.str.lower().isin(['y','true'])
+    severity: medium
+    dimension: consistency
+    message: Rejected nomination is still flagged as the emergency successor
+    why_it_matters: A rejected nomination is out of the succession plan. If the emergency flag stays on, the position still
+      appears covered in an emergency by someone the approver turned down, and no approved nominee is named in their place.
+    rule_authority: best_practice
+    sap_impact: Emergency coverage reports show a covered position that has no approved emergency successor.
+    fix_map:
+      __other__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Clear the emergency
+        flag on the rejected nomination and name an approved emergency successor.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: rejected
+      but still emergency successor.'
+  - id: SUC090
+    field: SUCCESSIONCANDIDATE.CALIBRATION_DATE
+    check_class: cross_field_check
+    fail_when: (`SUCCESSIONCANDIDATE.CALIBRATION_STATUS` == 'CALIBRATED') & (`SUCCESSIONCANDIDATE.APPROVAL_STATUS` != 'REJECTED')
+      & ((@today - `SUCCESSIONCANDIDATE.CALIBRATION_DATE`).dt.days > 730)
+    severity: low
+    dimension: timeliness
+    message: Active nomination was last calibrated more than two years ago
+    why_it_matters: Talent reviews run at least once a year. A calibration older than two years means the readiness, potential
+      and nine-box placement on an active nomination have not been checked against the current talent picture.
+    rule_authority: best_practice
+    sap_impact: Succession decisions rely on ratings that are two or more review cycles old.
+    fix_map:
+      __other__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Include the nominee
+        in the next calibration session and update the calibration date.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: last calibrated
+      {SUCCESSIONCANDIDATE.CALIBRATION_DATE}.'
