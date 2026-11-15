@@ -11152,6 +11152,15 @@ export const en = {
   "Per day, across the loaded findings": "Per day, across the loaded findings",
   "Showing the newest {n} days; {m} older days are not shown.": "Showing the newest {n} days; {m} older days are not shown.",
   "{n} runs without a date are not shown.": "{n} runs without a date are not shown.",
+  "Checking the file": "Checking the file",
+  "The file could not be checked.": "The file could not be checked.",
+  "Flagged cells ({n})": "Flagged cells ({n})",
+  "Showing {n} of {total}.": "Showing {n} of {total}.",
+  "Leave the flagged cells out and apply the rest": "Leave the flagged cells out and apply the rest",
+  "I have read the warnings; upload anyway": "I have read the warnings; upload anyway",
+  "Longer than the field allows": "Longer than the field allows",
+  "Wrong type for the field": "Wrong type for the field",
+  "Would run as a formula": "Would run as a formula",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

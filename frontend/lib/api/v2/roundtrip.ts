@@ -90,7 +90,9 @@ export type CheckStatus = "pass" | "warn" | "fail";
 export type CheckId = "fingerprint" | "run" | "template" | "columns" | "rows" | "keys" | "values" | "formulas";
 /** One upload check. `detail` is a sentence with ids and counts only, never a cell value. */
 export interface UploadCheck { id: CheckId; status: CheckStatus; detail: string }
-export interface UploadChecks { verdict: CheckStatus; checks: UploadCheck[]; parent_version_id: string; latest_version_id: string | null; edits: number }
+/** A cell that fails a value check: ids and a reason code (long, type, formula, or the file's own refusal), never the value. */
+export interface FlaggedCell { table: string; key: string; field: string; description?: string; reason: string }
+export interface UploadChecks { verdict: CheckStatus; checks: UploadCheck[]; parent_version_id: string; latest_version_id: string | null; edits: number; flagged?: FlaggedCell[]; flagged_total?: number }
 
 /** The checks a 422 `checks_failed` or `confirm_required` answer carries; null for any other error. */
 export function checksOf(err: unknown): { error: string; checks: UploadCheck[] } | null {
@@ -118,7 +120,7 @@ export async function checkCleaned(file: File, parentVersionId?: string, module?
   return data;
 }
 
-export async function uploadCleaned(file: File, parentVersionId?: string, module?: string, confirmWarnings = false): Promise<RoundTripResult> {
+export async function uploadCleaned(file: File, parentVersionId?: string, module?: string, confirmWarnings = false, skipFlagged = false): Promise<RoundTripResult> {
   if (fixtureActive()) {
     const [after, before] = (await getVersionsPage({ limit: 2 })).versions;
     return { version_id: after.id, job_id: null, status: "pending", parent_version_id: parentVersionId ?? before.id, kind: "template", applied: 42, unchanged: 3, unmatched: 0, unmapped: {}, skipped: {}, no_table: [], no_field: [] };
@@ -128,6 +130,7 @@ export async function uploadCleaned(file: File, parentVersionId?: string, module
   if (parentVersionId) form.append("parent_version_id", parentVersionId);
   if (module) form.append("module", module);
   if (confirmWarnings) form.append("confirm_warnings", "true");
+  if (skipFlagged) form.append("skip_flagged", "true");
   const { data } = await uploadApiClient.post<RoundTripResult>("/api/v1/upload/roundtrip", form, { headers: { "Content-Type": "multipart/form-data" } });
   return data;
 }

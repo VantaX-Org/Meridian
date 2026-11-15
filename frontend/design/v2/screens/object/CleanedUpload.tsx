@@ -3,7 +3,8 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { DIMENSIONS } from "@/lib/api/v2/types";
-import { needsParent, uploadCleaned, uploadSentence, type RoundTripResult } from "@/lib/api/v2/roundtrip";
+import { needsParent, uploadCleaned, uploadSentence, type RoundTripResult, type UploadChecks } from "@/lib/api/v2/roundtrip";
+import { checkSentence, checkWorkbook, flagReason, holdReason, STATUS_SENTENCE, worstOf } from "@/lib/api/v2/upload-checks";
 import { getVersionHead } from "@/lib/api/v2/runs";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { useObjectRules } from "@/lib/v2/queries";
@@ -24,10 +25,21 @@ export function CleanedUpload({ module, label }: { module: string; label: string
   const [file, setFile] = useState<File | null>(null);
   const [parent, setParent] = useState("");
   const [askParent, setAskParent] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [skip, setSkip] = useState(false);
   const runs = useTimeline(null, 50, module).data?.runs.filter((r) => module in r.objects).reverse() ?? [];
 
+  // the same checks as the pre-upload path, run on every file before anything is applied
+  const checks = useQuery({
+    queryKey: ["v2", "roundtrip-check", fixture, file?.name, file?.size, file?.lastModified, parent, skip],
+    queryFn: () => checkWorkbook(file as File, parent || undefined, undefined, skip),
+    enabled: Boolean(file),
+    retry: false,
+  });
+  const parentMissing = askParent || (checks.isError && needsParent(checks.error));
+  const hold = checks.data ? holdReason(checks.data.checks, confirm) : null;
   const send = useMutation({
-    mutationFn: () => uploadCleaned(file as File, parent || undefined),
+    mutationFn: () => uploadCleaned(file as File, parent || undefined, undefined, confirm, skip),
     onSuccess: () => setAskParent(false),
     onError: (e) => setAskParent(needsParent(e)),
   });
@@ -48,8 +60,8 @@ export function CleanedUpload({ module, label }: { module: string; label: string
         <span className="m2-sub">{tr("Clean the {label} export in Excel, upload it here, and Meridian scores it again as the next run.", { label })}</span>
       </div>
       <div className="m2-row">
-        <input ref={input} type="file" accept=".xlsx,.csv" aria-label={tr("Cleaned file (.xlsx or .csv)")} onChange={(e) => { setFile(e.target.files?.[0] ?? null); send.reset(); setAskParent(false); }} />
-        {askParent ? (
+        <input ref={input} type="file" accept=".xlsx,.csv" aria-label={tr("Cleaned file (.xlsx or .csv)")} onChange={(e) => { setFile(e.target.files?.[0] ?? null); send.reset(); setAskParent(false); setConfirm(false); setSkip(false); }} />
+        {parentMissing ? (
           <label>
             {tr("Run the file came from")}{" "}
             <select value={parent} onChange={(e) => setParent(e.target.value)}>
@@ -60,14 +72,69 @@ export function CleanedUpload({ module, label }: { module: string; label: string
             </select>
           </label>
         ) : null}
-        <button type="button" className="m2-btn" disabled={!file || send.isPending || (askParent && !parent)} onClick={() => send.mutate()}>
+        <button type="button" className="m2-btn" disabled={!file || send.isPending || (parentMissing && !parent) || !checks.data || Boolean(hold)} title={hold ?? undefined} onClick={() => send.mutate()}>
           {send.isPending ? tr("Uploading") : tr("Upload cleaned file")}
         </button>
       </div>
-      {askParent ? <p className="m2-sub" role="status">{tr("This file does not say which run it came from. Choose the run you exported it from.")}</p> : null}
+      {file && checks.isPending ? <p className="m2-sub" role="status">{tr("Checking the file")}</p> : null}
+      {checks.data && !result ? <Checks data={checks.data} confirm={confirm} onConfirm={setConfirm} skip={skip} onSkip={(v) => { setSkip(v); setConfirm(false); }} /> : null}
+      {checks.isError && !parentMissing ? <p className="m2-err" role="alert">{uploadSentence(checks.error, tr("The file could not be checked."))}</p> : null}
+      {parentMissing ? <p className="m2-sub" role="status">{tr("This file does not say which run it came from. Choose the run you exported it from.")}</p> : null}
       {send.isError && !askParent ? <p className="m2-err" role="alert">{uploadSentence(send.error, tr("The file could not be uploaded."))}</p> : null}
       {result ? <Outcome result={result} module={module} ready={ready} failed={status === "failed"} systemId={head.data?.metadata?.system_id} /> : null}
     </section>
+  );
+}
+
+/** Every check on the file and the cells that fail one, before anything is applied. No cell value is shown. */
+function Checks({ data, confirm, onConfirm, skip, onSkip }: { data: UploadChecks; confirm: boolean; onConfirm: (v: boolean) => void; skip: boolean; onSkip: (v: boolean) => void }) {
+  const worst = worstOf(data.checks);
+  const flagged = data.flagged ?? [];
+  const total = data.flagged_total ?? flagged.length;
+  return (
+    <div aria-label={tr("Checks on this workbook")} data-testid="cleaned-checks">
+      <ul className="m2-flist">
+        {data.checks.map((c) => (
+          <li key={c.id} data-status={c.status} data-testid={`cleaned-check-${c.id}`}>
+            <strong>{STATUS_SENTENCE[c.status]()}</strong> {checkSentence(c.id)}{c.detail ? <span className="m2-sub"> {c.detail}</span> : null}
+          </li>
+        ))}
+      </ul>
+      {flagged.length ? (
+        <>
+          <h3 className="m2-h3">{tr("Flagged cells ({n})", { n: int(total) })}</h3>
+          <table className="m2-tbl" data-testid="cleaned-flagged">
+            <thead>
+              <tr><th>{tr("Table")}</th><th>{tr("Record key")}</th><th>{tr("Field")}</th><th>{tr("Why")}</th></tr>
+            </thead>
+            <tbody>
+              {flagged.map((f) => (
+                <tr key={`${f.table}|${f.key}|${f.field}`}>
+                  <td>{f.table || "-"}</td>
+                  <td>{f.key}</td>
+                  <td><Coded code={f.field} text={f.description || undefined} /></td>
+                  <td>{flagReason(f.reason)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {total > flagged.length ? <p className="m2-sub">{tr("Showing {n} of {total}.", { n: int(flagged.length), total: int(total) })}</p> : null}
+          {flagged.some((f) => f.table) ? (
+            <label className="m2-row">
+              <input type="checkbox" checked={skip} onChange={(e) => onSkip(e.target.checked)} data-testid="cleaned-skip-flagged" />
+              {tr("Leave the flagged cells out and apply the rest")}
+            </label>
+          ) : null}
+        </>
+      ) : null}
+      {worst === "warn" ? (
+        <label className="m2-row">
+          <input type="checkbox" checked={confirm} onChange={(e) => onConfirm(e.target.checked)} data-testid="cleaned-confirm" />
+          {tr("I have read the warnings; upload anyway")}
+        </label>
+      ) : null}
+      {worst === "fail" ? <p className="m2-err" role="alert">{holdReason(data.checks, confirm)}</p> : null}
+    </div>
   );
 }
 

@@ -11153,4 +11153,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Per day, across the loaded findings": "Pro Tag, über die geladenen Befunde",
   "Showing the newest {n} days; {m} older days are not shown.": "Die neuesten {n} Tage werden gezeigt; {m} ältere Tage werden nicht gezeigt.",
   "{n} runs without a date are not shown.": "{n} Läufe ohne Datum werden nicht gezeigt.",
+  "Checking the file": "Datei wird geprüft",
+  "The file could not be checked.": "Die Datei konnte nicht geprüft werden.",
+  "Flagged cells ({n})": "Markierte Zellen ({n})",
+  "Showing {n} of {total}.": "{n} von {total} werden gezeigt.",
+  "Leave the flagged cells out and apply the rest": "Markierte Zellen auslassen und den Rest übernehmen",
+  "I have read the warnings; upload anyway": "Ich habe die Warnungen gelesen; trotzdem hochladen",
+  "Longer than the field allows": "Länger als das Feld erlaubt",
+  "Wrong type for the field": "Falscher Typ für das Feld",
+  "Would run as a formula": "Würde als Formel ausgeführt",
 };

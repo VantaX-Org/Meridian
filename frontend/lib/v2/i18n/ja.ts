@@ -11153,4 +11153,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Per day, across the loaded findings": "日別、読み込んだ検出結果全体",
   "Showing the newest {n} days; {m} older days are not shown.": "最新の {n} 日分を表示しています。それより前の {m} 日分は表示されません。",
   "{n} runs without a date are not shown.": "日付のない {n} 件の実行は表示されません。",
+  "Checking the file": "ファイルを確認しています",
+  "The file could not be checked.": "ファイルを確認できませんでした。",
+  "Flagged cells ({n})": "フラグ付きセル ({n})",
+  "Showing {n} of {total}.": "{total} 件中 {n} 件を表示しています。",
+  "Leave the flagged cells out and apply the rest": "フラグ付きセルを除外して残りを適用する",
+  "I have read the warnings; upload anyway": "警告を確認しました。このままアップロードします",
+  "Longer than the field allows": "フィールドの許容長を超えています",
+  "Wrong type for the field": "フィールドの型と一致しません",
+  "Would run as a formula": "数式として実行されます",
 };
