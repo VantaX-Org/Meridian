@@ -408,6 +408,9 @@ Environment settings (in `.env`, with these defaults when unset):
 | `MERIDIAN_API_INTERNAL_URL` | `http://api:8000` | Where the worker probes the API for the status page's uptime (the Helm chart sets its own service name) |
 | `MERIDIAN_STATUS_QUEUES` | `celery` | Celery queues the status page watches |
 | `MERIDIAN_STATUS_QUEUE_WARN` | `100` | Waiting tasks that turn a queue amber on the status page |
+| `MERIDIAN_DISK_WARN_GB` | `10` | Free gigabytes below which `/health` reports the disk as degraded |
+| `MERIDIAN_HEALTH_DISK_PATH` | `/` | Path whose filesystem the disk check measures |
+| `MERIDIAN_BACKUP_COPY_TO` | (none) | Off-host copy target for each backup bundle, same as `backup.sh --copy-to` |
 | `MERIDIAN_SIMULATION_TTL` | `86400` | Seconds a fix simulation result is kept |
 | `MERIDIAN_SIMULATION_TIME_LIMIT` | `3600` | Ceiling in seconds for one fix simulation task |
 | `MERIDIAN_DELTA_FULL_DAYS` | `7` | A delta extraction runs as a full one when the last full one is older than this |

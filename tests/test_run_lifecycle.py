@@ -80,6 +80,28 @@ def test_system_busy_fails_the_job_and_frees_only_the_version_lock(locks, redis)
     assert locks.kv == {"extract-lock:system:s1": b"v-other"}
 
 
+def test_the_system_lock_fails_closed_when_redis_is_down(redis, monkeypatch):  # noqa: F811
+    """No Redis means nothing stops a second set of RFC logons on the system, so the run is refused."""
+    def down(url):
+        raise ConnectionError("redis down")
+
+    monkeypatch.setattr("redis.from_url", down, raising=False)
+    monkeypatch.setattr(celery_app.conf, "broker_url", "redis://fake/0")
+    assert rx._acquire_system_lock("s1", "v1") is None
+    jobs.start_job("t1", "dl-v1", "extraction", "Download", status="queued", system_id="s1", version_id="v1")
+    monkeypatch.setattr(rx, "_extract", lambda *a, **k: pytest.fail("must not extract without the system lock"))
+    assert rx.run_extraction.run("t1", "s1", ["MM"], version_id="v1")["status"] == "lock_unavailable"
+    assert "unavailable" in jobs.get_job("t1", "dl-v1")["error"]
+
+
+def test_a_cancelled_job_stops_the_read_at_its_next_progress_report(redis):  # noqa: F811
+    jobs.start_job("t1", "dl-v1", "extraction", "Download", system_id="s1", version_id="v1")
+    rx._raise_if_cancelled("t1", "dl-v1")  # running: carries on
+    jobs.mark_cancelled("t1", "dl-v1", by=None, by_label=None)
+    with pytest.raises(rx.JobCancelled):
+        rx._raise_if_cancelled("t1", "dl-v1")
+
+
 def test_a_config_retry_leaves_no_version_lock_behind(locks, redis, monkeypatch):  # noqa: F811
     """A Retry raised from the config wait used to keep the version lock, so the retried copy exited duplicate."""
     jobs.start_job("t1", "dl-v1", "extraction", "Download", system_id="s1", version_id="v1")

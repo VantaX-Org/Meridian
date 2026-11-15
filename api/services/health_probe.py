@@ -32,8 +32,12 @@ SAMPLE_KEEP_DAYS = 35
 UPTIME_DAYS = 30
 CORE = ("api", "db", "redis", "workers")
 LABELS = {"api": "API", "db": "Database", "redis": "Cache and queue", "workers": "Background workers",
-          "garage": "Object storage", "ollama": "Local AI model"}
+          "garage": "Object storage", "ollama": "Local AI model", "beat": "Scheduler", "disk": "Disk space"}
 PROBE_TIMEOUT_S = 3.0
+# the 5-minute health sample (workers/tasks/health_samples.py) stamps this; older than BEAT_STALE_S means beat
+# stopped dispatching, or no worker is running what it dispatches
+BEAT_KEY = "meridian:beat:last_tick"
+BEAT_STALE_S = 15 * 60
 
 
 def queue_names() -> list[str]:
@@ -131,6 +135,37 @@ def probe_workers(redis_up: bool, depths: dict[str, Optional[int]]) -> Component
     comp.data.setdefault("online", 0)
     comp.data.setdefault("queues", queues)
     return comp
+
+
+def probe_beat() -> Component:
+    def run() -> Component:
+        raw = _redis_client().get(BEAT_KEY)
+        if raw is None:
+            return Component("beat", LABELS["beat"], "degraded", detail="no scheduled task has run yet")
+        age = int(time.time() - float(raw))
+        ok = age < BEAT_STALE_S
+        return Component("beat", LABELS["beat"], "up" if ok else "degraded",
+                         detail=None if ok else f"last scheduled task ran {age // 60} min ago",
+                         data={"age_s": age})
+    return _timed(run, "beat")
+
+
+def probe_disk() -> Component:
+    """Free space where the data volumes live; degraded under MERIDIAN_DISK_WARN_GB (default 10)."""
+    import shutil
+
+    path = os.getenv("MERIDIAN_HEALTH_DISK_PATH", "/")
+    try:
+        warn = float(os.getenv("MERIDIAN_DISK_WARN_GB", "10"))
+    except ValueError:
+        warn = 10.0
+
+    def run() -> Component:
+        free = shutil.disk_usage(path).free / 1e9
+        ok = free >= warn
+        return Component("disk", LABELS["disk"], "up" if ok else "degraded",
+                         detail=None if ok else f"{free:.1f} GB free", data={"free_gb": round(free, 1)})
+    return _timed(run, "disk")
 
 
 def probe_garage() -> Component:

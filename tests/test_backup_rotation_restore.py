@@ -62,6 +62,20 @@ def test_rotation_keeps_the_newest_n_bundles_only(tmp_path: Path) -> None:
     assert len([p for p in out.iterdir() if (p / "manifest.json").exists()]) == 2
 
 
+def test_copy_to_puts_the_finished_bundle_off_host_and_a_failure_exits_3(tmp_path: Path) -> None:
+    host, env = _host(tmp_path)
+    out, far = host / "out", tmp_path / "far"
+    r = _run(host, env, "backup.sh", "--database-only", "--plain-env", "--output", str(out), "--copy-to", str(far))
+    assert r.returncode == 0, r.stdout + r.stderr
+    (bundle,) = out.iterdir()
+    assert (far / bundle.name / "manifest.json").is_file()
+    (tmp_path / "blocker").write_text("a file, not a directory")
+    r = _run(host, env, "backup.sh", "--database-only", "--plain-env", "--output", str(out),
+             "--copy-to", str(tmp_path / "blocker" / "x"))
+    assert r.returncode == 3 and "kept" in r.stderr
+    assert all((b / "manifest.json").is_file() for b in out.iterdir()), "the local bundle survives a failed copy"
+
+
 def test_keep_must_be_a_number(tmp_path: Path) -> None:
     host, env = _host(tmp_path)
     assert _run(host, env, "backup.sh", "--keep", "lots").returncode == 2

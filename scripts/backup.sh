@@ -20,8 +20,13 @@
 #   sudo bash scripts/backup.sh --database-only      # skip object storage (useful in CI drills)
 #   sudo bash scripts/backup.sh --keep 14            # keep the newest 14 bundles in the output dir
 #                                                    # (or MERIDIAN_BACKUP_KEEP; default 14, 0 keeps all)
+#   sudo bash scripts/backup.sh --copy-to backup-host:/srv/meridian
+#                                                    # off-host copy of the finished bundle (rsync; a
+#                                                    # local path such as a mounted share also works)
+#                                                    # (or MERIDIAN_BACKUP_COPY_TO). The far side keeps
+#                                                    # its own retention: nothing there is deleted
 #   sudo bash scripts/backup.sh --install-timer      # schedule a nightly backup (systemd timer, else
-#                                                    # /etc/cron.d), idempotent. Takes --output and --keep;
+#                                                    # /etc/cron.d), idempotent. Takes --output, --keep, --copy-to;
 #                                                    # creates the passphrase file if it is missing
 #
 # Safe while Meridian is live: pg_dump reads one consistent snapshot and takes no locks that block
@@ -34,6 +39,7 @@
 #   0  success
 #   1  unrecoverable error (no partial bundle retained)
 #   2  invalid arguments
+#   3  the off-host copy failed; the local bundle is complete and kept
 # =========================================================
 set -euo pipefail
 
@@ -51,6 +57,7 @@ PASSPHRASE_FILE="${MERIDIAN_BACKUP_PASSPHRASE_FILE:-}"
 DATABASE_ONLY=false
 KEEP="${MERIDIAN_BACKUP_KEEP:-14}"
 INSTALL_TIMER=false
+COPY_TO="${MERIDIAN_BACKUP_COPY_TO:-}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -61,6 +68,7 @@ while [[ $# -gt 0 ]]; do
         --database-only)  DATABASE_ONLY=true; shift ;;
         --keep)           KEEP="$2"; shift 2 ;;
         --install-timer)  INSTALL_TIMER=true; shift ;;
+        --copy-to)        COPY_TO="$2"; shift 2 ;;
         -h|--help)
             grep '^# ' "$0" | sed 's/^# //'
             exit 0
@@ -80,7 +88,7 @@ if [[ "$INSTALL_TIMER" == "true" ]]; then
             || fail "could not create the passphrase file $PASSPHRASE_FILE"
         warn "Created $PASSPHRASE_FILE. Copy it to your secrets store now: without it env.gpg cannot be decrypted."
     fi
-    CMD="/bin/bash ${SCRIPT_DIR}/backup.sh --passphrase-file ${PASSPHRASE_FILE} --output ${OUTPUT_DIR} --keep ${KEEP}"
+    CMD="/bin/bash ${SCRIPT_DIR}/backup.sh --passphrase-file ${PASSPHRASE_FILE} --output ${OUTPUT_DIR} --keep ${KEEP}${COPY_TO:+ --copy-to ${COPY_TO}}"
     SYSTEMD_DIR="${MERIDIAN_SYSTEMD_DIR:-/etc/systemd/system}"
     if command -v systemctl >/dev/null && [[ -d /run/systemd/system || -n "${MERIDIAN_SYSTEMD_DIR:-}" ]]; then
         cat > "${SYSTEMD_DIR}/meridian-backup.service" <<UNIT
@@ -223,3 +231,19 @@ info "Backup complete: $BACKUP_DIR"
 info "  Bundle size: $(du -sh "$BACKUP_DIR" | cut -f1)"
 info "  Contents:"
 ls -lh "$BACKUP_DIR/" | tail -n +2 | sed 's/^/    /'
+
+# ─── 7. Off-host copy ───────────────────────────────────────────────────────
+# A backup on the same disk dies with the disk. Copied after the bundle is complete, so the far side
+# never holds a partial one under its final name.
+if [[ -n "$COPY_TO" ]]; then
+    if command -v rsync >/dev/null; then
+        rsync -a "$BACKUP_DIR" "${COPY_TO%/}/" || { echo "[FAIL] off-host copy to $COPY_TO failed; the local bundle $BACKUP_DIR is kept" >&2; exit 3; }
+    elif [[ "$COPY_TO" != *:* ]]; then
+        { mkdir -p "$COPY_TO" && cp -a "$BACKUP_DIR" "${COPY_TO%/}/"; } \
+            || { echo "[FAIL] copy to $COPY_TO failed; the local bundle $BACKUP_DIR is kept" >&2; exit 3; }
+    else
+        echo "[FAIL] rsync is not installed, so the bundle cannot be copied to $COPY_TO; the local bundle is kept" >&2
+        exit 3
+    fi
+    info "  Copied to ${COPY_TO%/}/${TIMESTAMP}"
+fi

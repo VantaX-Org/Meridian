@@ -145,7 +145,7 @@ Take a backup:
 ```bash
 sudo bash scripts/backup.sh --passphrase-file /root/.meridian-backup-pass --output /var/backups/meridian
 ```
-Options: `--output DIR`, `--passphrase-file F` (or `MERIDIAN_BACKUP_PASSPHRASE_FILE`), `--keep N` (or `MERIDIAN_BACKUP_KEEP`, default 14, 0 keeps all), `--plain-env`, `--database-only`, `--encrypt`. It is safe while users work. After each run it removes all but the newest N bundles. A backup directory holds `manifest.json`, `meridian.dump`, `objects.tar` and `env.gpg` (or `env.txt` with `--plain-env`). Store the passphrase separately from the backups.
+Options: `--output DIR`, `--passphrase-file F` (or `MERIDIAN_BACKUP_PASSPHRASE_FILE`), `--keep N` (or `MERIDIAN_BACKUP_KEEP`, default 14, 0 keeps all), `--plain-env`, `--database-only`, `--encrypt`, `--copy-to DEST` (or `MERIDIAN_BACKUP_COPY_TO`: copies the finished bundle with rsync to `host:/path` or a mounted path, exit 3 if that fails while the local bundle is kept). It is safe while users work. After each run it removes all but the newest N bundles. A backup directory holds `manifest.json`, `meridian.dump`, `objects.tar` and `env.gpg` (or `env.txt` with `--plain-env`). Store the passphrase separately from the backups.
 
 The nightly schedule is installed by `install.sh`. On an older host, or to change `--output` or `--keep`, run (safe to repeat):
 ```bash

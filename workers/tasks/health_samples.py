@@ -12,7 +12,9 @@ import logging
 
 from celery.exceptions import SoftTimeLimitExceeded
 
-from api.services.health_probe import collect, degraded, record_samples
+import time
+
+from api.services.health_probe import BEAT_KEY, _redis_client, collect, degraded, record_samples
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 
@@ -21,6 +23,10 @@ logger = logging.getLogger("meridian.worker.health_samples")
 
 @celery_app.task(name="workers.tasks.health_samples.sample_health", soft_time_limit=60, time_limit=90)
 def sample_health() -> dict:
+    try:  # the /health beat component reads this stamp
+        _redis_client().set(BEAT_KEY, time.time(), ex=24 * 3600)
+    except Exception:  # noqa: BLE001 - a missed stamp shows as a stale beat, never fails the sample
+        logger.warning("could not stamp the beat tick")
     engine = get_sync_engine()
     try:
         components = collect(engine)

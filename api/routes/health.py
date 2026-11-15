@@ -44,6 +44,20 @@ def _probe_workers() -> dict[str, Any]:
     return {"status": c.status, "latency_ms": c.latency_ms, "detail": c.detail}
 
 
+def _probe_beat() -> dict[str, Any]:
+    from api.services import health_probe
+
+    c = health_probe.probe_beat()
+    return {"status": c.status, "latency_ms": c.latency_ms, "detail": c.detail}
+
+
+def _probe_disk() -> dict[str, Any]:
+    from api.services import health_probe
+
+    c = health_probe.probe_disk()
+    return {"status": c.status, "latency_ms": c.latency_ms, "detail": c.detail}
+
+
 # Components a request cannot be served without. Workers are reported but do not gate readiness: the worker
 # container starts independently of the API, and a stopped worker must not make the API look dead to the
 # container healthcheck or the update canary (they would cycle or roll back a healthy API).
@@ -51,12 +65,13 @@ GATING = ("db", "redis")
 
 
 async def readiness() -> dict[str, dict[str, Any]]:
-    """Postgres (SELECT 1), Redis (PING) and the Celery workers (ping), probed in parallel; each bounded by
+    """Postgres (SELECT 1), Redis (PING), the Celery workers (ping), the beat tick and free disk, probed in parallel; each bounded by
     health_probe.PROBE_TIMEOUT_S and never raising (a failure is ``down`` with the exception's class name,
     never its message)."""
-    db, redis, workers = await asyncio.gather(asyncio.to_thread(_probe_db), asyncio.to_thread(_probe_redis),
-                                              asyncio.to_thread(_probe_workers))
-    return {"db": db, "redis": redis, "workers": workers}
+    db, redis, workers, beat, disk = await asyncio.gather(
+        asyncio.to_thread(_probe_db), asyncio.to_thread(_probe_redis), asyncio.to_thread(_probe_workers),
+        asyncio.to_thread(_probe_beat), asyncio.to_thread(_probe_disk))
+    return {"db": db, "redis": redis, "workers": workers, "beat": beat, "disk": disk}
 
 
 @router.get("/health/live")
