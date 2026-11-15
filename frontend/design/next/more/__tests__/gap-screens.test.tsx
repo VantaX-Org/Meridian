@@ -9,7 +9,7 @@ import { GoldenWriteback } from "../GoldenWriteback";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 
-const Q = vi.hoisted(() => ({ can: (_a: string): boolean => true, shared: false }));
+const Q = vi.hoisted(() => ({ can: (() => true) as (a: string) => boolean, shared: false }));
 vi.mock("@/lib/v2/hooks", async (orig) => ({ ...(await orig<object>()), useV2Session: () => ({ can: Q.can, id: "me", name: "Me", email: "me@example.com", persona: "admin", label: "Admin", fixture: true, viewAs: null, shared: Q.shared }) }));
 
 const wrap = (ui: React.ReactElement) => renderWithQuery(<ToastProvider>{ui}</ToastProvider>);
