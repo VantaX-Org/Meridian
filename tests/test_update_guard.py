@@ -110,3 +110,94 @@ def test_guard_fails_closed_when_the_worker_does_not_answer(tmp_path, out, rc):
 def test_force_skips_the_guard(tmp_path):
     r = _guard(tmp_path, "", 69, "--force")
     assert r.returncode == 0 and "GUARD_PASSED" in r.stdout, r.stdout + r.stderr
+
+
+def _fns(tmp_path, dc_body: str, call: str, *names: str) -> tuple[subprocess.CompletedProcess, list[str]]:
+    """Run real update.sh functions against a stub `dc` (dc_body) that logs every call to tmp_path/calls."""
+    s = UPDATE_SH.read_text(encoding="utf-8")
+    helpers = s[s.index("GREEN="):s.index("\n# write_status")]
+    fns = "".join(s[s.index(f"{n}() {{"):s.index("\n}\n", s.index(f"{n}() {{")) + 3] for n in names)
+    log = tmp_path / "calls"
+    log.write_text("")
+    script = f"""set -euo pipefail
+{helpers}
+dc() {{
+  echo "$*" >> "{log}"
+{dc_body}
+}}
+FORCE=false
+WORKER_QUEUES=celery
+DRAINED=0
+{fns}
+{call}
+echo GUARD_PASSED
+"""
+    env = {k: v for k, v in os.environ.items() if k != "MERIDIAN_UPDATE_FORCE"}
+    r = subprocess.run(["bash", "-c", script], capture_output=True, text=True, env=env, timeout=30)
+    return r, log.read_text().splitlines()
+
+
+QUEUES = '{"celery@w1": [{"name": "celery"}, {"name": "extraction"}]}'
+
+
+def _queued(llen_celery: int, llen_extraction: int) -> str:
+    return f"""  case "$*" in
+    *active_queues*) echo '{QUEUES}' ;;
+    *"inspect active"*) echo '{IDLE}' ;;
+    *"LLEN celery"*) echo {llen_celery} ;;
+    *"LLEN extraction"*) echo {llen_extraction} ;;
+    *) echo 0 ;;
+  esac"""
+
+
+def test_queued_tasks_on_any_consumed_queue_refuse(tmp_path):
+    r, calls = _fns(tmp_path, _queued(2, 3), "assert_no_active_run", "assert_no_active_run")
+    assert r.returncode != 0 and "GUARD_PASSED" not in r.stdout
+    assert "5 task(s) are queued" in r.stdout and "celery extraction" in r.stdout and "--force" in r.stdout
+    assert any("LLEN extraction" in c for c in calls)
+
+
+def test_empty_queues_pass(tmp_path):
+    r, _ = _fns(tmp_path, _queued(0, 0), "assert_no_active_run", "assert_no_active_run")
+    assert r.returncode == 0 and "GUARD_PASSED" in r.stdout, r.stdout + r.stderr
+
+
+def test_drain_refuses_and_resumes_when_a_task_started_meanwhile(tmp_path):
+    body = f"""  case "$*" in
+    *"inspect active"*) echo '{{"celery@w1": [{_task("run_extraction")}]}}' ;;
+  esac"""
+    r, calls = _fns(tmp_path, body, "WORKER_QUEUES='celery extraction'; drain_worker", "undrain", "drain_worker")
+    assert r.returncode != 0 and "run_extraction" in r.stdout and "--force" in r.stdout
+    cancel = [i for i, c in enumerate(calls) if "cancel_consumer" in c]
+    add = [i for i, c in enumerate(calls) if "add_consumer" in c]
+    assert len(cancel) == 2 and len(add) == 2 and max(cancel) < min(add)
+    assert calls.index("stop beat") < calls.index("start beat")
+    assert sum(c == "start beat" for c in calls) == 1  # the EXIT trap does not undrain twice
+
+
+def test_drain_keeps_the_worker_paused_when_idle(tmp_path):
+    body = f"""  case "$*" in *"inspect active"*) echo '{IDLE}' ;; esac"""
+    r, calls = _fns(tmp_path, body, "drain_worker; trap - EXIT", "undrain", "drain_worker")
+    assert r.returncode == 0 and "GUARD_PASSED" in r.stdout, r.stdout + r.stderr
+    assert "stop beat" in calls and not any("add_consumer" in c or c == "start beat" for c in calls)
+
+
+def test_drain_is_skipped_with_force(tmp_path):
+    r, calls = _fns(tmp_path, "  :", "FORCE=true; drain_worker", "undrain", "drain_worker")
+    assert r.returncode == 0 and calls == []
+
+
+@pytest.mark.parametrize("size,ok", [("1000000000000000", False), ("1024", True), ("", True)])
+def test_backup_refuses_without_free_space_for_the_dump(tmp_path, size, ok):
+    body = f"""  case "$*" in *pg_database_size*) echo '{size}' ;; *pg_dump*) echo PGDMP ;; esac"""
+    r, calls = _fns(tmp_path, body, f"cd '{tmp_path}'; backup_database", "backup_database", "prune_backups")
+    assert (r.returncode == 0) is ok, r.stdout + r.stderr
+    assert any("pg_dump" in c for c in calls) is ok
+    if not ok:
+        assert "Not enough free space" in r.stdout and "Nothing was changed" in r.stdout
+
+
+def test_an_error_after_drain_resumes_the_worker(tmp_path):
+    body = f"""  case "$*" in *"inspect active"*) echo '{IDLE}' ;; esac"""
+    r, calls = _fns(tmp_path, body, "drain_worker; error boom", "undrain", "drain_worker")
+    assert r.returncode != 0 and any("add_consumer celery" in c for c in calls) and "start beat" in calls

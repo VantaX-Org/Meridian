@@ -236,6 +236,18 @@ restore_release() {  # restore_release <tag>
 backup_database() {
     mkdir -p backups
     PRE_UPDATE_DUMP="backups/pre-update-$(date -u +%Y%m%dT%H%M%SZ).dump"
+    # A dump that runs out of disk half way leaves no backup and a full disk under Postgres.
+    # 1.2x the live size is conservative for a compressed custom-format dump, on purpose.
+    local size free
+    size="$(dc exec -T db psql -U meridian -d meridian -t -A -c "SELECT pg_database_size('meridian')" 2>/dev/null || true)"
+    size="${size//[^0-9]/}"
+    free="$(df -Pk backups | awk 'NR==2{print $4}')"
+    if [[ -z "$size" ]]; then
+        warn "Could not read the database size; skipping the free-space check for the backup."
+    elif (( free * 1024 < size * 12 / 10 )); then
+        error "Not enough free space for the pre-update backup: $(awk -v b="$free" 'BEGIN{printf "%.1f", b/1048576}') GB free on the filesystem holding $(pwd)/backups, need $(awk -v b="$size" 'BEGIN{printf "%.1f", b*1.2/1073741824}') GB (database $(awk -v b="$size" 'BEGIN{printf "%.1f", b/1073741824}') GB x 1.2).
+        Free space there (old backups/pre-update-*.dump files, docker image prune) and re-run. Nothing was changed."
+    fi
     info "Backing up the database to ${PRE_UPDATE_DUMP}..."
     if ! dc exec -T db pg_dump -U meridian --format=custom --no-owner meridian > "$PRE_UPDATE_DUMP" \
             || [[ ! -s "$PRE_UPDATE_DUMP" ]]; then
@@ -552,8 +564,27 @@ rollback() {
 # ─── Emergency rollback during a failed roll-forward ────────────────────────
 # Reached only when an update has already gone wrong. Restores the :rollback
 # snapshot, recreates services, and always exits non-zero.
+# What a person needs to restore the database by hand after a failed update: no secrets, only
+# the tags, the dump and the command. Kept until the next successful update removes it.
+UPDATE_STATE_FILE="backups/update-state"
+restore_command() {
+    echo "docker compose -f $(pwd)/$COMPOSE_FILE exec -T db pg_restore -U meridian -d meridian --clean --if-exists < $(pwd)/$PRE_UPDATE_DUMP"
+}
+write_update_state() {
+    mkdir -p backups
+    {
+        echo "when=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        echo "from_tag=${CURRENT_TAG:-}"
+        echo "to_tag=${TARGET_TAG:-}"
+        echo "backup=$(pwd)/${PRE_UPDATE_DUMP}"
+        echo "failed_step=$1"
+        echo "restore_cmd=$(restore_command)"
+    } > "$UPDATE_STATE_FILE"
+}
+
 auto_rollback() {
     warn "$1 Auto-rolling back to previous images (${CURRENT_TAG})..."
+    if [[ -n "${PRE_UPDATE_DUMP:-}" ]]; then write_update_state "$1"; fi
     restore_release "$CURRENT_TAG"
     set_env MERIDIAN_PREVIOUS_VERSION "$PREVIOUS_BEFORE"
     dc up -d --force-recreate api worker beat frontend nginx 2>/dev/null || true
@@ -563,8 +594,12 @@ auto_rollback() {
     fi
     write_status "rolled_back" "Update rolled back to previous images after: $1"
     if [[ -n "${PRE_UPDATE_DUMP:-}" ]]; then
-        warn "If migrations had already run, restore the pre-update database with:"
-        warn "  docker compose -f $COMPOSE_FILE exec -T db pg_restore -U meridian -d meridian --clean --if-exists < $PRE_UPDATE_DUMP"
+        warn "The database was not rolled back. If the migration got part way, or the old release misbehaves"
+        warn "on the newer schema, restore the pre-update backup by hand:"
+        warn "  1. docker compose -f $(pwd)/$COMPOSE_FILE stop api worker beat"
+        warn "  2. $(restore_command)"
+        warn "  3. docker compose -f $(pwd)/$COMPOSE_FILE start api worker beat"
+        warn "Tags, backup file, failed step and the command are recorded in $(pwd)/$UPDATE_STATE_FILE"
     fi
     error "Update rolled back. Running on previous images. Check 'docker compose logs api' for why the new version failed."
 }
@@ -623,9 +658,26 @@ assert_no_active_run() {
         error "Refusing to update: the worker is executing ${names}.
         Recreating it would kill that work. Wait for it to finish, or re-run with --force to override."
     fi
-    local queued
-    queued="$(dc exec -T redis redis-cli LLEN celery 2>/dev/null || echo 0)"
-    queued="${queued//[^0-9]/}"
+    # Queued tasks refuse too: they are somebody's work and would start on the new code mid-update.
+    # Count every queue the worker consumes, not only the default one. WORKER_QUEUES is reused by
+    # drain_worker below.
+    local q n queued=0
+    WORKER_QUEUES="$(dc exec -T worker celery -A workers.celery_app inspect active_queues --json --timeout 10 2>/dev/null \
+        | python3 -c 'import json, sys
+s = sys.stdin.read()
+d = json.loads(s[s.find("{"):]) if "{" in s else {}
+print(" ".join(sorted({q["name"] for qs in d.values() for q in qs or [] if isinstance(q, dict) and q.get("name")})))' \
+        2>/dev/null || true)"
+    WORKER_QUEUES="${WORKER_QUEUES:-celery}"
+    for q in $WORKER_QUEUES; do
+        n="$(dc exec -T redis redis-cli LLEN "$q" 2>/dev/null || echo 0)"
+        n="${n//[^0-9]/}"
+        queued=$((queued + ${n:-0}))
+    done
+    if [[ "$queued" -gt 0 ]]; then
+        error "Refusing to update: $queued task(s) are queued for the worker (queues: ${WORKER_QUEUES}).
+        They would start mid-update on the new code. Wait for the queue to drain, or re-run with --force to override."
+    fi
     local stale
     stale="$(dc exec -T db psql -U meridian -d meridian -t -A -c \
         "SELECT count(*) FROM analysis_versions WHERE status IN ('running','pending','queued')" 2>/dev/null || echo 0)"
@@ -634,10 +686,49 @@ assert_no_active_run() {
         warn "$stale analysis row(s) still say running, but no task is executing them."
         warn "That is a stale status from a run that died; the update will proceed."
     fi
-    if [[ -n "$queued" && "$queued" -gt 0 ]]; then
-        warn "the celery queue holds $queued pending task(s); the worker will pick them up after the restart"
-    fi
     info "The worker is idle — safe to update."
+}
+
+# The check above runs minutes before the restart (pulls, file sync, RFC build), and a task that
+# starts in that window would be killed. So stop taking new work first: cancel the worker's
+# consumers and stop beat, then check again. Anything that started meanwhile refuses the update and
+# the worker goes back to consuming (also on any later error, through the EXIT trap). The migration
+# step below stops the worker and beat for good.
+WORKER_QUEUES="${WORKER_QUEUES:-celery}"
+DRAINED=0
+undrain() {
+    [[ "$DRAINED" == "1" ]] || return 0
+    DRAINED=0
+    local q
+    for q in $WORKER_QUEUES; do
+        dc exec -T worker celery -A workers.celery_app control add_consumer "$q" >/dev/null 2>&1 || true
+    done
+    dc start beat >/dev/null 2>&1 || true
+    warn "The worker is consuming again and beat is running; the update did not go ahead."
+}
+drain_worker() {
+    if [[ "${FORCE:-false}" == "true" || "${MERIDIAN_UPDATE_FORCE:-0}" == "1" ]]; then return 0; fi
+    info "Pausing the worker's queues (${WORKER_QUEUES}) and beat for the final busy check..."
+    local q out names
+    DRAINED=1
+    trap undrain EXIT
+    for q in $WORKER_QUEUES; do
+        dc exec -T worker celery -A workers.celery_app control cancel_consumer "$q" >/dev/null 2>&1 || true
+    done
+    dc stop beat >/dev/null 2>&1 || true
+    if ! out="$(dc exec -T worker celery -A workers.celery_app inspect active --json --timeout 10 2>/dev/null)" \
+        || [[ "$out" != *"{"* ]]; then
+        undrain
+        error "Refusing to update: the worker did not answer the final 'celery inspect active'. Re-run, or use --force."
+    fi
+    names="$(grep -oE '"name": *"[^"]+"' <<<"$out" | sed -E 's/.*"([^"]+)"$/\1/' \
+        | grep -vx forced_update_check | sort -u | paste -sd, - || true)"
+    if [[ -n "$names" ]]; then
+        undrain
+        error "Refusing to update: ${names} started on the worker after the first check.
+        Wait for it to finish and re-run, or re-run with --force to override."
+    fi
+    info "The worker is paused and idle."
 }
 
 assert_no_active_run
@@ -657,34 +748,40 @@ fi
 pull_dependencies
 rebuild_rfc_overlay
 
+drain_worker
+
 write_status "backing_up" "Backing up the database..."
 backup_database
 # pinned before the storage copy: it runs the new release's api image (api.services.storage_migration)
 pin_release
 migrate_object_storage
 
-# Roll forward onto the new images BEFORE migrating: `dc exec` targets the
-# live container, so the api container must already be the new image — or
-# `alembic upgrade head` execs into the OLD image and silently skips any
-# migrations shipped with this release.
+# Migrate once, before anything new starts, so new code never runs on the old schema. The worker
+# and beat are stopped so nothing writes through the old code meanwhile. `dc run` starts a one-off
+# container from the api image pinned above, so the new release's migrations are the ones that run
+# (`dc exec` would run them in the old container and skip them). The new api's entrypoint runs
+# `alembic upgrade head` again on start; at head that is a no-op.
+info "Stopping the worker and beat for the migration..."
+dc stop worker beat 2>/dev/null || true
+DRAINED=0
+info "Running database migrations on the new image..."
+write_status "migrating" "Running database migrations..."
+if ! dc run --rm --no-deps -T api bash -c "cd /app && alembic upgrade head"; then
+    auto_rollback "Migration failed on the new image."
+fi
+
 info "Restarting services on the new images..."
 write_status "restarting" "Restarting services on the new images..."
 dc up -d --force-recreate api worker beat frontend nginx 2>/dev/null || true
 start_engine
-
-info "Running database migrations..."
 if ! wait_for_api_container; then
     auto_rollback "New api container never became reachable."
-fi
-write_status "migrating" "Running database migrations..."
-if ! dc exec -T api bash -c "cd /app && alembic upgrade head"; then
-    auto_rollback "Migration failed on the new image."
 fi
 
 if [[ "$VERIFY" == "true" ]]; then
     write_status "verifying" "Verifying /health..."
     if ! verify_health; then
-        auto_rollback "/health never turned green after 120s."
+        auto_rollback "/health never turned green after 300s."
     fi
 fi
 
@@ -698,6 +795,7 @@ except Exception:
 " 2>/dev/null || echo "unknown")
 
 echo ""
+rm -f "$UPDATE_STATE_FILE"
 write_status "done" "Update complete. Running version: $VERSION (release ${TARGET_TAG})"
 info "Update complete. Running version: $VERSION (release ${TARGET_TAG}, pinned in ${ENV_FILE})"
 info "To revert: sudo bash scripts/update.sh --rollback"

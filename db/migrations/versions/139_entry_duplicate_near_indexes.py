@@ -27,6 +27,8 @@ from typing import Sequence, Union
 
 from alembic import op
 
+from db.migration_lock import drop_invalid_index
+
 revision: str = "139"
 down_revision: Union[str, None] = "138"
 branch_labels: Union[str, Sequence[str], None] = None
@@ -50,6 +52,7 @@ def upgrade() -> None:
     with op.get_context().autocommit_block():
         for f in FIELDS:
             try:
+                drop_invalid_index(_name(f))
                 op.execute(
                     f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {_name(f)} ON master_records USING gin "
                     f"(entry_dup_variants(upper(regexp_replace(COALESCE(own_fields, golden_fields)->>'{f}', "
