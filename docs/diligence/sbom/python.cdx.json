@@ -1082,7 +1082,7 @@
     },
     {
       "bom-ref": "requirements-L72",
-      "description": "requirements line 72: opentelemetry-api==1.45.1",
+      "description": "requirements line 72: opentelemetry-api==1.45.2",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -1091,9 +1091,9 @@
         }
       ],
       "name": "opentelemetry-api",
-      "purl": "pkg:pypi/opentelemetry-api@1.45.1",
+      "purl": "pkg:pypi/opentelemetry-api@1.45.2",
       "type": "library",
-      "version": "1.45.1"
+      "version": "1.45.2"
     },
     {
       "bom-ref": "requirements-L73",
