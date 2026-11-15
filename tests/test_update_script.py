@@ -86,7 +86,11 @@ def test_update_order_backup_before_migrate_and_beat_recreated(tmp_path):
     dump = _index(calls, "pg_dump")
     up = _index(calls, "up -d --force-recreate api worker beat frontend nginx")
     migrate = _index(calls, "alembic upgrade head")
-    assert _index(calls, "revalidate") < pulled < synced < dump < up < migrate
+    stopped = _index(calls, "stop worker beat")
+    assert _index(calls, "revalidate") < pulled < synced < dump < stopped < migrate < up
+    assert "run --rm --no-deps -T api" in calls[migrate]  # one-off container on the new image
+    assert _index(calls, "cancel_consumer") < dump  # queues paused before the final busy check
+    assert not (host / "backups/update-state").exists()
     assert "docker create ghcr.io/vantax-org/meridian-api:v2.4.1" in calls  # the deployment files of that release
     assert not any("docker pull" in c and c.endswith(":latest") for c in calls)
     assert sum("docker tag ghcr.io/vantax-org/meridian-api:latest ghcr.io/vantax-org/meridian-api:rollback" in c
@@ -220,6 +224,10 @@ def test_failed_migration_auto_rolls_back_to_the_running_release(tmp_path):
     migrate = _index(calls, "alembic upgrade head")
     assert any("docker tag ghcr.io/vantax-org/meridian-api:rollback ghcr.io/vantax-org/meridian-api:v2.3.0" in c
                for c in calls[migrate:])
+    assert not any("up -d --force-recreate api worker beat" in c for c in calls[:migrate])  # nothing new started
+    state = dict(l.split("=", 1) for l in (host / "backups/update-state").read_text().splitlines())
+    assert state["from_tag"] == "v2.3.0" and state["failed_step"].startswith("Migration failed")
+    assert state["backup"].endswith(".dump") and "pg_restore" in state["restore_cmd"]
 
 
 def test_failed_storage_copy_keeps_the_running_release_pinned(tmp_path):

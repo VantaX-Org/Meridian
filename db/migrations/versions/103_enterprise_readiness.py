@@ -32,6 +32,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 
+from db.migration_lock import drop_invalid_index
+
 revision: str = "103"
 down_revision: Union[str, None] = "102"
 branch_labels: Union[str, Sequence[str], None] = None
@@ -142,8 +144,10 @@ def upgrade() -> None:
         _rls(table)
 
     with op.get_context().autocommit_block():
+        drop_invalid_index("ix_work_records_tenant_rank")
         op.execute("CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_work_records_tenant_rank "
                    "ON work_records (tenant_id, sev_rank, module, record_key)")
+        drop_invalid_index("ix_work_records_status_cover")
         op.execute("CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_work_records_status_cover "
                    "ON work_records (tenant_id, version_id, module, status) INCLUDE (sev_rank, issues, proposed, due_at)")
 

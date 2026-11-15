@@ -77,9 +77,9 @@ def forced_update_check(self):
         return {"decision": decision, "min_version": min_version}
 
     # One attempt per min_version per day, so a failed or rolled-back update
-    # does not loop. ponytail: a job started in the seconds between the busy
-    # check and the container restart is killed and must be re-run; pause the
-    # queue during the update if that ever bites.
+    # does not loop. A job started after this busy check is caught by
+    # scripts/update.sh, which pauses the worker's queues and beat, re-checks,
+    # and refuses (and resumes) if anything is running.
     if not r.set(f"{REDIS_KEY}:attempted:{min_version}", "1", nx=True, ex=86400):
         return {"decision": "attempted_today", "min_version": min_version}
 

@@ -1,7 +1,7 @@
 """Serialise `alembic upgrade head` across processes.
 
-docker/entrypoint.api.sh migrates at every api start and scripts/update.sh migrates again after
-recreating the api; two runs at once race on alembic_version and on the DDL. A session-level
+docker/entrypoint.api.sh migrates at every api start and scripts/update.sh migrates in a one-off
+container before it restarts the api; two runs at once race on alembic_version and on the DDL. A session-level
 Postgres advisory lock makes the second run wait, then find the schema already at head.
 """
 
@@ -38,3 +38,18 @@ def migration_lock(connection: Connection) -> Iterator[None]:
             connection.rollback()  # a failed migration can leave an aborted transaction open
             connection.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": MIGRATION_LOCK_KEY})
             connection.commit()
+
+
+def drop_invalid_index(name: str) -> None:
+    """Drop index `name` if a failed CREATE INDEX CONCURRENTLY left it INVALID. Call inside an autocommit block.
+
+    A concurrent build that fails (deadlock, cancel, the update killed mid-build) leaves the index behind,
+    marked invalid. `CREATE INDEX CONCURRENTLY IF NOT EXISTS` then sees the name and skips it, so a re-run
+    never repairs it and the planner never uses it. Dropping it first lets the re-run build it for real.
+    """
+    from alembic import op
+
+    if op.get_bind().execute(text(
+            "SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid "
+            "WHERE c.relname = :n AND NOT i.indisvalid"), {"n": name}).first():
+        op.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {name}")
