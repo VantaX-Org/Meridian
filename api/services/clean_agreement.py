@@ -68,9 +68,11 @@ def read_cells(prefix: str, cells: set[Cell], keys_of: Callable[[str], list]) ->
             out.update(values_in(df, table, part, keys_of))
         return out
     for name, _ in list_prefix(bucket, prefix):
-        table = unquote(name.rsplit("/", 1)[-1][: -len(".parquet")]) if name.endswith(".parquet") else None
-        if table in by_table:
-            out.update(values_in(read(name), table, by_table[table], keys_of))
+        if not name.endswith(".parquet"):
+            continue
+        tname = unquote(name.rsplit("/", 1)[-1][: -len(".parquet")])
+        if tname in by_table:
+            out.update(values_in(read(name), tname, by_table[tname], keys_of))
     return out
 
 
@@ -80,7 +82,8 @@ def agreement(cells: set[Cell], cleaned: dict[Cell, Optional[str]], later: dict[
 
     matched: the later run holds the cleaned value. different: the record is there with another value.
     missing: the later run has no such record (or field). The score is matched over all cells, 0 to 100."""
-    rows, fields = [], {}
+    rows: list[dict] = []
+    fields: dict[tuple[str, str], dict] = {}
     for cell in sorted(cells):
         table, key, field = cell
         want, got = cleaned.get(cell), later.get(cell)
