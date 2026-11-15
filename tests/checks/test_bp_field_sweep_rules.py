@@ -131,7 +131,8 @@ TWO = {'BP300': ('BUT000', {'NAME_ORG2': ['x', 'x'], 'NAME_ORG1': ['x', ''], 'TY
  'BP395': ('CVI_CUST_LINK', {'CRDAT': ['20240101', '20240101'], 'CRUSER': ['U1', '']}),
  'BP396': ('CVI_CUST_LINK', {'CRDAT': ['__PAST__', '__FUTURE__']}),
  'BP398': ('CVI_VEND_LINK', {'CRDAT': ['20240101', '20240101'], 'CRUSER': ['U1', '']}),
- 'BP399': ('CVI_VEND_LINK', {'CRDAT': ['__PAST__', '__FUTURE__']})}
+ 'BP399': ('CVI_VEND_LINK', {'CRDAT': ['__PAST__', '__FUTURE__']}),
+ 'BP905': ('BUT000', {'XPCPT': ['X', 'X'], 'XDELE': ['X', '']})}
 
 
 PAIR = {'BP329': ('BUT020', {'ADEXT': ['A1', 'A2']}, {'ADEXT': ['A1', 'A1']})}
@@ -162,6 +163,12 @@ MULTI = {'BP397': {'BUT000': {'PARTNER': ['B1', 'B2'],
            'CVI_VEND_LINK': {'PARTNER_GUID': ['G1', 'G2'], 'VENDOR': ['C1', 'C2']}},
  'BP401': {'BUT000': {'PARTNER': ['B1', 'B2'], 'PARTNER_GUID': ['G1', 'G2'], 'BU_SORT1': ['ACME', 'ACME']},
            'KNA1': {'KUNNR': ['C1', 'C2'], 'SORTL': ['ACME', '']},
+           'CVI_CUST_LINK': {'PARTNER_GUID': ['G1', 'G2'], 'CUSTOMER': ['C1', 'C2']}},
+ 'BP906': {'BUT000': {'PARTNER': ['B1', 'B2'], 'PARTNER_GUID': ['G1', 'G2'], 'AUGRP': ['A1', '']},
+           'KNA1': {'KUNNR': ['C1', 'C2'], 'BEGRU': ['A1', 'A1']},
+           'CVI_CUST_LINK': {'PARTNER_GUID': ['G1', 'G2'], 'CUSTOMER': ['C1', 'C2']}},
+ 'BP907': {'BUT000': {'PARTNER': ['B1', 'B2'], 'PARTNER_GUID': ['G1', 'G2'], 'TYPE': ['1', '2']},
+           'KNA1': {'KUNNR': ['C1', 'C2'], 'DEAR6': ['X', 'X']},
            'CVI_CUST_LINK': {'PARTNER_GUID': ['G1', 'G2'], 'CUSTOMER': ['C1', 'C2']}}}
 
 
@@ -203,5 +210,5 @@ def test_count_rule_fires_only_over_the_limit(rid):
 
 
 def test_every_new_rule_has_a_case():
-    ids = {r["id"] for r in module_rules(M) if r["id"][2:].isdigit() and 300 <= int(r["id"][2:]) < 900}
+    ids = {r["id"] for r in module_rules(M) if r["id"][2:].isdigit() and (300 <= int(r["id"][2:]) < 900 or int(r["id"][2:]) >= 905)}
     assert ids == set(TWO) | set(MULTI) | set(PAIR) | set(COUNT)
