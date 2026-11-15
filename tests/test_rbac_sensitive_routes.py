@@ -116,11 +116,21 @@ def route_guards() -> dict[tuple[str, str], tuple[str, list[frozenset[str]]]]:
     from api.main import app
 
     out: dict[tuple[str, str], tuple[str, list[frozenset[str]]]] = {}
-    for r in app.routes:
-        if isinstance(r, APIRoute):
-            fn = r.endpoint.__module__.replace("api.routes.", "") + "." + r.endpoint.__name__
-            for m in r.methods - {"HEAD"}:
-                out[(m, r.path)] = (fn, _guards(r.dependant, []))
+
+    def walk(routes: Any, prefix: str, extra: list[frozenset[str]]) -> None:
+        # FastAPI >=0.140 (CI pins 0.146) keeps each include as one wrapper whose original_router holds
+        # the bare routes, with prefix and include dependencies on include_context; older versions flatten.
+        for r in routes:
+            if isinstance(r, APIRoute):
+                fn = r.endpoint.__module__.replace("api.routes.", "") + "." + r.endpoint.__name__
+                for m in r.methods - {"HEAD"}:
+                    out.setdefault((m, prefix + r.path), (fn, extra + _guards(r.dependant, [])))
+            elif hasattr(r, "original_router"):
+                ctx = r.include_context
+                inc = [frozenset(a) for d in ctx.dependencies if (a := _actions(d.dependency))]
+                walk(r.original_router.routes, prefix + ctx.prefix, extra + inc)
+
+    walk(app.routes, "", [])
     return out
 
 
