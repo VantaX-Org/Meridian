@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
           <AuthField label={t("Work email")} error={error ?? undefined}>
             {(p) => <input {...p} type="email" required autoComplete="email" autoFocus value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} />}
           </AuthField>
-          <button type="submit" className="m2-btn m2-next m2-wide" disabled={submitting}>
+          <button type="submit" className="nx-btn nx-btn-primary m2-wide" disabled={submitting}>
             {submitting ? t("Sending…") : t("Send link")}
           </button>
         </form>

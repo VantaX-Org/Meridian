@@ -7,6 +7,7 @@ import { getLicenceManifest, type LicenceManifest } from "@/lib/api/licence";
 import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
+import { Button } from "@/design/next/kit";
 
 /** Meridian HQ's address comes from the deployment's environment; without it there is no button, only the id to quote. */
 const HQ_URL = process.env.NEXT_PUBLIC_MERIDIAN_HQ_URL;
@@ -58,13 +59,13 @@ export default function LicenceErrorPage() {
       {licence?.tenant_id ? <p className="m2-auth-meta">{t("Contact Meridian with this id.")}</p> : null}
       <div className="m2-auth-row">
         {HQ_URL ? (
-          <a className="m2-btn" href={HQ_URL} target="_blank" rel="noopener noreferrer">
+          <a className="nx-btn nx-btn-secondary" href={HQ_URL} target="_blank" rel="noopener noreferrer">
             {t("Open Meridian HQ")}
           </a>
         ) : null}
-        <button type="button" className="m2-btn m2-next" onClick={() => window.location.replace(window.location.origin)}>
+        <Button variant="primary" onClick={() => window.location.replace(window.location.origin)}>
           {t("Retry")}
-        </button>
+        </Button>
       </div>
     </AuthFrame>
   );

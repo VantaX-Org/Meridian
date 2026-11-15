@@ -50,6 +50,10 @@
 .nx-btn-danger { color: var(--nx-bad-ink); border-color: var(--nx-bad); background: var(--nx-surface); }
 .nx-btn-danger:hover { background: var(--nx-bad-soft); }
 .nx-btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+/* v2.css sets `.m2-root button { color: inherit }` (0,1,1), which beats the single-class variants above when a next
+ * screen sits inside the v2 root; restate the variant ink at (0,2,0) so the primary label keeps its contrast. */
+.nx-root .nx-btn-primary { color: var(--nx-accent-ink); }
+.nx-root .nx-btn-danger { color: var(--nx-bad-ink); }
 .nx-btn-label { display: inline-flex; align-items: center; gap: var(--nx-s2); }
 .nx-btn-label[data-hidden] { visibility: hidden; }
 .nx-btn-spin { position: absolute; display: inline-flex; }
