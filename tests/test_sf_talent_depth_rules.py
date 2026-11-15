@@ -133,6 +133,8 @@ FIXTURES = {
     "REC078": {"ONBOARDINGCANDIDATEINFO": frame("ONBOARDINGCANDIDATEINFO", **OB2,
                                                 BACKGROUND_CHECK_STATUS=["Failed", "Passed"], CANCELLED_ON=["", ""])},
     "REC083": {"JOBREQUISITION": frame("JOBREQUISITION", **JR2, CURRENCY=["usd", "USD"])},
+    "REC087": {"JOBREQUISITION": frame("JOBREQUISITION", **JR2, INTERNAL_STATUS=["Pre-Approved", "Approved"],
+                                       OPENINGS_FILLED=[1, 1])},
     # time & attendance
     "TIME049": {"TIMESHEET": frame("TIMESHEET", **TS2, ACCOUNT_START_DATE=["2026-01-01"] * 2,
                                    ACCOUNT_END_DATE=["2025-12-31", "2026-12-31"])},
@@ -145,6 +147,10 @@ FIXTURES = {
     "TIME070": {"TIMESHEET": frame("TIMESHEET", **TS2, WORK_SCHEDULE=["", "WS40"])},
     "TIME076": {"TIMESHEET": frame("TIMESHEET", **TS2, ENTRY_START_TIME=["25:00", "08:00"])},
     "TIME078": {"TIMESHEET": frame("TIMESHEET", **TS2, QUANTITY_IN_DAYS=[1.0, 0.5], HOURS=[8.0, 4.0])},
+    "TIME089": {"TIMESHEET": frame("TIMESHEET", **TS2, UNDETERMINED_END=["true", "false"],
+                                   ABSENCE_END_DATE=["2026-03-01"] * 2)},
+    "TIME090": {"TIMESHEET": frame("TIMESHEET", **TS2, TIME_RECORDING_VARIANT=["CLOCK_TIME"] * 2, HOURS=[8.0, 8.0],
+                                   ENTRY_START_TIME=["", "08:00"], ENTRY_END_TIME=["", "16:00"])},
 }
 
 
