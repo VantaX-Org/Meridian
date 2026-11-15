@@ -24,7 +24,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, csv_response
+from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, content_disposition, csv_response
 from api.services.migration.post_load import NO_TARGET_ANALYSIS
 from api.services.rbac import Scope, current_user_id, require_permission, require_scope, scope_from_path, write_audit
 from api.middleware.licence import licensed_module
@@ -1980,7 +1980,7 @@ async def export_target_workbook(
     # Not _stream: a StreamingResponse after an uploaded body trips BaseHTTPMiddleware ("Unexpected message received").
     name = f"target_workbook_{version_id}.{ext}"
     return Response(content, media_type=media_type(ext),
-                    headers={"Content-Disposition": f"attachment; filename={name}"})
+                    headers={"Content-Disposition": content_disposition(name)})
 
 
 # ── Template library (target templates kept per module, filled from any run) ──
@@ -2243,7 +2243,7 @@ async def export_template(module: str, template_id: str, request: Request, versi
     await db.commit()
     name = f"{re.sub(r'[^A-Za-z0-9_-]', '_', t['name'])}_v{t['version']}_{vid[:8]}.{ext}"
     return Response(content, media_type=media_type(ext),
-                    headers={"Content-Disposition": f"attachment; filename={name}"})
+                    headers={"Content-Disposition": content_disposition(name)})
 
 
 # ── Field map ─────────────────────────────────────────────────────────────────

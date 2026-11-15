@@ -596,3 +596,12 @@ def csv_response(
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+def content_disposition(file_name: str) -> str:
+    """An attachment header that cannot be broken out of: an ASCII-only ``filename`` (anything else,
+    quotes, CR/LF and separators included, becomes ``_``) and the exact name as RFC 5987 ``filename*``."""
+    from urllib.parse import quote
+
+    ascii_name = "".join(c if (c.isascii() and c.isalnum()) or c in "._-" else "_" for c in file_name)[:200] or "report"
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(file_name, safe='')}"
