@@ -908,7 +908,7 @@ async def escalate_queue_item(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view", scope=scope_from_path)),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),  # a viewer must not change queue state
 ):
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 

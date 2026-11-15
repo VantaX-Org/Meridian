@@ -14438,3 +14438,119 @@ rules:
       - op: postcode
         country_field: KNA1.LAND1
       confidence: medium
+  - id: SDCM943
+    field: KNA1.XCPDK
+    check_class: cross_field_check
+    fail_when: ((`KNA1.CCC01`=='X')|(`KNA1.CCC02`=='X')|(`KNA1.CCC03`=='X')|(`KNA1.CCC04`=='X')) & (`KNA1.XCPDK`=='X')
+    severity: medium
+    dimension: consistency
+    message: Export control indicator is set on a one-time customer account
+    why_it_matters: The legal control indicators KNA1.CCC01 to CCC04 mark a customer as relevant for export control screening.
+      A one-time account (XCPDK) carries a different real customer on every document, so an indicator on the master record says
+      nothing about who the goods actually go to.
+    rule_authority: best_practice
+    sap_impact: Export control screening relies on an indicator that does not describe the real consignee, so controlled goods
+      can ship to a party that was never screened.
+    fix_map:
+      __other__: Create a normal customer account for the controlled consignee and set the indicators there, or clear them on
+        the one-time account in XD02 > Control data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: export control indicator set on a one-time account.'
+  - id: SDCM944
+    field: KNA1.DEAR6
+    check_class: cross_field_check
+    fail_when: (`KNA1.DEAR6`=='X') & (`KNA1.STKZN`.fillna('')!='X')
+    severity: medium
+    dimension: consistency
+    message: Customer is flagged as a consumer but is not a natural person
+    why_it_matters: KNA1.DEAR6 marks the customer as a consumer (a private end customer). A consumer is a natural person, so
+      KNA1.STKZN should be 'X'. Customer-vendor integration creates the business partner category from STKZN, so a consumer
+      without it becomes an organisation in S/4HANA.
+    rule_authority: s4hana_migration
+    sap_impact: The business partner is created as an organisation, so name fields, consumer tax treatment and data privacy
+      handling for a private person are wrong after conversion.
+    fix_map:
+      __other__: Confirm whether the customer is a private person. If so, set the natural person indicator in XD02 > Control
+        data; if not, clear the consumer indicator.
+    record_fix_template: 'Customer {KNA1.KUNNR}: consumer indicator set but natural person indicator is blank.'
+  - id: SDCM945
+    field: KNA1.KONZS
+    check_class: cross_field_check
+    fail_when: (`KNA1.XCPDK`=='X') & `KNA1.KONZS`.notna()
+    severity: low
+    dimension: consistency
+    message: Group key is set on a one-time customer account
+    why_it_matters: The group key (KONZS) links customers that belong to one corporate group for reporting and matchcode searches.
+      A one-time account stands for many unrelated customers, so linking it to a group mixes their sales into that group.
+    rule_authority: best_practice
+    sap_impact: Group-level sales and credit reporting include unrelated one-time sales.
+    fix_map:
+      __other__: Clear the group key on the one-time account in XD02 > Control data.
+    record_fix_template: 'Customer {KNA1.KUNNR}: one-time account carries a group key.'
+  - id: SDCM946
+    field: KNB1.BEGRU
+    check_class: cross_field_check
+    grain: KNB1
+    fail_when: '`KNB1.BEGRU`.notna() & (`KNB1.BEGRU` != `KNA1.BEGRU`.fillna(''''))'
+    severity: low
+    dimension: consistency
+    message: Company code authorization group differs from the general authorization group
+    why_it_matters: Customer-vendor integration derives the business partner authorization group from the general data group
+      KNA1.BEGRU only. A different group in the company code data (KNB1.BEGRU) is not carried to the business partner, so access
+      protection set at company code level is lost on the partner in S/4HANA.
+    rule_authority: best_practice
+    sap_impact: Users who are kept out of the account in FI today can display and change the business partner after conversion.
+    fix_map:
+      __other__: Align the authorization groups, or set the general group in XD02 so that the business partner keeps the protection.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: authorization group differs from the general data
+      group.'
+  - id: SDCM947
+    field: KNVV.BEGRU
+    check_class: cross_field_check
+    grain: KNVV
+    fail_when: '`KNVV.BEGRU`.notna() & (`KNVV.BEGRU` != `KNA1.BEGRU`.fillna(''''))'
+    severity: low
+    dimension: consistency
+    message: Sales area authorization group differs from the general authorization group
+    why_it_matters: Customer-vendor integration derives the business partner authorization group from KNA1.BEGRU only. A different
+      group in the sales area data (KNVV.BEGRU) is not carried to the business partner.
+    rule_authority: best_practice
+    sap_impact: Access protection that applies to this sales area today is not applied to the business partner after conversion.
+    fix_map:
+      __other__: Align the authorization groups, or set the general group in XD02 so that the business partner keeps the protection.
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: authorization group differs
+      from the general data group.'
+  - id: SDCM948
+    field: KNB1.PERNR
+    check_class: uniqueness_check
+    fields:
+    - KNB1.BUKRS
+    - KNB1.PERNR
+    grain: KNB1
+    severity: medium
+    dimension: uniqueness
+    message: Personnel number is assigned to more than one customer in the company code
+    why_it_matters: KNB1.PERNR links an employee customer account (for staff loans, advances or staff sales) to the personnel
+      number. One employee with two customer accounts in the same company code splits the employee's balance.
+    rule_authority: best_practice
+    sap_impact: Payroll deductions and HR clearing post to one account while open items sit on the other, so the employee balance
+      is never cleared.
+    fix_map:
+      __other__: Keep one customer account per employee and company code; block the other and move its open items (XD02 > Company
+        code data > Account management).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: personnel number shared with another customer.'
+  - id: SDCM949
+    field: KNKK.CRBLB
+    check_class: cross_field_check
+    grain: KNKK
+    fail_when: (`KNKK.CRBLB`=='X') & `KNKK.NXTRV`.isna()
+    severity: medium
+    dimension: timeliness
+    message: Customer is blocked by credit management but no review date is set
+    why_it_matters: KNKK.CRBLB blocks the customer in the credit control area. Without a next review date (KNKK.NXTRV) nobody
+      is prompted to look at the block again, so it stays in place indefinitely.
+    rule_authority: best_practice
+    sap_impact: Orders stay blocked with no planned review; in S/4HANA credit management the block migrates without a follow-up
+      date.
+    fix_map:
+      __other__: Review the block in FD32 and either lift it or enter a next internal review date.
+    record_fix_template: 'Customer {KNKK.KUNNR}, credit control area {KNKK.KKBER}: credit block has no review date.'

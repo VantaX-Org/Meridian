@@ -625,8 +625,9 @@ async def upload_postal_codes(system_id: uuid.UUID, request: Request, db: AsyncS
         region = rec[3].strip().upper()[:3] if len(rec) > 3 else ""
         if i == 0 and country in ("COUNTRY", "LAND1"):
             continue  # header
-        if re.fullmatch(_REF_COUNTRY, country) and re.fullmatch(_REF_POSTCODE, postcode):
-            rows.add((country, postcode, city, region))
+        if re.fullmatch(_REF_COUNTRY, country) and re.fullmatch(_REF_POSTCODE, postcode) \
+                and not city.startswith(("=", "+", "-", "@")) and not region.startswith(("=", "+", "-", "@")):
+            rows.add((country, postcode, city, region))  # free-text city/region: no formula injection
         else:
             bad += 1
         if len(rows) > _REF_MAX_ROWS:
