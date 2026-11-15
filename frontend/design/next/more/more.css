@@ -51,3 +51,4 @@
 .nx-more-links li { display: grid; gap: 2px; min-inline-size: 0; }
 .nx-more-links p { margin: 0; color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
 .nx-chartcard-list { list-style: none; margin: var(--nx-s2) 0 0; padding: 0; display: grid; gap: var(--nx-s1); }
+.nx-statgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--nx-s3); }

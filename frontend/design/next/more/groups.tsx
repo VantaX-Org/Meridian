@@ -78,4 +78,7 @@ export const TILES: Tile[] = [
   ...GROUPS.map((g) => ({ id: g.id, href: `/more/${g.id}`, title: g.title, blurb: g.blurb })),
   ...Object.entries(SINGLES).filter(([k]) => !k.includes("/")).map(([k, s]) => ({ id: k, href: `/more/${k}`, title: s.title, blurb: s.blurb })),
   ...LINKS.map((l) => ({ id: l.href, href: l.href, title: l.title, blurb: l.blurb })),
+  { id: "custom-objects", href: "/more/custom-objects", title: () => t("Custom objects"), blurb: () => t("Z and Y objects in SAP, their use and rule coverage.") },
+  { id: "writeback", href: "/more/writeback", title: () => t("Send fixes to SAP"), blurb: () => t("Check a fix, send it for approval, follow the result.") },
+  { id: "golden-writeback", href: "/more/golden-writeback", title: () => t("Send golden records to SAP"), blurb: () => t("Preview, check and approve a golden record before it goes back.") },
 ];

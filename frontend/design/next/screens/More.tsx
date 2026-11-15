@@ -13,6 +13,9 @@ import { Reports } from "../more/Reports";
 import { Systems } from "../more/Systems";
 import { SystemPage } from "../more/SystemPage";
 import { People } from "../more/People";
+import { ZObjects } from "../more/ZObjects";
+import { Writeback } from "../more/Writeback";
+import { GoldenWriteback } from "../more/GoldenWriteback";
 import { AdminHome, AdminSectionView } from "../admin/Admin";
 import { LegacyMount } from "../shell/LegacyMount";
 import { AdminFlow, FlowCards, isAdminFlow } from "../admin/AdminFlows";
@@ -69,6 +72,9 @@ export function More({ slug }: { slug?: string[] }) {
   }
   if (key === "reports") return <Frame title={t("Reports")}><Reports /></Frame>;
   if (key === "people") return <Frame title={t("People")}><People /></Frame>;
+  if (key === "custom-objects") return <Frame title={t("Custom objects")}><ZObjects /></Frame>;
+  if (key === "writeback") return <Frame title={t("Send fixes to SAP")}><Writeback /></Frame>;
+  if (key === "golden-writeback") return <Frame title={t("Send golden records to SAP")}><GoldenWriteback /></Frame>;
   if (a === "systems" && b !== "config" && slug!.length <= 2) {
     return b
       ? <Frame title={t("Systems")} back={{ to: "/more/systems", label: t("Systems") }}><SystemPage id={b} /></Frame>
