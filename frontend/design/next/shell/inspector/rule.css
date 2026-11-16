@@ -1,0 +1,7 @@
+/* Rule inspector: layout only. */
+.nx-rl-explain { display: inline-block; }
+.nx-rl-explain > summary { cursor: pointer; list-style: none; }
+.nx-rl-explain > summary::-webkit-details-marker { display: none; }
+.nx-rl-inline { display: inline-flex; align-items: center; gap: var(--nx-s2); }
+.nx-rl-lineage { display: flex; flex-direction: column; gap: var(--nx-s2); margin: 0; padding-left: var(--nx-s4); }
+.nx-rl-name { margin: 0 0 var(--nx-s3); }
