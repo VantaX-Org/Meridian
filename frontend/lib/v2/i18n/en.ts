@@ -11494,6 +11494,15 @@ export const en = {
   "factor": "factor",
   "mitigation": "mitigation",
   " freed.": " freed.",
+  // Load journey parity: analysis target step and go-live what-if.
+  "Reading systems": "Reading systems",
+  "Could not read the systems.": "Could not read the systems.",
+  "Could not read the templates for {object}.": "Could not read the templates for {object}.",
+  "Simulate by record": "Simulate by record",
+  "Records with open issues on {object}": "Records with open issues on {object}",
+  "Simulate fixing {n} {n, plural, one {record} other {records}}": "Simulate fixing {n} {n, plural, one {record} other {records}}",
+  "The records of this object could not be read.": "The records of this object could not be read.",
+  "No record of this object has an open issue.": "No record of this object has an open issue.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -208,7 +208,7 @@ export function SimulateDialog({
           <RulePicker rules={failing} chosen={picked} set={setChosen} />
         )}
         {asked && sim.isPending ? <Skeleton /> : null}
-        {sim.isError ? <p role="alert">{failureText(sim.error)}</p> : null}
+        {sim.isError ? <ErrorState sentence={failureText(sim.error)} error={sim.error} onRetry={() => void sim.refetch()} /> : null}
         {sim.data ? <SimulationView result={sim.data} label={label} /> : null}
       </div>
     </Sheet>
@@ -218,6 +218,8 @@ export function SimulateDialog({
 /** Each failing rule simulated on its own, ranked by the score it would give back. */
 export function TopFixesView({ module, label, systemId, run }: { module: string; label: string; systemId: string | null; run: string | null }) {
   const q = useTopFixes(module, systemId, run);
+  const names = useObjectRules(module, run);
+  const nameOf = new Map((names.data ?? []).map((r) => [r.check_id, r.name]));
   const { hrefFor } = useOpenItem();
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState<string[] | null>(null);
@@ -238,6 +240,7 @@ export function TopFixesView({ module, label, systemId, run }: { module: string;
           <Link className="nx-link nx-mono" href={hrefFor({ kind: "rule", id: r.check_id })} data-testid={`top-fix-${r.check_id}`}>
             {r.check_id}
           </Link>
+          {nameOf.get(r.check_id) ? ` ${nameOf.get(r.check_id)}` : ""}
           {r.breach_cleared ? ` ${t("clears the cap")}` : ""}
         </span>
       ),

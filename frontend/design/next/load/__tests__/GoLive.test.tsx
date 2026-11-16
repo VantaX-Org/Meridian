@@ -3,6 +3,8 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import * as analytics from "@/lib/api/v2/analytics";
 import * as rep from "@/lib/api/v2/reports";
+import * as step9 from "@/lib/api/v2/step9";
+import * as work from "@/lib/api/v2/work";
 import { GoLive } from "../GoLive";
 import { setUrl } from "@/design/v2/__tests__/nav-store";
 
@@ -35,6 +37,38 @@ describe("load, go-live", () => {
     fireEvent.click(button);
     expect(button).toHaveAttribute("aria-pressed", "true");
     expect(within(screen.getByTestId("what-if")).getAllByRole("heading")[0].textContent).toMatch(/^What if, for /);
+  });
+
+  it("runs the what-if: before and after, top fixes, and a per-record simulation", async () => {
+    const row = { module: "asset_accounting", record_key: "100000-0", name: "Crane 7", issues: 2, severity: "critical", checks: ["AA003"], proposed: 0, status: "open", top_message: null, top_field: null };
+    vi.spyOn(work, "getWork").mockResolvedValue({ items: [row], next: null } as never);
+    renderWithQuery(<GoLive />);
+    const runway = await screen.findByTestId("runway");
+    await within(runway).findAllByText(/at go-live$/);
+    fireEvent.click(within(runway.querySelectorAll("[data-module]")[1] as HTMLElement).getByRole("button"));
+    const panel = screen.getByTestId("what-if");
+    const boxes = await within(panel).findAllByRole("checkbox");
+    fireEvent.click(boxes[0]!);
+    expect(await within(panel).findByTestId("sim-before")).toBeInTheDocument();
+    expect(within(panel).getByTestId("sim-after")).toBeInTheDocument();
+    expect(await within(panel).findByTestId("top-fixes")).toBeInTheDocument();
+    const records = within(panel).getByTestId("record-sim");
+    const picks = await within(records).findAllByRole("checkbox");
+    fireEvent.click(picks[picks.length - 1]!);
+    fireEvent.click(await within(records).findByRole("button", { name: /^Simulate fixing 1 record$/ }));
+    expect(within(records).getByText("Crane 7")).toBeInTheDocument();
+    expect(await screen.findByTestId("simulate-dialog")).toHaveTextContent("1 selected record of");
+  });
+
+  it("shows the simulation error with a retry, not a dash", async () => {
+    vi.spyOn(step9, "simulateFix").mockRejectedValue(new Error("500"));
+    renderWithQuery(<GoLive />);
+    const runway = await screen.findByTestId("runway");
+    await within(runway).findAllByText(/at go-live$/);
+    fireEvent.click(within(runway.querySelectorAll("[data-module]")[1] as HTMLElement).getByRole("button"));
+    const panel = screen.getByTestId("what-if");
+    fireEvent.click((await within(panel).findAllByRole("checkbox"))[0]!);
+    expect(await within(panel).findByRole("button", { name: /retry|try again/i })).toBeInTheDocument();
   });
 
   it("shows unavailable, not a guessed line, when a forecast cannot be read", async () => {

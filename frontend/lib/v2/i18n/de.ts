@@ -11495,4 +11495,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "factor": "Faktor",
   "mitigation": "Minderung",
   " freed.": " freigegeben.",
+  // Load journey parity: analysis target step and go-live what-if.
+  "Reading systems": "Systeme werden gelesen",
+  "Could not read the systems.": "Die Systeme konnten nicht gelesen werden.",
+  "Could not read the templates for {object}.": "Die Vorlagen für {object} konnten nicht gelesen werden.",
+  "Simulate by record": "Nach Datensatz simulieren",
+  "Records with open issues on {object}": "Datensätze mit offenen Problemen in {object}",
+  "Simulate fixing {n} {n, plural, one {record} other {records}}": "Behebung von {n} {n, plural, one {Datensatz} other {Datensätzen}} simulieren",
+  "The records of this object could not be read.": "Die Datensätze dieses Objekts konnten nicht gelesen werden.",
+  "No record of this object has an open issue.": "Kein Datensatz dieses Objekts hat ein offenes Problem.",
 };

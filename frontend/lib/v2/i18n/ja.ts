@@ -11495,4 +11495,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "factor": "係数",
   "mitigation": "軽減",
   " freed.": " を解放しました。",
+  // Load journey parity: analysis target step and go-live what-if.
+  "Reading systems": "システムを読み込んでいます",
+  "Could not read the systems.": "システムを読み込めませんでした。",
+  "Could not read the templates for {object}.": "{object} のテンプレートを読み込めませんでした。",
+  "Simulate by record": "レコード単位でシミュレーション",
+  "Records with open issues on {object}": "{object} の未解決の問題があるレコード",
+  "Simulate fixing {n} {n, plural, one {record} other {records}}": "{n} 件のレコードの修正をシミュレーション",
+  "The records of this object could not be read.": "このオブジェクトのレコードを読み込めませんでした。",
+  "No record of this object has an open issue.": "このオブジェクトには未解決の問題があるレコードはありません。",
 };

@@ -22,7 +22,9 @@ import { useObjectRules } from "@/lib/v2/queries";
 import { DASH, f1, int, moduleSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { useMoney, useTopFixes } from "@/lib/v2/step9-queries";
 import { dayFromToday, daysUntil, nextWave } from "@/lib/v2/waves";
-import { Button, EmptyState, ErrorState, Skeleton } from "../kit";
+import { useWorkRows } from "@/lib/v2/work-queries";
+import { SimulateDialog, SimulationView, TopFixesView } from "../object/tabs/Simulate";
+import { Button, DataTable, EmptyState, ErrorState, Skeleton } from "../kit";
 import { About, Banner, Panel } from "./parts";
 
 interface Row {
@@ -250,6 +252,8 @@ function WhatIf({ module }: { module: string }) {
         <Skeleton lines={3} label={t("What if")} />
       ) : top.isError ? (
         <ErrorState sentence={t("The fixes for this object could not be read.")} error={top.error} onRetry={() => void top.refetch()} />
+      ) : names.isError ? (
+        <ErrorState sentence={t("The rules of this object could not be read.")} error={names.error} onRetry={() => void names.refetch()} />
       ) : !top.data.rules.length ? (
         <p className="nx-ld-meta">{t("No failing rules to try for this object.")}</p>
       ) : (
@@ -269,7 +273,7 @@ function WhatIf({ module }: { module: string }) {
       <dl className="nx-ld-figs" aria-live="polite">
         <div className="nx-card nx-stat">
           <dt className="nx-stat-label">{t("Score after")}</dt>
-          <dd className="nx-stat-value">{!rules.length ? <Dash why={t("Pick a rule to try")} /> : sim.isPending ? DASH : sim.data ? `${f1(sim.data.after.score)} (${(d?.score ?? 0) >= 0 ? "+" : ""}${f1(d?.score ?? null)})` : <Dash why={t("Simulation failed")} />}</dd>
+          <dd className="nx-stat-value">{!rules.length ? <Dash why={t("Pick a rule to try")} /> : sim.isPending ? DASH : sim.data ? `${f1(sim.data.after.score)} (${(d?.score ?? 0) >= 0 ? "+" : ""}${f1(d?.score ?? null)})` : DASH}</dd>
         </div>
         <div className="nx-card nx-stat">
           <dt className="nx-stat-label">{t("Gates opened")}</dt>
@@ -280,6 +284,38 @@ function WhatIf({ module }: { module: string }) {
           <dd className="nx-stat-value">{sim.data?.after.verdict ? VERDICT_LABEL[sim.data.after.verdict] : DASH}</dd>
         </div>
       </dl>
+      {sim.isError ? <ErrorState sentence={t("Simulation failed")} error={sim.error} onRetry={() => void sim.refetch()} /> : null}
+      {sim.data ? <SimulationView result={sim.data} label={moduleText(module)} /> : null}
+      <TopFixesView module={module} label={moduleText(module)} systemId={null} run={null} />
+      <RecordSim module={module} />
     </Panel>
+  );
+}
+
+/** Per-record what-if: pick records from the work ledger and simulate every rule they fail as fixed. */
+function RecordSim({ module }: { module: string }) {
+  const q = useWorkRows({ module }, "value");
+  const rows = q.data?.pages.flatMap((p) => p.items) ?? [];
+  const [open, setOpen] = useState<string[] | null>(null);
+  return (
+    <section data-testid="record-sim" aria-label={t("Simulate by record")}>
+      <h3 className="nx-sec-h">{t("Simulate by record")}</h3>
+      <DataTable
+        rows={rows}
+        rowKey={(r) => r.record_key}
+        rowLabel={(r) => r.record_key}
+        caption={t("Records with open issues on {object}", { object: moduleText(module) })}
+        columns={[
+          { id: "record", label: t("Record"), cell: (r) => <span><span className="nx-mono">{r.record_key}</span> {r.name ?? ""}</span> },
+          { id: "issues", label: t("Issues"), cell: (r) => int(r.issues), align: "end" },
+        ]}
+        selectable
+        bulkActions={(keys) => <Button variant="primary" onClick={() => setOpen(keys)}>{t("Simulate fixing {n} {n, plural, one {record} other {records}}", { n: keys.length })}</Button>}
+        loading={q.isPending}
+        error={q.isError ? { sentence: t("The records of this object could not be read."), onRetry: () => void q.refetch() } : undefined}
+        empty={{ heading: t("No record of this object has an open issue.") }}
+      />
+      {open ? <SimulateDialog module={module} label={moduleText(module)} records={open.map((record_key) => ({ module, record_key }))} onClose={() => setOpen(null)} /> : null}
+    </section>
   );
 }
