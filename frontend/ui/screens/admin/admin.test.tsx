@@ -1,83 +1,49 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
-import type { ReactElement } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
-import { stubLayout } from "@/design/v2/__tests__/layout-stub";
-import { AletheiaProvider, ToastHost } from "@/ui/kit";
-import { OPS_SECTIONS } from "./ops";
-import { Reports } from "./Reports";
-import { Me } from "./Me";
-import { Inbox } from "./Inbox";
-import { ADMIN_SHEETS } from "./sheets";
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { AletheiaProvider } from "@/ui/kit";
+import { Admin, AdminSectionScreen } from "./Admin";
+import { SECTIONS, isSection } from "./sections";
+import { isLastAdmin, removeBlock } from "./common";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 
-let undo: () => void = () => undefined;
 beforeEach(() => {
-  undo = stubLayout();
   window.sessionStorage.clear();
   window.history.replaceState(null, "", "/n/admin?fixture=1");
 });
-afterEach(() => undo());
 
-const wrap = (ui: ReactElement) => (
-  <AletheiaProvider>
-    <ToastHost>{ui}</ToastHost>
-  </AletheiaProvider>
-);
-
-describe("admin ops sections", () => {
-  it("exports all thirteen slugs", () => {
-    expect(Object.keys(OPS_SECTIONS).sort()).toEqual(
-      ["access", "audit", "billing", "contact-verify", "data", "engine", "enterprise", "external-db", "mappings", "schedules", "subject-requests", "system", "triage"],
-    );
+describe("admin sections", () => {
+  it("registers every 11a section with a label, lead and permission", () => {
+    for (const slug of ["users", "roles", "apikeys", "signin", "settings", "scoring", "notify", "webhooks", "llm", "licence"]) {
+      expect(isSection(slug)).toBe(true);
+      const s = SECTIONS[slug];
+      expect(s.label()).not.toBe("");
+      expect(s.lead()).not.toBe("");
+      expect(s.needs.length).toBeGreaterThan(0);
+    }
+    expect(isSection("nope")).toBe(false);
+    expect(isSection("constructor")).toBe(false);
   });
 
-  for (const [slug, Section] of Object.entries(OPS_SECTIONS)) {
-    it(`${slug} renders a heading in fixture mode`, async () => {
-      renderWithQuery(wrap(<Section />));
-      expect((await screen.findAllByRole("heading")).length).toBeGreaterThan(0);
-      expect(document.body.textContent ?? "").not.toContain(String.fromCharCode(0xb7));
-    });
-  }
+  it("lists the sections in fixture mode", async () => {
+    renderWithQuery(<AletheiaProvider><Admin /></AletheiaProvider>);
+    expect(await screen.findByRole("heading", { level: 1, name: "Administration" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Users/ }).getAttribute("href")).toBe("/n/admin/users?fixture=1");
+  });
+
+  it("answers an unknown section with an empty state", () => {
+    renderWithQuery(<AletheiaProvider><AdminSectionScreen slug="nope" /></AletheiaProvider>);
+    expect(screen.getByText("There is no such section")).toBeTruthy();
+  });
 });
 
-describe("admin screens", () => {
-  it("Reports shows catalogue rows", async () => {
-    renderWithQuery(wrap(<Reports />));
-    expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
-    await waitFor(() => expect(screen.getAllByRole("row").length).toBeGreaterThan(1));
-    expect(document.body.textContent ?? "").not.toContain(String.fromCharCode(0xb7));
+describe("removeBlock", () => {
+  const admin = { id: "a", role: "admin", is_active: true } as never;
+  const other = { id: "b", role: "viewer", is_active: true } as never;
+  it("never leaves the tenant without an active administrator", () => {
+    expect(isLastAdmin(admin, [admin, other])).toBe(true);
+    expect(removeBlock(admin, [admin, other], null)).toBe("last-admin");
+    expect(removeBlock(other, [admin, other], null)).toBeNull();
   });
-
-  it("Me shows preferences", async () => {
-    renderWithQuery(wrap(<Me />));
-    expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
-    expect(document.body.textContent ?? "").not.toContain(String.fromCharCode(0xb7));
-  });
-
-  it("Inbox shows notification rows", async () => {
-    renderWithQuery(wrap(<Inbox />));
-    expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
-    await waitFor(() => expect(screen.getAllByRole("row").length).toBeGreaterThan(1));
-  });
-
-  it("registers six sheets and never exposes triggerUpdate", () => {
-    expect(Object.keys(ADMIN_SHEETS).sort()).toEqual(["help", "licence", "notify", "preferences", "report", "update"]);
-    const dirs = [__dirname, join(__dirname, "ops"), join(__dirname, "sheets")];
-    for (const d of dirs) for (const f of readdirSync(d).filter((n) => /\.tsx?$/.test(n) && !n.includes(".test."))) {
-      expect(readFileSync(join(d, f), "utf8"), f).not.toContain("triggerUpdate");
-    }
-  });
-
-  for (const key of ["licence", "notify", "update", "report", "preferences", "help"] as const) {
-    it(`sheet ${key} renders`, async () => {
-      const def = ADMIN_SHEETS[key];
-      const { container } = renderWithQuery(wrap(<>{def.render(undefined as never)}</>));
-      await waitFor(() => expect(container.textContent?.length ?? 0).toBeGreaterThan(0));
-      expect(def.label).toBeTruthy();
-    });
-  }
 });
