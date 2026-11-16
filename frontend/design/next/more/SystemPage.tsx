@@ -14,7 +14,7 @@ import { V2Link } from "@/design/v2/parts";
 import { Configuration } from "@/design/v2/screens/system/Configuration";
 import { CustomObjects } from "@/design/v2/screens/system/CustomObjects";
 import { SourceDesign } from "@/design/v2/screens/system/SourceDesign";
-import { Schedules } from "@/design/v2/screens/system/Schedules";
+import { Schedules } from "./system/Schedules";
 import { ChangeLog } from "./system/ChangeLog";
 import { ConfigChanges } from "./system/ConfigChanges";
 import { Button, Chip, EmptyState, SegmentedControl, Skeleton } from "../kit";
