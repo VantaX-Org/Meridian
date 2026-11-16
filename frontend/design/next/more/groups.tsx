@@ -8,7 +8,7 @@ import { AletheiaReason } from "./AletheiaReason";
 import { AletheiaSurvivorship } from "./AletheiaSurvivorship";
 import { MdmHealth } from "./MdmHealth";
 import { EntryGate } from "./EntryGate";
-import { ReferenceData } from "@/design/v2/screens/ReferenceData";
+import { ReferenceData } from "./ReferenceData";
 import { Links } from "@/design/v2/screens/Links";
 import { Catalogue } from "@/design/v2/screens/Catalogue";
 import { Issues } from "@/design/v2/screens/Issues";
