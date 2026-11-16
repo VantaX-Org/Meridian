@@ -23,7 +23,7 @@ vi.mock("@/design/v2/screens/Requests", async () => (await import("./stub")).stu
 vi.mock("@/design/v2/screens/RequestForm", async () => (await import("./stub")).stub("RequestFormCanvas"));
 vi.mock("@/design/v2/screens/ProcessAnalytics", async () => (await import("./stub")).stub("ProcessAnalytics"));
 vi.mock("@/design/v2/screens/People", async () => (await import("./stub")).stub("PeopleCanvas"));
-vi.mock("@/design/v2/screens/LearnedMonitors", async () => (await import("./stub")).stub("LearnedMonitors"));
+vi.mock("../monitor/LearnedMonitors", async () => (await import("./stub")).stub("LearnedMonitors"));
 vi.mock("@/design/v2/screens/RulesLibrary", async () => (await import("./stub")).stub("RulesLibrary"));
 vi.mock("@/design/v2/screens/RulePromotion", async () => (await import("./stub")).stub("RulePromotion"));
 vi.mock("@/design/v2/screens/RuleDryRun", async () => (await import("./stub")).stub("RuleDryRun"));
@@ -44,7 +44,7 @@ vi.mock("@/design/v2/screens/ScoreLens", async () => (await import("./stub")).st
 vi.mock("@/design/v2/screens/Insights", async () => (await import("./stub")).stub("Insights"));
 vi.mock("@/design/v2/screens/Forecast", async () => (await import("./stub")).stub("Forecast"));
 vi.mock("@/design/v2/screens/Value", async () => (await import("./stub")).stub("Value"));
-vi.mock("@/design/v2/screens/Config", async () => (await import("./stub")).stub("Config"));
+vi.mock("../more/Config", async () => (await import("./stub")).stub("ConfigScreen"));
 vi.mock("@/design/v2/screens/Runs", async () => (await import("./stub")).stub("RunsCanvas"));
 vi.mock("@/design/v2/screens/system/SystemsCanvas", async () => (await import("./stub")).stub("SystemsCanvas"));
 vi.mock("@/design/v2/screens/Reports", async () => (await import("./stub")).stub("ReportsCanvas"));
@@ -138,7 +138,7 @@ describe("More", () => {
     a.unmount();
     setUrl("/more/systems/config?fixture=1");
     renderWithQuery(<More slug={["systems", "config"]} />);
-    expect(screen.getByTestId("mounted")).toHaveTextContent("Config");
+    expect(screen.getByTestId("mounted")).toHaveTextContent("ConfigScreen");
   });
 });
 

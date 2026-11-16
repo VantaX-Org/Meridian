@@ -1,3 +1,6 @@
-import { Material } from "@/design/v2/screens/Material";
+import { redirect } from "next/navigation";
 
-export default function MaterialsPage() { return <Material />; }
+/** The old address; the materials screen now lives under More. */
+export default function MaterialsPage() {
+  redirect("/more/materials");
+}

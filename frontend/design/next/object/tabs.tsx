@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * The segments of the object page. Overview tells the story (why, what to fix), the other segments are the v2 tabs
- * mounted unchanged. Failing records, Report, Golden records, Glossary, Lineage and Profile sit in the More menu. `cycle` and `trend` are old
+ * The segments of the object page. Overview tells the story (why, what to fix, score over runs); Rules, Records and
+ * Fixes are native. The remaining segments still mount the v2 tab inside a LegacyScope until they are ported. Failing records, Report, Golden records, Glossary, Lineage and Profile sit in the More menu. `cycle` and `trend` are old
  * addresses: cycle opens the cycle sheet over Overview, trend is the hero's trend.
  */
 import type { ReactNode } from "react";
-import { ObjectOverviewRoute, ObjectRulesRoute, ObjectTabRoute } from "@/design/v2/screens/routes";
+import { ObjectTabRoute } from "@/design/v2/screens/routes";
 import { t } from "@/lib/v2/i18n";
 import { RunsTab } from "./RunsTab";
 import { WhySection } from "./WhySection";
@@ -16,9 +16,11 @@ import { FailingRecords } from "../report/FailingRecords";
 import { SteeringReport } from "../report/SteeringReport";
 import { LoadFilesPanel } from "../load/LoadFilesPanel";
 import type { ObjectRun } from "./useObjectRun";
-import { ReceiptTable } from "@/design/v2/screens/Object";
-import { useReceipt } from "@/lib/v2/queries";
-import { f1 } from "@/lib/v2/score";
+import { LegacyScope } from "../shell/LegacyMount";
+import { OverviewExtras } from "./tabs/OverviewExtras";
+import { RulesTab } from "./tabs/RulesTab";
+import { RecordsTab } from "./tabs/RecordsTab";
+import { FixesTab } from "./tabs/FixesTab";
 
 export const TAB_IDS = ["overview", "why", "fix", "records", "rules", "fixes", "runs", "readiness", "processes", "failing", "report", "golden", "glossary", "lineage", "profile", "cycle", "trend"] as const;
 export type TabId = (typeof TAB_IDS)[number];
@@ -55,25 +57,16 @@ export function renderTab(id: TabId, o: ObjectRun, go: (tab: TabId) => void): Re
   switch (id) {
     case "overview":
     case "cycle":
-      return <><WhySection o={o} limit={5} /><ReasonPanel versionId={o.runId ?? undefined} systemId={o.systemId} /><FixSection o={o} /><ObjectOverviewRoute /></>;
+      return <><WhySection o={o} limit={5} /><ReasonPanel versionId={o.runId ?? undefined} systemId={o.systemId} /><FixSection o={o} /><OverviewExtras o={o} /></>;
     case "why": return <WhySection o={o} />;
     case "fix": return <FixSection o={o} />;
     case "runs": return <RunsTab o={o} onOpen={(run) => { o.setRun(run); go("overview"); }} />;
-    case "rules": return <><RulesReceipt o={o} /><ObjectRulesRoute /></>;
+    case "rules": return <RulesTab o={o} />;
+    case "records": return <RecordsTab o={o} />;
+    case "fixes": return <FixesTab o={o} />;
     case "failing": return <FailingRecords o={o} />;
     case "report": return <><SteeringReport o={o} /><LoadFilesPanel module={o.module} /></>;
-    default: return <ObjectTabRoute tab={id} />;
+    default: return <LegacyScope><ObjectTabRoute tab={id} /></LegacyScope>;
   }
 }
 
-/** The receipt of the shown run above its rules: every dimension's weight, score, points, rules, records and coverage. */
-function RulesReceipt({ o }: { o: ObjectRun }) {
-  const r = useReceipt(o.module, o.runId).data;
-  if (!r) return null;
-  return (
-    <details className="m2-rdet" open>
-      <summary>{t("How {score} is made", { score: f1(r.score) })}</summary>
-      <ReceiptTable receipt={r} />
-    </details>
-  );
-}

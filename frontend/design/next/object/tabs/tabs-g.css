@@ -1,0 +1,43 @@
+/* Object page tabs: Readiness, Processes, Lineage, Profile, Glossary, Golden, Trend. Solid content sheets, nx tokens only. */
+.nx-tg { display: flex; flex-direction: column; gap: var(--nx-s5); }
+.nx-tg-sec { display: flex; flex-direction: column; gap: var(--nx-s3); min-width: 0; }
+.nx-tg-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: var(--nx-s2); }
+.nx-tg-head h2, .nx-tg-head h3 { margin: 0; }
+.nx-tg-finding { margin: 0; font-weight: var(--nx-w-label); }
+.nx-tg-prov { margin: 0; color: var(--nx-ink-3); font-size: var(--nx-fs-small); }
+.nx-tg-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--nx-s4); }
+.nx-tg-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--nx-s2); }
+.nx-tg-list li { display: flex; flex-direction: column; gap: 2px; }
+.nx-tg-rule { display: inline-flex; gap: var(--nx-s2); align-items: baseline; color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-tg-dash { color: var(--nx-ink-3); }
+.nx-tg-bar { display: inline-block; min-width: 8rem; }
+.nx-tg-step { min-width: 0; }
+.nx-tg-step > summary { display: flex; align-items: center; gap: var(--nx-s2); flex-wrap: wrap; padding: var(--nx-s2) var(--nx-s3); cursor: pointer; }
+.nx-tg-step-body { display: flex; flex-direction: column; gap: var(--nx-s3); padding: 0 var(--nx-s3) var(--nx-s3); }
+.nx-tg-step-name { font-weight: var(--nx-w-label); }
+.nx-tg-l2 { display: flex; flex-direction: column; gap: var(--nx-s2); }
+.nx-tg-l2 > h3 { display: flex; gap: var(--nx-s2); align-items: baseline; margin: 0; font-size: var(--nx-fs-small); font-weight: var(--nx-w-label); }
+.nx-tg-check { display: flex; gap: var(--nx-s2); align-items: flex-start; }
+.nx-tg-check small { display: block; color: var(--nx-ink-3); }
+.nx-tg-out { display: flex; flex-direction: column; gap: var(--nx-s1); }
+.nx-tg-graph { width: 100%; overflow-x: auto; }
+.nx-tg-graph svg { display: block; min-width: 40rem; }
+.nx-tg-node rect { fill: var(--nx-surface); stroke: var(--nx-border); }
+.nx-tg-node[data-hot="true"] rect { stroke: var(--nx-accent); fill: var(--nx-accent-soft); }
+.nx-tg-node[data-dim="true"] { opacity: 0.35; }
+.nx-tg-node[data-status="bad"] rect { stroke: var(--nx-bad); }
+.nx-tg-node[data-status="warn"] rect { stroke: var(--nx-warn); }
+.nx-tg-node text { fill: var(--nx-ink); font-size: var(--nx-fs-micro); font-family: var(--nx-mono); }
+.nx-tg-edge { stroke: var(--nx-border); fill: none; }
+.nx-tg-edge[data-hot="true"] { stroke: var(--nx-accent); }
+.nx-tg-coltitle { fill: var(--nx-ink-3); font-size: var(--nx-fs-micro); }
+.nx-tg-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: var(--nx-s3); }
+.nx-tg-facts dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: var(--nx-s1) var(--nx-s3); font-size: var(--nx-fs-small); }
+.nx-tg-facts dt { color: var(--nx-ink-3); }
+.nx-tg-facts dd { margin: 0; }
+.nx-tg-form { display: flex; flex-wrap: wrap; gap: var(--nx-s2); align-items: center; }
+.nx-tg-form select, .nx-tg-form input { width: auto; }
+.nx-tg-stack { display: inline-flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nx-tg-sub { color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-tg-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2); }
+.nx-tg-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--nx-s3); }

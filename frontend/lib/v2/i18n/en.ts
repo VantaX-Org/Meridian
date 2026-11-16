@@ -11455,6 +11455,23 @@ export const en = {
   "This object's dimension scores and every rule result at this run.": "This object's dimension scores and every rule result at this run.",
   "What this rule reads could not be loaded.": "What this rule reads could not be loaded.",
   "What this rule reads": "What this rule reads",
+  "Reading the configuration again needs the analyse permission.": "Reading the configuration again needs the analyse permission.",
+  "Every object at its newest run, live runs, bulk pull, upload and compare.": "Every object at its newest run, live runs, bulk pull, upload and compare.",
+  "One material across every view, level and rule.": "One material across every view, level and rule.",
+  "The cleaning plan could not be read.": "The cleaning plan could not be read.",
+  "How the engine reached this": "How the engine reached this",
+  "No run since the load": "No run since the load",
+  "Batches that hold {label} records": "Batches that hold {label} records",
+  "Fix batches for {label}": "Fix batches for {label}",
+  "No fix batches yet": "No fix batches yet",
+  "No fix batches for {label} yet. A batch starts when a steward accepts suggested values or imports a filled fix sheet.": "No fix batches for {label} yet. A batch starts when a steward accepts suggested values or imports a filled fix sheet.",
+  "Other": "Other",
+  "One run so far. The line starts at the next run.": "One run so far. The line starts at the next run.",
+  "{label} records that need work": "{label} records that need work",
+  "Reading policy packs needs the view permission.": "Reading policy packs needs the view permission.",
+  "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.": "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.",
+  "How the score is made": "How the score is made",
+  "Score of {label}": "Score of {label}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
