@@ -20,6 +20,7 @@ import { ConfigChanges } from "@/design/v2/screens/step9/Drift";
 import { Button, Chip, EmptyState, SegmentedControl, Skeleton } from "../kit";
 import { HEALTH_TONE, healthText } from "./Systems";
 import { LongText, QueryView } from "./states";
+import { useSheets } from "../shell/SheetHost";
 
 type Seg = "about" | "profiles" | "extractions" | "configuration" | "changes" | "schedules" | "custom-objects" | "design";
 
@@ -120,6 +121,7 @@ export function SystemPage({ id }: { id: string }) {
   const list = useSystemsExtended();
   const href = useV2Href();
   const { hrefFor } = useOpenItem();
+  const sheets = useSheets();
   if (list.isLoading) return <Skeleton lines={5} label={t("Loading system")} />;
   const s = (list.data ?? []).find((x) => x.id === id);
   if (!s) return <EmptyState heading={t("This system was not found")} action={<a className="nx-link" href={href("/more/systems")}>{t("Back to systems")}</a>}>{t("It may have been removed.")}</EmptyState>;
@@ -131,6 +133,7 @@ export function SystemPage({ id }: { id: string }) {
       <div className="nx-row nx-wrap" data-testid="system-actions">
         <V2Link href={hrefFor({ kind: "system", id })} className="nx-btn nx-btn-primary">{t("Test, load or extract")}</V2Link>
         <V2Link href={hrefFor({ kind: "connection", id })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Connection settings")}</V2Link>
+        <Button size={32} variant="secondary" onClick={() => sheets.open({ kind: "field-mappings", id: "" })}>{t("Field mappings")}</Button>
       </div>
       <SegmentedControl label={t("System")} value={seg} onChange={setSeg} items={[
         { value: "about", label: t("About") },

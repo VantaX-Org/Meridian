@@ -11369,4 +11369,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "No rule or dimension stands out as a driver.": "Keine Regel und keine Dimension sticht als Treiber hervor.",
   "Runs that broke from the trend": "Läufe, die vom Trend abweichen",
   "Every run sits inside its normal range.": "Jeder Lauf liegt in seinem normalen Bereich.",
+  // journey-features: J6 rules and governance, J10 reports and share
+  "The mappings could not be read.": "Die Zuordnungen konnten nicht gelesen werden.",
+  "This mapping does not exist. It may have been deleted.": "Diese Zuordnung existiert nicht. Sie wurde möglicherweise gelöscht.",
+  "What you follow": "Was Sie verfolgen",
+  "Following": "Verfolgt",
+  "The share links could not be read.": "Die Freigabelinks konnten nicht gelesen werden.",
 };

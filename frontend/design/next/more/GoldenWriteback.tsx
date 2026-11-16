@@ -10,6 +10,7 @@ import { FieldHistory, SendToSap } from "@/design/v2/inspector/golden-writeback"
 import { LegacyScope } from "../shell/LegacyMount";
 import { Button, Chip, DataTable, SegmentedControl, SidePanel, type Column } from "../kit";
 import { QueryView } from "./states";
+import { useSheets } from "../shell/SheetHost";
 
 type Row = MasterRecordSummary & { name?: string };
 
@@ -24,6 +25,7 @@ const STATUS_TONE: Record<string, "good" | "warn" | "bad" | "neutral"> = { golde
  * (dry run), the four-eyes approval and the request history behave, and are guarded, exactly as they are elsewhere.
  */
 export function GoldenWriteback() {
+  const sheets = useSheets();
   const [module, setModule] = useState<Module>("material_master");
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<Row | null>(null);
@@ -53,6 +55,7 @@ export function GoldenWriteback() {
   return (
     <div className="nx-body" data-testid="golden-writeback-page">
       <p className="nx-sub">{t("Open a golden record to preview what changes in SAP, check it with SAP without saving, and send it for a second person to approve.")}</p>
+      <Button variant="secondary" onClick={() => sheets.open({ kind: "dedup", id: "" })}>{t("Duplicate records to merge")}</Button>
       <SegmentedControl<Module>
         label={t("Object")}
         items={MODULES.map((m) => ({ value: m, label: labelOf(m) }))}

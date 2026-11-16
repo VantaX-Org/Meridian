@@ -11368,6 +11368,12 @@ export const en = {
   "No rule or dimension stands out as a driver.": "No rule or dimension stands out as a driver.",
   "Runs that broke from the trend": "Runs that broke from the trend",
   "Every run sits inside its normal range.": "Every run sits inside its normal range.",
+  // journey-features: J6 rules and governance, J10 reports and share
+  "The mappings could not be read.": "The mappings could not be read.",
+  "This mapping does not exist. It may have been deleted.": "This mapping does not exist. It may have been deleted.",
+  "What you follow": "What you follow",
+  "Following": "Following",
+  "The share links could not be read.": "The share links could not be read.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
