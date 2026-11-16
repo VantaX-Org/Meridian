@@ -2,10 +2,10 @@
 
 import type { ComponentType } from "react";
 import { t } from "@/lib/v2/i18n";
-import { AletheiaEvidence } from "@/design/v2/screens/AletheiaEvidence";
-import { AletheiaForesight } from "@/design/v2/screens/AletheiaForesight";
-import { AletheiaReason } from "@/design/v2/screens/AletheiaReason";
-import { AletheiaSurvivorship } from "@/design/v2/screens/AletheiaSurvivorship";
+import { Evidence } from "../insights/Evidence";
+import { Foresight } from "../insights/Foresight";
+import { Reason } from "../insights/Reason";
+import { Survivorship } from "../insights/Survivorship";
 import { MdmHealth } from "@/design/v2/screens/MdmHealth";
 import { EntryGate } from "@/design/v2/screens/EntryGate";
 import { ReferenceData } from "@/design/v2/screens/ReferenceData";
@@ -14,10 +14,10 @@ import { Catalogue } from "@/design/v2/screens/Catalogue";
 import { Issues } from "@/design/v2/screens/Issues";
 import { Mining } from "@/design/v2/screens/Mining";
 import { ProcessDiscovery } from "@/design/v2/screens/ProcessDiscovery";
-import { ScoreLens } from "@/design/v2/screens/ScoreLens";
-import { Insights } from "@/design/v2/screens/Insights";
-import { Forecast } from "@/design/v2/screens/Forecast";
-import { Value } from "@/design/v2/screens/Value";
+import { Score } from "../insights/Score";
+import { Insights } from "../insights/Insights";
+import { Forecast } from "../insights/Forecast";
+import { Value } from "../insights/Value";
 import { Config } from "@/design/v2/screens/Config";
 import { RunsCanvas } from "@/design/v2/screens/Runs";
 import { Atlas } from "@/design/v2/screens/Atlas";
@@ -38,10 +38,10 @@ export interface Group { id: string; title: () => string; blurb: () => string; t
 /** Tabbed groups: ?tab= picks the screen, the first tab is the default. Every screen is the existing v2 one. */
 export const GROUPS: Group[] = [
   { id: "aletheia", title: () => t("Aletheia"), blurb: () => t("The reasoning engine, with its evidence."), tabs: [
-    { id: "evidence", label: () => t("Evidence"), Screen: AletheiaEvidence },
-    { id: "foresight", label: () => t("Foresight"), Screen: AletheiaForesight },
-    { id: "reason", label: () => t("Reason"), Screen: AletheiaReason },
-    { id: "survivorship", label: () => t("Survivorship"), Screen: AletheiaSurvivorship },
+    { id: "evidence", label: () => t("Evidence"), Screen: Evidence },
+    { id: "foresight", label: () => t("Foresight"), Screen: Foresight },
+    { id: "reason", label: () => t("Reason"), Screen: Reason },
+    { id: "survivorship", label: () => t("Survivorship"), Screen: Survivorship },
   ] },
   { id: "master-data", title: () => t("Master data"), blurb: () => t("Golden records, gates, links and reference data."), tabs: [
     { id: "golden", label: () => t("Golden records"), Screen: MdmHealth },
@@ -54,7 +54,7 @@ export const GROUPS: Group[] = [
     { id: "processes", label: () => t("Processes"), Screen: ProcessDiscovery },
   ] },
   { id: "insights", title: () => t("Insights"), blurb: () => t("Score, forecast and value."), tabs: [
-    { id: "score", label: () => t("Score"), Screen: ScoreLens },
+    { id: "score", label: () => t("Score"), Screen: Score },
     { id: "insights", label: () => t("Insights"), Screen: Insights },
     { id: "forecast", label: () => t("Forecast"), Screen: Forecast },
     { id: "value", label: () => t("Value"), Screen: Value },
