@@ -74,7 +74,7 @@ function ContractDetailPane({ id }: { id: string }) {
               <Field label={t("What changed")} hint={t("Optional")}><Input value={note} onChange={(e) => setNote(e.target.value)} /></Field>
               <Button variant="secondary" disabled={revise.isPending} onClick={() => revise.mutate()}>{t("Create new version")}</Button>
             </Card>
-            <Card title={t("Terms")} sub={t("Read only here")}>
+            <Card title={t("Contract terms")} sub={t("Read only here")}>
               <Gate q={breaches} label={t("Loading terms")}>
                 {(b) => (
                   <>
