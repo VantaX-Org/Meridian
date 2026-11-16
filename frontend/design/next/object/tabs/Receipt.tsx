@@ -9,12 +9,13 @@ import { ExportTable } from "@/design/next/more/ExportTable";
 import { Dash, RuleLink } from "./tabs-g-parts";
 import "./tabs-f.css";
 
-type Line = { key: string; label: ReactNode; weight?: ReactNode; score?: ReactNode; points?: ReactNode; rules?: ReactNode; records?: ReactNode; coverage?: ReactNode };
+type Line = { key: string; name: string; label: ReactNode; weight?: ReactNode; score?: ReactNode; points?: ReactNode; rules?: ReactNode; records?: ReactNode; coverage?: ReactNode };
 
 function lines(r: ReceiptData): Line[] {
   const n = r.breaches.length;
   const out: Line[] = r.dimensions.map((d) => ({
     key: d.key,
+    name: String(d.label),
     label: d.label,
     weight: `${Math.round(d.weight * 100)}%`,
     score: d.score == null ? <Dash why={t("Not measured")} /> : f1(d.score),
@@ -23,10 +24,11 @@ function lines(r: ReceiptData): Line[] {
     records: int(d.records_checked),
     coverage: pct1(d.coverage),
   }));
-  if (r.weighted != null) out.push({ key: "weighted", label: <b>{t("Weighted")}</b>, weight: "100%", points: f1(r.weighted), rules: int(r.rules_measured), records: int(r.records_checked), coverage: pct1(r.coverage) });
-  out.push({ key: "measured", label: <b>{t("Measured")}</b>, points: f1(r.measured) });
-  if (r.cap_level != null) out.push({ key: "cap", label: t("Held down by {n} critical {n, plural, one {rule} other {rules}} failing", { n }), points: r.capped ? `${r.cap_level}.0` : t("not reached") });
-  out.push({ key: "shown", label: <b>{t("Score shown")}</b>, points: <b>{f1(r.score)}</b> });
+  if (r.weighted != null) out.push({ key: "weighted", name: t("Weighted"), label: <b>{t("Weighted")}</b>, weight: "100%", points: f1(r.weighted), rules: int(r.rules_measured), records: int(r.records_checked), coverage: pct1(r.coverage) });
+  out.push({ key: "measured", name: t("Measured"), label: <b>{t("Measured")}</b>, points: f1(r.measured) });
+  const held = t("Held down by {n} critical {n, plural, one {rule} other {rules}} failing", { n });
+  if (r.cap_level != null) out.push({ key: "cap", name: held, label: held, points: r.capped ? `${r.cap_level}.0` : t("not reached") });
+  out.push({ key: "shown", name: t("Score shown"), label: <b>{t("Score shown")}</b>, points: <b>{f1(r.score)}</b> });
   return out;
 }
 
@@ -47,7 +49,7 @@ export function Receipt({ receipt, open = true }: { receipt: ReceiptData; open?:
       <summary>{t("How {score} is made", { score: f1(receipt.score) })}</summary>
       <div className="nx-tf-stack">
         <ExportTable>
-          <DataTable rows={lines(receipt)} columns={cols} rowKey={(l) => l.key} rowLabel={(l) => l.key} caption={t("How the score is made")} density="compact" />
+          <DataTable rows={lines(receipt)} columns={cols} rowKey={(l) => l.key} rowLabel={(l) => l.name} caption={t("How the score is made")} density="compact" />
         </ExportTable>
         {receipt.low_confidence ? (
           <p className="nx-tf-sub">

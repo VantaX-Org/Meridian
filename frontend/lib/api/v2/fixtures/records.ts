@@ -3,6 +3,7 @@
  *   GET /objects/{object}/records/{key}, GET /objects/{object}/records/{key}/findings, POST /glossary/batch-lookup,
  *   GET /lineage/rule/{check_id} (api/routes/lineage.py)
  * Any key opens: the record is the key with a fixed material row, and it fails two shipped rules.
+ * The key NOPE answers 404, as the route does for a key that is not in the run.
  */
 export const NONE_RECORDS = Symbol("none-records");
 
@@ -25,6 +26,7 @@ export function recordsRead(path: string, params: Record<string, unknown>): unkn
   const m = RECORD.exec(path);
   if (!m) return NONE_RECORDS;
   const key = decodeURIComponent(m[2]);
+  if (key === "NOPE") throw Object.assign(new Error(`No fixture for ${path}`), { status: 404 });
   const version_id = typeof params.version_id === "string" ? params.version_id : "d3229ded-0708-4967-9dfb-1b7f4fada953";
   if (m[3]) {
     return {
