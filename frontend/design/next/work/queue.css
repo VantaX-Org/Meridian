@@ -16,3 +16,4 @@
 .nx-wq-dl { display: grid; grid-template-columns: minmax(120px, max-content) 1fr; gap: var(--nx-s2) var(--nx-s4); margin: 0; }
 .nx-wq-dl dt { color: var(--nx-ink-2); }
 .nx-wq-dl dd { margin: 0; min-width: 0; }
+.nx-wq-batches { display: flex; flex-direction: column; gap: var(--nx-s3); }

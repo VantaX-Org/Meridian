@@ -14,7 +14,6 @@ import type { Landscape, WorkRow } from "@/lib/api/v2/types";
 import { ProcessAnalytics } from "@/design/v2/screens/ProcessAnalytics";
 import { RequestFormCanvas } from "@/design/v2/screens/RequestForm";
 import { RequestsCanvas } from "@/design/v2/screens/Requests";
-import { WorkCanvas } from "@/design/v2/screens/Work";
 import { LegacyMount } from "../shell/LegacyMount";
 import { MonitorBody } from "../screens/Monitor";
 import { Button, Chip, Code, DataTable, EmptyState, SegmentedControl, Tabs, type Column, type TabItem } from "../kit";
@@ -28,6 +27,7 @@ import { WorkApprovals } from "./Cleansing";
 import { WorkDrafts } from "./Drafts";
 import { WorkExceptions } from "./Exceptions";
 import { WorkTriage } from "./Triage";
+import { WorkQueue } from "./Queue";
 import "../shell/shell.css";
 import "./work.css";
 
@@ -196,7 +196,7 @@ export function Work({ slug }: { slug?: string[] }) {
         {!hit ? (
           <EmptyState heading={t("Nothing at this address")} />
         ) : active === "ledger" && filtered ? (
-          <LegacyMount><WorkCanvas /></LegacyMount>
+          <WorkQueue />
         ) : active === "ledger" ? (
           <>
             <WorkAttention />
