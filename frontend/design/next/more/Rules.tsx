@@ -3,17 +3,16 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { t } from "@/lib/v2/i18n";
-import { AdminCanvas } from "@/design/v2/admin/Admin";
-import { RulesLibrary } from "@/design/v2/screens/RulesLibrary";
 import { useAllDrafts, useRuleList } from "@/lib/v2/sys-queries";
 import type { Rule } from "@/lib/api/rules";
 import { Chip, SegmentedControl } from "../kit";
 import { useSheets } from "../shell/SheetHost";
-import { LegacyMount } from "../shell/LegacyMount";
 import { LongText, ListSearch, QueryView, VirtualList } from "./states";
 import { PassRateCard, RulesCard } from "./cards";
 import { RulePromotion } from "./RulePromotion";
 import { RuleDryRun } from "./RuleDryRun";
+import { RulesLibrary } from "./RulesLibrary";
+import { PolicyPacks } from "./PolicyPacks";
 
 type Seg = "all" | "active" | "drafts" | "promotion" | "dry-run" | "learned" | "packs";
 const SEGS: readonly Seg[] = ["all", "active", "drafts", "promotion", "dry-run", "learned", "packs"];
@@ -56,7 +55,7 @@ function RuleRows({ rules, label, empty }: { rules: Rule[]; label: string; empty
 
 /**
  * Rules in seven segments. All rules is the full library (filters, search, enable and disable, the draft editor with its
- * dry run, suppressions); Active, Learned, Promotion and Dry run are drawn here; Packs reuses the admin screen.
+ * dry run, suppressions); Active, Learned, Promotion and Dry run are drawn here; Packs lists every policy pack with its coverage and evidence.
  * `?tab=` picks the segment, so the old /rule-promotion and /anomaly-rules addresses land on theirs.
  */
 export function Rules() {
@@ -100,10 +99,10 @@ export function Rules() {
           </ul>
         </QueryView>
       ) : null}
-      {seg === "all" ? <LegacyMount><RulesLibrary /></LegacyMount> : null}
+      {seg === "all" ? <RulesLibrary /> : null}
       {seg === "promotion" ? <RulePromotion /> : null}
       {seg === "dry-run" ? <RuleDryRun /> : null}
-      {seg === "packs" ? <LegacyMount><AdminCanvas section="policypacks" /></LegacyMount> : null}
+      {seg === "packs" ? <PolicyPacks /> : null}
     </div>
   );
 }

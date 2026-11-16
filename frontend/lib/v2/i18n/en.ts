@@ -11381,6 +11381,10 @@ export const en = {
   "Other": "Other",
   "One run so far. The line starts at the next run.": "One run so far. The line starts at the next run.",
   "{label} records that need work": "{label} records that need work",
+  "Reading policy packs needs the view permission.": "Reading policy packs needs the view permission.",
+  "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.": "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.",
+  "How the score is made": "How the score is made",
+  "Score of {label}": "Score of {label}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

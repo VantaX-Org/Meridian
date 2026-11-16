@@ -11382,4 +11382,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Other": "Sonstige",
   "One run so far. The line starts at the next run.": "Bisher ein Lauf. Die Linie beginnt mit dem nächsten Lauf.",
   "{label} records that need work": "{label}-Datensätze, die Arbeit brauchen",
+  "Reading policy packs needs the view permission.": "Zum Lesen der Richtlinienpakete braucht es die Berechtigung Ansehen.",
+  "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.": "Regeln nach fehlerhaften Datensätzen geordnet; der Anteil ist der Teil der Grundgesamtheit dieser Regel, der fehlschlägt, ermittelt aus dem neuesten Lauf jedes Objekts.",
+  "How the score is made": "So entsteht die Bewertung",
+  "Score of {label}": "Bewertung von {label}",
 };

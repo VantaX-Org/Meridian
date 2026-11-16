@@ -20,8 +20,13 @@ import { activeFilterCount, filterRows, NO_FILTERS, rankRows, toRows, type LibFi
 import { int } from "@/lib/v2/score";
 import { sysKeys, useAllDrafts, useMigrationScenarios, useRefreshV2, useRuleList, useSuppressions } from "@/lib/v2/sys-queries";
 import { t, tx } from "@/lib/v2/i18n";
-import { Button, Code, Confirm, DataTable, SegmentedControl, SidePanel, Sparkline, StatCard, useToast, type Column } from "../kit";
+import { Button, Chip, Code, Confirm, DataTable, ErrorState, SegmentedControl, SidePanel, Sparkline, StatCard, useToast, type Column } from "../kit";
 import { SegBar } from "../kit/viz";
+import { ExportTable } from "./ExportTable";
+import { useWorkGroups } from "@/lib/v2/work-queries";
+import { useObjectOwners } from "@/lib/v2/mdm-queries";
+import { useRuleHistory } from "@/lib/v2/object-queries";
+import type { WorkGroup } from "@/lib/api/work";
 
 type View = "rules" | "drafts" | "suppressions";
 
@@ -355,7 +360,7 @@ function Drafts({ modules, editing, setEditing }: { modules: string[]; editing: 
     <>
       {editing ? <DraftEditor key={editing === "new" ? "new" : editing.id} draft={editing === "new" ? null : editing} modules={modules} onClose={() => setEditing(null)} /> : null}
       <div data-testid="drafts-table">
-        <DataTable
+        <ExportTable><DataTable
           rows={items}
           columns={columns}
           rowKey={(d) => d.id}
@@ -365,7 +370,7 @@ function Drafts({ modules, editing, setEditing }: { modules: string[]; editing: 
           error={q.isError ? { sentence: t("The drafts could not be read."), onRetry: () => void q.refetch() } : undefined}
           empty={{ heading: t("No drafts. Write a rule, or describe it in plain English; a dry run shows what it would find before it is published.") }}
           onOpenRow={(d) => setEditing(d)}
-        />
+        /></ExportTable>
       </div>
     </>
   );
@@ -408,7 +413,7 @@ function Suppressions({ canEnd }: { canEnd: boolean }) {
   return (
     <>
       <div data-testid="suppressions-table">
-        <DataTable
+        <ExportTable><DataTable
           rows={items}
           columns={columns}
           rowKey={(s) => s.id}
@@ -417,10 +422,67 @@ function Suppressions({ canEnd }: { canEnd: boolean }) {
           loading={q.isLoading}
           error={q.isError ? { sentence: t("The suppressions could not be read."), onRetry: () => void q.refetch() } : undefined}
           empty={{ heading: t("No rule is suppressed. A suppression keeps a rule out of the score until a date; start one from the rule.") }}
-        />
+        /></ExportTable>
       </div>
       {!canEnd ? <p className="nx-sub" data-testid="suppressions-gate">{t("Ending a suppression needs the approve permission.")}</p> : null}
     </>
+  );
+}
+
+
+const BOARD_SEV = (): Record<string, string> => ({ critical: t("Critical"), high: t("High"), medium: t("Medium"), low: t("Low"), info: t("Info") });
+const BOARD_TONE: Record<string, "bad" | "warn" | "neutral"> = { critical: "bad", high: "bad", medium: "warn" };
+
+/** One rule's failing records across its last runs, oldest first. */
+function BoardTrend({ checkId }: { checkId: string }) {
+  const h = useRuleHistory(checkId).data ?? [];
+  const pts = [...h].reverse().map((r) => r.affected_count);
+  return pts.length > 1 ? <Sparkline points={pts} label={t("{rule} failing records over the last {n} runs", { rule: checkId, n: pts.length })} /> : <>—</>;
+}
+
+/** The twelve rules failing the most records, with the share of their population, trend, suggested fixes and owner. */
+function RuleBoard() {
+  const q = useWorkGroups({});
+  const owners = useObjectOwners().data ?? [];
+  const sev = BOARD_SEV();
+  const rows = [...(q.data?.groups ?? [])].sort((a, b) => b.records - a.records).slice(0, 12);
+  const share = (g: WorkGroup) => (g.population ? g.records / g.population : null);
+  const columns: Column<WorkGroup>[] = [
+    {
+      id: "rule", label: t("Rule"),
+      cell: (g) => (
+        <Link className="nx-link" href={`/work?rule=${encodeURIComponent(g.check_id)}`}>
+          <Code code={g.check_id} text={g.message ?? undefined} />
+          {g.field ? <> <Code code={g.field} /></> : null}
+        </Link>
+      ),
+    },
+    { id: "object", label: t("Object"), cell: (g) => labelOf(g.module) },
+    { id: "severity", label: t("Severity"), cell: (g) => <Chip tone={BOARD_TONE[g.severity] ?? "neutral"}>{sev[g.severity] ?? g.severity}</Chip> },
+    { id: "failing", label: t("Failing"), align: "end", cell: (g) => int(g.records), compare: (a, b) => a.records - b.records },
+    { id: "share", label: t("Share failing"), align: "end", cell: (g) => { const s = share(g); return s == null ? "—" : `${(s * 100).toFixed(1)}%`; }, compare: (a, b) => (share(a) ?? -1) - (share(b) ?? -1) },
+    { id: "trend", label: t("Trend"), cell: (g) => <BoardTrend checkId={g.check_id} /> },
+    { id: "proposed", label: t("Suggested"), align: "end", cell: (g) => (g.proposed ? int(g.proposed) : "—"), compare: (a, b) => a.proposed - b.proposed },
+    { id: "owner", label: t("Owner"), cell: (g) => owners.find((o) => o.ref === g.module)?.owner_name ?? "—" },
+  ];
+  return (
+    <section className="nx-card" aria-label={t("Rules failing the most records")} data-testid="rule-board">
+      <h2>{t("Rules failing the most records")}</h2>
+      <p className="nx-sub">{t("Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.")}</p>
+      <ExportTable>
+        <DataTable
+          rows={rows}
+          columns={columns}
+          rowKey={(g) => `${g.module}:${g.check_id}`}
+          rowLabel={(g) => g.check_id}
+          caption={t("Rules failing the most records")}
+          density="compact"
+          loading={q.isPending}
+          error={q.isError ? { sentence: errorSentence(q.error, t("The rules could not be read.")), onRetry: () => void q.refetch() } : undefined}
+          empty={{ heading: t("No rule is failing.") }}
+        />
+      </ExportTable>
+    </section>
   );
 }
 
@@ -538,6 +600,7 @@ export function RulesLibrary() {
               <SegBar format={int} segs={moduleBars.map(([m, n], i) => ({ key: m, label: labelOf(m), value: n, tone: i === 0 ? "bad" : "data" }))} />
             </section>
           ) : null}
+          <RuleBoard />
         </>
       ) : null}
 
@@ -570,9 +633,9 @@ export function RulesLibrary() {
           <FilterBar f={filters} set={setFilters} modules={modules} />
           {scenarios.length ? <ScenarioFilter scenarios={scenarios} scenario={scenario} relevance={relevance} onScenario={setScenario} onRelevance={setRelevance} /> : null}
           {scenario && scen.isLoading ? <p className="nx-sub" role="status">{t("Reading the migration scenario.")}</p> : null}
-          {scenario && scen.isError ? <p className="nx-banner" data-tone="bad" role="alert">{t("The migration scenario could not be read.")}</p> : null}
+          {scenario && scen.isError ? <ErrorState sentence={errorSentence(scen.error, t("The migration scenario could not be read."))} onRetry={() => void scen.refetch()} /> : null}
           {needMeta && loadingMeta ? <p className="nx-sub" role="status">{t("Reading the dimension and class of each object's rules.")}</p> : null}
-          <DataTable
+          <ExportTable><DataTable
             rows={shown}
             columns={columns}
             rowKey={(r) => r.id}
@@ -593,7 +656,7 @@ export function RulesLibrary() {
                 <Button size={32} disabled={pending !== null} onClick={() => toggle(keys, false)}>{t("Disable")}</Button>
               </>
             )}
-          />
+          /></ExportTable>
           {filtered ? (
             <p className="nx-row nx-wrap nx-sub">
               <span>{t("{shownCount} of {rowsCount} rules. ", { shownCount: int(shown.length), rowsCount: int(rows.length) })}</span>
