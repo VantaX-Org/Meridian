@@ -55,6 +55,7 @@ import { NONE_SIMULATIONS, simulationsRead, simulationsWrite, resetSimulationsFi
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
 import { rulePromotionRead, rulePromotionWrite, NONE_RULE_PROMOTION } from "./rulePromotion";
 import { ruleImpactWrite, NONE_RULE_IMPACT } from "./ruleImpact";
+import { ruleVersionsRead, ruleVersionsWrite, NONE_RULE_VERSIONS } from "./ruleVersions";
 import { migrationScenariosRead, NONE_MIGRATION_SCENARIOS } from "./migrationScenarios";
 import { survivorshipRead, survivorshipWrite, NONE_SURVIVORSHIP } from "./survivorship";
 import { referenceDataRead, referenceDataWrite, NONE_REFERENCE_DATA } from "./reference-data";
@@ -198,6 +199,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (rpw !== NONE_RULE_PROMOTION) return rpw as T;
   const riw = ruleImpactWrite(method, path, body);
   if (riw !== NONE_RULE_IMPACT) return riw as T;
+  const rvw = ruleVersionsWrite(method, path, body);
+  if (rvw !== NONE_RULE_VERSIONS) return rvw as T;
   const fdw = fixDraftsWrite(method, path, body);
   if (fdw !== NONE_FIX_DRAFTS) return fdw as T;
   const dcw = dataRequestsWrite(method, path, body);
@@ -447,6 +450,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (pd !== NONE_DISCOVERY) return pd as T;
   const rpr = rulePromotionRead(path, params);
   if (rpr !== NONE_RULE_PROMOTION) return rpr as T;
+  const rvr = ruleVersionsRead(path);
+  if (rvr !== NONE_RULE_VERSIONS) return rvr as T;
   const fdr = fixDraftsRead(path);
   if (fdr !== NONE_FIX_DRAFTS) return fdr as T;
   const dcr = dataRequestsRead(path);
