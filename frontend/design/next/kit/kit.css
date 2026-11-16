@@ -105,6 +105,7 @@
 .nx-spark { color: var(--nx-accent); flex: none; }
 .nx-stat-delta { display: flex; align-items: center; gap: var(--nx-s1); font-size: var(--nx-fs-small); font-weight: var(--nx-w-label); }
 .nx-stat-against { color: var(--nx-ink-3); font-weight: var(--nx-w-body); margin-inline-start: var(--nx-s1); }
+.nx-stat-note { margin: 0; color: var(--nx-ink-3); font-size: var(--nx-fs-small); }
 .nx-tone-good { color: var(--nx-good-ink); }
 .nx-tone-bad { color: var(--nx-bad-ink); }
 .nx-tone-neutral { color: var(--nx-ink-2); }
