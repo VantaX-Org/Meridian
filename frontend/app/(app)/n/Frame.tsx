@@ -1,7 +1,7 @@
 "use client";
 
-import { lazy, Suspense, type ReactNode } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AuthGuard } from "@/design/v2/auth/Guard";
 import { RequestAccessHost } from "@/design/v2/RequestAccess";
 import { useAuth } from "@/context/auth-context";
@@ -10,7 +10,8 @@ import { PermissionsProvider } from "@/lib/permissions";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { PATHS } from "@/lib/next/nav-defaults";
-import { AletheiaProvider, AppShell, useAletheia } from "@/ui/kit";
+import { AletheiaProvider, AppShell, CommandPalette, SheetHost, ToastHost, useAletheia } from "@/ui/kit";
+import { SHEETS } from "@/ui/sheets";
 
 // Lazy slot: the one chat instance, scoped by whichever screen is open.
 const AletheiaPanel = lazy(() => import("@/ui/kit/AletheiaPanel"));
@@ -32,6 +33,13 @@ function Shell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const chat = useAletheia();
   const link = (p: string) => withFixture(p, fx);
+  const router = useRouter();
+  const [palette, setPalette] = useState(false);
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPalette((p) => !p); } };
+    document.addEventListener("keydown", k);
+    return () => document.removeEventListener("keydown", k);
+  }, []);
   const sections = [
     { id: "home", label: t("Home"), href: PATHS.home },
     { id: "work", label: t("Work"), href: PATHS.work },
@@ -39,7 +47,9 @@ function Shell({ children }: { children: ReactNode }) {
     { id: "runs", label: t("Runs"), href: PATHS.runs },
     { id: "more", label: t("More"), href: PATHS.more },
   ].map((s) => ({ ...s, href: link(s.href), active: s.href !== "/" && path.startsWith(s.href) }));
+  const commands = sections.map((s) => ({ id: s.id, label: t("Go to {place}", { place: s.label }), run: () => router.push(s.href) }));
   return (
+    <>
     <AppShell
       brand={t("Meridian")}
       sections={sections}
@@ -58,13 +68,24 @@ function Shell({ children }: { children: ReactNode }) {
     >
       {children}
     </AppShell>
+    <CommandPalette
+      open={palette}
+      onClose={() => setPalette(false)}
+      commands={commands}
+      onAsk={(q) => { chat.setOpen(true); chat.ask(q); }}
+      label={t("Command palette")}
+      placeholder={t("Go to a screen or ask Aletheia")}
+      askLabel={(q) => t("Ask Aletheia: {q}", { q })}
+      emptyLabel={t("No matches")}
+    />
+    </>
   );
 }
 
 /** Same sign-in and permissions chain as the current app; fixture mode skips sign-in. */
 export function Frame({ children }: { children: ReactNode }) {
   const fx = useFixture();
-  const inner = <Suspense fallback={null}><ChatHost><Shell>{children}</Shell></ChatHost></Suspense>;
+  const inner = <Suspense fallback={null}><ChatHost><ToastHost><SheetHost sheets={SHEETS} closeLabel={t("Close")}><Shell>{children}</Shell></SheetHost></ToastHost></ChatHost></Suspense>;
   if (fx) return <div className="mx-root">{inner}</div>;
   return (
     <AuthGuard>

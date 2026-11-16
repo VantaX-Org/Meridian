@@ -11395,4 +11395,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The score is held at {cap} because critical rules fail.": "Der Score ist auf {cap} begrenzt, weil kritische Regeln fehlschlagen.",
   "{n} records are open. {p} have a proposed fix and {m} need a person.": "{n} Datensätze sind offen. {p} haben einen Korrekturvorschlag, {m} brauchen eine Person.",
   "Run {n} on {date}": "Lauf {n} am {date}",
+  "Go to {place}": "Gehe zu {place}",
+  "Go to a screen or ask Aletheia": "Zu einer Ansicht gehen oder Aletheia fragen",
+  "Ask Aletheia: {q}": "Aletheia fragen: {q}",
+  "No matches": "Keine Treffer",
 };

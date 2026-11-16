@@ -11395,4 +11395,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The score is held at {cap} because critical rules fail.": "重大なルールが失敗しているため、スコアは {cap} に制限されています。",
   "{n} records are open. {p} have a proposed fix and {m} need a person.": "{n} 件のレコードが未処理です。{p} 件に修正案があり、{m} 件は担当者が必要です。",
   "Run {n} on {date}": "{date} の実行 {n}",
+  "Go to {place}": "{place} へ移動",
+  "Go to a screen or ask Aletheia": "画面へ移動、または Aletheia に質問",
+  "Ask Aletheia: {q}": "Aletheia に質問: {q}",
+  "No matches": "一致なし",
 };

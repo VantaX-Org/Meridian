@@ -20,6 +20,8 @@ export interface ObjectRun {
   label: string;
   landscape: ReturnType<typeof useLandscape>;
   heads: VersionHead[];
+  /** True until the run list resolves, so the run id is not settled yet. */
+  runsLoading: boolean;
   runId: string | null;
   run: VersionHead | null;
   previous: VersionHead | null;
@@ -72,5 +74,5 @@ export function useObjectRun(systemSeg: string, moduleSeg: string): ObjectRun {
   const prevOne = useRun(prevInList ? null : prevId);
   const previous = prevInList ?? prevOne.data ?? null;
 
-  return { systemId, systemName: system?.name ?? decodeURIComponent(systemSeg), module: mod, label, landscape, heads, runId, run, previous, hrefWith };
+  return { systemId, systemName: system?.name ?? decodeURIComponent(systemSeg), module: mod, label, landscape, heads, runsLoading: runs.isLoading, runId, run, previous, hrefWith };
 }

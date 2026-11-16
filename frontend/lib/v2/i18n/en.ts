@@ -11394,6 +11394,10 @@ export const en = {
   "The score is held at {cap} because critical rules fail.": "The score is held at {cap} because critical rules fail.",
   "{n} records are open. {p} have a proposed fix and {m} need a person.": "{n} records are open. {p} have a proposed fix and {m} need a person.",
   "Run {n} on {date}": "Run {n} on {date}",
+  "Go to {place}": "Go to {place}",
+  "Go to a screen or ask Aletheia": "Go to a screen or ask Aletheia",
+  "Ask Aletheia: {q}": "Ask Aletheia: {q}",
+  "No matches": "No matches",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

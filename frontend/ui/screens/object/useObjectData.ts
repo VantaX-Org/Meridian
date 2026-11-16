@@ -46,7 +46,7 @@ export function useObjectData(o: ObjectRun) {
     const dims = DIMENSIONS.map((d) => ({ key: d.key, label: d.label, value: cell?.dimensions[d.key] ?? null }));
     const breaches = receipt.data?.breaches ?? [];
     return {
-      loading: rules.isLoading || o.landscape.isLoading,
+      loading: rules.isLoading || o.landscape.isLoading || o.runsLoading,
       error: rules.isError || o.landscape.isError,
       cell,
       now,
