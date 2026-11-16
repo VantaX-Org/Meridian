@@ -2,8 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { DeltaBar } from "../kit";
-import { EvidencePanel } from "@/design/v2/screens/AletheiaForesight";
-import { ENGINE_OFF } from "@/design/v2/screens/Insights";
+import { ENGINE_OFF, EvidencePanel } from "../more/aletheia-parts";
 import { getReason, type Anomaly, type CausalRisk, type Reason } from "@/lib/api/v2/aletheia-engine";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { t } from "@/lib/v2/i18n";

@@ -11528,6 +11528,9 @@ export const en = {
   "The view is removed from your Views menu. Records and decisions do not change.": "The view is removed from your Views menu. Records and decisions do not change.",
   "View {name} deleted": "View {name} deleted",
   "Where the work is": "Where the work is",
+  "The score is the weighted sum of four shares, so the points below add up to it.": "The score is the weighted sum of four shares, so the points below add up to it.",
+  "Based on {n} daily snapshots, the latest on {date}.": "Based on {n} daily snapshots, the latest on {date}.",
+  "Record {n}": "Record {n}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

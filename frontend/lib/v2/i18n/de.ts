@@ -11529,4 +11529,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The view is removed from your Views menu. Records and decisions do not change.": "Die Ansicht wird aus Ihrem Menü Ansichten entfernt. Datensätze und Entscheidungen ändern sich nicht.",
   "View {name} deleted": "Ansicht {name} gelöscht",
   "Where the work is": "Wo die Arbeit liegt",
+  "The score is the weighted sum of four shares, so the points below add up to it.": "Der Wert ist die gewichtete Summe von vier Anteilen, daher ergeben die Punkte unten zusammen den Wert.",
+  "Based on {n} daily snapshots, the latest on {date}.": "Basierend auf {n} täglichen Momentaufnahmen, die neueste vom {date}.",
+  "Record {n}": "Datensatz {n}",
 };

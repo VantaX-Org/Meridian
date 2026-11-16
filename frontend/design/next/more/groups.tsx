@@ -2,24 +2,24 @@
 
 import type { ComponentType } from "react";
 import { t } from "@/lib/v2/i18n";
-import { AletheiaEvidence } from "@/design/v2/screens/AletheiaEvidence";
-import { AletheiaForesight } from "@/design/v2/screens/AletheiaForesight";
-import { AletheiaReason } from "@/design/v2/screens/AletheiaReason";
-import { AletheiaSurvivorship } from "@/design/v2/screens/AletheiaSurvivorship";
-import { MdmHealth } from "@/design/v2/screens/MdmHealth";
-import { EntryGate } from "@/design/v2/screens/EntryGate";
-import { ReferenceData } from "@/design/v2/screens/ReferenceData";
-import { Links } from "@/design/v2/screens/Links";
-import { Catalogue } from "@/design/v2/screens/Catalogue";
-import { Issues } from "@/design/v2/screens/Issues";
-import { Mining } from "@/design/v2/screens/Mining";
-import { ProcessDiscovery } from "@/design/v2/screens/ProcessDiscovery";
-import { ScoreLens } from "@/design/v2/screens/ScoreLens";
-import { Insights } from "@/design/v2/screens/Insights";
-import { Forecast } from "@/design/v2/screens/Forecast";
-import { Value } from "@/design/v2/screens/Value";
+import { AletheiaEvidence } from "./AletheiaEvidence";
+import { AletheiaForesight } from "./AletheiaForesight";
+import { AletheiaReason } from "./AletheiaReason";
+import { AletheiaSurvivorship } from "./AletheiaSurvivorship";
+import { MdmHealth } from "./MdmHealth";
+import { EntryGate } from "./EntryGate";
+import { ReferenceData } from "./ReferenceData";
+import { Links } from "./Links";
+import { Catalogue } from "./Catalogue";
+import { Issues } from "./Issues";
+import { RecordMining } from "./RecordMining";
+import { ProcessDiscovery } from "./ProcessDiscovery";
+import { ScoreLens } from "./ScoreLens";
+import { Insights } from "./Insights";
+import { Forecast } from "./Forecast";
+import { Value } from "./Value";
 import { ConfigScreen } from "./Config";
-import { RunsCanvas } from "@/design/v2/screens/Runs";
+import { Runs } from "../runs/Runs";
 import { Atlas } from "./Atlas";
 import { Landscape } from "./Landscape";
 import { DataRequests } from "./DataRequests";
@@ -47,7 +47,7 @@ export const GROUPS: Group[] = [
     { id: "links", label: () => t("Links"), Screen: Links },
     { id: "catalogue", label: () => t("Catalogue"), Screen: Catalogue },
     { id: "issues", label: () => t("Issues"), Screen: Issues },
-    { id: "mining", label: () => t("Mining"), Screen: Mining },
+    { id: "mining", label: () => t("Mining"), Screen: RecordMining },
     { id: "processes", label: () => t("Processes"), Screen: ProcessDiscovery },
   ] },
   { id: "insights", title: () => t("Insights"), blurb: () => t("Score, forecast and value."), tabs: [
@@ -61,7 +61,7 @@ export const GROUPS: Group[] = [
 /** Single screens, addressed by their path under /more. */
 export const SINGLES: Record<string, { title: () => string; blurb: () => string; Screen: ComponentType }> = {
   landscape: { title: () => t("Landscape"), blurb: () => t("Every system and object at its newest run, with your next step."), Screen: Landscape },
-  runs: { title: () => t("Runs"), blurb: () => t("Every run, across every system."), Screen: RunsCanvas },
+  runs: { title: () => t("Runs"), blurb: () => t("Every run, across every system."), Screen: Runs },
   "systems/config": { title: () => t("Configuration"), blurb: () => t("Thresholds and settings."), Screen: ConfigScreen },
   atlas: { title: () => t("Atlas"), blurb: () => t("The landscape and its flows."), Screen: Atlas },
   portfolio: { title: () => t("All objects"), blurb: () => t("Every object at its newest run, live runs, bulk pull, upload and compare."), Screen: Portfolio },

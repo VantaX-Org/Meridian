@@ -5,15 +5,15 @@ import { setUrl } from "@/design/v2/__tests__/nav-store";
 import { SystemPage } from "../SystemPage";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
-vi.mock("@/design/v2/screens/system/Configuration", () => ({ Configuration: () => <div data-testid="v-configuration" /> }));
-vi.mock("@/design/v2/screens/system/CustomObjects", () => ({ CustomObjects: () => <div data-testid="v-custom" /> }));
-vi.mock("@/design/v2/screens/system/SourceDesign", () => ({ SourceDesign: () => <div data-testid="v-design" /> }));
-vi.mock("@/design/v2/screens/system/Schedules", () => ({ Schedules: () => <div data-testid="v-schedules" /> }));
+vi.mock("../system/Configuration", () => ({ Configuration: () => <div data-testid="v-configuration" /> }));
+vi.mock("../system/CustomObjects", () => ({ CustomObjects: () => <div data-testid="v-custom" /> }));
+vi.mock("../system/SourceDesign", () => ({ SourceDesign: () => <div data-testid="v-design" /> }));
+vi.mock("../system/Schedules", () => ({ Schedules: () => <div data-testid="v-schedules" /> }));
 vi.mock("../system/Connectivity", () => ({ Connectivity: () => <div data-testid="n-connectivity" /> }));
 vi.mock("../system/ProcessModel", () => ({ ProcessModel: () => <div data-testid="n-process" /> }));
 vi.mock("../system/Mining", () => ({ Mining: () => <div data-testid="n-mining" /> }));
-vi.mock("@/design/v2/screens/step9/Drift", () => ({ ConfigChanges: () => <div data-testid="v-changes" /> }));
-vi.mock("@/design/v2/screens/step9/ChangeLog", () => ({ ChangeLog: ({ versionId }: { versionId: string }) => <div data-testid="v-changelog">{versionId}</div> }));
+vi.mock("../system/ConfigChanges", () => ({ ConfigChanges: () => <div data-testid="v-changes" /> }));
+vi.mock("../system/ChangeLog", () => ({ ChangeLog: ({ versionId }: { versionId: string }) => <div data-testid="v-changelog">{versionId}</div> }));
 
 const ok = <T,>(data: T) => ({ data, isLoading: false, error: null, refetch: () => Promise.resolve() });
 vi.mock("@/lib/v2/runs-queries", () => ({

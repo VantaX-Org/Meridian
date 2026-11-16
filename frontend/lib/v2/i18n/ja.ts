@@ -11529,4 +11529,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The view is removed from your Views menu. Records and decisions do not change.": "ビューは「ビュー」メニューから削除されます。レコードと判断は変わりません。",
   "View {name} deleted": "ビュー {name} を削除しました",
   "Where the work is": "作業がある場所",
+  "The score is the weighted sum of four shares, so the points below add up to it.": "スコアは4つの割合の加重合計です。そのため、下のポイントを合計するとスコアになります。",
+  "Based on {n} daily snapshots, the latest on {date}.": "{n} 件の日次スナップショットに基づきます。最新は {date} です。",
+  "Record {n}": "レコード {n}",
 };

@@ -11,12 +11,12 @@ import { useSystemExtractions, useSystemProfiles, useSystemsExtended, useV2Jobs 
 import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { useOpenItem, useV2Href } from "@/lib/v2/hooks";
 import { NxLink } from "@/design/next/kit";
-import { Configuration } from "@/design/v2/screens/system/Configuration";
-import { CustomObjects } from "@/design/v2/screens/system/CustomObjects";
-import { SourceDesign } from "@/design/v2/screens/system/SourceDesign";
-import { Schedules } from "@/design/v2/screens/system/Schedules";
-import { ChangeLog } from "@/design/v2/screens/step9/ChangeLog";
-import { ConfigChanges } from "@/design/v2/screens/step9/Drift";
+import { Configuration } from "./system/Configuration";
+import { CustomObjects } from "./system/CustomObjects";
+import { SourceDesign } from "./system/SourceDesign";
+import { Schedules } from "./system/Schedules";
+import { ChangeLog } from "./system/ChangeLog";
+import { ConfigChanges } from "./system/ConfigChanges";
 import { Button, Chip, EmptyState, SegmentedControl, Skeleton } from "../kit";
 import { HEALTH_TONE, healthText } from "./Systems";
 import { Connectivity } from "./system/Connectivity";
