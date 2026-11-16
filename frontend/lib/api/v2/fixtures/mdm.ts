@@ -33,6 +33,7 @@ class FixtureNotFound extends Error {
 const state = {
   splitKeys: new Map<string, Set<string>>(),
   decidedPairs: new Set<string>(),
+  clearedConstraints: new Set<string>(),
   termEdits: new Map<string, { business_name?: string; business_definition?: string; status?: GlossaryStatus }>(),
   reviewed: new Set<string>(),
   populated: false,
@@ -546,6 +547,37 @@ function wbWrite(id: string, action: string, rid?: string): WritebackRequest {
 /* ---- the contract ---- */
 
 /** A GET behind the three tabs, or undefined for any other path. */
+
+function clusterGraph(id: string): unknown {
+  const i = idx(id);
+  const d = goldenDetail(id);
+  const mem = members(i);
+  const nm = nameOf(i);
+  const edge = (a: string, b: string, k: number, total: number | null, linked: boolean, constraint: "do_not_match" | null = null) => ({
+    id: total === null ? null : `ms-${(i * 3 + k) % PAIRS_TOTAL}`, source: a, target: b, total, linked, constraint, steward_decision: linked ? "accept" : null,
+    explanation: total === null ? null : {
+      attributes: [
+        { field: "MAKT.MAKTX", comparator: "desc_tokens", value_a: nm, value_b: `${nm} zinc plated`, similarity: 0.86, weight: 35, contribution: 30.1, threshold: 0.85, threshold_met: true, skipped: false },
+        { field: "MARA.MFRPN", comparator: "part_number", value_a: `PN-${4400 + i}`, value_b: `PN ${4400 + i}`, similarity: 1, weight: 20, contribution: 20, threshold: 1, threshold_met: true, skipped: false },
+      ],
+      total, weight_total: 55, band: total >= 0.95 ? "auto_merge" : "steward_review", auto_action: linked ? "merged" : "steward_review", fired: "MR-DESC-PN", rules_met: ["MR-DESC-PN"], rules_failed: [], constraint,
+    },
+  });
+  const edges = mem.length === 2 ? [edge(mem[0], mem[1], 0, 0.96, true)] : [edge(mem[0], mem[1], 0, 0.96, true), edge(mem[0], mem[2], 1, 0.91, true), edge(mem[1], mem[2], 2, null, false)];
+  return {
+    golden_record_id: d.id,
+    nodes: mem.map((key, n) => ({ key, degree: edges.filter((e) => e.source === key || e.target === key).length, is_survivor: n === 0 })),
+    edges,
+    weak_chains: mem.length === 3 ? [{ a: mem[1], via: mem[0], b: mem[2], reason: "no_direct_score" }] : [],
+    auto_merge: 0.95,
+  };
+}
+
+function constraints(): unknown[] {
+  return [3, 8, 12].map((k, n) => ({ id: `pc-${k}`, domain: MM, key_lo: `MATNR=${pad(5000 + k)}`, key_hi: `MATNR=${pad(6000 + k)}`, kind: n === 2 ? "always_match" : "do_not_match", reason: n === 2 ? "Same part, two plant extracts" : "Different pack size", created_by: "A. Naidoo", created_at: iso(2 + n, 9) }))
+    .filter((c) => !state.clearedConstraints.has(c.id));
+}
+
 export function mdmFixture(path: string, params: Params): unknown {
   if (path === "/master-records") return goldenList(params);
   const wb = /^\/master-records\/([^/]+)\/(history|writeback\/preview|writeback\/requests)$/.exec(path);
@@ -574,6 +606,9 @@ export function mdmFixture(path: string, params: Params): unknown {
     const mod = decodeURIComponent(bp[2]);
     return mod === MM ? { version_id: RUN, module: mod, processes: processes() } : { version_id: RUN, module: mod, processes: [], reason: "no_process_definition" };
   }
+  const cg = /^\/master-records\/([^/]+)\/cluster-graph$/.exec(path);
+  if (cg) return clusterGraph(decodeURIComponent(cg[1]));
+  if (path === "/pair-constraints") return params.domain === MM || !params.domain ? constraints() : [];
   return undefined;
 }
 
@@ -641,6 +676,37 @@ export function mdmFixtureWrite(method: string, path: string, body: unknown): un
       state.reviewed.add(id);
       return { status: "reviewed", term_id: id };
     }
+  }
+  if (method === "DELETE" && /^\/pair-constraints\/[^/]+$/.test(path)) {
+    state.clearedConstraints.add(decodeURIComponent(path.split("/")[2]));
+    return { constraint_id: decodeURIComponent(path.split("/")[2]), event_id: "ev-clear" };
+  }
+  if (method === "POST" && path === "/match-tuning/dry-run") {
+    const moved = b.weights || b.auto_merge || b.review_floor ? 9 : 0;
+    return { domain: String(b.domain ?? MM), pairs: PAIRS_TOTAL, pairs_newly_linked: moved, pairs_unlinked: moved ? 2 : 0, band_moves: moved ? { "steward_review to auto_merge": 7, "auto_dismiss to steward_review": 4 } : {}, clusters_before: GOLDEN_TOTAL, clusters_after: GOLDEN_TOTAL - moved + (moved ? 2 : 0), clusters_that_would_merge: moved, clusters_that_would_split: moved ? 2 : 0, applied: false };
+  }
+  if (method === "POST" && path === "/match-scores/bulk-merge") {
+    const min = Number(b.min_score ?? 0.95);
+    const open = livePairs().map(pairItem).filter((x) => x.total >= min);
+    open.forEach((x) => state.decidedPairs.add(x.id));
+    return { considered: open.length, merged: open.length, already_together: 0, blocked: 0, missing_record: 0 };
+  }
+  const undo = /^\/master-records\/([^/]+)\/undo-last-merge$/.exec(path);
+  if (method === "POST" && undo) {
+    const id = decodeURIComponent(undo[1]);
+    return { golden_record_id: id, event_id: `ev-undo-${id}`, split_keys: [], remaining_keys: members(idx(id)), do_not_match_pairs: 0, golden_fields: {} };
+  }
+  const ovr = /^\/master-records\/([^/]+)\/overrides$/.exec(path);
+  if (method === "POST" && ovr) {
+    const id = decodeURIComponent(ovr[1]);
+    const o = Object.fromEntries(Object.entries((b.overrides as Record<string, string | null>) ?? {}).filter(([, v]) => v !== null)) as Record<string, string>;
+    return { golden_record_id: id, event_id: `ev-ovr-${id}`, golden_fields: { ...goldenDetail(id).golden_fields, ...o }, steward_overrides: o };
+  }
+  const rev = /^\/merge-events\/([^/]+)\/revert$/.exec(path);
+  if (method === "POST" && rev) {
+    const m = /^ev-(\d+)-/.exec(decodeURIComponent(rev[1]));
+    const id = `gr-${m ? m[1] : 0}`;
+    return { golden_record_id: id, event_ids: [`${rev[1]}-rev`], remerged_keys: members(idx(id)), constraints_removed: 0, golden_fields: {} };
   }
   return undefined;
 }
