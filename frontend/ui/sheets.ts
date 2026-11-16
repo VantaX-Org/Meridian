@@ -5,6 +5,7 @@ import { createElement } from "react";
 import { GoldenSheet } from "./screens/mdm/GoldenSheet";
 import { TermSheet } from "./screens/mdm/catalogue/TermSheet";
 import { ADMIN_SHEETS } from "./screens/admin/sheets";
+import { RUN_SHEETS } from "./screens/runs/sheets";
 
 /** The sheets any screen can open with useSheet().open(id, arg). Add one entry per sheet; keep its body in the screen's own folder. */
 export const SHEETS: Record<string, SheetDef> = {
@@ -19,4 +20,6 @@ export const SHEETS: Record<string, SheetDef> = {
   term: { get label() { return t("Glossary term"); }, render: (arg) => createElement(TermSheet, { arg }) },
   // batch 11b
   ...ADMIN_SHEETS,
+  // batch 3
+  ...RUN_SHEETS,
 };
