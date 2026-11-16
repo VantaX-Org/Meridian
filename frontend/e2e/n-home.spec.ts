@@ -26,7 +26,7 @@ for (const r of ROUTES) {
     await page.goto(r.url, NAV);
     await expect(page.getByRole("heading", { level: 1, name: r.title })).toBeVisible(NAV);
     await expect(r.row(page)).toBeVisible(NAV);
-    expect(await page.locator("body").innerText()).not.toContain("·");
+    expect(await page.locator("body").innerText()).not.toContain(String.fromCharCode(0xb7));
     if (r.title === "Home") await page.screenshot({ path: "/private/tmp/claude-501/-Users-reshigan/d1c5bf99-9d06-4fbf-b894-bf4df80b630f/scratchpad/b2-main.png" });
   });
 }
