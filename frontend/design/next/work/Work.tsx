@@ -11,7 +11,6 @@ import { CHIPS, DEFAULT_STATE, STATUS_LABEL, filtersOf, ownerLabel, type ChipId 
 import { allWorkRows, useWorkRows, useWorkSummary } from "@/lib/v2/work-queries";
 import { GridTools } from "@/design/v2/GridTools";
 import type { Landscape, WorkRow } from "@/lib/api/v2/types";
-import { Attention } from "@/design/v2/screens/Attention";
 import { ProcessAnalytics } from "@/design/v2/screens/ProcessAnalytics";
 import { RequestFormCanvas } from "@/design/v2/screens/RequestForm";
 import { RequestsCanvas } from "@/design/v2/screens/Requests";
@@ -23,6 +22,7 @@ import { StackedBar, type Seg } from "../viz";
 import { WORK_SEGMENTS, segmentHref, segmentOf } from "./segments";
 import { WorkBulkBar } from "./BulkBar";
 import { WorkAnalytics } from "./Analytics";
+import { WorkAttention } from "./Attention";
 import { WorkApprovals } from "./Cleansing";
 import { WorkDrafts } from "./Drafts";
 import { WorkExceptions } from "./Exceptions";
@@ -198,7 +198,7 @@ export function Work({ slug }: { slug?: string[] }) {
           <LegacyMount><WorkCanvas /></LegacyMount>
         ) : active === "ledger" ? (
           <>
-            <LegacyMount><Attention /></LegacyMount>
+            <WorkAttention />
             <Ledger />
           </>
         ) : active === "monitor" ? (

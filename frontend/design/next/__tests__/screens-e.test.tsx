@@ -13,7 +13,6 @@ vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
 // The v2 screens are mounted unchanged; here each is a stub that proves which one was mounted.
-vi.mock("@/design/v2/screens/Attention", async () => (await import("./stub")).stub("Attention"));
 vi.mock("@/design/v2/screens/Work", async () => (await import("./stub")).stub("WorkCanvas"));
 vi.mock("@/design/v2/screens/WorkAnalytics", async () => (await import("./stub")).stub("WorkAnalytics"));
 vi.mock("@/design/v2/screens/FixDrafts", async () => (await import("./stub")).stub("FixDrafts"));
