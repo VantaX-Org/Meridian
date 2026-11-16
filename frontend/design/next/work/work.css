@@ -3,6 +3,7 @@
 .nx-wk-pills { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2); }
 .nx-wk-pills .nx-seg { margin-inline-start: auto; }
 .nx-wk-lede { margin: 0; color: var(--nx-ink-2); }
+.nx-wk-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .nx-wk-rec { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .nx-wk-rec small { color: var(--nx-ink-2); }
 .nx-wk-rule { display: flex; flex-direction: column; gap: 2px; min-width: 0; color: var(--nx-ink-2); }

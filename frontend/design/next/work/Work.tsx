@@ -8,7 +8,8 @@ import { moduleText } from "@/lib/v2/labels";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { useLandscape } from "@/lib/v2/queries";
 import { CHIPS, DEFAULT_STATE, STATUS_LABEL, filtersOf, ownerLabel, type ChipId } from "@/lib/v2/work";
-import { useWorkRows, useWorkSummary } from "@/lib/v2/work-queries";
+import { allWorkRows, useWorkRows, useWorkSummary } from "@/lib/v2/work-queries";
+import { GridTools } from "@/design/v2/GridTools";
 import type { Landscape, WorkRow } from "@/lib/api/v2/types";
 import { Attention } from "@/design/v2/screens/Attention";
 import { Cleansing } from "@/design/v2/screens/Cleansing";
@@ -91,6 +92,8 @@ export function Ledger() {
     { id: "who", label: t("Who"), cell: (r) => ownerLabel(r) ?? t("Nobody yet") },
   ];
 
+  // Saved views, a read-only share link and Export to Excel, as on the v2 Work grid: the columns on screen, every row of the state.
+  const tools = columns.map((c) => ({ id: c.id, header: c.label, cell: c.cell }));
   const TONES: Record<string, Seg["tone"]> = { tofix: "bad", approvals: "warn", approved: "chart1", sent: "chart3", fixed: "good", exceptions: "mute" };
   const segs: Seg[] = CHIPS.filter((c) => c.id in TONES).map((c) => ({ id: c.id, label: c.label, value: c.count(summary) ?? 0, tone: TONES[c.id] }));
   const flow = segs.reduce((a, x) => a + x.value, 0);
@@ -114,9 +117,12 @@ export function Ledger() {
             items={[{ value: "all", label: t("Everyone") }, { value: "mine", label: t("Mine") }]}
           />
         </div>
-        <p className="nx-wk-lede" aria-live="polite">
-          {total != null ? `${formatInt(total)} ${t("{n, plural, one {record} other {records}}", { n: total })}` : ""}
-        </p>
+        <div className="nx-wk-head">
+          <p className="nx-wk-lede" aria-live="polite">
+            {total != null ? `${formatInt(total)} ${t("{n, plural, one {record} other {records}}", { n: total })}` : ""}
+          </p>
+          <GridTools gridId="work-ledger" route="work" title={t("Work")} columns={tools} rows={rows} allRows={() => allWorkRows(filtersOf(state), state.sort)} onColumns={() => setGen((g) => g + 1)} />
+        </div>
         <DataTable<WorkRow>
           key={`${chip}-${mine}-${gen}`}
           rows={rows}
@@ -155,13 +161,16 @@ function severityWord(s: string): string {
   }
 }
 
+const NOT_FILTERS = new Set(["fixture", "role", "open"]);
+
 /** Work: the ledger first, then the segments that decide what happens to it. */
 export function Work({ slug }: { slug?: string[] }) {
   const router = useRouter();
   const params = useSearchParams();
   // A filtered address (?module=, ?rule=, ?filter=approvals, ?batch=, a saved ?view=, the old /fix and /inbox links)
-  // opens the record ledger with its per-record decisions, new values and batch approvals.
-  const filtered = [...params.keys()].some((k) => k !== "fixture");
+  // opens the record ledger with its per-record decisions, new values and batch approvals. The demo's ?fixture= and
+  // ?role= and the inspector's ?open= filter nothing, so they keep the Action centre and the ledger.
+  const filtered = [...params.keys()].some((k) => !NOT_FILTERS.has(k));
   const hit = segmentOf(slug);
   const items: TabItem[] = WORK_SEGMENTS.map((s) => ({ id: s.id, label: s.label() }));
   const key = (slug ?? []).join("/");

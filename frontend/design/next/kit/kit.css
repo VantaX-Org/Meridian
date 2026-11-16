@@ -249,8 +249,8 @@ button.nx-step-btn:hover, .nx-step-btn[data-open] { border-color: var(--nx-accen
 .nx-tab:hover { background: var(--nx-surface-2); color: var(--nx-ink); }
 .nx-tab-on, .nx-tab-on:hover { background: var(--nx-accent-soft); color: var(--nx-ink); }
 .nx-tab-badge { padding: 0 var(--nx-s2); border-radius: var(--nx-r-pill); background: var(--nx-surface-2); color: var(--nx-ink); font-size: var(--nx-fs-small); }
-.nx-seg { display: inline-flex; padding: var(--nx-s1); gap: var(--nx-s1); border: 1px solid var(--nx-control-edge); border-radius: var(--nx-r-pill); background: var(--nx-surface); }
-.nx-seg-item { min-height: var(--nx-h-control-sm); padding: 0 var(--nx-s4); border: 0; border-radius: var(--nx-r-pill); background: transparent; color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); font-weight: var(--nx-w-label); cursor: pointer; }
+.nx-seg { display: inline-flex; max-width: 100%; overflow-x: auto; padding: var(--nx-s1); gap: var(--nx-s1); border: 1px solid var(--nx-control-edge); border-radius: var(--nx-r-pill); background: var(--nx-surface); }
+.nx-seg-item { min-height: var(--nx-h-control-sm); padding: 0 var(--nx-s4); border: 0; border-radius: var(--nx-r-pill); background: transparent; color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); font-weight: var(--nx-w-label); cursor: pointer; flex: none; }
 .nx-seg-item.nx-seg-on { background: var(--nx-accent); color: var(--nx-accent-ink); }
 
 /* Code */

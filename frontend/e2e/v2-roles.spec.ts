@@ -72,7 +72,7 @@ test.describe("v2 role capabilities at 1440, light", () => {
 
   test("programme lead: wave gates, balance work, contracts, grid export", async ({ page }) => {
     await prepare(page);
-    await go(page, "/?view=waves", "programme_lead");
+    await go(page, "/more/landscape?view=waves", "programme_lead");
     await expect(page.getByTestId("gate-mark").first()).toBeVisible(NAV);
     await shot(page, "lead", "wave-gates");
     await go(page, "/?open=waves", "programme_lead");

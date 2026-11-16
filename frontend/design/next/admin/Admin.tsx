@@ -11,7 +11,6 @@ import { Denied } from "../more/states";
 import { EmptyState } from "../kit";
 import { ChartCard } from "../more/ChartCard";
 import { SeatsCard, UsersCard } from "../more/cards";
-import { Roles } from "./Roles";
 
 /** Administration: five chart-led cards, one per group, each listing the sections this person may open. The one entry to admin. */
 export function AdminHome() {
@@ -42,7 +41,7 @@ export function AdminHome() {
   );
 }
 
-/** One section in the new frame. Roles are native; the rest mount the existing section behind the same permission check. */
+/** One section in the new frame. Each mounts the existing section behind the same permission check; roles keeps its requests and change log. */
 export function AdminSectionView({ slug }: { slug: string }) {
   const { can } = useV2Session();
   const href = useV2Href();
@@ -56,6 +55,5 @@ export function AdminSectionView({ slug }: { slug: string }) {
       <LegacyMount><AdminCanvas section="users" /></LegacyMount>
     </>
   );
-  if (slug === "roles") return <Roles />;
   return <LegacyMount><AdminCanvas section={slug} /></LegacyMount>;
 }

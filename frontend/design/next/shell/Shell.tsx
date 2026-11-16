@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AuthGuard } from "@/design/v2/auth/Guard";
 import { useAuth } from "@/context/auth-context";
 import { usePreferences, usePreferencesSync } from "@/hooks/use-preferences";
@@ -13,7 +13,7 @@ import { isTyping } from "@/lib/v2/keys";
 import { useOpenItem, useV2Href, useV2Session } from "@/lib/v2/hooks";
 import { resolveDensity } from "@/lib/v2/density";
 import { t } from "@/lib/v2/i18n";
-import { PATHS } from "@/lib/next/nav-defaults";
+import { PATHS, redirectFor } from "@/lib/next/nav-defaults";
 import { Button } from "../kit";
 import { LegacyScope } from "./LegacyMount";
 import { StoryHeader } from "./StoryHeader";
@@ -73,7 +73,9 @@ function Frame({ children }: { children: ReactNode }) {
   const href = useV2Href();
   const { persona } = useV2Session();
   const sheets = useSheets();
-  const { open, close } = useOpenItem();
+  const { open: asked, close } = useOpenItem();
+  // An old address is about to move (NextRedirect): the inspector waits for the new one, as LegacyFrame does, so it opens once.
+  const open = redirectFor(usePathname() ?? "/") ? null : asked;
   const { prefs } = usePreferences();
   const density = resolveDensity(prefs.density, persona);
   const [sheet, setSheet] = useState(false);

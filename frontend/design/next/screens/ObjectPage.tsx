@@ -17,6 +17,7 @@ import { useObjectRun } from "../object/useObjectRun";
 import { MORE, SEGMENTS, renderTab, tabLabel, type TabId } from "../object/tabs";
 import { LegacyScope } from "../shell/LegacyMount";
 import { OldRunBand } from "@/design/v2/RunParts";
+import { RelatedObjects } from "@/design/v2/screens/object/Related";
 import { useObjectRun as useRunSpine } from "@/lib/v2/scope";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { withSheets } from "@/lib/next/sheet";
@@ -127,6 +128,8 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
         <LegacyScope>
           {/* An older run on screen says so, with the way back to the current one. */}
           <OldRun systemId={o.systemId} module={o.module} system={o.systemName} />
+          {/* Overview keeps the related objects, watch toggle, data contracts and owner apply of the v2 object page. */}
+          {tab === "overview" && o.systemId ? <RelatedObjects module={o.module} system={o.systemSeg} systemId={o.systemId} label={o.label} /> : null}
           {renderTab(tab, o, go)}
         </LegacyScope>
       </section>
