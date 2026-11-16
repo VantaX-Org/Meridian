@@ -1403,13 +1403,27 @@ class ConnectivityManager:
                 max_rows=effective_max,
             )
         elif system_type == "successfactors":
-            return connector.read_entity_set(
-                target.source,
-                select=target.fields if target.fields else None,
-                filter_expr=target.filter,
-                top=effective_max,
-                from_date=target.from_date,
-            )
+            # "nav/prop" fields read through $expand; a property the tenant or API user does not
+            # have (SF 400 naming it) is dropped and the read retried, so one field never fails
+            # the whole entity.
+            fields = list(target.fields)
+            while True:
+                expand = sorted({f.split("/")[0] for f in fields if "/" in f})
+                try:
+                    return connector.read_entity_set(
+                        target.source,
+                        select=fields or None,
+                        filter_expr=target.filter,
+                        top=effective_max,
+                        from_date=target.from_date,
+                        **({"expand": expand} if expand else {}),
+                    )
+                except Exception as e:
+                    bad = _bad_property(e, target.source)
+                    if bad not in fields or len(fields) == 1:
+                        raise
+                    logger.warning(f"{target.source}: dropping {bad} from $select ({e})")
+                    fields.remove(bad)
         elif system_type in ("s4hana_cloud", "btp"):
             # OData V4 (S/4HANA Cloud, BTP) has no fromDate param; from_date is SF-only.
             return connector.read_entity_set(

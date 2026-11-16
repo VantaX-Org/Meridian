@@ -1671,7 +1671,7 @@ async def export_migration(
             f"Export blocked — {structural} structural critical gap(s) (missing/obsolete target fields). "
             "Fix the field map and re-analyse."))
     from starlette.concurrency import run_in_threadpool
-    from api.services.migration.export import load_run_tables, to_csv_zip, to_xlsx
+    from api.services.migration.export import LOAD_ORDER_TAB, load_run_tables, load_sequence, to_csv_zip, to_xlsx
     from workers.db import get_sync_engine, tenant_session
     from sqlalchemy.orm import Session
 
@@ -1679,14 +1679,20 @@ async def export_migration(
         with Session(get_sync_engine()) as s:
             s.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
             held: dict = {}
-            return load_run_tables(s, run, held)[0], held
+            return (*load_run_tables(s, run, held), held)
 
-    tables, held = await run_in_threadpool(_build)
+    tables, target_dict, held = await run_in_threadpool(_build)
     if not tables:
         raise HTTPException(status_code=404, detail="No transfer-ready records to export.")
     total = sum(len(t) for t in tables.values())
-    # load_run_tables returns the tables in load-plan order; the file keeps it
-    content = to_xlsx(tables, keep_order=True) if export_format == "xlsx" else to_csv_zip(tables, keep_order=True)
+    # load_run_tables returns the tables in load-plan order; the file keeps it. The xlsx opens on a Load order index
+    # (step, object, what each table needs loaded first); the CSV names carry the order as 01_, 02_ ... prefixes.
+    # The index is in the file only, never in the snapshot, which holds the records handed over.
+    if export_format == "xlsx":
+        index = load_sequence(list(tables), list(run.modules), target_dict)
+        content = to_xlsx({LOAD_ORDER_TAB: index} | tables, keep_order=True)
+    else:
+        content = to_csv_zip(tables, keep_order=True)
     fname = f"migration_{run_id}.{'xlsx' if export_format == 'xlsx' else 'zip'}"
     # What was handed over is kept for post-load reconciliation. A storage failure never fails the export: the
     # row records the error, and reconciliation then rebuilds from the current mappings and says so.

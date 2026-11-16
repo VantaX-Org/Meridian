@@ -961,13 +961,15 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
         ),
         ExtractionTarget(
             source="FOJobCode",
-            fields=["externalCode", "name", "grade", "jobFunction", "status"],
+            fields=["externalCode", "name", "grade", "jobFunction", "status",
+                    "isFulltimeEmployee", "employeeClass", "regularTemporary"],
             description="Job code picklist",
             is_config=True,
         ),
         ExtractionTarget(
             source="FOLocation",
-            fields=["externalCode", "name", "addressLine1", "city", "country", "status"],
+            fields=["externalCode", "name", "addressLine1", "city", "country", "status",
+                    "timezone", "standardHours"],
             description="Location picklist",
             is_config=True,
         ),
@@ -991,7 +993,7 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
         ),
         ExtractionTarget(
             source="FOEventReason",
-            fields=["externalCode", "name", "event", "status"],
+            fields=["externalCode", "name", "event", "status", "emplStatus"],
             description="Event reason picklist",
             is_config=True,
         ),
@@ -1070,6 +1072,7 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
                 "businessUnit", "division", "department", "location",
                 "costCenter", "jobCode", "positionCriticality", "vacant",
                 "targetFTE", "standardHours", "payGrade",
+                "multipleIncumbentsAllowed", "incumbent", "parentPosition/code",
             ],
             description="Positions (position management)",
             # I1 (fix round 3, safe-to-ship-as-is per review): no from_date
@@ -1081,10 +1084,12 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             # from_date, POSITION.keys must also gain
             # EFFECTIVE_START_DATE or EC299 (uniqueness on POSITION.CODE)
             # will mass-fire on every position that was ever changed.
-            # ponytail: parentPosition and incumbent omitted — both are
-            # navigation-only properties on the standard Position entity
-            # (parentPosition/code, incumbent/userId) and read_entity_set()
-            # has no $expand support; add if the connector gains $expand.
+            # parentPosition is a navigation to Position, read as
+            # parentPosition/code through $expand (ConnectivityManager.
+            # _extract_target derives $expand from "nav/prop" fields).
+            # incumbent is read as a plain property, as canonical
+            # POSITION.INCUMBENT names it; a tenant whose $metadata rejects
+            # either has it dropped from $select and the read retried.
             rename_map={
                 "code": "CODE", "effectiveStartDate": "EFFECTIVE_START_DATE",
                 "effectiveEndDate": "EFFECTIVE_END_DATE",
@@ -1097,7 +1102,20 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
                 "positionCriticality": "CRITICALITY", "vacant": "VACANT",
                 "targetFTE": "TARGET_FTE", "standardHours": "STANDARD_HOURS",
                 "payGrade": "PAY_GRADE",
+                "multipleIncumbentsAllowed": "MULTIPLE_INCUMBENTS",
+                "incumbent": "INCUMBENT", "parentPosition/code": "PARENT_POSITION",
             },
+        ),
+        ExtractionTarget(
+            source="PositionMatrixRelationship",
+            # Keys and properties as the SAP SF Position Management OData reference
+            # names them; no canonical dictionary entry backs them yet.
+            fields=["Position_code", "Position_effectiveStartDate",
+                    "matrixRelationshipType", "relatedPosition"],
+            description="Position matrix relationships",
+            status=PREVIEW,
+            status_reason=("fields taken from the SF OData reference, not the canonical "
+                           "dictionary; confirm against the tenant $metadata"),
         ),
         ExtractionTarget(
             source="PerAddressDEFLT",
@@ -1148,6 +1166,133 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             source="FODivision",
             fields=["externalCode", "status"],
             description="Division picklist",
+        ),
+        # Foundation objects the SF load order needs ahead of Position and Job Data
+        # (api/services/migration/load_plan.EC_LOAD_ORDER). Fields are the ones
+        # canonical/successfactors.yaml names for each entity; not is_config for the
+        # same reason as FOBusinessUnit above.
+        ExtractionTarget(
+            source="FOJobFunction",
+            fields=[
+                "externalCode", "effectiveStartDate", "name", "description",
+                "effectiveStatus",
+            ],
+            description="Job function picklist",
+            rename_map={
+                "externalCode": "EXTERNAL_CODE",
+                "effectiveStartDate": "EFFECTIVE_START_DATE",
+                "name": "NAME",
+                "description": "DESCRIPTION",
+                "effectiveStatus": "EFFECTIVE_STATUS",
+            },
+        ),
+        ExtractionTarget(
+            source="FOGeozone",
+            fields=[
+                "externalCode", "startDate", "endDate", "name",
+                "description", "status", "adjustmentPercentage",
+            ],
+            description="Geozone picklist",
+            rename_map={
+                "externalCode": "EXTERNAL_CODE",
+                "startDate": "START_DATE",
+                "endDate": "END_DATE",
+                "name": "NAME",
+                "description": "DESCRIPTION",
+                "status": "STATUS",
+                "adjustmentPercentage": "ADJUSTMENT_PERCENTAGE",
+            },
+        ),
+        ExtractionTarget(
+            source="FOPayRange",
+            fields=[
+                "externalCode", "status", "minimumPay", "midPoint",
+                "maximumPay", "currency", "frequencyCode",
+            ],
+            description="Pay range picklist",
+            rename_map={
+                "externalCode": "EXTERNAL_CODE",
+                "status": "STATUS",
+                "minimumPay": "MINIMUM_PAY",
+                "midPoint": "MID_POINT",
+                "maximumPay": "MAXIMUM_PAY",
+                "currency": "CURRENCY",
+                "frequencyCode": "FREQUENCY_CODE",
+            },
+        ),
+        ExtractionTarget(
+            source="FOFrequency",
+            fields=[
+                "externalCode", "name", "description", "annualizationFactor",
+            ],
+            description="Pay frequency picklist",
+            rename_map={
+                "externalCode": "EXTERNAL_CODE",
+                "name": "NAME",
+                "description": "DESCRIPTION",
+                "annualizationFactor": "ANNUALIZATION_FACTOR",
+            },
+        ),
+        ExtractionTarget(
+            source="FOPayComponent",
+            fields=[
+                "externalCode", "startDate", "endDate", "name",
+                "description", "status", "payComponentType", "isEarning",
+                "currency", "payComponentValue", "frequencyCode", "recurring",
+                "canOverride", "basePayComponentGroup", "taxTreatment", "legalEntity",
+                "target", "maxFractionDigits", "isEndDatedPayment", "selfServiceDescription",
+                "displayOnSelfService", "usedForCompPlanning",
+            ],
+            description="Pay component picklist",
+            rename_map={
+                "externalCode": "EXTERNAL_CODE",
+                "startDate": "START_DATE",
+                "endDate": "END_DATE",
+                "name": "NAME",
+                "description": "DESCRIPTION",
+                "status": "STATUS",
+                "payComponentType": "PAY_COMPONENT_TYPE",
+                "isEarning": "IS_EARNING",
+                "currency": "CURRENCY",
+                "payComponentValue": "PAY_COMPONENT_VALUE",
+                "frequencyCode": "FREQUENCY_CODE",
+                "recurring": "RECURRING",
+                "canOverride": "CAN_OVERRIDE",
+                "basePayComponentGroup": "BASE_PAY_COMPONENT_GROUP",
+                "taxTreatment": "TAX_TREATMENT",
+                "legalEntity": "LEGAL_ENTITY",
+                "target": "TARGET",
+                "maxFractionDigits": "MAX_FRACTION_DIGITS",
+                "isEndDatedPayment": "IS_END_DATED_PAYMENT",
+                "selfServiceDescription": "SELF_SERVICE_DESCRIPTION",
+                "displayOnSelfService": "DISPLAY_ON_SELF_SERVICE",
+                "usedForCompPlanning": "USED_FOR_COMP_PLANNING",
+            },
+        ),
+        ExtractionTarget(
+            source="FOPayComponentGroup",
+            fields=[
+                "externalCode", "startDate", "endDate", "name",
+                "description", "status", "currency", "showOnCompUI",
+                "useForComparatioCalc", "useForRangePenetration", "sortOrder", "maxFractionDigits",
+                "payComponent",
+            ],
+            description="Pay component group picklist",
+            rename_map={
+                "externalCode": "EXTERNAL_CODE",
+                "startDate": "START_DATE",
+                "endDate": "END_DATE",
+                "name": "NAME",
+                "description": "DESCRIPTION",
+                "status": "STATUS",
+                "currency": "CURRENCY",
+                "showOnCompUI": "SHOW_ON_COMP_UI",
+                "useForComparatioCalc": "USE_FOR_COMPARATIO_CALC",
+                "useForRangePenetration": "USE_FOR_RANGE_PENETRATION",
+                "sortOrder": "SORT_ORDER",
+                "maxFractionDigits": "MAX_FRACTION_DIGITS",
+                "payComponent": "PAY_COMPONENT",
+            },
         ),
     ],
 
