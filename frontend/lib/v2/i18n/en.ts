@@ -11368,6 +11368,19 @@ export const en = {
   "No rule or dimension stands out as a driver.": "No rule or dimension stands out as a driver.",
   "Runs that broke from the trend": "Runs that broke from the trend",
   "Every run sits inside its normal range.": "Every run sits inside its normal range.",
+  "Reading the configuration again needs the analyse permission.": "Reading the configuration again needs the analyse permission.",
+  "Every object at its newest run, live runs, bulk pull, upload and compare.": "Every object at its newest run, live runs, bulk pull, upload and compare.",
+  "One material across every view, level and rule.": "One material across every view, level and rule.",
+  "The cleaning plan could not be read.": "The cleaning plan could not be read.",
+  "How the engine reached this": "How the engine reached this",
+  "No run since the load": "No run since the load",
+  "Batches that hold {label} records": "Batches that hold {label} records",
+  "Fix batches for {label}": "Fix batches for {label}",
+  "No fix batches yet": "No fix batches yet",
+  "No fix batches for {label} yet. A batch starts when a steward accepts suggested values or imports a filled fix sheet.": "No fix batches for {label} yet. A batch starts when a steward accepts suggested values or imports a filled fix sheet.",
+  "Other": "Other",
+  "One run so far. The line starts at the next run.": "One run so far. The line starts at the next run.",
+  "{label} records that need work": "{label} records that need work",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -21,6 +21,12 @@
 .nx-varea-dot { fill: var(--nx-data); opacity: 0; }
 .nx-varea-dot:hover { opacity: 1; }
 .nx-varea[data-empty="true"] .nx-varea-base { stroke-dasharray: 4 4; }
+.nx-varea-cap { stroke: var(--nx-warn); stroke-width: 1; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
+.nx-varea-caplab { color: var(--nx-warn-ink); }
+.nx-varea-axis { position: relative; block-size: 1.2em; color: var(--nx-ink-2); font-size: var(--nx-fs-micro); font-variant-numeric: tabular-nums; }
+.nx-varea-axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.nx-varea-axis span[data-edge="start"] { transform: none; }
+.nx-varea-axis span[data-edge="end"] { transform: translateX(-100%); }
 .nx-chart-cap { text-align: start; }
 .nx-vring[data-empty="true"] .nx-vring-track { stroke-dasharray: 3 5; }
 .nx-ring { position: relative; flex: none; display: inline-grid; place-items: center; }

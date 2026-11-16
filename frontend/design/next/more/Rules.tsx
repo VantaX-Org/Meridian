@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { t } from "@/lib/v2/i18n";
 import { AdminCanvas } from "@/design/v2/admin/Admin";
-import { RulePromotion } from "@/design/v2/screens/RulePromotion";
 import { RulesLibrary } from "@/design/v2/screens/RulesLibrary";
 import { useAllDrafts, useRuleList } from "@/lib/v2/sys-queries";
 import type { Rule } from "@/lib/api/rules";
@@ -13,9 +12,11 @@ import { useSheets } from "../shell/SheetHost";
 import { LegacyMount } from "../shell/LegacyMount";
 import { LongText, ListSearch, QueryView, VirtualList } from "./states";
 import { PassRateCard, RulesCard } from "./cards";
+import { RulePromotion } from "./RulePromotion";
+import { RuleDryRun } from "./RuleDryRun";
 
-type Seg = "all" | "active" | "drafts" | "promotion" | "learned" | "packs";
-const SEGS: readonly Seg[] = ["all", "active", "drafts", "promotion", "learned", "packs"];
+type Seg = "all" | "active" | "drafts" | "promotion" | "dry-run" | "learned" | "packs";
+const SEGS: readonly Seg[] = ["all", "active", "drafts", "promotion", "dry-run", "learned", "packs"];
 const TONE = { critical: "bad", high: "bad", medium: "warn", low: "neutral", info: "neutral" } as const;
 
 const SEVERITY = () => ({ critical: t("Critical"), high: t("High"), medium: t("Medium"), low: t("Low"), info: t("Info") });
@@ -54,8 +55,8 @@ function RuleRows({ rules, label, empty }: { rules: Rule[]; label: string; empty
 }
 
 /**
- * Rules in six segments. All rules is the full library (filters, search, enable and disable, the draft editor with its
- * dry run, suppressions); Active and Learned are drawn here; Promotion and Packs reuse the existing screens.
+ * Rules in seven segments. All rules is the full library (filters, search, enable and disable, the draft editor with its
+ * dry run, suppressions); Active, Learned, Promotion and Dry run are drawn here; Packs reuses the admin screen.
  * `?tab=` picks the segment, so the old /rule-promotion and /anomaly-rules addresses land on theirs.
  */
 export function Rules() {
@@ -76,6 +77,7 @@ export function Rules() {
           { value: "active", label: t("Active") },
           { value: "drafts", label: t("Drafts") },
           { value: "promotion", label: t("Promotion") },
+          { value: "dry-run", label: t("Dry run") },
           { value: "learned", label: t("Learned") },
           { value: "packs", label: t("Packs") },
         ]}
@@ -99,7 +101,8 @@ export function Rules() {
         </QueryView>
       ) : null}
       {seg === "all" ? <LegacyMount><RulesLibrary /></LegacyMount> : null}
-      {seg === "promotion" ? <LegacyMount><RulePromotion /></LegacyMount> : null}
+      {seg === "promotion" ? <RulePromotion /> : null}
+      {seg === "dry-run" ? <RuleDryRun /> : null}
       {seg === "packs" ? <LegacyMount><AdminCanvas section="policypacks" /></LegacyMount> : null}
     </div>
   );

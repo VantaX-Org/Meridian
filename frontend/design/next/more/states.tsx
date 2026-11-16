@@ -1,9 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import Link from "next/link";
 import { isAxiosError } from "axios";
+import { useV2Href } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { EmptyState, ErrorState, Skeleton } from "../kit";
+
+/** A link that keeps the fixture query on the address it opens. */
+export function KeepLink({ href, ...rest }: Omit<ComponentProps<typeof Link>, "href"> & { href: string }) {
+  const keep = useV2Href();
+  return <Link href={keep(href)} {...rest} />;
+}
 
 /** Text that may be long (a name, an email): one line, cut with an ellipsis, the whole text in the tooltip. */
 export function LongText({ text, className }: { text: string; className?: string }) {

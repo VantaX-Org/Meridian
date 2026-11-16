@@ -11,8 +11,7 @@ import { groupByRun, perDay, useFeed, type DaySpread, type RunGroup } from "@/li
 import { usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { f1 } from "@/lib/v2/score";
 import { deltaOf } from "../feed/model";
-import { LearnedMonitors } from "@/design/v2/screens/LearnedMonitors";
-import { LegacyMount } from "../shell/LegacyMount";
+import { LearnedMonitors } from "../monitor/LearnedMonitors";
 import { Button, Chip, Code, EmptyState, ErrorState, Skeleton, Sparkline, Tabs } from "../kit";
 import "../shell/shell.css";
 import "../monitor/monitor.css";
@@ -237,7 +236,7 @@ export function MonitorBody() {
         <Feed />
       ) : (
         <div id="nx-mon-panel-learned" role="tabpanel">
-          <LegacyMount><LearnedMonitors /></LegacyMount>
+          <LearnedMonitors />
         </div>
       )}
     </>

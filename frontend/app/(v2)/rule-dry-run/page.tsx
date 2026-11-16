@@ -1,5 +1,6 @@
-import { RuleDryRun } from "@/design/v2/screens/RuleDryRun";
+import { redirect } from "next/navigation";
 
+/** The old address; the rule dry run is now a segment of Rules. */
 export default function RuleDryRunPage() {
-  return <RuleDryRun />;
+  redirect("/more/rules?tab=dry-run");
 }

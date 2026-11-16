@@ -18,19 +18,16 @@ import { ScoreLens } from "@/design/v2/screens/ScoreLens";
 import { Insights } from "@/design/v2/screens/Insights";
 import { Forecast } from "@/design/v2/screens/Forecast";
 import { Value } from "@/design/v2/screens/Value";
-import { Config } from "@/design/v2/screens/Config";
+import { ConfigScreen } from "./Config";
 import { RunsCanvas } from "@/design/v2/screens/Runs";
-import { Atlas } from "@/design/v2/screens/Atlas";
+import { Atlas } from "./Atlas";
+import { Landscape } from "./Landscape";
+import { DataRequests } from "./DataRequests";
+import { Materials } from "./Materials";
 import { Stewardship } from "./Stewardship";
 import { Automation } from "./Automation";
 import { ConfigImpact } from "./ConfigImpact";
-import { LandscapeCanvas } from "@/design/v2/screens/Landscape";
-import { StatusStrip } from "@/design/v2/shell/StatusStrip";
-
-/** The landscape keeps the old shell's status strip: run, records, rules, cost model, licence. */
-function LandscapeWithStatus() {
-  return <><LandscapeCanvas /><StatusStrip /></>;
-}
+import { Portfolio } from "../screens/Portfolio";
 
 export interface Tab { id: string; label: () => string; Screen: ComponentType }
 export interface Group { id: string; title: () => string; blurb: () => string; tabs: Tab[] }
@@ -63,10 +60,13 @@ export const GROUPS: Group[] = [
 
 /** Single screens, addressed by their path under /more. */
 export const SINGLES: Record<string, { title: () => string; blurb: () => string; Screen: ComponentType }> = {
-  landscape: { title: () => t("Landscape"), blurb: () => t("Every system and object at its newest run, with your next step."), Screen: LandscapeWithStatus },
+  landscape: { title: () => t("Landscape"), blurb: () => t("Every system and object at its newest run, with your next step."), Screen: Landscape },
   runs: { title: () => t("Runs"), blurb: () => t("Every run, across every system."), Screen: RunsCanvas },
-  "systems/config": { title: () => t("Configuration"), blurb: () => t("Thresholds and settings."), Screen: Config },
+  "systems/config": { title: () => t("Configuration"), blurb: () => t("Thresholds and settings."), Screen: ConfigScreen },
   atlas: { title: () => t("Atlas"), blurb: () => t("The landscape and its flows."), Screen: Atlas },
+  portfolio: { title: () => t("All objects"), blurb: () => t("Every object at its newest run, live runs, bulk pull, upload and compare."), Screen: Portfolio },
+  "data-requests": { title: () => t("Data requests"), blurb: () => t("Ask an owner for data and follow the progress."), Screen: DataRequests },
+  materials: { title: () => t("Material 360"), blurb: () => t("One material across every view, level and rule."), Screen: Materials },
   stewardship: { title: () => t("Stewardship"), blurb: () => t("The work queue, approvals, exceptions and SLAs."), Screen: Stewardship },
   automation: { title: () => t("Automation"), blurb: () => t("What runs on its own, when, and how it last went."), Screen: Automation },
   "config-impact": { title: () => t("Configuration impact"), blurb: () => t("SAP features that configuration findings block or degrade."), Screen: ConfigImpact },
