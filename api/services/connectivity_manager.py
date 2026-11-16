@@ -78,7 +78,10 @@ def _primary_first(df: pd.DataFrame, col: str) -> pd.DataFrame:
     """Rows whose isPrimary flag is true first, so first-row-per-key keeps the primary record."""
     if col not in df.columns:
         return df
-    flag = df[col].astype(str).str.strip().str.lower().isin({"true", "1", "y", "yes", "x"})
+    vals = df[col]
+    if isinstance(vals, pd.DataFrame):  # duplicate column names: the first copy carries the flag
+        vals = vals.iloc[:, 0]
+    flag = vals.astype(str).str.strip().str.lower().isin({"true", "1", "y", "yes", "x"})
     return df.iloc[(~flag).to_numpy().argsort(kind="stable")]
 
 

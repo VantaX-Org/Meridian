@@ -134,6 +134,10 @@ class Column:
     mandatory: bool = False
     picklist: str = ""
     country: str = ""
+    # A country-specific field has one definition row per country: each country's picklist ('' for a text field)
+    # and whether it is mandatory there, keyed by the country's three and two letter codes.
+    country_picklists: dict[str, str] = field(default_factory=dict)
+    country_mandatory: set[str] = field(default_factory=set)
     pos: int = -1  # the column's place on the sheet, when the sheet is a load layout
     table: str = ""  # the SAP structure a cockpit field list names
 
@@ -195,21 +199,33 @@ def _definition(name: str, rows: list[tuple], at: int, id_col: int) -> Sheet:
         i = head.get(key)
         return row[i] if i is not None and i < len(row) else None
 
-    sheet, seen = Sheet(name, "definition"), set()
+    sheet, seen = Sheet(name, "definition"), {}
     for row in rows[at + 1:]:
         fid = _text(row[id_col]) if id_col < len(row) else ""
         kind = _text(cell(row, "type"))
-        if not fid or kind.lower() not in FIELD_TYPES or fid in seen:
+        if not fid or kind.lower() not in FIELD_TYPES:
             continue
         if _text(cell(row, "visibility")).lower() in HIDDEN:
             continue
-        seen.add(fid)
-        sheet.columns.append(Column(
-            header=fid, id=fid, label=_text(cell(row, "sflabel")), type=kind.upper(),
-            max_length=_length(cell(row, "maxlength")),
-            mandatory=_text(cell(row, "mandatory")).lower() == "yes",
-            picklist=re.sub(r"^picklist:\s*", "", _text(cell(row, "picklist")), flags=re.I),
-            country=_text(cell(row, "country"))))
+        mandatory = _text(cell(row, "mandatory")).lower() == "yes"
+        picklist = re.sub(r"^picklist:\s*", "", _text(cell(row, "picklist")), flags=re.I)
+        picklist = "" if kind.lower() != "picklist" and picklist.lower() in ("", "no") else picklist
+        country = _text(cell(row, "country"))
+        col = seen.get(fid)
+        if col is None:
+            col = seen[fid] = Column(header=fid, id=fid, label=_text(cell(row, "sflabel")), type=kind.upper(),
+                                     max_length=_length(cell(row, "maxlength")), mandatory=mandatory,
+                                     picklist=picklist, country=country)
+            sheet.columns.append(col)
+        elif not (country and col.country):
+            continue  # a repeated global field: the first definition wins
+        for token in _country_tokens(country):  # each country keeps its own picklist and mandatory flag
+            col.country_picklists.setdefault(token, picklist)
+            if mandatory:
+                col.country_mandatory.add(token)
+    for col in sheet.columns:
+        if len(set(col.country_picklists.values())) > 1:  # no single picklist holds for every country
+            col.picklist = ""
     return sheet
 
 
@@ -390,6 +406,7 @@ def _parse(source: Source, picklists: dict[str, set[str]]) -> list[Sheet]:
             if rule:
                 col.id, col.label, col.type, col.max_length = rule.id, rule.label, rule.type, rule.max_length
                 col.mandatory, col.picklist, col.country = rule.mandatory, rule.picklist, rule.country
+                col.country_picklists, col.country_mandatory = rule.country_picklists, rule.country_mandatory
     return [d for d in definitions if d.name not in replaced] + grids
 
 
@@ -691,7 +708,7 @@ def _problems(col: Column, values: pd.Series, picklists: dict[str, set[str]]) ->
     found = []
     if col.mandatory and not col.country:  # a country field is mandatory for that country only
         found.append((~filled, "mandatory"))
-    if col.max_length:
+    if col.max_length and kind != "BOOLEAN":  # SF exports a Boolean with length 1 and loads true or false
         found.append((filled & (text.str.len() > col.max_length), "too_long"))
     if kind == "DATE":
         found.append((filled & pd.to_datetime(text, errors="coerce", format="mixed").isna(), "bad_date"))
@@ -701,7 +718,7 @@ def _problems(col: Column, values: pd.Series, picklists: dict[str, set[str]]) ->
         whole = text.str.fullmatch(_WHOLE).fillna(False)
         size = pd.to_numeric(text.where(whole), errors="coerce").abs() <= _LONG_MAX
         found.append((filled & ~(whole & size.fillna(False)), "bad_whole_number"))
-    elif kind in ("DOUBLE", "DECIMAL", "NUMBER"):
+    elif kind in ("DOUBLE", "DECIMAL", "NUMBER") and not _WORD_CODES.get(col.id.split(".")[-1]):
         num = pd.to_numeric(text.where(filled), errors="coerce")
         found.append((filled & (num.isna() | num.isin([float("inf"), float("-inf")])), "bad_number"))
     allowed = picklists.get(col.picklist.casefold()) if col.picklist else None
@@ -713,6 +730,40 @@ def _problems(col: Column, values: pd.Series, picklists: dict[str, set[str]]) ->
     else:
         found.append((values.astype("string").fillna("").str.contains(_TEXT_CONTROL, regex=True), "bad_text"))
     return found
+
+
+# Fields SF declares numeric that hold words: payComponentType is a Double holding Amount or Percentage.
+_WORD_CODES = {"payComponentType": True}
+
+
+def snap_to_picklist(values: pd.Series, allowed: set[str]) -> pd.Series:
+    """Each value outside its picklist moved onto the one code it plainly means, and left alone otherwise.
+
+    Three deterministic rewrites only: a case difference ('Home' to 'home'), a missing zero pad ('1' to '01'),
+    and a prefixed code ('1611_R' to 'R'). A rewrite counts only when exactly one allowed code matches."""
+    if not allowed:
+        return values
+    folded: dict[str, list[str]] = {}
+    for a in allowed:
+        folded.setdefault(a.casefold(), []).append(a)
+    width = {len(a) for a in allowed if a.isdigit()}
+
+    def snap(v: str) -> Optional[str]:
+        tries = [v.casefold()]
+        if v.isdigit():
+            tries += [v.zfill(w).casefold() for w in width]
+        if "_" in v:
+            tries.append(v.rsplit("_", 1)[1].casefold())
+        hits = {a for t in tries for a in folded.get(t, [])}
+        return hits.pop() if len(hits) == 1 else None
+
+    text = values.astype("string").str.strip()
+    todo = [v for v in text.dropna().unique() if v and v not in allowed]
+    fix = {v: s for v in todo if (s := snap(v)) is not None}
+    if not fix:
+        return values
+    hit = text.isin(list(fix)).fillna(False).astype(bool)
+    return values.astype(object).where(~hit, text.map(fix))
 
 
 def _country_field(dictionary: Dictionary, table: str, stored) -> Optional[Field]:
@@ -962,11 +1013,27 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                     hold(text.fillna("").str.strip().ne("") & ~found, col, "value_map")
             if col.type.upper() == "DATE":  # SAP stores no date as zeros
                 value = value.astype(object).where(~value.astype("string").str.fullmatch("0+").fillna(False), None)
+            by_country = col.country_picklists and countries is not None
+            if col.picklist:
+                value = snap_to_picklist(value, workbook.picklists.get(col.picklist.casefold(), set()))
+            elif by_country:  # each row checks against its own country's picklist
+                for token, name in col.country_picklists.items():
+                    allowed = workbook.picklists.get(name.casefold()) if name else None
+                    rows = (countries == token).to_numpy()
+                    if allowed and rows.any():
+                        value = value.astype(object).copy()
+                        value[rows] = snap_to_picklist(value[rows], allowed)
+                        here = value[rows].astype("string").fillna("").str.strip()
+                        mask = pd.Series(False, index=value.index)
+                        mask[rows] = (here != "") & ~here.isin(allowed)
+                        hold(mask, col, "not_in_picklist")
+            elif col.country_picklists:
+                unchecked.append({"sheet": sheet.name, "id": col.id, "label": col.label})
             values[col.header] = value
             for mask, reason in _problems(col, value, workbook.picklists):
                 hold(mask, col, reason)
-            if col.mandatory and col.country:
-                tokens = _country_tokens(col.country)
+            if (col.mandatory or col.country_mandatory) and col.country:
+                tokens = col.country_mandatory or _country_tokens(col.country)
                 if countries is None or not tokens:
                     unchecked.append({"sheet": sheet.name, "id": col.id, "label": col.label})
                 else:
