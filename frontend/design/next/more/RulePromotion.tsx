@@ -118,7 +118,7 @@ function ObjectPanel({ object }: { object: string }) {
   const [run, setRun] = useState(false);
   const q = useQuery({ queryKey: ["rule-promotion", fixture, "preview", object], queryFn: () => getPromotionPreview(object), enabled: run, staleTime: 0 });
   const refresh = () => void qc.invalidateQueries({ queryKey: ["rule-promotion", fixture] });
-  const fail = () => toast({ text: t("The change could not be saved."), tone: "bad" });
+  const fail = (e: unknown) => toast({ text: errorSentence(e, t("The change could not be saved.")), tone: "bad" });
   const apply = useMutation({
     mutationFn: () => applyPromotion(object),
     onSuccess: (r) => { toast({ text: t("{n, plural, one {# rule promoted} other {# rules promoted}}", { n: r.enabled.length }), tone: "good" }); refresh(); },
@@ -275,7 +275,7 @@ function AnywayForm({ rule, object, onClose, onDone }: { rule: PromotionRule; ob
   const m = useMutation({
     mutationFn: () => promoteAnyway(object, [rule.id], reason.trim()),
     onSuccess: () => { toast({ text: t("Rule promoted. The reason is in the audit log."), tone: "good" }); onDone(); },
-    onError: () => toast({ text: t("The rule could not be promoted."), tone: "bad" }),
+    onError: (e) => toast({ text: errorSentence(e, t("The rule could not be promoted.")), tone: "bad" }),
   });
   return (
     <section className="nx-card" data-testid="promo-anyway">

@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { setUrl } from "@/design/v2/__tests__/nav-store";
+import { ToastProvider } from "../../kit";
 import { More } from "../../screens/More";
 import { ADMIN_FLOWS, isAdminFlow } from "../AdminFlows";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
-vi.mock("@/design/v2/screens/RulePromotion", async () => (await import("../../__tests__/stub")).stub("RulePromotion"));
+vi.mock("@/lib/api/v2/rule-promotion", () => ({
+  getPromotionModules: vi.fn().mockResolvedValue({ modules: [{ module: "material_master", generated: 12, promoted: 3, summary: null }] }),
+  getPromotionPreview: vi.fn(), applyPromotion: vi.fn(), revertPromotion: vi.fn(), promoteAnyway: vi.fn(),
+}));
 vi.mock("@/lib/api/roles", () => ({
   listRoles: vi.fn().mockResolvedValue([
     { key: "steward", name: "Steward", legacy: false },
@@ -40,9 +44,10 @@ describe("admin flows", () => {
     expect(screen.getAllByText("Enter a name and a host.")[0]).toBeTruthy();
   });
 
-  it("the rule flow mounts RulePromotion and holds on the review gate", async () => {
-    renderWithQuery(<More slug={["admin", "flow", "rules"]} />);
-    expect(screen.getByTestId("mounted")).toHaveTextContent("RulePromotion");
+  it("the rule flow draws the native rule promotion and holds on the review gate", async () => {
+    renderWithQuery(<ToastProvider><More slug={["admin", "flow", "rules"]} /></ToastProvider>);
+    expect(await screen.findByTestId("rule-promotion-screen")).toBeInTheDocument();
+    expect(screen.getByTestId("rule-promotion-detail")).toBeInTheDocument();
     expect(screen.getAllByText("Confirm that you reviewed the impact.")[0]).toBeTruthy();
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
