@@ -13,8 +13,7 @@ import { useV2Session } from "@/lib/v2/hooks";
 import { PairedTrio } from "../load/PairedTrio";
 import { StaleNudge, Denied } from "../load/states";
 import Link from "next/link";
-// ponytail: the analysis tab still mounts the v2 Migration screen until the native port lands (reported gap).
-import { Migration } from "@/design/v2/screens/Migration";
+import { Analysis } from "../load/analysis/Analysis";
 import { Compare } from "../load/Compare";
 import { Plan } from "../load/Plan";
 import { S4 } from "../load/S4";
@@ -116,7 +115,7 @@ export function Load({ tab }: { tab: LoadTab }) {
   const body = () => {
     switch (tab) {
       case "prepare": return prepare();
-      case "analysis": return <Migration />;
+      case "analysis": return <Analysis />;
       case "compare": return <Compare />;
       case "plan": return <Plan />;
       case "s4": return <S4 />;
