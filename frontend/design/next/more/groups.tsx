@@ -11,7 +11,7 @@ import { EntryGate } from "./EntryGate";
 import { ReferenceData } from "./ReferenceData";
 import { Links } from "./Links";
 import { Catalogue } from "./Catalogue";
-import { Issues } from "@/design/v2/screens/Issues";
+import { Issues } from "./Issues";
 import { RecordMining } from "./RecordMining";
 import { ProcessDiscovery } from "@/design/v2/screens/ProcessDiscovery";
 import { ScoreLens } from "./ScoreLens";
