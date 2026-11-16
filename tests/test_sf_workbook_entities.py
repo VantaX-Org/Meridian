@@ -49,9 +49,23 @@ def test_country_specific_sheet_reads_its_family(sheet, col, table):
     assert col in cands(sheet, [col]).get(table, {})
 
 
-def test_friendly_headers_do_not_false_match():
-    hits = cands("Pay Range Data", ["Pay Range Code", "Min", "Max", "Pay Grade"], "grid")
-    assert set(hits["FOPAYRANGE"]) == {"Pay Range Code"}  # the code alias only; Min, Max, Pay Grade stay unmatched
+def test_friendly_headers_map_on_their_own_entity_only():
+    hits = cands("Pay Range Data", ["Pay Range Code", "Min", "Mid", "Max", "Pay Grade", "Legal Entity"], "grid")
+    got = {h: f.source for h, f in hits["FOPAYRANGE"].items()}
+    assert got == {"Pay Range Code": "FOPayRange.externalCode", "Min": "FOPayRange.minimumPay",
+                   "Mid": "FOPayRange.midPoint", "Max": "FOPayRange.maximumPay",
+                   "Pay Grade": "FOPayRange.payGradeFlx", "Legal Entity": "FOPayRange.companyFlx"}
+    # Min is a pay range alias: a location has no minimum pay, so the column stays unmapped there
+    loc = cands("Location Values", ["Location Code", "Min", "Location Name", "Address Line 1", "Parent Legal Entity"], "grid")
+    assert set(loc["FOLOCATION"]) == {"Location Code", "Location Name", "Address Line 1", "Parent Legal Entity"}
+    cc = cands("Cost Centre Data", ["Cost Centre Code", "Parent Cost Centre", "Parent Legal Entity", "Custom Field 1"], "grid")
+    assert {h: f.source for h, f in cc["FOCOSTCENTER"].items()} == {
+        "Cost Centre Code": "FOCostCenter.externalCode", "Parent Cost Centre": "FOCostCenter.parent",
+        "Parent Legal Entity": "FOCostCenter.cust_LegalEntity.externalCode"}
+
+
+def test_position_external_name_matches_default_value():
+    assert cands("Position", ["code", "externalName"])["POSITION"]["externalName"].source == "Position.externalName_defaultValue"
 
 
 def test_foundation_pay_component_grid_fills_from_the_component_definitions():

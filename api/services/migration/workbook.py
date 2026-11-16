@@ -492,6 +492,19 @@ def coverage(workbook: Workbook, dictionary: Dictionary) -> dict:
             "sheets": sheets}
 
 
+# Friendly foundation grid headers and the property each names. An alias only hits on an entity that has the
+# property, so Min fills only a pay range.
+_FRIENDLY = {
+    "min": ("minimumpay",), "mid": ("midpoint",), "max": ("maximumpay",),
+    "legalentity": ("company", "custlegalentityexternalcode"),
+    "parentlegalentity": ("company", "custlegalentityexternalcode"),
+    "parentcostcenter": ("parent",),
+    "addressline1": ("addressnavdefltaddress1",), "addressline2": ("addressnavdefltaddress2",),
+    "addressline3": ("addressnavdefltaddress3",),
+    "regionstatecounty": ("addressnavdefltstate",), "postalcodezipcode": ("addressnavdefltzipcode",),
+}
+
+
 def _matched(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field]]:
     """Each table that could fill a sheet, with its matched column headers.
 
@@ -517,6 +530,8 @@ def _matched(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field]
             index["effectivestatus"] = index["status"]
         if "externalcode" in index:  # friendly grids head the code column with the object's name
             index[sheet.base + "code"] = index["externalcode"]
+        # Position.externalName_defaultValue is the name a load file heads externalName
+        index |= {k.removesuffix("defaultvalue"): f for k, f in list(index.items()) if k.endswith("defaultvalue")}
         if "EmpEmployment" in entities and "company" not in index:  # at hire, the new assignment's company is the job's
             index.update({"company": f for f in table.fields.values() if f.source == "EmpJob.company"})
         hits = {}
@@ -526,6 +541,10 @@ def _matched(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field]
             # personInfo.person-id-external is the person's id reached through a navigation. Only a key matches by
             # its tail: cust_LegalEntity.externalCode is the legal entity's code, not this object's own.
             hit = index.get(name) or index.get(_norm(col.id.split(".")[0])) or keys.get(_norm(col.id.rsplit(".", 1)[-1]))
+            if not hit and sheet.kind == "grid":
+                # friendly grids head columns 'Location Name' or 'Min'; only aliases the entity has can hit
+                bare = name.removeprefix(sheet.base)
+                hit = next((index[k] for c in (name, bare, *_FRIENDLY.get(name, ())) for k in (c, c + "flx") if k in index), None)
             if hit:
                 hits[col.header] = hit
         if hits:
