@@ -9,7 +9,7 @@ import { InviteSteps } from "../InviteSteps";
 import { NotifySteps } from "../NotifySteps";
 
 const h = vi.hoisted(() => ({
-  can: (_p: string): boolean => true,
+  can: ((): boolean => true) as (p: string) => boolean,
   status: {} as Record<string, unknown>,
   createProfile: vi.fn(),
   inviteUser: vi.fn(),

@@ -80,7 +80,7 @@ describe("upload step", () => {
 
   it("lists the flagged cells with the field text and sends skip_flagged when they are left out", async () => {
     checks = flagged;
-    const upload = vi.fn((_f: File, _p?: string, _c?: boolean, _s?: boolean) => Promise.resolve(ok));
+    const upload = vi.fn((...args: [File, string?, boolean?, boolean?]) => { void args; return Promise.resolve(ok); });
     add(upload);
     const cells = await screen.findByTestId("flagged-cells");
     expect(cells.textContent).toContain("MATNR=1");
