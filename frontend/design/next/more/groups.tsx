@@ -9,7 +9,7 @@ import { AletheiaSurvivorship } from "./AletheiaSurvivorship";
 import { MdmHealth } from "./MdmHealth";
 import { EntryGate } from "./EntryGate";
 import { ReferenceData } from "./ReferenceData";
-import { Links } from "@/design/v2/screens/Links";
+import { Links } from "./Links";
 import { Catalogue } from "@/design/v2/screens/Catalogue";
 import { Issues } from "@/design/v2/screens/Issues";
 import { Mining } from "@/design/v2/screens/Mining";
