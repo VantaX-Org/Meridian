@@ -18,7 +18,19 @@ import { V2Link } from "@/design/v2/parts";
 import { Button, Chip, DataTable, useToast, type Column } from "../kit";
 import { ListSearch, QueryView } from "./states";
 import { PeopleCard } from "./cards";
-import { sentenceOf } from "@/design/v2/screens/People";
+import { whole } from "@/lib/v2/format";
+
+/** One sentence on who holds open work, as the v2 people screen said it. */
+function sentenceOf(people: readonly Person[]): string {
+  if (people.length === 0) return "";
+  const holders = people.filter((p) => p.open_work > 0).length;
+  const open = people.reduce((a, p) => a + p.open_work, 0);
+  const late = people.reduce((a, p) => a + p.overdue, 0);
+  const me = people.find((p) => p.is_me);
+  const mine = me && me.approvals_waiting > 0 ? t(" {n} {approvals_waiting, plural, one {batch waits} other {batches wait}} for your approval.", { n: whole(me.approvals_waiting), approvals_waiting: me.approvals_waiting }) : "";
+  return t("{n} of {n2} {peopleCount, plural, one {person holds} other {people hold}} open work: {n3} {open, plural, one {record} other {records}}, {n4} overdue.{mine}", { n: whole(holders), n2: whole(people.length), peopleCount: people.length, n3: whole(open), open, n4: whole(late), mine });
+}
+
 
 const num = (a: number | null, b: number | null): number => (a ?? -1) - (b ?? -1);
 const lastAt = (p: Person): number | null => (p.last_action_at ? Date.parse(p.last_action_at) : null);
