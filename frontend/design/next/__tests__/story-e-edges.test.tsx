@@ -120,7 +120,7 @@ describe("RunDetail edge states", () => {
     const long = "B".repeat(150);
     net.answer = (p) => { if (p.startsWith("/versions/")) return head({ system_name: long }); throw new Error("x"); };
     wrap(<RunDetail id="r1" />);
-    const h = await screen.findByRole("heading", { level: 2 });
+    const [h] = await screen.findAllByRole("heading", { level: 2 });
     expect(h.getAttribute("title")).toContain(long);
   });
 });

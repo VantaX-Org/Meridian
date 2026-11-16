@@ -91,7 +91,7 @@ describe("Runs", () => {
     wrap(<Runs />);
     await screen.findByRole("heading", { name: "Runs" });
     await waitFor(() => expect(screen.getAllByRole("checkbox").length).toBeGreaterThan(2));
-    const rowBoxes = screen.getAllByRole("checkbox").slice(1);
+    const rowBoxes = screen.getAllByRole("checkbox").filter((b) => b.dataset.testid !== "runs-archived").slice(1);
     await userEvent.click(rowBoxes[0]);
     expect(await screen.findByRole("button", { name: /Compare \(1\)/ })).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(rowBoxes[1]);

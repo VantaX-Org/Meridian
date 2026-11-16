@@ -11532,4 +11532,15 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The score is the weighted sum of four shares, so the points below add up to it.": "スコアは4つの割合の加重合計です。そのため、下のポイントを合計するとスコアになります。",
   "Based on {n} daily snapshots, the latest on {date}.": "{n} 件の日次スナップショットに基づきます。最新は {date} です。",
   "Record {n}": "レコード {n}",
+  // Runs and Monitor parity port
+  "The baseline could not be changed.": "ベースラインを変更できませんでした。",
+  "Baseline, archive and reports": "ベースライン、アーカイブ、レポート",
+  "The runs could not be restored.": "実行を復元できませんでした。",
+  "The runs could not be archived.": "実行をアーカイブできませんでした。",
+  "The scope could not be split.": "範囲を分割できませんでした。",
+  "The downloads could not be started.": "ダウンロードを開始できませんでした。",
+  "Not timed": "未計測",
+  "The column types could not be loaded.": "列の型を読み込めませんでした。",
+  "The type could not be saved.": "型を保存できませんでした。",
+  "After cleaning": "クレンジング後",
 };

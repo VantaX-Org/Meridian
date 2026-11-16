@@ -12,6 +12,7 @@ import { usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { f1 } from "@/lib/v2/score";
 import { deltaOf } from "../feed/model";
 import { LearnedMonitors } from "../monitor/LearnedMonitors";
+import { PostClean, WatchedObjects } from "../monitor/PostClean";
 import { Button, Chip, Code, EmptyState, ErrorState, Skeleton, Sparkline, Tabs } from "../kit";
 import "../shell/shell.css";
 import "../monitor/monitor.css";
@@ -221,22 +222,29 @@ function Feed() {
   );
 }
 
-/** The feed and the learned monitors under one strip of tabs; Work mounts this as its Monitor segment. */
+/** The feed, post-clean monitoring, watched objects and the learned monitors under one strip of tabs; Work mounts this as its Monitor segment. */
 export function MonitorBody() {
   const router = useRouter();
   const path = usePathname();
-  const tab = useSearchParams().get("tab") === "learned" ? "learned" : "feed";
+  const raw = useSearchParams().get("tab");
+  const tab = raw === "learned" || raw === "clean" || raw === "objects" ? raw : "feed";
   const go = (id: string) => router.replace(id === "feed" ? path : `${path}?tab=${id}`);
+  const items = [
+    { id: "feed", label: t("Feed") },
+    { id: "clean", label: t("After cleaning") },
+    { id: "objects", label: t("Objects") },
+    { id: "learned", label: t("Learned monitors") },
+  ];
   return (
     <>
       <div className="nx-mon-tabs">
-        <Tabs items={[{ id: "feed", label: t("Feed") }, { id: "learned", label: t("Learned monitors") }]} value={tab} onChange={go} label={t("Monitor")} idBase="nx-mon" />
+        <Tabs items={items} value={tab} onChange={go} label={t("Monitor")} idBase="nx-mon" />
       </div>
       {tab === "feed" ? (
         <Feed />
       ) : (
-        <div id="nx-mon-panel-learned" role="tabpanel">
-          <LearnedMonitors />
+        <div id={`nx-mon-panel-${tab}`} role="tabpanel">
+          {tab === "clean" ? <PostClean /> : tab === "objects" ? <WatchedObjects /> : <LearnedMonitors />}
         </div>
       )}
     </>

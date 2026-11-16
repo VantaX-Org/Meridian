@@ -11532,4 +11532,15 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The score is the weighted sum of four shares, so the points below add up to it.": "Der Wert ist die gewichtete Summe von vier Anteilen, daher ergeben die Punkte unten zusammen den Wert.",
   "Based on {n} daily snapshots, the latest on {date}.": "Basierend auf {n} täglichen Momentaufnahmen, die neueste vom {date}.",
   "Record {n}": "Datensatz {n}",
+  // Runs and Monitor parity port
+  "The baseline could not be changed.": "Die Baseline konnte nicht geändert werden.",
+  "Baseline, archive and reports": "Baseline, Archiv und Berichte",
+  "The runs could not be restored.": "Die Läufe konnten nicht wiederhergestellt werden.",
+  "The runs could not be archived.": "Die Läufe konnten nicht archiviert werden.",
+  "The scope could not be split.": "Der Umfang konnte nicht aufgeteilt werden.",
+  "The downloads could not be started.": "Die Downloads konnten nicht gestartet werden.",
+  "Not timed": "Nicht gemessen",
+  "The column types could not be loaded.": "Die Spaltentypen konnten nicht geladen werden.",
+  "The type could not be saved.": "Der Typ konnte nicht gespeichert werden.",
+  "After cleaning": "Nach der Bereinigung",
 };

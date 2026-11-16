@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { DeltaBar } from "../kit";
+import { ComparePair } from "./ComparePair";
 import { shortDate } from "./format";
 import { useRuns } from "@/lib/api/next/runs";
 import type { VersionHead } from "@/lib/api/v2/runs";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { runLabel } from "@/lib/v2/run-label";
-import { EmptyState, Sheet, Skeleton } from "../kit";
+import { DeltaBar, EmptyState, ErrorState, Sheet, Skeleton } from "../kit";
 import "./runs.css";
 
 /** A matrix holds six runs at most: past that the columns stop being readable. */
@@ -27,11 +27,12 @@ export function capRuns(ids: readonly string[]): { shown: string[]; dropped: num
 /** Objects as rows, runs as columns (oldest first as given), the score in each cell and its move since the column before. */
 export function CompareMatrix({ ids, objects }: { ids: readonly string[]; objects?: readonly string[] }) {
   const { shown, dropped } = capRuns(ids);
-  const { heads, loading } = useRuns(shown);
+  const { heads, loading, error, retry } = useRuns(shown);
   if (shown.length < 2) {
     return <EmptyState icon="info" heading={t("Pick at least two runs")}>{t("Tick two or more runs on the Runs page, then choose Compare.")}</EmptyState>;
   }
   if (loading) return <Skeleton lines={6} label={t("Loading the runs to compare")} />;
+  if (error) return <ErrorState error={error} fallback={t("These two runs could not be compared. Both must exist and belong to the same system.")} onRetry={retry} />;
   const found = heads.filter((h): h is VersionHead => h !== null);
   if (found.length === 0) {
     return <EmptyState icon="alert" heading={t("These runs were not found")} action={<Link className="nx-rn-link" href="/next/runs">{t("Back to runs")}</Link>}>{t("They may have been deleted, or the link is wrong.")}</EmptyState>;
@@ -78,6 +79,7 @@ export function CompareMatrix({ ids, objects }: { ids: readonly string[]; object
           ))}
         </tbody>
       </table>
+      {shown.length === 2 && found.length === 2 ? <ComparePair runs={found} /> : null}
     </div>
   );
 }
@@ -96,7 +98,6 @@ export function ComparePage({ a, b, runs, objects }: { a: string; b: string; run
   return (
     <div className="nx-rn-page">
       <h1 className="nx-rn-h1">{t("Compare runs")}</h1>
-      <p><Link className="nx-rn-link" href={`/run/${a}/vs/${b}?view=full`} data-testid="compare-full">{t("Rules and records")}</Link></p>
       <CompareMatrix ids={ids} objects={objects ? objects.split(",") : undefined} />
     </div>
   );

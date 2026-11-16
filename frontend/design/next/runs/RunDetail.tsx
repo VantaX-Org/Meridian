@@ -18,6 +18,9 @@ import { Chip, EmptyState, ErrorState, Sheet, Skeleton, Stepper, type StepItem }
 import { isForbidden } from "./draft";
 import { ReasonPanel } from "./ReasonPanel";
 import { RunOps } from "./RunOps";
+import { RunAdmin } from "./RunAdmin";
+import { RunSemantics } from "./RunSemantics";
+import { CleaningPlan } from "../object/tabs/CleaningPlan";
 import "./runs.css";
 
 /** Steps of a run, derived from what the run stored: pulled, scored, then checked by Aletheia. */
@@ -74,8 +77,17 @@ export function RunBody({ id }: { id: string }) {
   const sev = Object.entries(h.severity_counts ?? {}).map(([k, v], i) => ({ id: k, label: k, value: v, tone: (["bad", "warn", "chart1", "mute"] as const)[Math.min(i, 3)] }));
   const partial = !failed && modules.some((m) => typeof h.dqs_summary?.[m]?.composite_score !== "number");
 
+  const latest = timeline.data?.runs[0] ?? null;
+  const isOld = Boolean(latest && latest.id !== h.id);
+
   return (
     <div className="nx-rn-detail" data-testid="run-detail">
+      {isOld && latest ? (
+        <p role="status" className="nx-rn-note" data-testid="run-old">
+          {t("This is not the current run, so actions are off. Open the current run to act.")}{" "}
+          <Link className="nx-rn-link" href={`/next/run/${latest.id}`}>{t("Open the current run ({name})", { name: runLabel(h.system_name, latest.run_number ?? null) })}</Link>
+        </p>
+      ) : null}
       <header className="nx-rn-hero">
         <div>
           <h2 className="nx-rn-h2 nx-rn-trunc" title={name}>{name}</h2>
@@ -161,6 +173,9 @@ export function RunBody({ id }: { id: string }) {
       </section>
       <ReasonPanel versionId={h.id} systemId={h.metadata?.system_id ?? null} />
       <RunOps id={h.id} label={h.label ?? null} status={h.status} />
+      <RunAdmin head={h} old={isOld} />
+      <RunSemantics id={h.id} />
+      {modules.map((m) => <CleaningPlan key={m} module={m} label={moduleText(m)} versionId={h.id} />)}
     </div>
   );
 }
@@ -168,7 +183,7 @@ export function RunBody({ id }: { id: string }) {
 export function RunDetail({ id }: { id: string }) {
   return (
     <div className="nx-rn-page">
-      <p><Link className="nx-rn-link" href="/next/runs">{t("Back to runs")}</Link> <Link className="nx-rn-link" href={`/run/${id}?view=full`} data-testid="run-full">{t("Export, baseline and more")}</Link></p>
+      <p><Link className="nx-rn-link" href="/next/runs">{t("Back to runs")}</Link></p>
       <RunBody id={id} />
     </div>
   );

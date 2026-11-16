@@ -11531,6 +11531,17 @@ export const en = {
   "The score is the weighted sum of four shares, so the points below add up to it.": "The score is the weighted sum of four shares, so the points below add up to it.",
   "Based on {n} daily snapshots, the latest on {date}.": "Based on {n} daily snapshots, the latest on {date}.",
   "Record {n}": "Record {n}",
+  // Runs and Monitor parity port
+  "The baseline could not be changed.": "The baseline could not be changed.",
+  "Baseline, archive and reports": "Baseline, archive and reports",
+  "The runs could not be restored.": "The runs could not be restored.",
+  "The runs could not be archived.": "The runs could not be archived.",
+  "The scope could not be split.": "The scope could not be split.",
+  "The downloads could not be started.": "The downloads could not be started.",
+  "Not timed": "Not timed",
+  "The column types could not be loaded.": "The column types could not be loaded.",
+  "The type could not be saved.": "The type could not be saved.",
+  "After cleaning": "After cleaning",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -14,11 +14,12 @@ import { moduleText } from "@/lib/v2/labels";
 import { useLandscape } from "@/lib/v2/queries";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { runLabel, runStatusWord } from "@/lib/v2/run-label";
-import { Button, Chip, DataTable, EmptyState, LargeTitle, SegmentedControl, type Column } from "../kit";
+import { Button, Chip, DataTable, EmptyState, LargeTitle, SegmentedControl, useToast, type Column } from "../kit";
 import { useSheets } from "../shell/SheetHost";
 import { MAX_COMPARE_RUNS } from "./CompareSheet";
 import { isForbidden } from "./draft";
-import { Jobs } from "./Jobs";
+import { Jobs, took } from "./Jobs";
+import { exportRuns, type ExportFormat } from "@/lib/api/v2/run-ops";
 import "./runs.css";
 
 const PAGE = 25;
@@ -42,7 +43,10 @@ export function Runs() {
 function RunList() {
   const router = useRouter();
   const sheets = useSheets();
-  const { can } = useV2Session();
+  const { can, fixture } = useV2Session();
+  const toast = useToast();
+  const [archived, setArchived] = useState(false);
+  const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const landscape = useLandscape(null).data;
   const [system, setSystem] = useUrlParam<string>("system", "");
   const [module, setModule] = useUrlParam<string>("object", "");
@@ -50,7 +54,10 @@ function RunList() {
   const [offset, setOffset] = useState(0);
   const [gen, setGen] = useState(0);
   const filters = { system_id: system || null, module: module || null, status: status === "all" ? null : (status as RunStatusFilter) };
-  const q = useRunsPage({ ...filters, limit: PAGE, offset });
+  const q = useRunsPage({ ...filters, include_archived: archived || undefined, limit: PAGE, offset });
+  // Records checked, time taken and objects scored come from the timeline, which carries them per run.
+  const metaQ = useTimeline(system || null, 50);
+  const meta = useMemo(() => new Map((metaQ.data?.runs ?? []).map((r) => [r.id, r])), [metaQ.data]);
   const timeline = useTimeline(system || null, 12, module || undefined);
   const rows = q.data?.versions ?? [];
   const total = q.data?.total;
@@ -68,10 +75,13 @@ function RunList() {
   }, [timeline.data]);
 
   const columns: Column<VersionHead>[] = [
-    { id: "run", label: t("Run"), cell: (r) => <Link className="nx-rn-link nx-rn-trunc" href={`/next/run/${r.id}`} title={runLabel(r.system_name, r.run_number)} onClick={(e) => e.stopPropagation()}>{runLabel(r.system_name, r.run_number)}</Link> },
+    { id: "run", label: t("Run"), cell: (r) => <><Link className="nx-rn-link nx-rn-trunc" href={`/next/run/${r.id}`} title={runLabel(r.system_name, r.run_number)} onClick={(e) => e.stopPropagation()}>{runLabel(r.system_name, r.run_number)}</Link>{r.metadata?.archived ? <> <Chip tone="neutral">{t("archived")}</Chip></> : null}</> },
     { id: "when", label: t("Started"), cell: (r) => shortDate(r.run_at) },
     { id: "status", label: t("Status"), cell: (r) => <Chip tone={TONE[r.status as keyof typeof TONE] ?? "neutral"}>{runStatusWord(r.status)}</Chip> },
     { id: "objects", label: t("Objects"), align: "end", cell: (r) => formatInt(Object.keys(r.dqs_summary ?? r.metadata?.module_rows ?? {}).length) },
+    { id: "checked", label: t("Records checked"), align: "end", cell: (r) => { const m = meta.get(r.id); return m?.records_checked == null ? <span className="nx-rn-sub">{t("Not counted")}</span> : formatInt(m.records_checked); } },
+    { id: "took", label: t("Took"), align: "end", cell: (r) => { const m = meta.get(r.id); return m?.duration_s == null ? <span className="nx-rn-sub">{t("Not timed")}</span> : took(m.duration_s); } },
+    { id: "scored", label: t("Objects scored"), align: "end", cell: (r) => { const m = meta.get(r.id); return formatInt(m ? Object.keys(m.objects).length : Object.keys(r.dqs_summary ?? {}).length); } },
     { id: "score", label: t("Score"), align: "end", cell: (r) => { const s = runScore(r); return s == null ? <span className="nx-rn-sub">{t("Not scored")}</span> : s.toFixed(1); } },
     { id: "compare", label: t("Compare"), cell: (r) => {
       // The run before this one on the same system, when it is on this page.
@@ -79,6 +89,20 @@ function RunList() {
       return prev ? <Link className="nx-rn-link" href={`/next/run/${prev.id}/vs/${r.id}`} data-testid="compare-previous" onClick={(e) => e.stopPropagation()}>{t("Compare with previous")}</Link> : null;
     } },
   ];
+
+  const exportList = async (format: ExportFormat) => {
+    setExporting(format);
+    try {
+      await exportRuns(format, { system_id: system || undefined, include_archived: archived || undefined, status: status === "all" ? undefined : (status as "failed" | "complete" | "active") });
+      toast(fixture
+        ? { text: t("Fixture mode: no file is produced"), tone: "neutral" }
+        : { text: `${t("Runs downloading")}. ${t("The browser saves the file when it is ready. It follows the system, status and archived filters, up to 1,000 runs.")}`, tone: "good" });
+    } catch {
+      toast({ text: t("The file could not be downloaded. Try again."), tone: "bad" });
+    } finally {
+      setExporting(null);
+    }
+  };
 
   const systems = landscape?.systems ?? [];
   const objects = landscape?.objects ?? [];
@@ -106,7 +130,18 @@ function RunList() {
           </select>
         </label>
         <SegmentedControl label={t("Status")} value={status} onChange={reset(setStatus)} items={STATUSES.map((s) => ({ value: s, label: STATUS_WORD[s]() }))} />
+        <label>
+          <input type="checkbox" checked={archived} onChange={(e) => reset(setArchived)(e.target.checked)} data-testid="runs-archived" />
+          {t("Show archived runs")}
+        </label>
         <Link className="nx-rn-link" href="/runs?view=jobs">{t("Jobs")}</Link>
+        <span className="nx-rn-pager" data-testid="runs-export">
+          {(["xlsx", "csv"] as const).map((f) => (
+            <Button key={f} variant="secondary" size={32} disabled={!can("export") || exporting !== null} loading={exporting === f} reason={can("export") ? undefined : t("Exporting runs needs the export permission")} onClick={() => void exportList(f)}>
+              {f === "xlsx" ? t("Export runs to Excel") : t("Export runs to CSV")}
+            </Button>
+          ))}
+        </span>
         {anyFilter ? <Button variant="quiet" size={32} onClick={() => { reset(setSystem)(""); reset(setModule)(""); reset(setStatus)("all"); }}>{t("Clear filters")}</Button> : null}
       </div>
 
@@ -120,7 +155,7 @@ function RunList() {
         <EmptyState icon="alert" heading={t("You cannot see runs")}>{t("Ask an administrator for access to this system's runs.")}</EmptyState>
       ) : (
         <DataTable<VersionHead>
-          key={`${system}-${module}-${status}-${offset}-${gen}`}
+          key={`${system}-${module}-${status}-${archived}-${offset}-${gen}`}
           rows={rows}
           columns={columns}
           rowKey={(r) => r.id}
