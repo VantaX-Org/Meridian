@@ -17,7 +17,7 @@ import { ProcessDiscovery } from "@/design/v2/screens/ProcessDiscovery";
 import { ScoreLens } from "@/design/v2/screens/ScoreLens";
 import { Insights } from "@/design/v2/screens/Insights";
 import { Forecast } from "./Forecast";
-import { Value } from "@/design/v2/screens/Value";
+import { Value } from "./Value";
 import { ConfigScreen } from "./Config";
 import { Runs } from "../runs/Runs";
 import { Atlas } from "./Atlas";
