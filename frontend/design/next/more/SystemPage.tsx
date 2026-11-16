@@ -131,6 +131,7 @@ export function SystemPage({ id }: { id: string }) {
       <div className="nx-row nx-wrap" data-testid="system-actions">
         <V2Link href={hrefFor({ kind: "system", id })} className="nx-btn nx-btn-primary">{t("Test, load or extract")}</V2Link>
         <V2Link href={hrefFor({ kind: "connection", id })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Connection settings")}</V2Link>
+        <V2Link href={`/more/systems/${id}?view=full`} className="nx-btn nx-btn-quiet nx-btn-sm" data-testid="system-full">{t("Overview")}</V2Link>
       </div>
       <SegmentedControl label={t("System")} value={seg} onChange={setSeg} items={[
         { value: "about", label: t("About") },

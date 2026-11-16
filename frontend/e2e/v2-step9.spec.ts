@@ -77,7 +77,7 @@ for (const size of SIZES) {
         test.skip(size.width < 500, "The ledger is a list on a phone; the bulk bar belongs to the wide grid");
         await prepare(page, scheme);
         await page.goto("/work?fixture=1", { waitUntil: "load" });
-        const grid = page.getByRole("grid", { name: "Work ledger" });
+        const grid = page.getByRole("table", { name: "Records that need work" });
         await expect(grid).toBeVisible(NAV);
         await grid.getByRole("checkbox").nth(1).check();
         await grid.getByRole("checkbox").nth(2).check();
@@ -88,11 +88,11 @@ for (const size of SIZES) {
 
       test("readiness certificate and money on the Waves view and in the certificate inspector", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/?fixture=1&view=waves", { waitUntil: "load" });
+        await page.goto("/more/landscape?fixture=1&view=waves", { waitUntil: "load" });
         await expect(page.getByTestId("waves-by-value").getByRole("listitem").first()).toContainText("Wave 2: master data", NAV);
         expect(await noSideways(page)).toBe(true);
         await shot(page, "waves-value");
-        await page.goto("/?fixture=1&view=waves&open=certificate:w-2", { waitUntil: "load" });
+        await page.goto("/more/landscape?fixture=1&view=waves&open=certificate:w-2", { waitUntil: "load" });
         const block = page.getByTestId("certificate-block");
         await expect(block).toContainText("Required signers", NAV);
         await block.getByRole("button", { name: "Sign version 1" }).click();
@@ -162,7 +162,7 @@ for (const size of SIZES) {
         expect(await noSideways(page)).toBe(true);
         await shot(page, "contract-editor");
         // `contracts=enforced` starts the fixture with the contract enforced: the pin is refused with the backend's reason.
-        await page.goto(`/run/${R8}?fixture=1&contracts=enforced`, { waitUntil: "load" });
+        await page.goto(`/run/${R8}?fixture=1&contracts=enforced&view=full`, { waitUntil: "load" });
         const pin = page.getByRole("button", { name: "Pin as baseline" });
         await expect(pin).toBeEnabled(NAV);
         await pin.click();

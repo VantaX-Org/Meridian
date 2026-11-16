@@ -19,6 +19,9 @@ import type { ObjectRun } from "./useObjectRun";
 import { ReceiptTable } from "@/design/v2/screens/Object";
 import { useReceipt } from "@/lib/v2/queries";
 import { f1 } from "@/lib/v2/score";
+import { ContractMark } from "@/design/v2/Ruler";
+import { contractMark } from "@/lib/v2/step9";
+import { ObjectContractsBlock } from "@/design/v2/screens/step9/Contracts";
 
 export const TAB_IDS = ["overview", "why", "fix", "records", "rules", "fixes", "runs", "readiness", "processes", "failing", "report", "golden", "glossary", "lineage", "profile", "cycle", "trend"] as const;
 export type TabId = (typeof TAB_IDS)[number];
@@ -59,7 +62,7 @@ export function renderTab(id: TabId, o: ObjectRun, go: (tab: TabId) => void): Re
     case "why": return <WhySection o={o} />;
     case "fix": return <FixSection o={o} />;
     case "runs": return <RunsTab o={o} onOpen={(run) => { o.setRun(run); go("overview"); }} />;
-    case "rules": return <><RulesReceipt o={o} /><ObjectRulesRoute /></>;
+    case "rules": return <><RulesReceipt o={o} /><ObjectContractsBlock module={o.module} label={o.label} run={o.runId} /><ObjectRulesRoute /></>;
     case "failing": return <FailingRecords o={o} />;
     case "report": return <><SteeringReport o={o} /><LoadFilesPanel module={o.module} /></>;
     default: return <ObjectTabRoute tab={id} />;
@@ -69,10 +72,13 @@ export function renderTab(id: TabId, o: ObjectRun, go: (tab: TabId) => void): Re
 /** The receipt of the shown run above its rules: every dimension's weight, score, points, rules, records and coverage. */
 function RulesReceipt({ o }: { o: ObjectRun }) {
   const r = useReceipt(o.module, o.runId).data;
+  const cell = o.landscape.data?.cells.find((c) => c.system_id === o.systemId && c.module === o.module);
+  const mark = contractMark(cell);
   if (!r) return null;
   return (
     <details className="m2-rdet" open>
       <summary>{t("How {score} is made", { score: f1(r.score) })}</summary>
+      {mark ? <p className="m2-note"><ContractMark mark={mark} /> {mark.title}</p> : null}
       <ReceiptTable receipt={r} />
     </details>
   );

@@ -54,7 +54,7 @@ export function gateWords(g: WaveGateState): string {
 }
 
 /** Selected ledger rows by object, the largest group first: a simulation runs on one object at a time. */
-export function recordsByModule(rows: readonly WorkRow[]): { module: string; records: { module: string; record_key: string }[] }[] {
+export function recordsByModule(rows: readonly Pick<WorkRow, "module" | "record_key">[]): { module: string; records: { module: string; record_key: string }[] }[] {
   const by = new Map<string, { module: string; record_key: string }[]>();
   for (const r of rows) by.set(r.module, [...(by.get(r.module) ?? []), { module: r.module, record_key: r.record_key }]);
   return [...by.entries()].map(([module, records]) => ({ module, records })).sort((a, b) => b.records.length - a.records.length || a.module.localeCompare(b.module));

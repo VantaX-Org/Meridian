@@ -35,8 +35,9 @@ export function runScore(h: VersionHead): number | null {
 }
 
 export function Runs() {
-  // ?view=jobs keeps the extraction and analysis job queue the old Runs screen showed.
-  const jobs = useSearchParams().get("view") === "jobs";
+  // ?view=jobs keeps the job queue and ?view=full the run timeline the old Runs screen showed.
+  const view = useSearchParams().get("view");
+  const jobs = view === "jobs" || view === "full";
   return jobs ? <LegacyMount><RunsCanvas /></LegacyMount> : <RunList />;
 }
 
@@ -107,6 +108,7 @@ function RunList() {
           </select>
         </label>
         <SegmentedControl label={t("Status")} value={status} onChange={reset(setStatus)} items={STATUSES.map((s) => ({ value: s, label: STATUS_WORD[s]() }))} />
+        <Link className="nx-rn-link" href="/runs?view=full">{t("Timeline")}</Link>
         <Link className="nx-rn-link" href="/runs?view=jobs">{t("Jobs")}</Link>
         {anyFilter ? <Button variant="quiet" size={32} onClick={() => { reset(setSystem)(""); reset(setModule)(""); reset(setStatus)("all"); }}>{t("Clear filters")}</Button> : null}
       </div>

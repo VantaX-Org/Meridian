@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
+import { recordsByModule } from "@/lib/v2/step9";
+import { moduleText } from "@/lib/v2/labels";
+import { SimulateDialog } from "@/design/v2/screens/step9/Simulation";
 import { useWorkActions, useWorkCan, type DecideKind, type RowRef } from "@/lib/v2/work-actions";
 import { Button, Confirm } from "../kit";
 
@@ -18,7 +22,10 @@ export function WorkBulkBar({ rows, onDone }: { rows: RowRef[]; onDone: () => vo
   const [pending, setPending] = useState<Pending | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [simulating, setSimulating] = useState(false);
   if (!rows.length) return null;
+  // A simulation rescores one object at a time: the object with the most rows selected. Read-only.
+  const sim = recordsByModule(rows)[0];
 
   const withValue = rows.filter((r) => r.suggested_value).length;
   const n = formatInt(rows.length);
@@ -101,6 +108,14 @@ export function WorkBulkBar({ rows, onDone }: { rows: RowRef[]; onDone: () => vo
       >
         {t("Not an issue")}
       </Button>
+      {sim ? (
+        <Button size={32} onClick={() => setSimulating(true)}>
+          {t("Simulate fixing")}
+        </Button>
+      ) : null}
+      {sim && simulating
+        ? createPortal(<SimulateDialog module={sim.module} label={moduleText(sim.module)} records={sim.records} onClose={() => setSimulating(false)} />, document.querySelector(".m2-root") ?? document.body)
+        : null}
       <Confirm
         open={pending !== null}
         title={pending?.title ?? ""}

@@ -54,7 +54,7 @@ for (const size of SIZES) {
 
       test("the run timeline opens from the Runs page, marks the baseline, and picking a run puts it in the address", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/runs?fixture=1", { waitUntil: "load" });
+        await page.goto("/runs?fixture=1&view=full", { waitUntil: "load" });
         await expect(page.getByRole("heading", { level: 1 })).toHaveText("Runs", NAV);
         await page.getByRole("button", { name: "Run 16 Oct 2026, 05:17", exact: true }).click();
         const dialog = page.getByRole("dialog", { name: /^Runs, 28 Aug 2026 to 16 Oct 2026/ });
@@ -74,7 +74,7 @@ for (const size of SIZES) {
 
       test("the Run canvas: status line, per-object table, actions and jobs", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`/run/${R8}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`/run/${R8}?fixture=1&view=full`, { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toContainText("ECC production run 8", NAV);
         await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
         await expect(page.getByTestId("run-status-line")).toContainText("400,662 records checked");
@@ -92,7 +92,7 @@ for (const size of SIZES) {
 
       test("the Compare canvas: sentence, rows, totals that add up, method and what changed", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`/run/${R6}/vs/${R8}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`/run/${R6}/vs/${R8}?fixture=1&view=full`, { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toContainText("ECC production run 8 compared with ECC production run 6", NAV);
         await expect(page.getByTestId("compare-sentence")).toContainText("12 of 15 objects scored higher and 3 lower. 14 rules started failing and 37 stopped.");
         await expect(page.getByTestId("compare-method")).toContainText("11 rules added since the baseline of 2 Oct 2026 are excluded");
@@ -121,7 +121,7 @@ for (const size of SIZES) {
 
       test("the Runs canvas: the timeline at full width, the table with filters, Start a run", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto("/runs?fixture=1", { waitUntil: "load", timeout: 90_000 });
+        await page.goto("/runs?fixture=1&view=full", { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toHaveText("Runs", NAV);
         await expect(page.getByTestId("run-timeline").getByRole("button")).toHaveCount(8, NAV);
         await expect(page.getByTestId("run-row")).toHaveCount(9, NAV);
@@ -200,7 +200,7 @@ for (const size of SIZES) {
 
       test("the System canvas: health, its views, and the Configuration view", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`/s/${ECC}?fixture=1`, { waitUntil: "load", timeout: 90_000 });
+        await page.goto(`/s/${ECC}?fixture=1&view=full`, { waitUntil: "load", timeout: 90_000 });
         await expect(page.getByRole("heading", { level: 1 })).toContainText("ECC production", NAV);
         await expect(page.getByTestId("system-status-line")).toContainText("Connected");
         await expect(page.getByRole("navigation", { name: "Views of ECC production" }).getByRole("link")).toHaveCount(7);

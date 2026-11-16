@@ -13,6 +13,7 @@ import { RuleCanvas } from "@/design/v2/screens/Rule";
 import { Reports } from "../more/Reports";
 import { Systems } from "../more/Systems";
 import { SystemPage } from "../more/SystemPage";
+import { SystemCanvas } from "@/design/v2/screens/System";
 import { People } from "../more/People";
 import { ZObjects } from "../more/ZObjects";
 import { Writeback } from "../more/Writeback";
@@ -82,6 +83,8 @@ function Frame({ title, back, children }: { title: string; back?: { to: string; 
 export function More({ slug }: { slug?: string[] }) {
   const key = (slug ?? []).join("/");
   const [a, b] = slug ?? [];
+  // ?view=full keeps the old System canvas: its health line, objects table and views.
+  const full = useSearchParams().get("view") === "full";
   if (!key) return <Home />;
 
   if (a === "rules" && slug!.length <= 2) {
@@ -96,7 +99,7 @@ export function More({ slug }: { slug?: string[] }) {
   if (key === "golden-writeback") return <Frame title={t("Send golden records to SAP")}><GoldenWriteback /></Frame>;
   if (a === "systems" && b !== "config" && slug!.length <= 2) {
     return b
-      ? <Frame title={t("Systems")} back={{ to: "/more/systems", label: t("Systems") }}><SystemPage id={b} /></Frame>
+      ? <Frame title={t("Systems")} back={{ to: "/more/systems", label: t("Systems") }}>{full ? <LegacyMount><SystemCanvas id={b} /></LegacyMount> : <SystemPage id={b} />}</Frame>
       : <Frame title={t("Systems")}><Systems /></Frame>;
   }
   if (a === "admin" && b === "flow" && slug!.length === 3 && isAdminFlow(slug![2])) return <AdminFlow name={slug![2]} />;
