@@ -4,6 +4,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import { setUrl } from "@/design/v2/__tests__/nav-store";
 import { ToastProvider } from "../../kit";
 import { People, peopleExport } from "../People";
+import { SheetHost } from "../../shell/SheetHost";
 import type { Person } from "@/lib/api/v2/people";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
@@ -29,7 +30,7 @@ const person = (over: Partial<Person>): Person => ({
   id: "u1", name: "Ann Lee", email: "ann@example.com", role: "steward", is_me: false, objects_owned: [], open_work: 4,
   approvals_waiting: 1, overdue: 0, sla_hours: 24, breaches_this_month: 0, last_action_at: null, ...over,
 });
-const wrap = () => renderWithQuery(<ToastProvider><People /></ToastProvider>);
+const wrap = () => renderWithQuery(<ToastProvider><SheetHost><People /></SheetHost></ToastProvider>);
 
 beforeEach(() => {
   setUrl("/more/people?fixture=1");

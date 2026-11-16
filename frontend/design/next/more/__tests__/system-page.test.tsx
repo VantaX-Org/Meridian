@@ -3,6 +3,7 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { setUrl } from "@/design/v2/__tests__/nav-store";
 import { SystemPage } from "../SystemPage";
+import { SheetHost } from "../../shell/SheetHost";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("@/design/v2/screens/system/Configuration", () => ({ Configuration: () => <div data-testid="v-configuration" /> }));
@@ -28,7 +29,7 @@ beforeEach(() => setUrl("/more/systems/s1?fixture=1"));
 
 describe("SystemPage (next)", () => {
   it("keeps test, load or extract and connection settings as panel links", () => {
-    renderWithQuery(<SystemPage id="s1" />);
+    renderWithQuery(<SheetHost><SystemPage id="s1" /></SheetHost>);
     const hrefs = within(screen.getByTestId("system-actions")).getAllByRole("link").map((a) => a.getAttribute("href") ?? "");
     expect(hrefs.some((h) => h.includes("open=system"))).toBe(true);
     expect(hrefs.some((h) => h.includes("open=connection"))).toBe(true);
@@ -37,12 +38,12 @@ describe("SystemPage (next)", () => {
 
   it("opens an old ?tab= word on the same view", () => {
     setUrl("/more/systems/s1?tab=config&fixture=1");
-    renderWithQuery(<SystemPage id="s1" />);
+    renderWithQuery(<SheetHost><SystemPage id="s1" /></SheetHost>);
     expect(screen.getByTestId("v-configuration")).toBeTruthy();
   });
 
   it("lists every read with its run link and change log", () => {
-    renderWithQuery(<SystemPage id="s1" />);
+    renderWithQuery(<SheetHost><SystemPage id="s1" /></SheetHost>);
     fireEvent.click(screen.getByRole("radio", { name: "Reads" }));
     const list = screen.getByTestId("system-extractions");
     expect(within(list).getByRole("link", { name: "Open the run" }).getAttribute("href")).toContain("/run/v2");
@@ -52,7 +53,7 @@ describe("SystemPage (next)", () => {
   });
 
   it("reaches schedules, custom objects, source design and changes", () => {
-    renderWithQuery(<SystemPage id="s1" />);
+    renderWithQuery(<SheetHost><SystemPage id="s1" /></SheetHost>);
     for (const [name, id] of [["Schedules", "v-schedules"], ["Custom objects", "v-custom"], ["Source design", "v-design"], ["Configuration changes", "v-changes"]] as const) {
       fireEvent.click(screen.getByRole("radio", { name }));
       expect(screen.getByTestId(id)).toBeTruthy();

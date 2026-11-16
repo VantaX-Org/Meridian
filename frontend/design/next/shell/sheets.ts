@@ -28,6 +28,9 @@ import "../object/register";
 // story-feed: load
 import "../load/register";
 
+// story-feed: journey
+import "../more/journey-register";
+
 /** Later batches register their sheet kinds here: `registerSheet("connect", (ctx) => ...)`. Imported once by SheetHost. */
 
 // story-feed: more

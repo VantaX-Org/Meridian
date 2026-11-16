@@ -1,0 +1,6 @@
+/* Rules-and-governance and reports-and-share sheets (more/journey-register.tsx). Layout only; look comes from the kit. */
+.nx-jh { margin: 0; font-size: var(--nx-fs-small); font-weight: 600; }
+.nx-jtext { min-height: calc(var(--nx-s6) * 2); resize: vertical; }
+.nx-jfacts { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: var(--nx-s2) var(--nx-s4); }
+.nx-jfacts dd { margin: 0; }
+.nx-jframe { width: 100%; min-height: calc(var(--nx-s6) * 12); padding: 0; }

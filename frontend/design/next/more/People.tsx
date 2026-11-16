@@ -17,6 +17,7 @@ import { failureText } from "@/lib/v2/errors";
 import { V2Link } from "@/design/v2/parts";
 import { Button, Chip, DataTable, useToast, type Column } from "../kit";
 import { ListSearch, QueryView } from "./states";
+import { useSheets } from "../shell/SheetHost";
 import { PeopleCard } from "./cards";
 import { sentenceOf } from "@/design/v2/screens/People";
 
@@ -91,6 +92,7 @@ export function People() {
   const worst = [...people].filter((p) => p.overdue > 0).sort((a, b) => b.overdue - a.overdue)[0];
   const live = !session.shared && !session.viewAs;
   const canAssign = session.can("assign");
+  const sheets = useSheets();
 
   const save = async (format: "xlsx" | "csv") => {
     try {
@@ -143,6 +145,8 @@ export function People() {
           ) : null}
           {canAssign && live ? <V2Link href={hrefFor({ kind: "balance", id: "" })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Balance work")}</V2Link> : null}
           <V2Link href={hrefFor({ kind: "contracts", id: "" })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Data contracts")}</V2Link>
+          <Button size={32} variant="secondary" onClick={() => sheets.open({ kind: "digests", id: "" })}>{t("Digests")}</Button>
+          <Button size={32} variant="secondary" onClick={() => sheets.open({ kind: "following", id: "" })}>{t("Following")}</Button>
           {live ? <V2Link href={hrefFor({ kind: "away", id: "" })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Out of office")}</V2Link> : null}
           <V2Link href={hrefFor({ kind: "triage", id: "" })} className="nx-btn nx-btn-quiet nx-btn-sm">{t("Triage and SLA")}</V2Link>
           {session.can("export") ? (

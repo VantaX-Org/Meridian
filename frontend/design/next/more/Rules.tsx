@@ -8,7 +8,7 @@ import { RulePromotion } from "@/design/v2/screens/RulePromotion";
 import { RulesLibrary } from "@/design/v2/screens/RulesLibrary";
 import { useAllDrafts, useRuleList } from "@/lib/v2/sys-queries";
 import type { Rule } from "@/lib/api/rules";
-import { Chip, SegmentedControl } from "../kit";
+import { Button, Chip, SegmentedControl } from "../kit";
 import { useSheets } from "../shell/SheetHost";
 import { LegacyMount } from "../shell/LegacyMount";
 import { LongText, ListSearch, QueryView, VirtualList } from "./states";
@@ -64,9 +64,11 @@ export function Rules() {
   const list = useRuleList();
   const drafts = useAllDrafts(seg === "drafts");
   const rules = list.data?.rules ?? [];
+  const sheets = useSheets();
   return (
     <div className="nx-body">
       <div className="nx-chartcards"><RulesCard /><PassRateCard /></div>
+      <Button variant="secondary" onClick={() => sheets.open({ kind: "contracts", id: "" })}>{t("Data contracts")}</Button>
       <SegmentedControl
         label={t("Rules")}
         value={seg}

@@ -2,17 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { t } from "@/lib/v2/i18n";
-import { AdminCanvas } from "@/design/v2/admin/Admin";
 import { downloadReportFile } from "@/lib/api/v2/reports";
 import { useReportHistory, useSchedules } from "@/lib/v2/admin-queries";
 import type { ReportFile, ReportSchedule } from "@/lib/api/reports";
 import { Button, Chip, SegmentedControl, useToast } from "../kit";
 import { useSheets } from "../shell/SheetHost";
-import { LegacyMount } from "../shell/LegacyMount";
 import { failureText } from "@/lib/v2/errors";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { ListSearch, LongText, QueryView, VirtualList } from "./states";
 import { FilesCard, SchedulesCard } from "./cards";
+import { ShareLinks } from "./ShareLinks";
 
 type Seg = "files" | "schedules" | "links";
 const STATUS_TONE = { sent: "good", running: "accent", partial: "warn", failed: "bad", skipped: "neutral" } as const;
@@ -84,7 +83,7 @@ export function Reports() {
         <SegmentedControl label={t("Reports")} value={seg} onChange={(v) => setSeg(v as Seg)} items={[{ value: "files", label: t("Files") }, { value: "schedules", label: t("Schedules") }, { value: "links", label: t("Shared links") }]} />
         <Button variant="primary" onClick={() => sheets.open({ kind: "report", id: "new" })}>{t("New report")}</Button>
       </div>
-      {seg === "files" ? <Files /> : seg === "schedules" ? <Schedules /> : <LegacyMount><AdminCanvas section="sharelinks" /></LegacyMount>}
+      {seg === "files" ? <Files /> : seg === "schedules" ? <Schedules /> : <ShareLinks />}
     </div>
   );
 }

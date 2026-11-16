@@ -11369,4 +11369,10 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "No rule or dimension stands out as a driver.": "目立った要因となるルールやディメンションはありません。",
   "Runs that broke from the trend": "傾向から外れた実行",
   "Every run sits inside its normal range.": "すべての実行が通常の範囲内にあります。",
+  // journey-features: J6 rules and governance, J10 reports and share
+  "The mappings could not be read.": "マッピングを読み込めませんでした。",
+  "This mapping does not exist. It may have been deleted.": "このマッピングは存在しません。削除された可能性があります。",
+  "What you follow": "フォロー中の項目",
+  "Following": "フォロー中",
+  "The share links could not be read.": "共有リンクを読み込めませんでした。",
 };
