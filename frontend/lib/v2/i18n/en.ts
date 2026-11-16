@@ -10428,7 +10428,6 @@ export const en = {
   "Each smaller scope is read and scored as a run of its own.": "Each smaller scope is read and scored as a run of its own.",
   "Start {n} downloads": "Start {n} downloads",
   "Splitting the scope needs the trigger sync permission.": "Splitting the scope needs the trigger sync permission.",
-  // Batch 6: More and admin flows.
   "Add a user and role": "Add a user and role",
   "Promote a rule": "Promote a rule",
   "Test a logon, choose objects, then extract.": "Test a logon, choose objects, then extract.",
@@ -10494,7 +10493,6 @@ export const en = {
   "A workbook is checked, failed or waits for you to confirm its warnings.": "A workbook is checked, failed or waits for you to confirm its warnings.",
   "Add it with these warnings": "Add it with these warnings",
   "This run is no longer the latest.": "This run is no longer the latest.",
-  // story-feed: frame
   "Write-back rejected. The requester has been told.": "Write-back rejected. The requester has been told.",
   "The write-back could not be rejected.": "The write-back could not be rejected.",
   "Reject write-back": "Reject write-back",
@@ -10555,7 +10553,6 @@ export const en = {
   "Reactivate this user before setting a password.": "Reactivate this user before setting a password.",
   "Set a password": "Set a password",
   "They are signed out and must choose a new password. The emailed link works once and ends in 60 minutes; a copied link works once and ends in 24 hours.": "They are signed out and must choose a new password. The emailed link works once and ends in 60 minutes; a copied link works once and ends in 24 hours.",
-  // story-feed: frame
   "Step {n} of {total}, {label}": "Step {n} of {total}, {label}",
   "Leave without saving?": "Leave without saving?",
   "Your edits on this step are not saved yet.": "Your edits on this step are not saved yet.",
@@ -10571,7 +10568,6 @@ export const en = {
   "Shortcuts": "Shortcuts",
   "Switch persona to {label}": "Switch persona to {label}",
   "{n} need attention": "{n} need attention",
-  // story-feed: home
   "{word}, {name}": "{word}, {name}",
   "Home could not be read. Check that the API is reachable, then retry.": "Home could not be read. Check that the API is reachable, then retry.",
   "Nothing to show yet.": "Nothing to show yet.",
@@ -10758,7 +10754,6 @@ export const en = {
   "No rows to show": "No rows to show",
   "Target score over comparisons": "Target score over comparisons",
   "Score trend": "Score trend",
-  // story-feed: work
   "Pick at least two runs": "Pick at least two runs",
   "Tick two or more runs on the Runs page, then choose Compare.": "Tick two or more runs on the Runs page, then choose Compare.",
   "Loading the runs to compare": "Loading the runs to compare",
@@ -10880,7 +10875,6 @@ export const en = {
   "The records could not be loaded.": "The records could not be loaded.",
   "Nothing here": "Nothing here",
   "No record is in this state right now.": "No record is in this state right now.",
-  // story-feed: more
   "{n} of {m} seats used": "{n} of {m} seats used",
   "No usage figures for this group yet.": "No usage figures for this group yet.",
   "Users and roles": "Users and roles",
@@ -11034,7 +11028,6 @@ export const en = {
   "Ask an administrator to give your role this permission.": "Ask an administrator to give your role this permission.",
   "Your session ended. Your draft is kept. Sign in again, then send it.": "Your session ended. Your draft is kept. Sign in again, then send it.",
   "Your draft was kept from before.": "Your draft was kept from before.",
-  // story-feed: frame
   "More views": "More views",
   "Aletheia evidence": "Aletheia evidence",
   "Loading the evidence": "Loading the evidence",
@@ -11133,8 +11126,6 @@ export const en = {
   "Users by status": "Users by status",
   "The licence has no seat count.": "The licence has no seat count.",
   "Opening the shared page": "Opening the shared page",
-  // story-feed: frame
-  // story-feed: frame
   "Your access changed: you now have {roles}. Reload to update the menu.": "Your access changed: you now have {roles}. Reload to update the menu.",
   "Reload": "Reload",
   "different roles": "different roles",
@@ -11248,7 +11239,6 @@ export const en = {
   "still different": "still different",
   "The agreement could not be loaded.": "The agreement could not be loaded.",
   "The clean file changed no values, so there is nothing to compare.": "The clean file changed no values, so there is nothing to compare.",
-  // gap-steward-config: stewardship, automation, config impact, Aletheia reasoning
   "Agents": "Agents",
   "Monitoring": "Monitoring",
   "Platform upkeep": "Platform upkeep",
@@ -11365,6 +11355,45 @@ export const en = {
   "No rule or dimension stands out as a driver.": "No rule or dimension stands out as a driver.",
   "Runs that broke from the trend": "Runs that broke from the trend",
   "Every run sits inside its normal range.": "Every run sits inside its normal range.",
+  "Main sections": "Main sections",
+  "Account menu": "Account menu",
+  "Asking about the whole landscape": "Asking about the whole landscape",
+  "Ask a question": "Ask a question",
+  "Send": "Send",
+  "Suggested questions": "Suggested questions",
+  "Conversation": "Conversation",
+  "n/a": "n/a",
+  "Held at {cap} because critical rules fail: {rules}.": "Held at {cap} because critical rules fail: {rules}.",
+  "Which rule hurts this object most?": "Which rule hurts this object most?",
+  "Why is the score held down?": "Why is the score held down?",
+  "What can I fix first?": "What can I fix first?",
+  "How does the target compare?": "How does the target compare?",
+  "The object could not be loaded": "The object could not be loaded",
+  "{system}, run {n}": "{system}, run {n}",
+  "{n} records checked against {m} rules": "{n} records checked against {m} rules",
+  "Fix records": "Fix records",
+  "{delta} since the last run": "{delta} since the last run",
+  "Not enough runs to draw a trend yet.": "Not enough runs to draw a trend yet.",
+  "Failing rules by severity": "Failing rules by severity",
+  "Source and target": "Source and target",
+  "No target system is paired with this object yet.": "No target system is paired with this object yet.",
+  "{n} of {m} measured rules fail": "{n} of {m} measured rules fail",
+  "Selected rule": "Selected rule",
+  "Rule detail": "Rule detail",
+  "Records failing": "Records failing",
+  "Review fixes": "Review fixes",
+  "Assign records": "Assign records",
+  "No work is open for this rule yet.": "No work is open for this rule yet.",
+  "The rule sheet shows what it checks and which records fail.": "The rule sheet shows what it checks and which records fail.",
+  "Asking about {object}": "Asking about {object}",
+  "Ask a question about this object": "Ask a question about this object",
+  "No rule fails in this run.": "No rule fails in this run.",
+  "{rule} fails the most. It fails {n} records, and it is a {sev} rule.": "{rule} fails the most. It fails {n} records, and it is a {sev} rule.",
+  "{n} of {m} records fail": "{n} of {m} records fail",
+  "The score is not held down by a rule.": "The score is not held down by a rule.",
+  "The score is held at {cap} because critical rules fail.": "The score is held at {cap} because critical rules fail.",
+  "{n} records are open. {p} have a proposed fix and {m} need a person.": "{n} records are open. {p} have a proposed fix and {m} need a person.",
+  "Run {n} on {date}": "Run {n} on {date}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
