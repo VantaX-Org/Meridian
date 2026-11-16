@@ -224,3 +224,7 @@ export interface DuplicateCluster {
 }
 export const getDuplicateCluster = (object: string, recordId: string) =>
   v2Get<DuplicateCluster>(`${P}/duplicates/${encodeURIComponent(object)}/${encodeURIComponent(recordId)}`);
+
+/** POST /insights/feedback: a thumbs up or down on one insight surface (api/routes/insight_feedback.py). */
+export const submitInsightFeedback = (body: { surface: string; run_id?: string; vote: "up" | "down" }) =>
+  v2Send<{ id: string; status: string }>("POST", `${P}/feedback`, body);

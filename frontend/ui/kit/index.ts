@@ -1,6 +1,7 @@
 import "./kit.css";
 
-export { AletheiaSheet, type AletheiaLabels, type ChatAction, type ChatMessage } from "./AletheiaSheet";
+export { AletheiaSheet, type AletheiaLabels, type ChatAction, type ChatFact, type ChatMessage } from "./AletheiaSheet";
+export { buildBody, type AskContext } from "./aletheia/stream";
 export { AletheiaProvider, useAletheia, useAletheiaScope, type AletheiaAnswer, type AletheiaScope } from "./aletheia";
 export { Sheet } from "./Sheet";
 export { BarList, type BarItem } from "./BarList";

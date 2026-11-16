@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import Link from "next/link";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Message } from "./aletheia/Message";
 
 export interface ChatAction { id: string; label: string; href?: string; onClick?: () => void }
 export interface ChatMessage {
@@ -11,7 +11,14 @@ export interface ChatMessage {
   /** Short facts the answer rests on, taken from the object's rule data. */
   evidence?: string[];
   actions?: ChatAction[];
+  /** Streamed answers: the figures with their rule codes, an inline chart, a grounding footer, links and a pending flag. */
+  facts?: ChatFact[];
+  chart?: { kind: "bar" | "line"; data: { label: string; value: number }[] };
+  footer?: { n: number; coverage: number; phrased: boolean };
+  links?: { label: string; href: string }[];
+  pending?: boolean;
 }
+export interface ChatFact { statement: string; value?: number | null; href?: string | null; checks: { check_id: string; module?: string | null }[] }
 export interface AletheiaLabels {
   title: string;
   scope: string;
@@ -27,7 +34,7 @@ export interface AletheiaLabels {
  * Aletheia as a chat sheet scoped to one object: thread, suggested prompts,
  * evidence and action chips on each answer. The caller supplies answers.
  */
-export function AletheiaSheet({ open, onClose, labels, thread, suggestions, onAsk }: { open: boolean; onClose: () => void; labels: AletheiaLabels; thread: ChatMessage[]; suggestions: string[]; onAsk: (prompt: string) => void }) {
+export function AletheiaSheet({ open, onClose, labels, thread, suggestions, onAsk, scopeChip }: { scopeChip?: ReactNode; open: boolean; onClose: () => void; labels: AletheiaLabels; thread: ChatMessage[]; suggestions: string[]; onAsk: (prompt: string) => void }) {
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -55,21 +62,10 @@ export function AletheiaSheet({ open, onClose, labels, thread, suggestions, onAs
           </div>
           <button type="button" className="mx-btn" data-variant="ghost" onClick={onClose}>{labels.close}</button>
         </header>
+        {scopeChip}
         <div className="mx-thread" role="log" aria-label={labels.threadLabel}>
           {thread.map((m) => (
-            <div key={m.id} className="mx-msg" data-role={m.role}>
-              <p>{m.text}</p>
-              {m.evidence?.length ? (
-                <div><p className="mx-evidence-l">{labels.evidence}</p><ul className="mx-evidence" aria-label={labels.evidence}>{m.evidence.map((x) => <li key={x}>{x}</li>)}</ul></div>
-              ) : null}
-              {m.actions?.length ? (
-                <div className="mx-chips">
-                  {m.actions.map((a) => a.href
-                    ? <Link key={a.id} href={a.href} className="mx-chip-btn">{a.label}</Link>
-                    : <button key={a.id} type="button" className="mx-chip-btn" onClick={a.onClick}>{a.label}</button>)}
-                </div>
-              ) : null}
-            </div>
+            <Message key={m.id} m={m} evidenceLabel={labels.evidence} onAsk={onAsk} />
           ))}
           <div ref={endRef} />
         </div>
