@@ -946,6 +946,13 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                     start_date_only.append(sheet.name)
             else:
                 unfiltered.append(sheet.name)
+        # The termination sheet loads only people who left: an active employment has no end date to load.
+        if sheet.base == "terminationinfo" or re.search(r"\bat term\b|terminat", sheet.name, re.I):
+            ends = [hits[c.header].qualified for c in columns
+                    if c.header in hits and _norm(c.id) in {"enddate", "terminationdate"}]
+            if ends:
+                gone = df[ends[0]].astype("string").fillna("").str.strip()
+                df = df[(gone != "") & ~gone.str.fullmatch("0+").fillna(False)]
         from api.services.connectivity_manager import _asof_join, _primary_first  # lazy: avoids an import cycle
         for other, fs in joins.items():
             key = fs[0][0]
