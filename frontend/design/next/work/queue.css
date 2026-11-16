@@ -17,3 +17,17 @@
 .nx-wq-dl dt { color: var(--nx-ink-2); }
 .nx-wq-dl dd { margin: 0; min-width: 0; }
 .nx-wq-batches { display: flex; flex-direction: column; gap: var(--nx-s3); }
+
+/* Page head parts (parts.tsx): banner, lede, steps, consequence, detail on demand. */
+.nx-wp-banner { display: grid; gap: var(--nx-s3); padding: var(--nx-s4); }
+.nx-wp-state { display: grid; gap: var(--nx-s1); }
+.nx-wp-eyebrow { color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-wp-headline { margin: 0; font-size: var(--nx-fs-title); }
+.nx-wp-why, .nx-wp-lede, .nx-wp-conseq { margin: 0; color: var(--nx-ink-2); }
+.nx-wp-figs, .nx-wp-means { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--nx-s3); margin: 0; }
+.nx-wp-figs dd, .nx-wp-means dd { margin: 0; }
+.nx-wp-note { color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-wp-head { display: grid; gap: var(--nx-s2); }
+.nx-wp-more > summary { min-height: var(--nx-h-control); display: flex; align-items: center; cursor: pointer; color: var(--nx-accent); }
+.nx-wp-more-body { display: grid; gap: var(--nx-s3); padding-block: var(--nx-s2); }
+.nx-wk-menu { display: grid; gap: var(--nx-s1); padding: var(--nx-s2); min-width: 14rem; }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { v2Get, v2Send } from "@/lib/api/v2/client";
@@ -8,11 +8,11 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import { createShareLink, exportGrid } from "@/lib/api/v2/roles";
 import { writeClipboard } from "@/lib/browser";
 import { failureText } from "@/lib/v2/errors";
-import { downloadGridCsv, exportColumns, exportRows, hiddenColumns, hiddenFromColumns, writeHidden, type ToolColumn } from "@/lib/v2/grid-export";
+import { columnsFromHidden, downloadGridCsv, exportColumns, exportRows, hiddenColumns, hiddenFromColumns, writeHidden, type ToolColumn } from "@/lib/v2/grid-export";
 import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
-import { Button, Sheet, useToast } from "../kit";
+import { Button, Confirm, Sheet, useToast } from "../kit";
 import "./queue.css";
 
 /**
@@ -61,6 +61,42 @@ export function WorkTools<T>({ gridId, route, title, columns, rows, filters, all
   const [busy, setBusy] = useState(false);
   const [link, setLink] = useState<string | null>(null);
   const views = viewsQ.data?.views ?? [];
+  const [dropping, setDropping] = useState<SavedView | null>(null);
+  const own = views.filter((v) => !v.builtin && v.mine !== false);
+
+  // The column choice follows the person, as in v2 GridTools: restored once from the reserved `_columns` row of
+  // /views when this browser holds a different choice, and written back when the screen closes.
+  const synced = useRef<string | null>(null);
+  const remote = viewsQ.data?.columns ?? null;
+  useEffect(() => {
+    if (!remote || synced.current !== null) return;
+    const local = columnsFromHidden(columns, hiddenColumns(gridId, columns));
+    synced.current = JSON.stringify(remote);
+    if (JSON.stringify(local) !== synced.current) {
+      writeHidden(gridId, hiddenFromColumns(columns, remote));
+      onColumns();
+    }
+  }, [remote, columns, gridId, onColumns]);
+  const pushColumns = useCallback(() => {
+    if (readOnly || !viewsQ.data) return;
+    const now = JSON.stringify(columnsFromHidden(columns, hiddenColumns(gridId, columns)));
+    const base = synced.current ?? JSON.stringify(columnsFromHidden(columns, new Set(columns.filter((c) => c.defaultHidden).map((c) => c.id))));
+    if (now === base) return;
+    synced.current = now;
+    void v2Send("PUT", "/views", { route, name: "_columns", filters: {}, columns: JSON.parse(now) as string[] }).catch(() => undefined);
+  }, [readOnly, viewsQ.data, columns, gridId, route]);
+  useEffect(() => () => pushColumns(), [pushColumns]);
+
+  const drop = async (v: SavedView) => {
+    setDropping(null);
+    try {
+      await v2Send("DELETE", `/views/${encodeURIComponent(v.id)}`);
+      await qc.invalidateQueries({ queryKey: ["v2", "views", fx, route] });
+      toast({ text: t("View {name} deleted", { name: v.name }), tone: "good" });
+    } catch (e) {
+      toast({ text: failureText(e), tone: "bad" });
+    }
+  };
   const visible = () => {
     const hidden = hiddenColumns(gridId, columns);
     return columns.filter((c) => !hidden.has(c.id));
@@ -132,6 +168,23 @@ export function WorkTools<T>({ gridId, route, title, columns, rows, filters, all
           {views.map((v) => <option key={v.id} value={v.id}>{`${v.name} (${sub(v)})`}</option>)}
         </select>
       </label>
+      {own.length && !readOnly ? (
+        <label>{t("Delete a view")}
+          <select value="" onChange={(e) => setDropping(own.find((v) => v.id === e.target.value) ?? null)} data-testid="view-delete">
+            <option value="">{t("Choose a view to delete")}</option>
+            {own.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </select>
+        </label>
+      ) : null}
+      <Confirm
+        open={dropping !== null}
+        title={t("Delete view {name}?", { name: dropping?.name ?? "" })}
+        consequence={dropping?.shared ? t("The view is removed for you and for everyone it is shared with. Records and decisions do not change.") : t("The view is removed from your Views menu. Records and decisions do not change.")}
+        confirmLabel={t("Delete view")}
+        danger
+        onConfirm={() => { if (dropping) void drop(dropping); }}
+        onCancel={() => setDropping(null)}
+      />
       <Button variant="secondary" size={32} disabled={readOnly} onClick={() => { setShown(visible().map((c) => c.id)); setError(null); setSaving(true); }}>{t("Save these columns as a view…")}</Button>
       {session.can("export") ? (
         <>

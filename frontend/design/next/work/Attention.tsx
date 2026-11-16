@@ -9,8 +9,9 @@ import { relTime } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
-import { Chip, DataTable, EmptyState, PartBar, StatCard, type Column } from "../kit";
+import { Chip, DataTable, EmptyState, PartBar, type Column } from "../kit";
 import { KeepLink } from "../more/states";
+import { Banner, Consequence, FixHead, FlowSteps, MoreDetail } from "./parts";
 import "./queue.css";
 
 /**
@@ -105,17 +106,37 @@ export function WorkAttention() {
 
   return (
     <section className="nx-wq" aria-label={t("Action centre")} data-testid="attention">
-      <h2 className="nx-wq-h">{total === 0 ? t("Nothing needs you right now") : t("{n} things need you", { n: int(total) })}</h2>
-      {q.data ? (
-        <p className="nx-wq-meta">
-          {total > items.length ? t("The list shows the first {n}, most urgent first.", { n: int(ATTENTION_LIMIT) }) : t("Most urgent first. Checked {when}.", { when: relTime(q.data.generated_at) })}
-        </p>
-      ) : null}
-      <div className="nx-wq-stats">
-        <StatCard label={t("Critical")} value={counts.critical} />
-        <StatCard label={t("High")} value={counts.high} />
-        <StatCard label={t("Medium and low")} value={counts.medium + counts.low} />
-      </div>
+      <Banner
+        eyebrow={t("Action centre")}
+        headline={total === 0 ? t("Nothing needs you right now") : t("{n} things need you", { n: int(total) })}
+        why={q.data ? (total > items.length ? t("The list shows the first {n}, most urgent first.", { n: int(ATTENTION_LIMIT) }) : t("Most urgent first. Checked {when}.", { when: relTime(q.data.generated_at) })) : undefined}
+        figs={[
+          { label: t("Critical"), value: int(counts.critical) },
+          { label: t("High"), value: int(counts.high) },
+          { label: t("Medium and low"), value: int(counts.medium + counts.low) },
+        ]}
+        action={total > 0 ? <KeepLink className="nx-wq-link" href="/work/triage" data-testid="attention-primary">{t("Start triage")}</KeepLink> : undefined}
+        testId="attention-banner"
+        label={t("Action centre")}
+      />
+      <FixHead
+        lede={t("Everything that needs you across your systems, most urgent first. Start triage to work through it, or use the button on a row to go straight to it.")}
+        means={[
+          [t("Severity"), t("How soon the item needs you: critical first, then high, medium and low.")],
+          [t("Since"), t("When the item was first raised.")],
+          [t("Count"), t("How many records or items it covers.")],
+          [t("Where"), t("The system and object it concerns, with the run it stands at now.")],
+        ]}
+      />
+      <FlowSteps
+        label={t("Action centre steps")}
+        current={1}
+        steps={[
+          { label: t("See what is most urgent"), count: int(total), hint: t("The list is sorted with the most urgent first.") },
+          { label: t("Open an item"), hint: t("The button on a row goes straight to it.") },
+          { label: t("Decide there"), hint: t("The item opens where you can act on it.") },
+        ]}
+      />
       <div className="nx-wq-bar" role="group" aria-label={t("Filter what needs attention")}>
         <label>{t("Kind")}
           <select value={kind} onChange={(e) => setKind(e.target.value)}>
@@ -129,8 +150,8 @@ export function WorkAttention() {
             {systems.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
           </select>
         </label>
-        {total > 0 ? <KeepLink className="nx-wq-link" href="/work/triage" data-testid="attention-primary">{t("Start triage")}</KeepLink> : null}
       </div>
+      <Consequence>{t("Opening an item changes nothing. Start triage walks the same list one item at a time.")}</Consequence>
       <DataTable<AttentionItem>
         key={`${kind}-${system}`}
         rows={items}
@@ -143,11 +164,13 @@ export function WorkAttention() {
         empty={{ heading: filtered ? t("Nothing of this kind needs attention.") : t("Nothing needs your attention. New items appear here as runs, approvals and checks raise them.") }}
       />
       {byKind.size > 0 ? (
+        <MoreDetail title={t("Breakdown by kind")}>
         <PartBar
           label={t("What needs attention, by kind")}
           format={int}
           segments={[...byKind].sort((a, b) => b[1] - a[1]).map(([k, n]) => ({ label: kindText(k), value: n }))}
         />
+        </MoreDetail>
       ) : null}
     </section>
   );

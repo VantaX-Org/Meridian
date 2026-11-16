@@ -11,6 +11,7 @@ import { t } from "@/lib/v2/i18n";
 import { DASH, f1, int, pct1 } from "@/lib/v2/score";
 import { DataTable, EmptyState, ErrorState, Skeleton, StatCard, type Column } from "../kit";
 import { AreaTrend, StackedBar, type Seg } from "../viz";
+import { FlowSteps } from "./parts";
 import "./queue.css";
 
 /**
@@ -145,6 +146,11 @@ export function WorkProcessAnalytics() {
                 : t("{n, plural, one {# change request} other {# change requests}}", { n: a.total })}
           </h2>
           <p className="nx-wq-meta">{t("Counted from {n} change requests created in the last {d} days. Percentiles are nearest-rank, so each is a real request.", { n: a.total, d: a.days })}</p>
+          <FlowSteps
+            label={t("Process analytics steps")}
+            current={a.bottleneck ? 1 : 3}
+            steps={[{ label: t("Pick the window") }, { label: t("Find the slow step") }, { label: t("Clear the old backlog") }, { label: t("Watch the trend") }]}
+          />
           <div className="nx-wq-stats">
             <Fig label={t("Median cycle")} value={a.cycle.median_hours} format={duration} note={t("p90 {v}", { v: duration(a.cycle.p90_hours) })} />
             <Fig label={t("Median approval")} value={a.approval.median_hours} format={duration} note={t("p90 {v}", { v: duration(a.approval.p90_hours) })} />
@@ -181,6 +187,9 @@ export function WorkProcessAnalytics() {
                 <h2 className="nx-wq-h">{t("Weekly flow")}</h2>
                 <p className="nx-wq-meta">{t("Requests submitted and records created, per week.")}</p>
                 <AreaTrend points={a.weekly.map((w) => ({ label: formatDate(w.week, "date"), value: w.submitted }))} label={t("Submitted per week")} height={140} empty={t("Two weeks are needed to draw a trend.")} />
+                <div data-testid="pa-created-trend">
+                  <AreaTrend points={a.weekly.map((w) => ({ label: formatDate(w.week, "date"), value: w.created }))} label={t("Records created per week")} height={140} empty={t("Two weeks are needed to draw a trend.")} />
+                </div>
                 <DataTable rows={a.weekly} columns={weeks} rowKey={(w) => w.week} rowLabel={(w) => formatDate(w.week, "date")} caption={t("Requests per week")} empty={{ heading: t("Two weeks are needed to draw a trend.") }} />
               </section>
               <section className="nx-wq-card" data-testid="pa-objects">

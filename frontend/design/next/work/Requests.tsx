@@ -39,6 +39,7 @@ import { int, pct1 } from "@/lib/v2/score";
 import { ageWord, kindWord, objectWord, statusWord } from "@/design/v2/inspector/request";
 import { parseFields, parseKeys } from "@/design/v2/screens/Requests";
 import { Button, Code, Confirm, DataTable, EmptyState, ErrorState, PartBar, SegmentedControl, Skeleton, StatCard, useToast, type Column } from "../kit";
+import { Banner, Consequence, FixHead, FlowSteps } from "./parts";
 import "./queue.css";
 
 const VIEWS: RequestView[] = ["mine", "to_approve", "all"];
@@ -83,26 +84,50 @@ export function WorkRequests() {
     <div className="nx-wq" data-testid="requests-canvas">
       <h1 className="nx-wq-h">{t("Requests")}</h1>
       <p className="nx-wq-meta">{t("Create and change master data with approval")}</p>
-      <p>
-        <strong>{waiting > 0 ? t("{n} {waiting, plural, one {request waits} other {requests wait}} for approval", { n: int(waiting), waiting }) : t("No request waits for approval")}</strong>
-      </p>
-      <p className="nx-wq-meta">
-        {overdue > 0
-          ? t("{n} {overdue, plural, one {request is} other {requests are}} past the due time of the waiting approval step.", { n: int(overdue), overdue })
-          : failed > 0
-            ? t("{n} {failed, plural, one {request} other {requests}} failed to reach SAP and need a new look.", { n: int(failed), failed })
-            : t("Nothing has failed in this list.")}
-      </p>
-      <div className="nx-wq-stats">
-        <div><StatCard label={t("Waiting")} value={waiting} /><small>{t("submitted or in approval")}</small></div>
-        <div><StatCard label={t("Overdue")} value={overdue} /><small>{t("past the step due time")}</small></div>
-        <div><StatCard label={t("Failed")} value={failed} /><small>{t("did not reach SAP")}</small></div>
-        <div><StatCard label={t("Drafts")} value={drafts} /><small>{t("not yet submitted")}</small></div>
-      </div>
-      <div className="nx-wq-row">
-        <Button variant="primary" aria-expanded={composing} disabled={!canWrite} onClick={() => setComposing((c) => !c)}>{t("New request")}</Button>
-        {canWrite ? <Link className="nx-wq-link" href="/requests/new">{t("Use the form")}</Link> : <span className="nx-wq-meta">{t("A new request needs the master data write permission")}</span>}
-      </div>
+      <Banner
+        testId="requests-banner"
+        label={t("Requests")}
+        eyebrow={t("Change requests")}
+        headline={waiting > 0 ? t("{n} {waiting, plural, one {request waits} other {requests wait}} for approval", { n: int(waiting), waiting }) : t("No request waits for approval")}
+        why={
+          overdue > 0
+            ? t("{n} {overdue, plural, one {request is} other {requests are}} past the due time of the waiting approval step.", { n: int(overdue), overdue })
+            : failed > 0
+              ? t("{n} {failed, plural, one {request} other {requests}} failed to reach SAP and need a new look.", { n: int(failed), failed })
+              : t("Nothing has failed in this list.")
+        }
+        figs={[
+          { label: t("Waiting"), value: int(waiting), note: t("submitted or in approval") },
+          { label: t("Overdue"), value: int(overdue), note: t("past the step due time") },
+          { label: t("Failed"), value: int(failed), note: t("did not reach SAP") },
+          { label: t("Drafts"), value: int(drafts), note: t("not yet submitted") },
+        ]}
+        action={
+          <>
+            <Button variant="primary" aria-expanded={composing} disabled={!canWrite} data-testid="requests-primary" onClick={() => setComposing((c) => !c)}>{t("New request")}</Button>
+            {canWrite ? <Link className="nx-wq-link" href="/requests/new">{t("Use the form")}</Link> : <span className="nx-wq-meta">{t("A new request needs the master data write permission")}</span>}
+          </>
+        }
+      />
+      <FixHead
+        lede={t("This page lists requests to create or change master data. Each goes through approval before it reaches SAP. A request belongs to a record, not to a scoring run, so rows carry no run. Start with New request, or open one that waits for you.")}
+        means={[
+          [t("Waiting"), t("Requests submitted or in approval.")],
+          [t("Overdue"), t("Waiting requests past the due time of the current approval step.")],
+          [t("Failed"), t("Requests approved that did not reach SAP.")],
+          [t("Drafts"), t("Requests saved but not yet submitted.")],
+        ]}
+      />
+      <FlowSteps
+        label={t("Request steps")}
+        current={failed > 0 ? 3 : waiting > 0 ? 2 : drafts > 0 ? 1 : 0}
+        steps={[
+          { label: t("Start a request"), hint: t("Choose New request and fill in the record.") },
+          { label: t("Submit it"), count: int(drafts), hint: t("A saved draft does nothing until you submit it.") },
+          { label: t("Approvers decide"), count: int(waiting), hint: t("Each approval step has a due time.") },
+          { label: t("It reaches SAP"), count: int(failed), hint: t("The count shows requests that did not reach SAP.") },
+        ]}
+      />
       {composing && canWrite ? (
         <NewRequest
           initialKeys={keysParam}
@@ -144,7 +169,7 @@ export function WorkRequests() {
         error={q.isError ? { sentence: t("The change requests could not be read. Check that the API is reachable, then retry."), onRetry: () => void q.refetch() } : undefined}
         emptyText={view === "to_approve" ? t("No request waits for your approval.") : t("No change request matches. Start one with New request.")}
       />
-      <p className="nx-wq-meta">{t("Submitting sends the request for approval. Nothing reaches SAP until every approval step is done.")}</p>
+      <Consequence>{t("Submitting sends the request for approval. Nothing reaches SAP until every approval step is done.")}</Consequence>
       {rows.length ? <Charts rows={rows} /> : null}
       <div className="nx-wq-row">
         <Button variant="secondary" aria-expanded={defaultsOpen} onClick={() => setDefaultsOpen((o) => !o)}>{t("Entry defaults")}</Button>
