@@ -72,7 +72,7 @@ VIEWER_MUTATION_OK = {
     "notifications.mark_all_read", "me.create_access_request", "preferences.patch_preferences",
     "me_notifications.send_test_notification", "merge_explain.match_tuning_dry_run",
     "insight_feedback.submit_insight_feedback", "client_errors.report_client_error", "glossary.batch_lookup",
-    "rules.transition_version", "insights.mark_acted", "assistant.ask", "jobs.retry_job", "simulate.simulate_fix",
+    "rules.transition_version", "insights.mark_acted", "assistant.ask", "assistant.ask_stream", "jobs.retry_job", "simulate.simulate_fix",
     "wave_certificates.issue_certificate", "wave_certificates.sign_certificate",
     "survivorship_rules.preview_survivorship_rules", "actions.undo_action", "views.put_view", "views.delete_view",
     "scim.create_user", "scim.replace_user", "scim.patch_user", "scim.delete_user", "scim.create_group",
