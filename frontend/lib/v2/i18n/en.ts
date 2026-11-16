@@ -11371,6 +11371,30 @@ export const en = {
   // J9 people and admin, native sections
   "Needs action": "Needs action",
   "No logo yet": "No logo yet",
+  // Sign-in history
+  "Signed in": "Signed in",
+  "Wrong password": "Wrong password",
+  "No such account": "No such account",
+  "Account deactivated": "Account deactivated",
+  "No such account or deactivated": "No such account or deactivated",
+  "No password set": "No password set",
+  "Account locked": "Account locked",
+  "Single sign-on required": "Single sign-on required",
+  "Refused by single sign-on": "Refused by single sign-on",
+  "Single sign-on failed": "Single sign-on failed",
+  "IP address": "IP address",
+  "Browser": "Browser",
+  "Sign-in history": "Sign-in history",
+  "Every attempt to sign in, with where it came from. Passwords are never recorded.": "Every attempt to sign in, with where it came from. Passwords are never recorded.",
+  "Filter the sign-in history": "Filter the sign-in history",
+  "The sign-in history could not be read. {apiErrorMessage}": "The sign-in history could not be read. {apiErrorMessage}",
+  "No sign-in matches these filters.": "No sign-in matches these filters.",
+  "Nobody has signed in yet.": "Nobody has signed in yet.",
+  "Recent failed sign-ins": "Recent failed sign-ins",
+  "Loading sign-ins": "Loading sign-ins",
+  "The sign-in history could not be read.": "The sign-in history could not be read.",
+  "No failed sign-ins.": "No failed sign-ins.",
+  "{when}: {outcome}": "{when}: {outcome}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

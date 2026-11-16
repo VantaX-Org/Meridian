@@ -5,7 +5,8 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { removeGrant, removeUser, setUserActive } from "@/lib/api/v2/admin";
-import { refreshAdmin, useGrants, useUsers } from "@/lib/v2/admin-queries";
+import { refreshAdmin, useGrants, useSignIns, useUsers } from "@/lib/v2/admin-queries";
+import { formatDate } from "@/lib/format";
 import { userStatus } from "@/lib/users";
 import { useV2Href, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
@@ -14,6 +15,7 @@ import { Denied, isSessionError, LongText, useSubmitGuard } from "../more/states
 import type { SheetCtx } from "../shell/SheetHost";
 import { removeBlock } from "./guard";
 import { statusText } from "./Users";
+import { outcomeText } from "./sections/signin";
 
 /** How long Undo stays on offer before a removal is sent. The server delete is final, so nothing is sent until then. */
 export const UNDO_MS = 8000;
@@ -27,6 +29,7 @@ export function PersonSheet({ ctx }: { ctx: SheetCtx }) {
   const toast = useToast();
   const users = useUsers({}, can("manage_users"));
   const grants = useGrants(id, can("manage_users"));
+  const failures = useSignIns({ user_id: id, outcome: "failed", limit: 5 }, can("manage_users") && !!id);
   const guard = useSubmitGuard();
   const [confirm, setConfirm] = useState<"deactivate" | "remove" | null>(null);
   const [expired, setExpired] = useState(false);
@@ -81,6 +84,17 @@ export function PersonSheet({ ctx }: { ctx: SheetCtx }) {
         <dt>{t("Sign-in method")}</dt><dd>{user.clerk_user_id ? t("Single sign-on") : t("Password")}</dd>
         <dt>{t("Last sign-in")}</dt><dd>{user.last_login ? new Date(user.last_login).toLocaleString() : t("Never")}</dd>
       </dl>
+      <h3>{t("Recent failed sign-ins")}</h3>
+      {failures.isLoading ? <Skeleton lines={2} label={t("Loading sign-ins")} /> : failures.isError ? <p className="nx-sub">{t("The sign-in history could not be read.")}</p> : (failures.data?.entries.length ?? 0) === 0 ? <p className="nx-sub" data-testid="no-failed-signins">{t("No failed sign-ins.")}</p> : (
+        <ul className="nx-pick" aria-label={t("Recent failed sign-ins")} data-testid="failed-signins">
+          {failures.data?.entries.map((e) => (
+            <li key={e.id} className="nx-row">
+              <span className="nx-row-main">{t("{when}: {outcome}", { when: formatDate(e.created_at, "datetime"), outcome: outcomeText(e.outcome) })}</span>
+              <span className="nx-sub">{e.ip ?? ""}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <h3>{t("Objects")}</h3>
       {grants.isLoading ? <Skeleton lines={2} label={t("Loading access")} /> : list.length === 0 ? <p className="nx-sub">{t("No grants yet.")}</p> : (
         <ul className="nx-pick" aria-label={t("Objects")}>

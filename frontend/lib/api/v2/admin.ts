@@ -202,6 +202,12 @@ export const deleteReference = (systemId: string, kind: "postal-codes" | "bic"):
 /* ── Audit ── */
 
 export const listAudit = (q: AuditListParams = {}): Promise<AuditListResponse> => v2Get("/audit", q as Record<string, string | number>);
+/** One sign-in attempt from the audit trail. Passwords and tokens are never stored. */
+export type SignInOutcome = "success" | "bad_password" | "unknown_user" | "disabled" | "unknown_or_disabled" | "no_password" | "locked" | "sso_required" | "sso_refused" | "sso_error";
+export type SignInEntry = { id: string; user_id: string | null; user_name: string | null; email: string | null; outcome: SignInOutcome; reason: string | null; method: "password" | "oidc"; ip: string | null; user_agent: string | null; created_at: string };
+export type SignInPage = { entries: SignInEntry[]; total: number; limit: number; offset: number };
+export type SignInQuery = { user_id?: string; outcome?: SignInOutcome | "failed"; method?: "password" | "oidc"; since?: string; until?: string; limit?: number; offset?: number };
+export const listSignIns = (q: SignInQuery = {}): Promise<SignInPage> => v2Get("/audit/sign-ins", q as Record<string, string | number>);
 export const getAuditActors = (): Promise<{ actors: { id: string; name: string }[] }> => v2Get("/audit/actors");
 export const getAuditSummary = (): Promise<{ summary: AuditSummaryRow[]; total?: number }> => v2Get("/audit/summary");
 export const getAiAudit = (q: { limit?: number; offset?: number } = {}): Promise<LlmAuditResponse> => v2Get("/audit/llm", q);

@@ -12,7 +12,7 @@ import type { Role, Matrix } from "@/lib/api/roles";
 import type { CatalogueEntry, ReportFile, ReportSchedule, ReportScheduleInput } from "@/lib/api/reports";
 import type { MigrationWave } from "@/types/api";
 import type { Preferences } from "@/lib/preferences";
-import type { RunSchedule, ScheduleCreate } from "@/lib/api/v2/admin";
+import type { RunSchedule, ScheduleCreate, SignInEntry } from "@/lib/api/v2/admin";
 
 interface Profile { id: string; system_id: string; domain: string; tables: string[]; schedule_cron: string | null; active: boolean; last_run_at: string | null; next_run_at: string | null; extraction_mode: "full" | "delta" }
 
@@ -469,6 +469,25 @@ function csvRows(csv: string) {
   });
 }
 
+/** Sign-in attempts made up from the demo people: a success at each last sign-in, plus a few failures. Newest first. */
+function signIns(users: User[], params: Record<string, unknown>): SignInEntry[] {
+  const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 Safari/605.1.15";
+  const rows: SignInEntry[] = [];
+  users.forEach((u, i) => {
+    if (!u.last_login) return;
+    const base = { user_id: u.id, user_name: u.name, email: u.email, ip: `198.51.100.${10 + i}`, user_agent: UA };
+    const method = u.clerk_user_id ? "oidc" : "password";
+    rows.push({ ...base, id: `si-${u.id}-ok`, outcome: "success", reason: null, method, created_at: u.last_login });
+    if (i % 3 === 1) rows.push({ ...base, id: `si-${u.id}-bad`, outcome: "bad_password", reason: "bad_password", method: "password", created_at: new Date(Date.parse(u.last_login) - 300_000).toISOString() });
+  });
+  rows.push({ id: "si-unknown", user_id: null, user_name: null, email: "j.smith@demo-corp.example", outcome: "unknown_user", reason: "unknown_user", method: "password", ip: "203.0.113.44", user_agent: UA, created_at: ago(2, 22) });
+  rows.push({ id: "si-sso-refused", user_id: null, user_name: null, email: "contractor@other.example", outcome: "sso_refused", reason: "domain_not_allowed", method: "oidc", ip: "203.0.113.45", user_agent: UA, created_at: ago(4, 14) });
+  const failed = (o: string) => o !== "success";
+  return rows
+    .filter((r) => (!params.user_id || r.user_id === params.user_id) && (!params.method || r.method === params.method) && (!params.outcome || (params.outcome === "failed" ? failed(r.outcome) : r.outcome === params.outcome)) && (!params.since || r.created_at >= text(params.since)) && (!params.until || r.created_at <= text(params.until)))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+}
+
 function filterAudit(params: Record<string, unknown>): AuditEntry[] {
   const p = params;
   return st().audit.filter((e) =>
@@ -689,6 +708,12 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
   if (ref) return clone(s.reference[decodeURIComponent(ref[1])] ?? []);
   if (path === "/audit") {
     const all = filterAudit(params);
+    const limit = Number(params.limit ?? 50);
+    const offset = Number(params.offset ?? 0);
+    return { entries: clone(all.slice(offset, offset + limit)), total: all.length, limit, offset };
+  }
+  if (path === "/audit/sign-ins") {
+    const all = signIns(s.users, params);
     const limit = Number(params.limit ?? 50);
     const offset = Number(params.offset ?? 0);
     return { entries: clone(all.slice(offset, offset + limit)), total: all.length, limit, offset };

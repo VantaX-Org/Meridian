@@ -28,6 +28,10 @@ export const useUsers = (q: api.UserQuery = {}, enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "users", "list", q), () => api.listUsers(q), enabled);
 };
+export const useSignIns = (q: api.SignInQuery = {}, enabled = true) => {
+  const f = useFixture();
+  return useRead(k(f, "audit", "sign-ins", q), () => api.listSignIns(q), enabled);
+};
 export const useRoles = (enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "roles", "list"), api.listRoles, enabled);

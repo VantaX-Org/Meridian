@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { SsoConfig, SsoConfigInput } from "@/lib/api/sso";
 import * as api from "@/lib/api/v2/admin";
-import { refreshAdmin, useSso } from "@/lib/v2/admin-queries";
-import { V2Link } from "./parts";
+import { refreshAdmin, useAuditActors, useSignIns, useSso } from "@/lib/v2/admin-queries";
+import { apiErrorMessage } from "@/lib/error";
+import { formatDate } from "@/lib/format";
+import { type GridColumn } from "./Grid";
+import { ToolGrid } from "./GridTools";
+import { Dash, EmptyFrame, ErrorFrame, Mono, V2Link } from "./parts";
 import { ResultFrame, useOutcome } from "./shared";
-import { AdminPage, Block, Confirm, Fld, Loaded, NeedsPermission, Note, Sw, copyText, useCan } from "./kit";
+import { AdminPage, Block, Confirm, Fld, Loaded, NeedsPermission, Note, Pager, StatusWord, Sw, copyText, useCan } from "./kit";
 import { t } from "@/lib/v2/i18n";
 import { Button } from "@/design/next/kit";
 
@@ -180,17 +184,124 @@ function SsoForm({ saved, part }: { saved: SsoConfig; part: "sso" | "signin" }) 
   );
 }
 
+/** The words for each sign-in outcome the server records. */
+export function outcomeText(o: api.SignInOutcome): string {
+  const words: Record<api.SignInOutcome, string> = {
+    success: t("Signed in"),
+    bad_password: t("Wrong password"),
+    unknown_user: t("No such account"),
+    disabled: t("Account deactivated"),
+    unknown_or_disabled: t("No such account or deactivated"),
+    no_password: t("No password set"),
+    locked: t("Account locked"),
+    sso_required: t("Single sign-on required"),
+    sso_refused: t("Refused by single sign-on"),
+    sso_error: t("Single sign-on failed"),
+  };
+  return words[o] ?? o;
+}
+
+const SIGNIN_PAGE = 25;
+
+const signInColumns = (): GridColumn<api.SignInEntry>[] => [
+  { id: "when", header: t("When"), width: 150, pin: true, locked: true, cell: (e) => <time dateTime={e.created_at}>{formatDate(e.created_at, "datetime")}</time> },
+  { id: "who", header: t("Who"), width: 220, cell: (e) => e.user_name ?? e.email ?? <Dash /> },
+  { id: "outcome", header: t("Result"), width: 190, cell: (e) => <StatusWord tone={e.outcome === "success" ? "go" : "no-go"}>{outcomeText(e.outcome)}</StatusWord> },
+  { id: "method", header: t("Method"), width: 130, cell: (e) => (e.method === "oidc" ? t("Single sign-on") : t("Password")) },
+  { id: "ip", header: t("IP address"), width: 140, cell: (e) => (e.ip ? <Mono>{e.ip}</Mono> : <Dash />) },
+  { id: "agent", header: t("Browser"), width: 280, cell: (e) => e.user_agent ?? <Dash /> },
+];
+
+/** Every sign-in attempt, successful or not, newest first. Readable with view audit or manage users. */
+export function SignInHistory() {
+  const can = useCan();
+  const allowed = can("view_audit") || can("manage_users");
+  const [user, setUser] = useState("");
+  const [outcome, setOutcome] = useState("");
+  const [method, setMethod] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [offset, setOffset] = useState(0);
+  const people = useAuditActors(allowed);
+  const filters: api.SignInQuery = useMemo(
+    () => ({ user_id: user || undefined, outcome: (outcome || undefined) as api.SignInQuery["outcome"], method: (method || undefined) as api.SignInQuery["method"], since: from || undefined, until: to ? `${to}T23:59:59.999999` : undefined }),
+    [user, outcome, method, from, to],
+  );
+  const q = useSignIns({ ...filters, limit: SIGNIN_PAGE, offset }, allowed);
+  if (!allowed) return null;
+  const filtered = Object.values(filters).some(Boolean);
+  const badRange = !!from && !!to && to < from;
+  const reset = (fn: () => void) => (fn(), setOffset(0));
+  return (
+    <Block title={t("Sign-in history")} hint={t("Every attempt to sign in, with where it came from. Passwords are never recorded.")}>
+      <div className="nx-adm-acts" role="search" aria-label={t("Filter the sign-in history")}>
+        <Fld label={t("Who")}>
+          <select value={user} onChange={(e) => reset(() => setUser(e.target.value))} data-testid="signin-who">
+            <option value="">{t("Anyone")}</option>
+            {(people.data?.actors ?? []).map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+        </Fld>
+        <Fld label={t("Result")}>
+          <select value={outcome} onChange={(e) => reset(() => setOutcome(e.target.value))} data-testid="signin-outcome">
+            <option value="">{t("Any")}</option>
+            <option value="success">{t("Signed in")}</option>
+            <option value="failed">{t("Failed")}</option>
+          </select>
+        </Fld>
+        <Fld label={t("Method")}>
+          <select value={method} onChange={(e) => reset(() => setMethod(e.target.value))}>
+            <option value="">{t("Any")}</option>
+            <option value="password">{t("Password")}</option>
+            <option value="oidc">{t("Single sign-on")}</option>
+          </select>
+        </Fld>
+        <Fld label={t("From")}>
+          <input type="date" value={from} max={to || undefined} onChange={(e) => reset(() => setFrom(e.target.value))} />
+        </Fld>
+        <Fld label={t("To")} error={badRange ? t("Ends before it starts") : null}>
+          <input type="date" value={to} min={from || undefined} onChange={(e) => reset(() => setTo(e.target.value))} />
+        </Fld>
+        {filtered ? <Button onClick={() => reset(() => (setUser(""), setOutcome(""), setMethod(""), setFrom(""), setTo("")))}>{t("Clear filters")}</Button> : null}
+      </div>
+      <ToolGrid<api.SignInEntry>
+        toolsTitle={t("Sign-in history")}
+        id="admin-sign-ins"
+        ariaLabel={t("Sign-in history")}
+        columns={signInColumns()}
+        rows={q.data?.entries ?? []}
+        rowId={(e) => e.id}
+        loading={q.isPending}
+        count={q.data?.total}
+        error={q.isError ? <ErrorFrame onRetry={() => void q.refetch()}>{t("The sign-in history could not be read. {apiErrorMessage}", { apiErrorMessage: apiErrorMessage(q.error) })}</ErrorFrame> : undefined}
+        emptyFrame={<EmptyFrame>{filtered ? t("No sign-in matches these filters.") : t("Nobody has signed in yet.")}</EmptyFrame>}
+      />
+      {q.data ? <Pager offset={offset} limit={SIGNIN_PAGE} total={q.data.total} onPage={setOffset} /> : null}
+    </Block>
+  );
+}
+
 export function SsoSection({ part }: { part: "sso" | "signin" }) {
   const can = useCan();
   const allowed = can("manage_users");
   const q = useSso(allowed);
   const title = part === "sso" ? t("Single sign-on") : t("Sign-in page");
-  if (!allowed) return <AdminPage title={title}><NeedsPermission what={t("Changing sign-in")} permission="manage_users" /></AdminPage>;
+  if (!allowed)
+    return (
+      <AdminPage title={title}>
+        <NeedsPermission what={t("Changing sign-in")} permission="manage_users" />
+        {part === "signin" ? <SignInHistory /> : null}
+      </AdminPage>
+    );
   return (
     <AdminPage title={title} lead={part === "sso" ? t("Connect Meridian to your identity provider with OpenID Connect.") : t("What people see when they sign in, and who may use single sign-on.")}>
       <Loaded q={q} what={t("The sign-in settings")} rows={4}>
         {(saved) => <SsoForm key={`${saved.issuer}|${saved.client_id}|${saved.display_name}|${saved.enforce}|${saved.configured}|${saved.allowed_domains.join(",")}`} saved={saved} part={part} />}
       </Loaded>
+      {part === "signin" ? <SignInHistory /> : null}
     </AdminPage>
   );
 }
