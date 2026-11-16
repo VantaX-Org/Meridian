@@ -11473,4 +11473,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.": "Regeln nach fehlerhaften Datensätzen geordnet; der Anteil ist der Teil der Grundgesamtheit dieser Regel, der fehlschlägt, ermittelt aus dem neuesten Lauf jedes Objekts.",
   "How the score is made": "So entsteht die Bewertung",
   "Score of {label}": "Bewertung von {label}",
+  "The score is the weighted sum of four shares, so the points below add up to it.": "Der Wert ist die gewichtete Summe von vier Anteilen, daher ergeben die Punkte unten zusammen den Wert.",
+  "Based on {n} daily snapshots, the latest on {date}.": "Basierend auf {n} täglichen Momentaufnahmen, die neueste vom {date}.",
 };

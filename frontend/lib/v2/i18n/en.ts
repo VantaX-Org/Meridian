@@ -11472,6 +11472,8 @@ export const en = {
   "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.": "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.",
   "How the score is made": "How the score is made",
   "Score of {label}": "Score of {label}",
+  "The score is the weighted sum of four shares, so the points below add up to it.": "The score is the weighted sum of four shares, so the points below add up to it.",
+  "Based on {n} daily snapshots, the latest on {date}.": "Based on {n} daily snapshots, the latest on {date}.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

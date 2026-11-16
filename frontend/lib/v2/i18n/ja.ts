@@ -11473,4 +11473,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.": "不合格レコード数の多い順に並べたルールです。割合は、そのルールの対象母集団のうち不合格となる部分で、各オブジェクトの最新の実行から算出しています。",
   "How the score is made": "スコアの算出方法",
   "Score of {label}": "{label}のスコア",
+  "The score is the weighted sum of four shares, so the points below add up to it.": "スコアは4つの割合の加重合計です。そのため、下のポイントを合計するとスコアになります。",
+  "Based on {n} daily snapshots, the latest on {date}.": "{n} 件の日次スナップショットに基づきます。最新は {date} です。",
 };
