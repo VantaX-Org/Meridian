@@ -33,6 +33,8 @@ const BAND_TONE: Record<Band, ChipTone> = { pass: "good", warn: "warn", fail: "b
 export function DimensionBars({ cell }: { cell: LandscapeCell }) {
   const tq = useQualityThresholds();
   const thresholds = tq.data;
+  if (tq.isPending) return <Skeleton lines={6} label={t("Reading the score by dimension")} />;
+  if (tq.isError) return <ErrorState sentence={t("The quality targets could not be read.")} error={tq.error} onRetry={() => void tq.refetch()} />;
   if (DIMENSIONS.every((d) => cell.dimensions[d.key] == null)) {
     return <EmptyState heading={t("No dimension is measured yet")}>{t("Run analysis on this object and its six dimensions show here.")}</EmptyState>;
   }
@@ -66,9 +68,6 @@ export function DimensionBars({ cell }: { cell: LandscapeCell }) {
           })}
         </tbody>
       </table>
-      {/* The scores come with the cell; only the target column waits on the tenant's thresholds. */}
-      {tq.isPending ? <Skeleton lines={1} label={t("Reading the score by dimension")} /> : null}
-      {tq.isError ? <ErrorState sentence={t("The quality targets could not be read.")} error={tq.error} onRetry={() => void tq.refetch()} /> : null}
     </section>
   );
 }
