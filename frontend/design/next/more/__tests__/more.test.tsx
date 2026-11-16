@@ -32,7 +32,7 @@ const Q = vi.hoisted(() => {
   return { rules: st(), drafts: st(), reports: st(), schedules: st(), systems: st(), people: st(), opts: st({ modules: ["material_master"], systems: [], types: [] }), update: st(), can: (): boolean => true, st };
 });
 vi.mock("@/lib/v2/hooks", async (orig) => ({ ...(await orig<object>()), useV2Session: () => ({ can: Q.can, id: "me", name: "Me", email: "me@example.com", persona: "admin", label: "Admin", fixture: true, viewAs: null, shared: false }) }));
-vi.mock("@/lib/v2/sys-queries", () => ({ useRuleList: () => Q.rules, useAllDrafts: () => Q.drafts, useSuppressions: () => Q.st(undefined), useRefreshV2: () => () => undefined }));
+vi.mock("@/lib/v2/sys-queries", async (orig) => ({ ...(await orig<object>()), useRuleList: () => Q.rules, useAllDrafts: () => Q.drafts, useSuppressions: () => Q.st(undefined), useRefreshV2: () => () => undefined }));
 vi.mock("@/lib/v2/admin-queries", () => ({
   useReportHistory: () => Q.reports,
   useSchedules: () => Q.schedules,
@@ -44,8 +44,8 @@ vi.mock("@/lib/v2/admin-queries", () => ({
   useGrants: () => ({ data: [] }),
   useLicence: () => Q.st(undefined),
 }));
-vi.mock("@/lib/v2/runs-queries", () => ({ useSystemsExtended: () => Q.systems, useSystemObjectList: () => Q.st([]), useSystemProfiles: () => Q.st([]), useSystemExtractions: () => Q.st([]), useSystemConfigLoad: () => Q.st(undefined) }));
-vi.mock("@/lib/v2/approvals-queries", () => ({ usePeople: () => Q.people }));
+vi.mock("@/lib/v2/runs-queries", async (orig) => ({ ...(await orig<object>()), useSystemsExtended: () => Q.systems, useSystemObjectList: () => Q.st([]), useSystemProfiles: () => Q.st([]), useSystemExtractions: () => Q.st([]), useSystemConfigLoad: () => Q.st(undefined) }));
+vi.mock("@/lib/v2/approvals-queries", async (orig) => ({ ...(await orig<object>()), usePeople: () => Q.people }));
 vi.mock("@/lib/api/v2/reports", () => ({ createSchedule: vi.fn(), runScheduleNow: vi.fn(), downloadReportFile: vi.fn() }));
 vi.mock("@/lib/api/v2/admin", () => ({ getUpdateProgress: vi.fn(() => Promise.resolve({})), triggerUpdate: vi.fn() }));
 vi.mock("@/lib/api/v2/sys", () => ({ createProfile: vi.fn() }));
@@ -198,6 +198,7 @@ describe("shared states", () => {
 
 describe("More screens: loading, error, empty", () => {
   it("rules: loading, error, empty", () => {
+    setUrl("/more?fixture=1&tab=active");
     Q.rules = Q.st(undefined, { isLoading: true });
     const a = wrap(<Rules />);
     expect(screen.getByText("Loading rules")).toBeInTheDocument();
