@@ -13,20 +13,20 @@ import { GridTools } from "@/design/v2/GridTools";
 import type { Landscape, WorkRow } from "@/lib/api/v2/types";
 import { Attention } from "@/design/v2/screens/Attention";
 import { Cleansing } from "@/design/v2/screens/Cleansing";
-import { Exceptions } from "@/design/v2/screens/Exceptions";
-import { FixDrafts } from "@/design/v2/screens/FixDrafts";
 import { ProcessAnalytics } from "@/design/v2/screens/ProcessAnalytics";
 import { RequestFormCanvas } from "@/design/v2/screens/RequestForm";
 import { RequestsCanvas } from "@/design/v2/screens/Requests";
-import { Triage } from "@/design/v2/screens/Triage";
 import { WorkCanvas } from "@/design/v2/screens/Work";
-import { WorkAnalytics } from "@/design/v2/screens/WorkAnalytics";
 import { LegacyMount, LegacyScope } from "../shell/LegacyMount";
 import { MonitorBody } from "../screens/Monitor";
 import { Button, Chip, Code, DataTable, EmptyState, SegmentedControl, Tabs, type Column, type TabItem } from "../kit";
 import { StackedBar, type Seg } from "../viz";
 import { WORK_SEGMENTS, segmentHref, segmentOf } from "./segments";
 import { WorkBulkBar } from "./BulkBar";
+import { WorkAnalytics } from "./Analytics";
+import { WorkDrafts } from "./Drafts";
+import { WorkExceptions } from "./Exceptions";
+import { WorkTriage } from "./Triage";
 import "../shell/shell.css";
 import "./work.css";
 
@@ -41,15 +41,19 @@ export function workObjectHref(row: Pick<WorkRow, "module" | "version_id">, land
   return sys ? `/next/o/${systemSlug(sys.name)}/${moduleSlug(row.module)}` : null;
 }
 
+// Native segments render as they are; the rest still mount the v2 screen until their native rebuild lands.
 const SCREENS: Record<string, ComponentType> = {
-  approvals: Cleansing,
-  drafts: FixDrafts,
-  requests: RequestsCanvas,
-  triage: Triage,
-  exceptions: Exceptions,
+  drafts: WorkDrafts,
+  triage: WorkTriage,
+  exceptions: WorkExceptions,
   analytics: WorkAnalytics,
 };
-const DEEP: Record<string, ComponentType> = { "requests/new": RequestFormCanvas, "requests/analytics": ProcessAnalytics };
+const LEGACY: Record<string, ComponentType> = {
+  approvals: Cleansing,
+  requests: RequestsCanvas,
+  "requests/new": RequestFormCanvas,
+  "requests/analytics": ProcessAnalytics,
+};
 
 /** The ledger: every open record, one row each, with the state pills and the actions for a selection. */
 export function Ledger() {
@@ -174,7 +178,8 @@ export function Work({ slug }: { slug?: string[] }) {
   const hit = segmentOf(slug);
   const items: TabItem[] = WORK_SEGMENTS.map((s) => ({ id: s.id, label: s.label() }));
   const key = (slug ?? []).join("/");
-  const Screen = hit ? (hit.deep ? DEEP[hit.deep] : SCREENS[hit.id]) : undefined;
+  const Screen = hit && !hit.deep ? SCREENS[hit.id] : undefined;
+  const Legacy = hit ? LEGACY[hit.deep ?? hit.id] : undefined;
   const go = (id: string) => {
     const s = WORK_SEGMENTS.find((x) => x.id === id);
     if (s) router.push(segmentHref(s));
@@ -199,7 +204,9 @@ export function Work({ slug }: { slug?: string[] }) {
         ) : active === "monitor" ? (
           <MonitorBody />
         ) : Screen ? (
-          <LegacyMount><Screen /></LegacyMount>
+          <Screen />
+        ) : Legacy ? (
+          <LegacyMount><Legacy /></LegacyMount>
         ) : null}
       </div>
     </div>
