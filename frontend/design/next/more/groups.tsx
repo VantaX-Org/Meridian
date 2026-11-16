@@ -19,7 +19,7 @@ import { Insights } from "@/design/v2/screens/Insights";
 import { Forecast } from "@/design/v2/screens/Forecast";
 import { Value } from "@/design/v2/screens/Value";
 import { ConfigScreen } from "./Config";
-import { RunsCanvas } from "@/design/v2/screens/Runs";
+import { Runs } from "../runs/Runs";
 import { Atlas } from "./Atlas";
 import { Landscape } from "./Landscape";
 import { DataRequests } from "./DataRequests";
@@ -61,7 +61,7 @@ export const GROUPS: Group[] = [
 /** Single screens, addressed by their path under /more. */
 export const SINGLES: Record<string, { title: () => string; blurb: () => string; Screen: ComponentType }> = {
   landscape: { title: () => t("Landscape"), blurb: () => t("Every system and object at its newest run, with your next step."), Screen: Landscape },
-  runs: { title: () => t("Runs"), blurb: () => t("Every run, across every system."), Screen: RunsCanvas },
+  runs: { title: () => t("Runs"), blurb: () => t("Every run, across every system."), Screen: Runs },
   "systems/config": { title: () => t("Configuration"), blurb: () => t("Thresholds and settings."), Screen: ConfigScreen },
   atlas: { title: () => t("Atlas"), blurb: () => t("The landscape and its flows."), Screen: Atlas },
   portfolio: { title: () => t("All objects"), blurb: () => t("Every object at its newest run, live runs, bulk pull, upload and compare."), Screen: Portfolio },
