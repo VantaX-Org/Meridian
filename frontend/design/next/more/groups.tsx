@@ -21,6 +21,9 @@ import { Value } from "@/design/v2/screens/Value";
 import { Config } from "@/design/v2/screens/Config";
 import { RunsCanvas } from "@/design/v2/screens/Runs";
 import { Atlas } from "@/design/v2/screens/Atlas";
+import { Stewardship } from "./Stewardship";
+import { Automation } from "./Automation";
+import { ConfigImpact } from "./ConfigImpact";
 import { LandscapeCanvas } from "@/design/v2/screens/Landscape";
 import { StatusStrip } from "@/design/v2/shell/StatusStrip";
 
@@ -64,6 +67,9 @@ export const SINGLES: Record<string, { title: () => string; blurb: () => string;
   runs: { title: () => t("Runs"), blurb: () => t("Every run, across every system."), Screen: RunsCanvas },
   "systems/config": { title: () => t("Configuration"), blurb: () => t("Thresholds and settings."), Screen: Config },
   atlas: { title: () => t("Atlas"), blurb: () => t("The landscape and its flows."), Screen: Atlas },
+  stewardship: { title: () => t("Stewardship"), blurb: () => t("The work queue, approvals, exceptions and SLAs."), Screen: Stewardship },
+  automation: { title: () => t("Automation"), blurb: () => t("What runs on its own, when, and how it last went."), Screen: Automation },
+  "config-impact": { title: () => t("Configuration impact"), blurb: () => t("SAP features that configuration findings block or degrade."), Screen: ConfigImpact },
 };
 
 /** Screens that stay at their own address; More links to them so nothing is lost. */
@@ -86,4 +92,7 @@ export const TILES: Tile[] = [
   ...GROUPS.map((g) => ({ id: g.id, href: `/more/${g.id}`, title: g.title, blurb: g.blurb })),
   ...Object.entries(SINGLES).filter(([k]) => !k.includes("/")).map(([k, s]) => ({ id: k, href: `/more/${k}`, title: s.title, blurb: s.blurb })),
   ...LINKS.map((l) => ({ id: l.href, href: l.href, title: l.title, blurb: l.blurb })),
+  { id: "custom-objects", href: "/more/custom-objects", title: () => t("Custom objects"), blurb: () => t("Z and Y objects in SAP, their use and rule coverage.") },
+  { id: "writeback", href: "/more/writeback", title: () => t("Send fixes to SAP"), blurb: () => t("Check a fix, send it for approval, follow the result.") },
+  { id: "golden-writeback", href: "/more/golden-writeback", title: () => t("Send golden records to SAP"), blurb: () => t("Preview, check and approve a golden record before it goes back.") },
 ];

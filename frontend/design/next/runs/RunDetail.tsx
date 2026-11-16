@@ -16,6 +16,7 @@ import { runLabel, runStatusWord } from "@/lib/v2/run-label";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { Chip, EmptyState, ErrorState, Sheet, Skeleton, Stepper, type StepItem } from "../kit";
 import { isForbidden } from "./draft";
+import { ReasonPanel } from "./ReasonPanel";
 import "./runs.css";
 
 /** Steps of a run, derived from what the run stored: pulled, scored, then checked by Aletheia. */
@@ -78,6 +79,7 @@ export function RunBody({ id }: { id: string }) {
         <div>
           <h2 className="nx-rn-h2 nx-rn-trunc" title={name}>{name}</h2>
           <p className="nx-rn-sub">{shortDate(h.run_at)} <Chip tone={failed ? "bad" : running ? "warn" : "good"}>{runStatusWord(h.status)}</Chip></p>
+          {h.metadata?.source === "roundtrip" ? <p><Link className="nx-rn-link" href={`/next/run/${h.id}/agreement`} data-testid="run-agreement">{t("Check the clean file against a later run")}</Link></p> : null}
         </div>
         <ScoreRing value={hero} size={132} label={hero == null ? t("This run has no score yet") : t("Run score {n} out of 100", { n: hero.toFixed(1) })} />
       </header>
@@ -156,6 +158,7 @@ export function RunBody({ id }: { id: string }) {
             </>
           ) : null}
       </section>
+      <ReasonPanel versionId={h.id} systemId={h.metadata?.system_id ?? null} />
     </div>
   );
 }

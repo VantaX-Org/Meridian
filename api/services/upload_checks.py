@@ -114,21 +114,43 @@ def check_keys(matched: dict) -> dict:
     return _c("keys", "pass", "Every record key exists in the run.")
 
 
-def check_values(edits, dictionary) -> dict:
-    """Value length and type against the field metadata (sap/ddic.py Field)."""
-    long = bad = 0
+def value_problem(e: dict, dictionary) -> Optional[str]:
+    """Why one edit fails the value checks: long, type or formula; None when it fits."""
+    v = e["value"]
+    if unsafe(v):
+        return "formula"
+    f = dictionary.field(e["table"], e["field"]) if dictionary else None
+    if not f or not v:
+        return None
+    if f.length and f.type in ("CHAR", "NUMC", "DATS", "CLNT", "LANG", "CUKY", "UNIT") and len(v) > f.length:
+        return "long"
+    pat = _NUMERIC_TYPES.get(f.type or "")
+    if (pat and not re.match(pat, v)) or (f.type in ("DEC", "CURR", "QUAN", "FLTP") and not _NUMBER.match(v.replace(" ", ""))):
+        return "type"
+    return None
+
+
+def flagged(edits, dictionary) -> list:
+    """The edits that fail a value check, as ``{"table", "key", "field", "description", "reason"}``: ids, the
+    field's dictionary text and a reason code (long, type, formula), never the value."""
+    out = []
     for e in edits:
-        v = e["value"]
-        f = dictionary.field(e["table"], e["field"]) if dictionary else None
-        if not f or not v:
-            continue
-        if f.length and f.type in ("CHAR", "NUMC", "DATS", "CLNT", "LANG", "CUKY", "UNIT") and len(v) > f.length:
-            long += 1
-        pat = _NUMERIC_TYPES.get(f.type or "")
-        if (pat and not re.match(pat, v)) or (f.type in ("DEC", "CURR", "QUAN", "FLTP") and not _NUMBER.match(v.replace(" ", ""))):
-            bad += 1
+        why = value_problem(e, dictionary)
+        if why:
+            f = dictionary.field(e["table"], e["field"]) if dictionary else None
+            out.append({"table": e["table"], "key": e["key"], "field": e["field"],
+                        "description": getattr(f, "description", "") or "", "reason": why})
+    return out
+
+
+def check_values(edits, dictionary, skipped: int = 0) -> dict:
+    """Value length and type against the field metadata (sap/ddic.py Field)."""
+    why = [value_problem(e, dictionary) for e in edits]
+    long, bad = why.count("long"), why.count("type")
     if long or bad:
         return _c("values", "fail", f"{long} value(s) are longer than the field allows; {bad} are the wrong type.")
+    if skipped:
+        return _c("values", "warn", f"{skipped} flagged value(s) are left out; the rest fit the field definitions.")
     return _c("values", "pass", "Value lengths and types fit the field definitions.")
 
 

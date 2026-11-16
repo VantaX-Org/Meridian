@@ -18408,3 +18408,203 @@ rules:
     __other__: Assign a serial number profile in MM02 > Plant data/stor. 2, or clear the serial number level.
   record_fix_template: 'Material {MARA.MATNR} plant {MARC.WERKS}: serial number level {MARA.SERLV} is set but the profile
     is blank.'
+- id: MM1168
+  field: MARA.EANNR
+  check_class: cross_field_check
+  fail_when: '`MARA.EANNR`.notna()'
+  severity: low
+  dimension: consistency
+  message: Obsolete EAN field MARA.EANNR is still populated
+  why_it_matters: MARA.EANNR is the pre-4.0 13-digit EAN field, flagged obsolete in the dictionary. The live EAN is MARA.EAN11
+    and additional EANs are in MEAN. A value left here is not read by any current process and is not migrated to S/4HANA.
+  rule_authority: best_practice
+  sap_impact: The value is lost on conversion to S/4HANA and any EAN it holds is invisible to sales, purchasing and warehouse
+    scanning.
+  fix_map:
+    __other__: Move the number to MARA.EAN11 (or MEAN for an additional EAN) in MM02 and clear MARA.EANNR.
+  record_fix_template: 'Material {MARA.MATNR}: obsolete EAN field holds {MARA.EANNR}; move it to EAN11.'
+- id: MM1169
+  field: MARM.EANNR
+  check_class: cross_field_check
+  fail_when: '`MARM.EANNR`.notna()'
+  severity: low
+  dimension: consistency
+  message: Obsolete EAN field MARM.EANNR is still populated on a unit of measure
+  why_it_matters: MARM.EANNR is the obsolete 13-digit EAN per unit of measure. The current field is MARM.EAN11. A value left
+    in MARM.EANNR is not used by scanning or EDI and is dropped on conversion.
+  rule_authority: best_practice
+  sap_impact: The EAN for this unit is lost on conversion to S/4HANA and packs of this unit cannot be scanned.
+  fix_map:
+    __other__: Move the number to MARM.EAN11 for the same unit in MM02 > Additional data > Units of measure, then clear EANNR.
+  record_fix_template: 'Material {MARM.MATNR} unit {MARM.MEINH}: obsolete EAN field holds {MARM.EANNR}; move it to EAN11.'
+- id: MM1170
+  field: MARA.GEWTO
+  check_class: cross_field_check
+  fail_when: (`MARA.GEWTO` > 0) & ~(`MARA.ERGEW`.fillna(0) > 0)
+  severity: low
+  dimension: consistency
+  message: Excess weight tolerance is set but the allowed packaging weight is blank
+  why_it_matters: The excess weight tolerance (GEWTO) is a percentage of the allowed packaging weight (ERGEW) of a packaging
+    material. Without the allowed weight the tolerance has nothing to apply to.
+  rule_authority: best_practice
+  sap_impact: Handling unit packing does not check the weight limit of this packaging material, so overloaded handling units
+    are not stopped.
+  fix_map:
+    __other__: 'Enter the allowed packaging weight and unit in MM02 > Sales: general/plant, or clear the tolerance.'
+  record_fix_template: 'Material {MARA.MATNR}: excess weight tolerance {MARA.GEWTO}% has no allowed packaging weight.'
+- id: MM1171
+  field: MARA.VOLTO
+  check_class: cross_field_check
+  fail_when: (`MARA.VOLTO` > 0) & ~(`MARA.ERVOL`.fillna(0) > 0)
+  severity: low
+  dimension: consistency
+  message: Excess volume tolerance is set but the allowed packaging volume is blank
+  why_it_matters: The excess volume tolerance (VOLTO) is a percentage of the allowed packaging volume (ERVOL) of a packaging
+    material. Without the allowed volume the tolerance has nothing to apply to.
+  rule_authority: best_practice
+  sap_impact: Handling unit packing does not check the volume limit of this packaging material.
+  fix_map:
+    __other__: 'Enter the allowed packaging volume and unit in MM02 > Sales: general/plant, or clear the tolerance.'
+  record_fix_template: 'Material {MARA.MATNR}: excess volume tolerance {MARA.VOLTO}% has no allowed packaging volume.'
+- id: MM1172
+  field: MARA.DATAB
+  check_class: cross_field_check
+  fail_when: '`MARA.DATAB`.notna() & `MARA.LIQDT`.notna() & (`MARA.LIQDT` < `MARA.DATAB`)'
+  severity: medium
+  dimension: consistency
+  message: Material deletion date is earlier than its valid-from date
+  why_it_matters: MARA.DATAB is the date from which the material is valid and MARA.LIQDT the date it is to be deleted. A deletion
+    date before the valid-from date gives the material no valid life at all and points to a keying error in one of them.
+  rule_authority: best_practice
+  sap_impact: Listing, assortment and archiving runs that use these dates treat the material inconsistently.
+  fix_map:
+    __other__: Correct the valid-from or deletion date in MM02 so that the deletion date is later.
+  record_fix_template: 'Material {MARA.MATNR}: deletion date {MARA.LIQDT} is before valid-from date {MARA.DATAB}.'
+- id: MM1173
+  field: MARD.PRCTL
+  check_class: cross_field_check
+  grain: MARD
+  fail_when: '`MARD.PRCTL`.notna() & `MARC.PRCTR`.notna() & (`MARD.PRCTL` != `MARC.PRCTR`)'
+  severity: low
+  dimension: consistency
+  message: Storage location profit center differs from the plant profit center
+  why_it_matters: MARD.PRCTL is a storage-location level profit center used by some industry solutions. Normal stock postings
+    take the profit center from MARC.PRCTR, so a different value on the storage location splits profit center reporting for
+    the same stock.
+  rule_authority: best_practice
+  sap_impact: Stock value and goods movements for the material are reported against two profit centers, which breaks profit
+    center balance sheets and the S/4HANA document split.
+  fix_map:
+    __other__: Align the storage location profit center with the plant profit center, or clear it if it is not used.
+  record_fix_template: 'Material {MARD.MATNR} plant {MARD.WERKS} storage location {MARD.LGORT}: profit center {MARD.PRCTL}
+    differs from plant profit center {MARC.PRCTR}.'
+- id: MM1174
+  field: MARC.VBEAZ
+  check_class: cross_field_check
+  fail_when: (`MARC.VBEAZ` > 0) & ~(`MARC.VBAMG`.fillna(0) > 0)
+  severity: low
+  dimension: consistency
+  message: Shipping processing time is set but the base quantity for shipping capacity is blank
+  why_it_matters: The shipping processing time (VBEAZ) is the time needed to process the base quantity (VBAMG). Without the
+    base quantity, delivery scheduling cannot scale the processing time to the order quantity.
+  rule_authority: best_practice
+  sap_impact: Delivery and loading dates are scheduled with an unscaled processing time, so large orders are promised too
+    early.
+  fix_map:
+    __other__: 'Enter the base quantity in MM02 > Sales: general/plant, or clear the processing time.'
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: shipping processing time {MARC.VBEAZ} has no base quantity.'
+- id: MM1175
+  field: MARC.PRFRQ
+  check_class: cross_field_check
+  fail_when: (`MARC.PRFRQ` > 0) & (`MARC.XCHPF`.fillna('') != 'X')
+  severity: medium
+  dimension: consistency
+  message: Recurring inspection interval is set on a material that is not batch managed
+  why_it_matters: The interval until next recurring inspection (PRFRQ) sets the next inspection date of a batch. Recurring
+    inspection (inspection type 09) works only on batch-managed materials, so the interval has no effect here.
+  rule_authority: sap_hard_constraint
+  sap_impact: No recurring inspection lot is ever created, so stock that needs periodic re-inspection is used without it.
+  fix_map:
+    __other__: Set batch management for the material at the plant, or clear the inspection interval in MM02 > Quality management.
+  record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: recurring inspection interval {MARC.PRFRQ} days on a material
+    without batch management.'
+- id: MM1176
+  field: MVKE.VAVME
+  check_class: cross_field_check
+  fail_when: (`MVKE.VAVME` == 'X') & `MVKE.VRKME`.isna()
+  severity: medium
+  dimension: consistency
+  message: Variable sales unit is not allowed but no sales unit is set
+  why_it_matters: With VAVME set, sales orders must use the sales unit from the material master and cannot change it. If the
+    sales unit (VRKME) is blank, orders fall back to the base unit and the restriction does not do what was intended.
+  rule_authority: best_practice
+  sap_impact: Orders for the sales area are entered in the base unit although sales was meant to use a fixed sales unit.
+  fix_map:
+    __other__: 'Enter the sales unit in MM02 > Sales: sales org. 1, or clear the variable-sales-unit indicator.'
+  record_fix_template: 'Material {MVKE.MATNR} sales area {MVKE.VKORG}/{MVKE.VTWEG}: variable sales unit is blocked but no
+    sales unit is set.'
+- id: MM1177
+  field: MVKE.SCHME
+  check_class: cross_field_check
+  fail_when: (`MVKE.SCMNG` > 0) & `MVKE.SCHME`.isna()
+  severity: medium
+  dimension: completeness
+  message: Delivery unit quantity is set without its unit of measure
+  why_it_matters: The delivery unit (SCMNG) says that the material is only delivered in multiples of this quantity, in the
+    unit SCHME. A quantity without a unit cannot be interpreted.
+  rule_authority: best_practice
+  sap_impact: Sales order quantities are rounded against an undefined unit, so orders are rejected or delivered in the wrong
+    multiples.
+  fix_map:
+    __other__: 'Enter the unit of the delivery unit in MM02 > Sales: sales org. 1.'
+  record_fix_template: 'Material {MVKE.MATNR} sales area {MVKE.VKORG}/{MVKE.VTWEG}: delivery unit {MVKE.SCMNG} has no unit.'
+- id: MM1178
+  field: KSSK.STATU
+  check_class: cross_field_check
+  fail_when: '`KSSK.STATU`.notna() & (`KSSK.STATU` != ''1'')'
+  severity: low
+  dimension: validity
+  message: Class assignment is not in the released status
+  why_it_matters: Each class assignment carries a classification status (TCLU). In the standard set-up status 1 is released;
+    2 is incomplete and 3 is locked. Objects whose assignment is not released are not found by classification search, variant
+    configuration or batch determination.
+  rule_authority: best_practice
+  sap_impact: The material or batch is invisible to class-based search and batch determination, and incomplete assignments
+    carry into the S/4HANA migration.
+  fix_map:
+    __other__: Complete the characteristic values and set the status to released in CL20N or MM02 > Classification. Check
+      TCLU first if your system uses other status numbers.
+  record_fix_template: 'Object {KSSK.OBJEK} class type {KSSK.KLART}: classification status is {KSSK.STATU}, not released.'
+- id: MM1179
+  field: MARA.LAEDA
+  check_class: cross_field_check
+  fail_when: '`MARA.LAEDA`.notna() & ((@today - `MARA.LAEDA`).dt.days > 1825) & `MARA.LVORM`.isna() & `MARA.MSTAE`.isna()'
+  severity: low
+  dimension: timeliness
+  message: Material has not been changed for more than five years and is neither blocked nor flagged for deletion
+  why_it_matters: A material that nobody has maintained in five years is usually obsolete. Leaving it active means it is extracted,
+    cleansed and loaded into S/4HANA although it should be archived.
+  rule_authority: best_practice
+  sap_impact: Obsolete materials inflate the migration scope and can still be ordered or sold.
+  fix_map:
+    __other__: Confirm with the owner whether the material is still used. If not, set a cross-plant status or the deletion
+      flag in MM06 so it is excluded from the migration.
+  record_fix_template: 'Material {MARA.MATNR}: last changed {MARA.LAEDA}, no status and no deletion flag.'
+- id: MM1180
+  field: MEAN.HPEAN
+  check_class: uniqueness_check
+  grain: MEAN
+  fields:
+  - MEAN.MATNR
+  - MEAN.MEINH
+  - MEAN.HPEAN
+  severity: medium
+  dimension: uniqueness
+  message: More than one main EAN is flagged for the same unit of measure
+  why_it_matters: A unit of measure can have many EANs in MEAN but only one main EAN (HPEAN). The main EAN is the one copied
+    to MARM.EAN11 and sent on EDI messages. Two flagged main EANs make the choice arbitrary.
+  rule_authority: sap_hard_constraint
+  sap_impact: MARM and MEAN disagree on the EAN, and EDI partners and scanners receive different numbers for the same pack.
+  fix_map:
+    __other__: Keep the main EAN flag on one EAN per unit in MM02 > Additional data > EANs.
+  record_fix_template: 'Material {MEAN.MATNR} unit {MEAN.MEINH}: EAN {MEAN.EAN11} is one of several main EANs.'

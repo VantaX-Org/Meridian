@@ -4437,3 +4437,51 @@ rules:
     __other__: Re-run the synchronisation or fill SORTL.
   record_fix_template: 'Customer link {CVI_CUST_LINK.PARTNER_GUID}: partner search term 1 is set but the linked customer has
     no search term.'
+- id: BP905
+  field: BUT000.XPCPT
+  check_class: cross_field_check
+  fail_when: (`BUT000.XPCPT`=='X') & (`BUT000.XDELE`.fillna('')!='X')
+  severity: medium
+  dimension: timeliness
+  message: Business purpose is completed but the partner is not marked for deletion
+  why_it_matters: BUT000.XPCPT is set by the end-of-purpose check when no residence period is left for the partner. Data protection
+    rules then require the partner to be blocked and archived or deleted. A partner with a completed purpose that is still
+    active is personal data held without a reason.
+  rule_authority: best_practice
+  sap_impact: The partner is migrated to S/4HANA although it should have been archived, which carries personal data with no
+    legal basis into the new system.
+  fix_map:
+    __other__: Set the deletion flag and archive the partner with object CA_BUPA, or exclude it from the migration scope.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: business purpose completed but not marked for deletion.'
+- id: BP906
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: cross_field_check
+  grain: CVI_CUST_LINK
+  fail_when: '`KNA1.BEGRU`.notna() & (`KNA1.BEGRU` != `BUT000.AUGRP`.fillna(''''))'
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: authorization group of the customer differs from the business partner'
+  why_it_matters: CVI maps the customer authorization group (KNA1.BEGRU) to the business partner authorization group (BUT000.AUGRP).
+    A linked pair with different groups was changed on one side only, so access protection is not the same on both.
+  rule_authority: s4hana_migration
+  sap_impact: After conversion only the business partner group applies, so users may gain or lose access to the customer.
+  fix_map:
+    __other__: Align the authorization group on the customer (XD02) and the business partner (BP), then resynchronise.
+  record_fix_template: 'Business partner GUID {CVI_CUST_LINK.PARTNER_GUID}: authorization group differs from customer {CVI_CUST_LINK.CUSTOMER}.'
+- id: BP907
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: cross_field_check
+  grain: CVI_CUST_LINK
+  fail_when: (`KNA1.DEAR6`=='X') & (`BUT000.TYPE`=='2')
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: consumer customer is linked to an organisation business partner'
+  why_it_matters: KNA1.DEAR6 marks the customer as a consumer, which is a private person. The linked business partner is an
+    organisation (category 2), so the person's name, birth date and privacy attributes have no place on the partner.
+  rule_authority: s4hana_migration
+  sap_impact: Consumer handling and data privacy blocking for the private person do not work on the converted partner.
+  fix_map:
+    __other__: Create the partner as a person (category 1) and relink the customer, or clear the consumer indicator if the
+      customer is a company.
+  record_fix_template: 'Business partner GUID {CVI_CUST_LINK.PARTNER_GUID}: consumer customer {CVI_CUST_LINK.CUSTOMER} linked
+    to an organisation.'

@@ -1422,3 +1422,39 @@ rules:
       __blank__: Correct the hours to a non-negative value.
     record_fix_template: 'Timesheet {TIMESHEET.USERID} {TIMESHEET.DATE}: hours {TIMESHEET.HOURS} are negative.'
     id: TIME088
+  - id: TIME089
+    field: TIMESHEET.UNDETERMINED_END
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.UNDETERMINED_END`.str.lower().isin([''true'',''y'',''1'',''x'']) & `TIMESHEET.ABSENCE_END_DATE`.notna()'
+    severity: medium
+    dimension: consistency
+    message: Absence is flagged open-ended but carries an end date
+    why_it_matters: 'The undetermined-end flag says the return date is not yet known, for example long-term sickness. An end
+      date on the same absence contradicts it: either the employee has a known return date and the flag was not cleared, or
+      the end date is a placeholder that will be read as the real return.'
+    rule_authority: best_practice
+    sap_impact: Time accounts are deducted only up to the placeholder date and the employee shows as back at work in payroll
+      and workforce reports while still absent.
+    fix_map:
+      __other__: Open the absence in Time Off (Employee Central Time Management). Clear the open-ended flag if the return date
+        is known, or remove the end date if it is not.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} absence {TIMESHEET.ABSENCE_ID}: open-ended flag set and end date {TIMESHEET.ABSENCE_END_DATE}.'
+  - id: TIME090
+    field: TIMESHEET.ENTRY_START_TIME
+    check_class: cross_field_check
+    fail_when: (`TIMESHEET.TIME_RECORDING_VARIANT` == 'CLOCK_TIME') & `TIMESHEET.HOURS`.notna() & (`TIMESHEET.ENTRY_START_TIME`.isna()
+      | `TIMESHEET.ENTRY_END_TIME`.isna())
+    severity: medium
+    dimension: completeness
+    message: Clock-time recording variant entry has no start or end time
+    why_it_matters: Under the CLOCK_TIME recording variant hours are derived from the start and end time of each entry. An entry
+      with hours but no start or end time was keyed as a duration, so overtime, break and night-shift rules that depend on the
+      clock times cannot be evaluated.
+    rule_authority: best_practice
+    sap_impact: Overtime and shift premiums that depend on the time of day are not generated for the entry when it is replicated
+      to payroll.
+    fix_map:
+      __other__: 'Correct the entry in the time sheet (Employee Central Time Sheet): add the start and end time, or move the
+        employee to the DURATION recording variant in Job Information.'
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: clock-time entry of {TIMESHEET.HOURS} h has no start
+      or end time.'

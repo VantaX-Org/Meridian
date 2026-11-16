@@ -269,17 +269,24 @@ export interface TargetTemplate {
 export interface TemplateField { field: string; description: string; key: boolean; table_description: string }
 const tpl = (module: string, id?: string) => `${P}/templates/${encodeURIComponent(module)}${id ? `/${encodeURIComponent(id)}` : ""}`;
 export const getTemplates = (module: string) => v2Get<{ module: string; templates: TargetTemplate[] }>(tpl(module));
-export const getTemplateFields = (module: string) => v2Get<{ fields: TemplateField[] }>(`${tpl(module)}/fields`);
+/** Where the load files go. It picks the dictionary release templates and mappings resolve against. */
+export type Destination = "s4hana" | "ecc" | "successfactors";
+export interface TargetChoice { destination?: Destination | null; system_id?: string | null }
+const targetParams = (o?: TargetChoice) => ({ ...(o?.destination ? { destination: o.destination } : {}), ...(o?.system_id ? { system_id: o.system_id } : {}) });
+export const getTemplateFields = (module: string, target?: TargetChoice) => v2Get<{ fields: TemplateField[]; destination?: Destination; release?: string }>(`${tpl(module)}/fields`, targetParams(target));
 export async function uploadTemplate(module: string, file: File, name: string): Promise<{ id: string; name: string; version: number; coverage: TemplateCoverage }> {
   if (fixtureActive()) return { id: "tpl-new", name: name || file.name, version: 1, coverage: { columns: 0, matched: 0, sheets: [] } };
   const { data } = await uploadApiClient.post(`/api/v1${tpl(module)}`, workbookForm(file), { params: { name }, headers: { "Content-Type": "multipart/form-data" } });
   return data;
 }
-export const saveTemplateMapping = (module: string, id: string, columns: Record<string, string>) =>
-  v2Send<{ column_map: Record<string, string>; coverage: TemplateCoverage }>("PUT", `${tpl(module, id)}/mapping`, { columns });
+export const saveTemplateMapping = (module: string, id: string, columns: Record<string, string>, target?: TargetChoice) =>
+  v2Send<{ column_map: Record<string, string>; coverage: TemplateCoverage }>("PUT", `${tpl(module, id)}/mapping`, { columns }, targetParams(target));
 export const checkTemplate = (module: string, id: string, opts?: LoadOptions) => v2Send<WorkbookReport & { version_id: string; cleansed?: { approved: number; cells_changed: number } }>("POST", `${tpl(module, id)}/check`, {}, loadParams(opts));
 /** `allEntities` gives every SuccessFactors entity the dictionary describes, each marked as generated. */
-export const downloadBlankTemplate = (module: string, allEntities = false) => v2Download(`${tpl(module)}/blank`, allEntities ? { all_entities: "true" } : undefined, `${module}_template.xlsx`);
+export const downloadBlankTemplate = (module: string, allEntities = false, target?: TargetChoice) => {
+  const params = { ...(allEntities ? { all_entities: "true" } : {}), ...targetParams(target) };
+  return v2Download(`${tpl(module)}/blank`, Object.keys(params).length ? params : undefined, `${module}_template.xlsx`);
+};
 export const downloadTemplateFile = (module: string, t: TargetTemplate) => v2Download(`${tpl(module, t.id)}/file`, undefined, t.filename);
 export const exportTemplate = (module: string, t: TargetTemplate, fmt: WorkbookFormat, opts?: LoadOptions) =>
   v2Download(`${tpl(module, t.id)}/export`, { format: fmt, ...loadParams(opts) }, `${t.name}_v${t.version}.${fmt === "csv" ? "zip" : "xlsx"}`, "post");

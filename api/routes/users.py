@@ -712,6 +712,7 @@ async def bulk_users(body: BulkBody, request: Request, db: AsyncSession = Depend
 # ── CSV import ───────────────────────────────────────────────────────────────
 
 _IMPORT_COLUMNS = ("email", "name", "role", "system", "module")
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
 
 async def _preview_rows(db: AsyncSession, tenant: Tenant, request: Request, raw: str) -> dict[str, Any]:
@@ -752,6 +753,10 @@ async def _preview_rows(db: AsyncSession, tenant: Tenant, request: Request, raw:
             continue
         if is_service_email(email):
             row["error"] = SERVICE_ACCOUNT_DETAIL
+            continue
+        if cell["name"].startswith(_FORMULA_PREFIXES):
+            # The name lands in exports opened in a spreadsheet: refuse formula injection at the door.
+            row["error"] = "Name must not start with =, +, - or @"
             continue
         if email in seen:
             row["error"] = f"Duplicate of line {seen[email]}"

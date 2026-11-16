@@ -18,6 +18,7 @@ from api.services.paging import order_by, page_meta
 from api.services.run_lineage import lineage_sql
 from api.services.version_status import ENDED, finished_sql
 from api.services.branded_xlsx import (
+    content_disposition,
     ROW_CAP,
     ColumnSpec,
     SheetSpec,
@@ -931,7 +932,7 @@ async def get_extract_target_file(version_id: str, module: str, db: AsyncSession
     key = file_key(str(tenant.id), version_id, module, entry["format"])
     data = await run_in_threadpool(storage.download_file, settings.minio_bucket_reports, key)
     return Response(data, media_type=media_type(entry["format"]),
-                    headers={"Content-Disposition": f"attachment; filename={module}_{version_id[:8]}.{entry['format']}"})
+                    headers={"Content-Disposition": content_disposition(f"{module}_{version_id[:8]}.{entry['format']}")})
 
 
 @router.post("/versions/{version_id}/extract-target/{module}/refill", response_model=TemplateFillOut,

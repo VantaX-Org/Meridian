@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.middleware.cache import cached_json, mark_work_changed
+from api.services.branded_xlsx import content_disposition
 from api.routes.dq_firewall import DdicEvidence
 from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
@@ -997,7 +998,7 @@ async def export_cleaning_data(
     return StreamingResponse(
         io.BytesIO(content.encode()),
         media_type=media_type,
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={"Content-Disposition": content_disposition(filename)},
     )
 
 

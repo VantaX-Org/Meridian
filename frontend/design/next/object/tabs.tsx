@@ -10,6 +10,7 @@ import { ObjectOverviewRoute, ObjectRulesRoute, ObjectTabRoute } from "@/design/
 import { t } from "@/lib/v2/i18n";
 import { RunsTab } from "./RunsTab";
 import { WhySection } from "./WhySection";
+import { ReasonPanel } from "../runs/ReasonPanel";
 import { FixSection } from "./FixSection";
 import { FailingRecords } from "../report/FailingRecords";
 import { SteeringReport } from "../report/SteeringReport";
@@ -54,7 +55,7 @@ export function renderTab(id: TabId, o: ObjectRun, go: (tab: TabId) => void): Re
   switch (id) {
     case "overview":
     case "cycle":
-      return <><WhySection o={o} limit={5} /><FixSection o={o} /><ObjectOverviewRoute /></>;
+      return <><WhySection o={o} limit={5} /><ReasonPanel versionId={o.runId ?? undefined} systemId={o.systemId} /><FixSection o={o} /><ObjectOverviewRoute /></>;
     case "why": return <WhySection o={o} />;
     case "fix": return <FixSection o={o} />;
     case "runs": return <RunsTab o={o} onOpen={(run) => { o.setRun(run); go("overview"); }} />;
