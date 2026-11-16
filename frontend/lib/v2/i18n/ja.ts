@@ -11476,4 +11476,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Every field of this record": "このレコードのすべての項目",
   "Loading the history": "履歴を読み込んでいます",
   "No rule fails on this record in this run.": "この実行では、このレコードで不合格となるルールはありません。",
+  "This object has no form fields.": "このオブジェクトにはフォーム項目がありません。",
 };

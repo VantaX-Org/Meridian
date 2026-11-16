@@ -11476,4 +11476,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Every field of this record": "Alle Felder dieses Datensatzes",
   "Loading the history": "Verlauf wird geladen",
   "No rule fails on this record in this run.": "In diesem Lauf schlägt keine Regel bei diesem Datensatz fehl.",
+  "This object has no form fields.": "Für dieses Objekt gibt es keine Formularfelder.",
 };

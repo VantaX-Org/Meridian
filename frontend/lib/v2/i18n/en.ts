@@ -11475,6 +11475,7 @@ export const en = {
   "Every field of this record": "Every field of this record",
   "Loading the history": "Loading the history",
   "No rule fails on this record in this run.": "No rule fails on this record in this run.",
+  "This object has no form fields.": "This object has no form fields.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

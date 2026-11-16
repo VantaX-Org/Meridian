@@ -7,26 +7,26 @@ import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { useLandscape } from "@/lib/v2/queries";
-import { CHIPS, DEFAULT_STATE, STATUS_LABEL, filtersOf, ownerLabel, type ChipId } from "@/lib/v2/work";
+import { CHIPS, DEFAULT_STATE, STATUS_LABEL, filtersOf, ownerLabel, viewFilters, type ChipId } from "@/lib/v2/work";
 import { allWorkRows, useWorkRows, useWorkSummary } from "@/lib/v2/work-queries";
-import { GridTools } from "@/design/v2/GridTools";
+import { hiddenColumns } from "@/lib/v2/grid-export";
 import type { Landscape, WorkRow } from "@/lib/api/v2/types";
-import { Attention } from "@/design/v2/screens/Attention";
-import { ProcessAnalytics } from "@/design/v2/screens/ProcessAnalytics";
-import { RequestFormCanvas } from "@/design/v2/screens/RequestForm";
-import { RequestsCanvas } from "@/design/v2/screens/Requests";
-import { WorkCanvas } from "@/design/v2/screens/Work";
-import { LegacyMount, LegacyScope } from "../shell/LegacyMount";
 import { MonitorBody } from "../screens/Monitor";
 import { Button, Chip, Code, DataTable, EmptyState, SegmentedControl, Tabs, type Column, type TabItem } from "../kit";
 import { StackedBar, type Seg } from "../viz";
 import { WORK_SEGMENTS, segmentHref, segmentOf } from "./segments";
 import { WorkBulkBar } from "./BulkBar";
 import { WorkAnalytics } from "./Analytics";
+import { WorkAttention } from "./Attention";
+import { WorkTools } from "./Tools";
 import { WorkApprovals } from "./Cleansing";
 import { WorkDrafts } from "./Drafts";
 import { WorkExceptions } from "./Exceptions";
 import { WorkTriage } from "./Triage";
+import { WorkQueue } from "./Queue";
+import { WorkRequests } from "./Requests";
+import { WorkRequestForm } from "./RequestForm";
+import { WorkProcessAnalytics } from "./ProcessAnalytics";
 import "../shell/shell.css";
 import "./work.css";
 
@@ -49,10 +49,11 @@ const SCREENS: Record<string, ComponentType> = {
   analytics: WorkAnalytics,
   approvals: WorkApprovals,
 };
-const LEGACY: Record<string, ComponentType> = {
-  requests: RequestsCanvas,
-  "requests/new": RequestFormCanvas,
-  "requests/analytics": ProcessAnalytics,
+// The request screens, keyed by segment or deep path.
+const NATIVE: Record<string, ComponentType> = {
+  requests: WorkRequests,
+  "requests/new": WorkRequestForm,
+  "requests/analytics": WorkProcessAnalytics,
 };
 
 /** The ledger: every open record, one row each, with the state pills and the actions for a selection. */
@@ -69,7 +70,7 @@ export function Ledger() {
   const total = q.data?.pages[0]?.total;
   const byId = useMemo(() => new Map(rows.map((r) => [rowId(r), r])), [rows]);
 
-  const columns: Column<WorkRow>[] = [
+  const cols: Column<WorkRow>[] = [
     {
       id: "record",
       label: t("Record"),
@@ -97,13 +98,14 @@ export function Ledger() {
   ];
 
   // Saved views, a read-only share link and Export to Excel, as on the v2 Work grid: the columns on screen, every row of the state.
-  const tools = columns.map((c) => ({ id: c.id, header: c.label, cell: c.cell }));
+  const tools = cols.map((c) => ({ id: c.id, header: c.label, cell: c.cell }));
+  const hidden = hiddenColumns("work-ledger", tools);
+  const columns = cols.map((c) => ({ ...c, hidden: hidden.has(c.id) }));
   const TONES: Record<string, Seg["tone"]> = { tofix: "bad", approvals: "warn", approved: "chart1", sent: "chart3", fixed: "good", exceptions: "mute" };
   const segs: Seg[] = CHIPS.filter((c) => c.id in TONES).map((c) => ({ id: c.id, label: c.label, value: c.count(summary) ?? 0, tone: TONES[c.id] }));
   const flow = segs.reduce((a, x) => a + x.value, 0);
   return (
-    <LegacyScope>
-      <div className="nx-wk-ledger">
+    <div className="nx-wk-ledger">
         <section className="nx-wk-viz" aria-label={t("Where the records stand")}>
           <StackedBar segs={segs} label={flow ? segs.map((x) => `${x.label} ${formatInt(x.value)}`).join(", ") : t("No record is counted yet")} />
           <small>{flow ? `${formatInt(flow)} ${t("{n, plural, one {record} other {records}}", { n: flow })}` : t("The bar fills as records are found.")}</small>
@@ -125,7 +127,7 @@ export function Ledger() {
           <p className="nx-wk-lede" aria-live="polite">
             {total != null ? `${formatInt(total)} ${t("{n, plural, one {record} other {records}}", { n: total })}` : ""}
           </p>
-          <GridTools gridId="work-ledger" route="work" title={t("Work")} columns={tools} rows={rows} allRows={() => allWorkRows(filtersOf(state), state.sort)} onColumns={() => setGen((g) => g + 1)} />
+          <WorkTools gridId="work-ledger" route="work" title={t("Work")} columns={tools} rows={rows} filters={viewFilters(state)} allRows={() => allWorkRows(filtersOf(state), state.sort)} onColumns={() => setGen((g) => g + 1)} />
         </div>
         <DataTable<WorkRow>
           key={`${chip}-${mine}-${gen}`}
@@ -150,8 +152,7 @@ export function Ledger() {
             <Button variant="secondary" loading={q.isFetchingNextPage} onClick={() => void q.fetchNextPage()}>{t("Show more")}</Button>
           </div>
         ) : null}
-      </div>
-    </LegacyScope>
+    </div>
   );
 }
 
@@ -179,7 +180,7 @@ export function Work({ slug }: { slug?: string[] }) {
   const items: TabItem[] = WORK_SEGMENTS.map((s) => ({ id: s.id, label: s.label() }));
   const key = (slug ?? []).join("/");
   const Screen = hit && !hit.deep ? SCREENS[hit.id] : undefined;
-  const Legacy = hit ? LEGACY[hit.deep ?? hit.id] : undefined;
+  const Native = hit ? NATIVE[hit.deep ?? hit.id] : undefined;
   const go = (id: string) => {
     const s = WORK_SEGMENTS.find((x) => x.id === id);
     if (s) router.push(segmentHref(s));
@@ -195,18 +196,18 @@ export function Work({ slug }: { slug?: string[] }) {
         {!hit ? (
           <EmptyState heading={t("Nothing at this address")} />
         ) : active === "ledger" && filtered ? (
-          <LegacyMount><WorkCanvas /></LegacyMount>
+          <WorkQueue />
         ) : active === "ledger" ? (
           <>
-            <LegacyMount><Attention /></LegacyMount>
+            <WorkAttention />
             <Ledger />
           </>
         ) : active === "monitor" ? (
           <MonitorBody />
         ) : Screen ? (
           <Screen />
-        ) : Legacy ? (
-          <LegacyMount><Legacy /></LegacyMount>
+        ) : Native ? (
+          <Native />
         ) : null}
       </div>
     </div>
