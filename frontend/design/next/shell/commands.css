@@ -1,0 +1,8 @@
+/* The ask panel under the command palette: layout only. */
+.nx-nl { padding: var(--nx-s3) var(--nx-s4); border-top: 1px solid var(--nx-border); font-size: var(--nx-fs-small); display: grid; gap: var(--nx-s2); max-height: 50vh; overflow: auto; }
+.nx-nl-title { margin: 0; font-size: var(--nx-fs-small); color: var(--nx-ink-3); font-weight: var(--nx-w-label); }
+.nx-nl-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--nx-s2); }
+.nx-nl-chips li { display: inline-flex; align-items: baseline; gap: var(--nx-s1); border: 1px solid var(--nx-border); border-radius: var(--nx-r-control); padding: var(--nx-s1) var(--nx-s2); background: var(--nx-surface); max-width: 100%; overflow-wrap: anywhere; }
+.nx-nl-chips b { font-weight: var(--nx-w-label); }
+.nx-nl-why { margin: 0; color: var(--nx-ink-2); }
+.nx-nl-acts { display: flex; gap: var(--nx-s2); flex-wrap: wrap; align-items: center; }
