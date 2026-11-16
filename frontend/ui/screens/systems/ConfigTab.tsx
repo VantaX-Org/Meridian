@@ -9,7 +9,7 @@ import { loadSystemConfig } from "@/lib/api/v2/runs";
 import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
-import { Button, Card, Chip, DataTable, FieldChip, SeverityPill, StatTile, useToast } from "@/ui/kit";
+import { Button, Card, Chip, DataTable, FieldChip, SeverityPill, StatTile, useToast, EmptyState } from "@/ui/kit";
 import { errMsg, Gate, when } from "./shared";
 
 export function ConfigTab({ id }: { id: string }) {
@@ -41,7 +41,7 @@ export function ConfigTab({ id }: { id: string }) {
       </Card>
       <Card title={t("Configuration intelligence")} sub={t("Keys and descriptions against the target, or the SAP standard.")} action={run ? <span className="mx-links"><Button variant="ghost" disabled={busy !== null} onClick={() => void act("disc", async () => { await discoverConfig(id); return t("Configuration discovery queued."); })}>{t("Discover")}</Button><Button variant="secondary" disabled={busy !== null} onClick={() => void act("prop", async () => { const r = await proposeConfigMatches(id); return t("{n} matches proposed.", { n: r.proposed }); })}>{t("Propose matches")}</Button></span> : undefined}>
         <Gate q={cmp} empty={{ heading: t("No comparison yet"), body: t("Read the configuration first.") }}>
-          {(d) => d.objects.length === 0 ? <p className="mx-muted">{t("No comparison yet.")}</p> : (
+          {(d) => d.objects.length === 0 ? <EmptyState heading={t("No comparison yet.")} /> : (
             <>
               <p className="mx-muted">{t("Compared with {name}", { name: d.target.label })}</p>
               <DataTable columns={[
@@ -58,7 +58,7 @@ export function ConfigTab({ id }: { id: string }) {
       {obj !== null ? (
         <Card title={t("Items of {name}", { name: obj })}>
           <Gate q={items} empty={{ heading: t("No items") }}>
-            {(d) => d.items.length === 0 ? <p className="mx-muted">{t("No items.")}</p> : (
+            {(d) => d.items.length === 0 ? <EmptyState heading={t("No items.")} /> : (
               <DataTable columns={[
                 { key: "key", label: t("Key"), render: (r) => <FieldChip code={r.key} description={String(Object.values(r.values).find((v) => typeof v === "string" && v !== r.key) ?? "")} /> },
               ]} rows={d.items} rowKey={(r) => r.key} label={t("Configuration items")} height={280} />
@@ -68,7 +68,7 @@ export function ConfigTab({ id }: { id: string }) {
       ) : null}
       <Card title={t("Configuration drift")}>
         <Gate q={drift} empty={{ heading: t("No drift to show"), body: t("Drift appears once two runs exist.") }}>
-          {(d) => d.drift_entries.length === 0 ? <p className="mx-muted">{t("No drift between the last two runs.")}</p> : (
+          {(d) => d.drift_entries.length === 0 ? <EmptyState heading={t("No drift between the last two runs.")} /> : (
             <DataTable columns={[
               { key: "module", label: t("Module"), render: (r) => r.module },
               { key: "element_value", label: t("Element"), render: (r) => <FieldChip code={r.element_value} description={r.element_type} /> },

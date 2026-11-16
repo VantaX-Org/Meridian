@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getSystemsExtended } from "@/lib/api/v2/runs";
 import { t } from "@/lib/v2/i18n";
-import { Button, EmptyState, ErrorState, Field, PageHeader, Select, Skeleton, useAletheia, useAletheiaScope, type AletheiaAnswer } from "@/ui/kit";
+import { Button, EmptyState, ErrorState, Field, PageHeader, Select, Skeleton, useAletheia, useAletheiaScope, type AletheiaAnswer, type Severity, SeverityPill } from "@/ui/kit";
 
 /** One typed read, keyed by the fixture flag so fixture and live answers never mix. */
 export function useRead<T>(key: readonly unknown[], fn: () => Promise<T>, enabled = true) {
@@ -59,5 +59,5 @@ export const when = (iso: string | null | undefined): string => (iso ? iso.slice
 export const num = (n: number | null | undefined): string => (n === null || n === undefined ? t("n/a") : new Intl.NumberFormat("en").format(n));
 export const sevText = (s: string): string => (s === "critical" ? t("Critical") : s === "high" ? t("High") : s === "medium" ? t("Medium") : s === "low" ? t("Low") : t("Info"));
 export function Sev({ s }: { s: string }) {
-  return <span className="mx-sev" data-sev={s}><i className="mx-dot" aria-hidden="true" />{sevText(s)}</span>;
+  return <SeverityPill sev={s as Severity} label={sevText(s)} />;
 }

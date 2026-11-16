@@ -75,7 +75,7 @@ export function RuleFix({ id, scope }: { id: string; scope: RuleScope }) {
           <p className="mx-muted">{t("Precision {a} to {b}, {n} false positives removed, {m} real lost", { a: pct(p.precision_before), b: pct(p.precision_after), n: p.fp_removed, m: p.real_lost })}</p>
           {p.pending ? <p className="mx-muted">{t("Version {n} is waiting as {state}", { n: p.pending.version, state: p.pending.state })}</p> : <Button variant="secondary" disabled={tuned.isPending} onClick={() => tuned.mutate(p.rule_id)}>{t("Draft the tuned version")}</Button>}
         </div>
-      )) : <p className="mx-muted">{t("No tuning is proposed for this rule.")}</p>}
+      )) : <EmptyState heading={t("No tuning is proposed for this rule.")} />}
 
       <h3 className="mx-card-t">{t("Hand off to a steward")}</h3>
       <div className="mx-rules-row">

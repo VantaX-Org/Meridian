@@ -10,13 +10,13 @@ import {
   extractMigrationTarget, getLoadEvents, getMigrationFindings, startReconciliation, type GapGroup, type LoadEvent, type MigrationFinding,
 } from "@/lib/api/v2/migration";
 import { useDecideLoad, useLoadApproval, useLoadSimulation } from "@/lib/api/next/load";
-import { Button, Card, Confirm, DataTable, EmptyState, FieldChip, Input, PageHeader, Select, StatTile, Tabs, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, Card, Confirm, DataTable, EmptyState, FieldChip, Input, PageHeader, Select, SeverityPill, StatTile, Tabs, useAletheiaScope, useToast, type Severity } from "@/ui/kit";
 import { AskButton, Gate, humanize, pct, useHref, Verdict, when } from "./common";
 import { invalidateLoad, useRecon, useRecords, useRun } from "./hooks";
 import { modeLabel } from "./MigrationRuns";
 
 const sevLabel = (s: string): string => (s === "critical" ? t("Critical") : s === "high" ? t("High") : s === "medium" ? t("Medium") : s === "low" ? t("Low") : humanize(s));
-const Sev = ({ s }: { s: string }) => <span className="mx-sev" data-sev={s}><i className="mx-dot" aria-hidden="true" />{sevLabel(s)}</span>;
+const Sev = ({ s }: { s: string }) => <SeverityPill sev={s as Severity} label={sevLabel(s)} />;
 
 /** One migration run: gaps, findings, load simulation, reconciliation, records, four-eyes approval and load files. */
 export function MigrationRun({ id }: { id: string }) {

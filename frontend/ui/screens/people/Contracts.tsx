@@ -85,11 +85,11 @@ function ContractDetailPane({ id }: { id: string }) {
                       {Object.entries(b.thresholds.dimensions ?? {}).map(([k, v]) => <li key={k}>{k}: {String(v)}</li>)}
                     </ul>
                     <h3 className="mx-card-t">{t("Breaches now")}</h3>
-                    {b.current.length === 0 ? <p className="mx-muted">{t("No breach right now")}</p> : (
+                    {b.current.length === 0 ? <EmptyState heading={t("No breach right now")} /> : (
                       <ul className="mx-list" aria-label={t("Breaches now")}>{b.current.map((x, i) => <li key={i}>{x.metric}: {x.actual} {t("against")} {x.threshold}</li>)}</ul>
                     )}
                     <h3 className="mx-card-t">{t("Breach history")}</h3>
-                    {b.history.length === 0 ? <p className="mx-muted">{t("No past breaches")}</p> : (
+                    {b.history.length === 0 ? <EmptyState heading={t("No past breaches")} /> : (
                       <ul className="mx-list" aria-label={t("Breach history")}>{b.history.slice(0, 10).map((x) => <li key={`${x.run_id}-${x.metric}`}>{day(x.run_at)} {x.metric}: {x.actual} {t("against")} {x.threshold}</li>)}</ul>
                     )}
                   </>

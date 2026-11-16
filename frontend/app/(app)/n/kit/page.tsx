@@ -78,7 +78,7 @@ export default function KitGallery() {
         </Confirm>
       </Block>
       <Block name="Badge, Textarea, FileDrop, UndoToast">
-        <p>Tab count <Badge>12</Badge> <Badge tone="good">ok</Badge> <Badge tone="bad">3</Badge></p>{/* i18n-ignore */}
+        <p>Tab count <Badge>12</Badge> <Badge tone="good">Passing</Badge> <Badge tone="bad">3</Badge></p>{/* i18n-ignore */}
         <Textarea aria-label="Notes" rows={3} placeholder="Write a note" />{/* i18n-ignore */}
         <FileDrop accept=".xlsx,.csv" onFile={setFile} label="Cleaned file" status={file ? file.name : "Drop the Excel file you cleaned."} />{/* i18n-ignore */}
         <UndoToast message="The record was changed." actionLabel="Undo" onAction={() => toast("Undone", "good")} />{/* i18n-ignore */}

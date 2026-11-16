@@ -6,7 +6,7 @@ import { createTeam, deleteAssignRule, deleteTeam, getAssignRules, getTeams, set
 import { useFixture } from "@/lib/api/v2/fixture";
 import { useAssignable, useDigest, useSaveTriage, useSlaPolicies } from "@/lib/v2/approvals-queries";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, Field, Input, Select, Toggle, useToast } from "@/ui/kit";
+import { Button, Card, Code, DataTable, Field, Input, Select, Toggle, useToast, EmptyState } from "@/ui/kit";
 import { Row, Sec, errText } from "./shared";
 
 export function Triage() {
@@ -69,7 +69,7 @@ export function Triage() {
       </Card>
 
       <Card title={t("Assignment rules")} sub={t("The first rule that matches an item decides who gets it.")}>
-        {(rules.data ?? []).length === 0 ? <p className="mx-muted">{t("No assignment rules yet.")}</p> : (
+        {(rules.data ?? []).length === 0 ? <EmptyState heading={t("No assignment rules yet.")} /> : (
           <DataTable label={t("Assignment rules")} rows={rules.data ?? []} rowKey={(r) => r.id} height={300}
             columns={[
               { key: "pos", label: t("Order"), align: "end", render: (r) => String(r.position), sort: (r) => r.position },

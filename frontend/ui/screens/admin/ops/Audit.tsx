@@ -4,7 +4,7 @@ import { useState } from "react";
 import { exportAudit } from "@/lib/api/v2/admin";
 import { useAudit, useAuditActors } from "@/lib/v2/admin-queries";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, Field, Input, Select } from "@/ui/kit";
+import { Button, Card, Code, DataTable, Field, Input, Select, EmptyState } from "@/ui/kit";
 import { errText, Row, Sec, when } from "./shared";
 import { useToast } from "@/ui/kit";
 
@@ -35,7 +35,7 @@ export function Audit() {
         <Field label={t("Entity type")}><Input value={entity} onChange={(e) => { setEntity(e.target.value); setOffset(0); }} /></Field>
       </Row>
       <Card title={t("Entries")} sub={t("{from} to {to} of {total}", { from: total ? offset + 1 : 0, to: Math.min(offset + PAGE, total), total })}>
-        {rows.length === 0 ? <p className="mx-muted">{t("No audit entries match.")}</p> : (
+        {rows.length === 0 ? <EmptyState heading={t("No audit entries match.")} /> : (
           <DataTable label={t("Audit entries")} rows={rows} rowKey={(r) => r.id} height={420}
             columns={[
               { key: "created_at", label: t("When"), render: (r) => when(r.created_at), sort: (r) => r.created_at },

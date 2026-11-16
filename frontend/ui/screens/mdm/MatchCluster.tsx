@@ -7,46 +7,24 @@ import { getClusterGraph } from "@/lib/api/v2/mdm-extra";
 import type { ClusterEdge } from "@/lib/api/merge-explain";
 import { describeField } from "@/lib/v2/sap-fields";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
-import { Button, Card, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, SeverityPill, Skeleton, StatTile, useAletheia, useAletheiaScope } from "@/ui/kit";
+import { Button, Card, DataTable, EmptyState, ErrorState, FieldChip, Graph, PageHeader, SeverityPill, Skeleton, StatTile, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { pct, useHref } from "./shared";
 
-const W = 480;
-const H = 360;
-
-/** Local cluster graph: members on a circle, one line per scored pair. Kit request: a shared network graph component. */
-function Graph({ nodes, edges, onPick, picked }: { nodes: { key: string; is_survivor: boolean }[]; edges: ClusterEdge[]; onPick: (e: ClusterEdge) => void; picked: string | null }) {
-  const cx = W / 2;
-  const cy = H / 2;
-  const r = Math.min(W, H) / 2 - 56;
-  const at = new Map(nodes.map((n, i) => {
-    const a = (2 * Math.PI * i) / Math.max(nodes.length, 1) - Math.PI / 2;
-    return [n.key, { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }] as const;
-  }));
+/** Cluster graph: members on a circle, one line per scored pair, on the shared kit Graph. */
+function ClusterGraph({ nodes, edges, onPick, picked }: { nodes: { key: string; is_survivor: boolean }[]; edges: ClusterEdge[]; onPick: (e: ClusterEdge) => void; picked: string | null }) {
   return (
-    <svg className="mx-cluster-graph" width="100%" height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t("Cluster graph")}>
-      {edges.map((e, i) => {
-        const a = at.get(e.source);
-        const b = at.get(e.target);
-        if (!a || !b) return null;
-        const id = `${e.source}|${e.target}`;
-        const stroke = e.constraint === "do_not_match" ? "var(--mx-bad)" : e.linked ? "var(--mx-good)" : "var(--mx-border-strong)";
-        return (
-          <g key={`${id}-${i}`} onClick={() => onPick(e)} role="button" tabIndex={0} aria-label={`${e.source} ${e.target}`} onKeyDown={(k) => { if (k.key === "Enter") onPick(e); }}>
-            <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={stroke} strokeWidth={picked === id ? 4 : 2} strokeDasharray={e.linked ? undefined : "4 4"} />
-            <text x={(a.x + b.x) / 2} y={(a.y + b.y) / 2} fill="var(--mx-ink-2)" fontSize={11} textAnchor="middle">{e.total === null ? "" : pct(e.total)}</text>
-          </g>
-        );
-      })}
-      {nodes.map((n) => {
-        const p = at.get(n.key)!;
-        return (
-          <g key={n.key}>
-            <circle cx={p.x} cy={p.y} r={n.is_survivor ? 12 : 9} fill={n.is_survivor ? "var(--mx-accent)" : "var(--mx-surface-2)"} stroke="var(--mx-ink-3)" strokeWidth={1.5} />
-            <text x={p.x} y={p.y + (p.y < cy ? -18 : 26)} fill="var(--mx-ink)" fontSize={11} textAnchor="middle">{n.key}</text>
-          </g>
-        );
-      })}
-    </svg>
+    <Graph
+      layout="circle"
+      label={t("Cluster graph")}
+      nodes={nodes.map((n) => ({ id: n.key, label: n.key, emphasis: n.is_survivor }))}
+      edges={edges.map((e, i) => ({
+        id: String(i), source: e.source, target: e.target,
+        label: e.total === null ? undefined : pct(e.total),
+        tone: e.constraint === "do_not_match" ? "bad" : e.linked ? "good" : undefined,
+        dashed: !e.linked, active: picked === `${e.source}|${e.target}`,
+      }))}
+      onPick={(ge) => onPick(edges[Number(ge.id)])}
+    />
   );
 }
 
@@ -92,7 +70,7 @@ export function MatchCluster({ id }: { id: string }) {
             <StatTile label={t("Auto-merge from")} value={pct(g.auto_merge)} />
           </dl>
           <Card title={t("Cluster graph")} sub={t("Solid green lines are linked pairs. Dashed lines are scored but not linked. Red lines are do-not-match.")}>
-            <Graph nodes={g.nodes} edges={g.edges} picked={shown ? `${shown.source}|${shown.target}` : null} onPick={setPick} />
+            <ClusterGraph nodes={g.nodes} edges={g.edges} picked={shown ? `${shown.source}|${shown.target}` : null} onPick={setPick} />
           </Card>
           <Card title={t("Scored pairs")} sub={t("Select a pair to see its field scores.")}>
             <DataTable<ClusterEdge>

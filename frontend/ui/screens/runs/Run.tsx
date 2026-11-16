@@ -15,9 +15,9 @@ import { getConfigMatches } from "@/lib/api/v2/config";
 import { exportVersionProfile, getProfile } from "@/lib/api/v2/profile";
 import { baselineRefusalOf, getSemanticTypes, putSemanticType, type SemanticColumn, type SemanticType } from "@/lib/api/v2/step9";
 import { getRunPrediction } from "@/lib/api/v2/step10";
-import { useObjectCycle, useRun, type CycleStep } from "@/lib/api/next/runs";
+import { useObjectCycle, useRun } from "@/lib/api/next/runs";
 import {
-  Button, Card, Confirm, DataTable, EmptyState, ErrorState, FieldChip, Field, Input, PageHeader, Select, Skeleton, StatTile, Stepper, Tabs, TrendArea,
+  Button, Card, Confirm, DataTable, EmptyState, ErrorState, FieldChip, Field, Input, PageHeader, Select, Skeleton, StatTile, CycleStepper, Tabs, TrendArea,
   useAletheiaScope, useSheet, useToast, type Column,
 } from "@/ui/kit";
 import { answer } from "./answers";
@@ -28,19 +28,16 @@ import "./runs.css";
 
 const TABS = ["overview", "profile", "config"] as const;
 type Tab = (typeof TABS)[number];
-const STEPS: CycleStep[] = ["pull", "clean", "upload", "score", "compare"];
 const SEM: SemanticType[] = ["iban", "eu_vat", "email", "url", "date", "phone", "postcode", "country", "currency_amount", "person_name"];
 
-const stepLabel = (s: CycleStep) => ({ pull: t("Pull"), clean: t("Clean"), upload: t("Upload"), score: t("Score"), compare: t("Compare") })[s];
 const classText = (c: string) => (c === "data_error" ? t("Data error") : c === "config_deviation" ? t("Configuration deviation") : t("Unclear"));
 const secs = (s: number | null) => (s == null ? t("n/a") : formatDuration(s * 1000));
 
 function Cycle({ id, module }: { id: string; module: string }) {
   const { cycle } = useObjectCycle(id, module);
-  const cur = cycle ? STEPS.indexOf(cycle.step) : -1;
   return (
     <Card title={t("Where this object is in the cycle")} sub={cycle ? t("Cycle {n}, since {when}", { n: cycle.number, when: when(cycle.since) }) : t("This run is not part of a cycle yet.")}>
-      <Stepper label={t("Cycle steps")} current={Math.max(cur, 0)} steps={STEPS.map((s) => ({ id: s, label: stepLabel(s) }))} />
+      <CycleStepper label={t("Cycle steps")} step={cycle?.step ?? null} labels={{ pull: t("Pull"), clean: t("Clean"), upload: t("Upload"), score: t("Score"), compare: t("Compare") }} />
     </Card>
   );
 }

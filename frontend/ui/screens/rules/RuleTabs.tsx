@@ -58,7 +58,7 @@ export function WhyTab({ id, scope }: { id: string; scope: RuleScope }) {
       <h3 className="mx-card-t">{t("Where the failures sit")}</h3>
       {by.data?.groups.length ? by.data.groups.map((g) => (
         <BarList key={g.field} label={g.field} items={g.values.slice(0, 6).map((v) => ({ id: v.value, label: `${g.field} ${v.value}`, value: v.records, display: compactCount(v.records) }))} />
-      )) : <p className="mx-muted">{t("No split of the failures is available.")}</p>}
+      )) : <EmptyState heading={t("No split of the failures is available.")} />}
     </div>
   );
 }

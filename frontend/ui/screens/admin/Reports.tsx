@@ -7,7 +7,7 @@ import { formatInt } from "@/lib/format";
 import { useCatalogue, useExportOptions, useReportHistory, useScheduleOptions, useSchedules } from "@/lib/v2/admin-queries";
 import { exportRequest } from "@/lib/v2/export-centre";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, Field, Input, Select, useSheet } from "@/ui/kit";
+import { Button, Card, Code, DataTable, Field, Input, Select, useSheet, EmptyState } from "@/ui/kit";
 import { Row, Sec, useAct, when } from "./ops/shared";
 
 const kb = (n: number) => `${formatInt(Math.max(1, Math.round(n / 1024)))} KB`;
@@ -52,7 +52,7 @@ export function Reports() {
           ]} />
       </Card>
       <Card title={t("Built files")}>
-        {files.length === 0 ? <p className="mx-muted">{t("No report has been built yet.")}</p> : (
+        {files.length === 0 ? <EmptyState heading={t("No report has been built yet.")} /> : (
           <DataTable label={t("Built files")} rows={files} rowKey={(r) => r.id} height={320}
             columns={[
               { key: "name", label: t("File"), render: (r) => <Code code={r.kind} description={r.file_name} /> },
@@ -70,7 +70,7 @@ export function Reports() {
         )}
       </Card>
       <Card title={t("Schedules")}>
-        {schedules.length === 0 ? <p className="mx-muted">{t("No report schedules yet.")}</p> : (
+        {schedules.length === 0 ? <EmptyState heading={t("No report schedules yet.")} /> : (
           <DataTable label={t("Report schedules")} rows={schedules} rowKey={(r) => r.id} height={280}
             columns={[
               { key: "name", label: t("Schedule"), render: (r) => <Code code={r.kind} description={r.name} /> },

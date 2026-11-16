@@ -4,7 +4,7 @@ import { useState } from "react";
 import { downloadSubjectExport, dryRunErasure, executeErasure, liftSuppression, searchSubject, subjectError, type SubjectErase, type SubjectSearch } from "@/lib/api/v2/subject-requests";
 import { useSubjectRequests, useSuppressions } from "@/lib/v2/admin-queries";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, Confirm, DataTable, Field, Input, StatTile, useToast } from "@/ui/kit";
+import { Button, Card, Code, Confirm, DataTable, Field, Input, StatTile, useToast, EmptyState } from "@/ui/kit";
 import { Row, Sec, useAct, when } from "./shared";
 
 export function SubjectRequests() {
@@ -59,7 +59,7 @@ export function SubjectRequests() {
       </Card>
 
       <Card title={t("Request ledger")}>
-        {rows.length === 0 ? <p className="mx-muted">{t("No requests yet.")}</p> : (
+        {rows.length === 0 ? <EmptyState heading={t("No requests yet.")} /> : (
           <DataTable label={t("Request ledger")} rows={rows} rowKey={(r) => r.request_id} height={300}
             columns={[
               { key: "created_at", label: t("When"), render: (r) => when(r.created_at), sort: (r) => r.created_at },
@@ -73,7 +73,7 @@ export function SubjectRequests() {
       </Card>
 
       <Card title={t("Suppressed keys")} sub={t("Erased keys that extraction drops. Only field names and counts are kept.")}>
-        {items.length === 0 ? <p className="mx-muted">{t("No keys are suppressed.")}</p> : (
+        {items.length === 0 ? <EmptyState heading={t("No keys are suppressed.")} /> : (
           <DataTable label={t("Suppressed keys")} rows={items} rowKey={(r) => r.request_id ?? r.created_at} height={260}
             columns={[
               { key: "fields", label: t("Key fields"), render: (r) => r.key_fields.map((f) => <Code key={f} code={f} description={texts[f]} />) },

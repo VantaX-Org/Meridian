@@ -4,7 +4,7 @@ import { useState } from "react";
 import { updateFieldMapping } from "@/lib/api/v2/admin";
 import { useMappings } from "@/lib/v2/admin-queries";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, Field, Input, Toggle } from "@/ui/kit";
+import { Button, Card, Code, DataTable, Field, Input, Toggle, EmptyState } from "@/ui/kit";
 import { Row, Sec, useAct } from "./shared";
 
 export function Mappings() {
@@ -24,7 +24,7 @@ export function Mappings() {
         <Toggle label={t("Self service mapping")} checked={self} onChange={() => undefined} />
       </Row>
       <Card title={t("Mappings")} sub={t("{n} fields", { n: q.data?.total ?? rows.length })}>
-        {rows.length === 0 ? <p className="mx-muted">{t("No field mappings yet.")}</p> : (
+        {rows.length === 0 ? <EmptyState heading={t("No field mappings yet.")} /> : (
           <DataTable label={t("Field mappings")} rows={rows} rowKey={(r) => r.id} height={420}
             columns={[
               { key: "module", label: t("Object"), render: (r) => r.module },

@@ -5,7 +5,7 @@ import { createRunSchedule, deleteRunSchedule, pauseRunSchedule, resumeRunSchedu
 import { useRunSchedules } from "@/lib/v2/admin-queries";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, Field, Input, Select } from "@/ui/kit";
+import { Button, Card, Code, DataTable, Field, Input, Select, EmptyState } from "@/ui/kit";
 import { Row, Sec, useAct, when } from "./shared";
 
 export function Schedules() {
@@ -21,7 +21,7 @@ export function Schedules() {
     <Sec title={t("Extraction schedules")} scope="schedules" q={[q]} context={t("{n} schedules", { n: rows.length })}
       facts={[t("{n} extraction schedules are set.", { n: rows.length })]}>
       <Card title={t("Schedules")}>
-        {rows.length === 0 ? <p className="mx-muted">{t("No extraction schedules yet.")}</p> : (
+        {rows.length === 0 ? <EmptyState heading={t("No extraction schedules yet.")} /> : (
           <DataTable label={t("Extraction schedules")} rows={rows} rowKey={(r) => r.id} height={340}
             columns={[
               { key: "name", label: t("Schedule"), render: (r) => <Code code={r.name ?? r.id} description={r.system_name} /> },

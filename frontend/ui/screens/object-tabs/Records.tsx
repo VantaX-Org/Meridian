@@ -8,7 +8,7 @@ import { describeField } from "@/lib/v2/sap-fields";
 import { useWorkRows } from "@/lib/v2/work-queries";
 import { STATUS_LABEL, keyHeaders, splitKey } from "@/lib/v2/work";
 import type { WorkRow } from "@/lib/api/v2/types";
-import { Button, Card, DataTable, EmptyState, ErrorState, FieldChip, Search, Select, Skeleton, StatTile, TrendArea, type Column } from "@/ui/kit";
+import { Button, Card, DataTable, EmptyState, ErrorState, FieldChip, Search, Select, Skeleton, StatTile, TrendArea, type Column, SeverityPill } from "@/ui/kit";
 import { compactCount } from "@/ui/screens/object/format";
 import type { ObjectRun } from "@/ui/screens/object/useObjectRun";
 import { useBackAfterClean } from "./hooks";
@@ -76,7 +76,7 @@ export function Records({ o, system, module }: { o: ObjectRun; system: string; m
 
   const columns: Column<WorkRow>[] = [
     { key: "record", label: heads.first, render: (r) => <><strong>{r.name ?? splitKey(r.record_key)[0]?.value}</strong> <span className="mx-muted">{r.record_key}</span></>, sort: (r) => r.record_key },
-    { key: "sev", label: t("Severity"), render: (r) => <span className="mx-sev" data-sev={r.severity}><i className="mx-dot" aria-hidden="true" />{sevLabel(r.severity)}</span>, sort: (r) => r.severity },
+    { key: "sev", label: t("Severity"), render: (r) => <SeverityPill sev={r.severity} label={sevLabel(r.severity)} />, sort: (r) => r.severity },
     { key: "issues", label: t("Issues"), align: "end", render: (r) => r.issues, sort: (r) => r.issues },
     {
       key: "finding", label: t("Top finding"),
