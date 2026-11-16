@@ -12,7 +12,6 @@ import { allWorkRows, useWorkRows, useWorkSummary } from "@/lib/v2/work-queries"
 import { GridTools } from "@/design/v2/GridTools";
 import type { Landscape, WorkRow } from "@/lib/api/v2/types";
 import { Attention } from "@/design/v2/screens/Attention";
-import { Cleansing } from "@/design/v2/screens/Cleansing";
 import { ProcessAnalytics } from "@/design/v2/screens/ProcessAnalytics";
 import { RequestFormCanvas } from "@/design/v2/screens/RequestForm";
 import { RequestsCanvas } from "@/design/v2/screens/Requests";
@@ -24,6 +23,7 @@ import { StackedBar, type Seg } from "../viz";
 import { WORK_SEGMENTS, segmentHref, segmentOf } from "./segments";
 import { WorkBulkBar } from "./BulkBar";
 import { WorkAnalytics } from "./Analytics";
+import { WorkApprovals } from "./Cleansing";
 import { WorkDrafts } from "./Drafts";
 import { WorkExceptions } from "./Exceptions";
 import { WorkTriage } from "./Triage";
@@ -47,9 +47,9 @@ const SCREENS: Record<string, ComponentType> = {
   triage: WorkTriage,
   exceptions: WorkExceptions,
   analytics: WorkAnalytics,
+  approvals: WorkApprovals,
 };
 const LEGACY: Record<string, ComponentType> = {
-  approvals: Cleansing,
   requests: RequestsCanvas,
   "requests/new": RequestFormCanvas,
   "requests/analytics": ProcessAnalytics,
