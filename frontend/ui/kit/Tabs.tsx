@@ -1,6 +1,7 @@
 "use client";
 
 import type { KeyboardEvent } from "react";
+import { Badge } from "./Badge";
 
 export interface TabItem { id: string; label: string; badge?: string }
 
@@ -17,7 +18,7 @@ export function Tabs({ idBase, label, items, value, onChange }: { idBase: string
     <div role="tablist" aria-label={label} className="mx-tabs">
       {items.map((x, i) => (
         <button key={x.id} id={`${idBase}-tab-${x.id}`} type="button" role="tab" className="mx-tab" aria-selected={x.id === value} aria-controls={`${idBase}-panel-${x.id}`} tabIndex={x.id === value ? 0 : -1} onClick={() => onChange(x.id)} onKeyDown={(e) => move(e, i)}>
-          {x.label}{x.badge ? <span className="mx-tab-badge">{x.badge}</span> : null}
+          {x.label}{x.badge ? <Badge>{x.badge}</Badge> : null}
         </button>
       ))}
     </div>

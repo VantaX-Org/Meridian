@@ -21,7 +21,7 @@ Import everything from `@/ui/kit`. Builders use these instead of writing their o
 - `AletheiaSheet`: `{labels: AletheiaLabels, ...}`, the chat view. Do not mount a second one; use `useAletheia()`.
 
 ## Data display
-- `DataTable<T>`: `{columns: {key,label,render?,sort?,align?}[], rows, rowKey, label, selected?, onSelect?, height?, rowHeight?}`, virtualised, sortable, single select, sticky header, Up/Down/Home/End/Enter keys.
+- `DataTable<T>`: `{columns: {key,label,render?,sort?,align?}[], rows, rowKey, label, selected?, onSelect?, height?, rowHeight?, expand?: {id,height,render}}`, virtualised, sortable, single select, sticky header, Up/Down/Home/End/Enter keys.
 - `BarList`: `{items: {id,label,value,display?,sev?}[], label, max?}`.
 - `SeverityPill`: `{sev, label}`.
 - `SeverityStrip` (alias `SegBar`): `{tiles: {sev,label,rules,records}[], rulesLabel(n)}`.
@@ -34,7 +34,17 @@ Import everything from `@/ui/kit`. Builders use these instead of writing their o
 - `Stepper`: `{steps: {id,label}[], current, label}`.
 - `EmptyState` (alias `Empty`): `{heading, body?, action?}`. `ErrorState`: `{heading, body?, retryLabel?, onRetry?}`. `Skeleton`: `{lines?, label}`.
 
+- `Badge`: `{children, tone?: "good"|"bad"}`, a count beside a label; `Tabs` uses it.
+- `CodeView` (alias `YamlView`): `{text, label}`. `DiffView`: `{diff, label}`.
+- `Timeline`: `{events: {id,at,title,note?}[], label}`, `at` already formatted.
+- `Hairline`: `{items: {id,label,meta,pct|null,action?}[], label}`, one thin progress line per job.
+- `Graph`: `{nodes, edges, layout: "columns"|"circle", label, onPick?}`.
+- `CycleStepper`: `{step, labels, label}` over `CYCLE_STEPS` (pull, clean, upload, score, compare).
+- `CommentsPanel`: `{items, listLabel, deleteLabel?, empty, composer?}`.
+- `UndoToast`: `{message, actionLabel, onAction}`.
+
 ## Inputs
+- `Textarea`: native textarea props plus `mono?`. `FileDrop`: `{accept, onFile, label, status}`.
 - `Button`: `{variant?: "primary"|"secondary"|"ghost", tone?: "aletheia", href?, ...button props}`.
 - `Chip`: `{selected, onClick, children, count?}`, a toggle filter chip.
 - `Search`: `{value, onChange, label, clearLabel, placeholder?}`.
@@ -43,4 +53,5 @@ Import everything from `@/ui/kit`. Builders use these instead of writing their o
 - `Toggle`: `{label, checked, onChange}`, a switch.
 
 ## Hooks
+- `useTab(ids, fallback)`: the current tab kept in `?tab=`.
 - `useStacked()`: true at 900px wide or less.
