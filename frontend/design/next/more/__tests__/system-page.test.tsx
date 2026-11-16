@@ -5,7 +5,7 @@ import { setUrl } from "@/design/v2/__tests__/nav-store";
 import { SystemPage } from "../SystemPage";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
-vi.mock("@/design/v2/screens/system/Configuration", () => ({ Configuration: () => <div data-testid="v-configuration" /> }));
+vi.mock("../system/Configuration", () => ({ Configuration: () => <div data-testid="v-configuration" /> }));
 vi.mock("@/design/v2/screens/system/CustomObjects", () => ({ CustomObjects: () => <div data-testid="v-custom" /> }));
 vi.mock("@/design/v2/screens/system/SourceDesign", () => ({ SourceDesign: () => <div data-testid="v-design" /> }));
 vi.mock("../system/Schedules", () => ({ Schedules: () => <div data-testid="v-schedules" /> }));
