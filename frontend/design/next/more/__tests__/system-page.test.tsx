@@ -12,8 +12,8 @@ vi.mock("@/design/v2/screens/system/Schedules", () => ({ Schedules: () => <div d
 vi.mock("../system/Connectivity", () => ({ Connectivity: () => <div data-testid="n-connectivity" /> }));
 vi.mock("../system/ProcessModel", () => ({ ProcessModel: () => <div data-testid="n-process" /> }));
 vi.mock("../system/Mining", () => ({ Mining: () => <div data-testid="n-mining" /> }));
-vi.mock("@/design/v2/screens/step9/Drift", () => ({ ConfigChanges: () => <div data-testid="v-changes" /> }));
-vi.mock("@/design/v2/screens/step9/ChangeLog", () => ({ ChangeLog: ({ versionId }: { versionId: string }) => <div data-testid="v-changelog">{versionId}</div> }));
+vi.mock("../system/ConfigChanges", () => ({ ConfigChanges: () => <div data-testid="v-changes" /> }));
+vi.mock("../system/ChangeLog", () => ({ ChangeLog: ({ versionId }: { versionId: string }) => <div data-testid="v-changelog">{versionId}</div> }));
 
 const ok = <T,>(data: T) => ({ data, isLoading: false, error: null, refetch: () => Promise.resolve() });
 vi.mock("@/lib/v2/runs-queries", () => ({
