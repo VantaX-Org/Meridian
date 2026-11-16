@@ -13,6 +13,7 @@ import { describeField } from "@/lib/v2/sap-fields";
 import { int } from "@/lib/v2/score";
 import { lc, t } from "@/lib/v2/i18n";
 import { ListSearch, useSubmitGuard } from "@/design/next/more/states";
+import { ExportTable } from "@/design/next/more/ExportTable";
 import { Button, Chip, Code, DataTable, EmptyState, ErrorState, Skeleton, useToast, type Column } from "../../kit";
 import type { ObjectRun } from "../useObjectRun";
 import { Dash, ItemLink } from "./tabs-g-parts";
@@ -141,7 +142,7 @@ export function GlossaryTab({ o }: { o: ObjectRun }) {
             </span>
           ) : null}
         </div>
-        <DataTable
+        <ExportTable><DataTable
           rows={rows}
           columns={columns}
           rowKey={(r) => r.id}
@@ -152,7 +153,7 @@ export function GlossaryTab({ o }: { o: ObjectRun }) {
           empty={{ heading: t("No term matches that search.") }}
           onOpenRow={(r) => openItem({ kind: "term", id: r.id })}
           density="compact"
-        />
+        /></ExportTable>
         <p className="nx-tg-prov">{t("Owner is the owner of the {label} object. Rules counts the rules that cite the term.", { label: lc(label) })}</p>
       </section>
       <WithoutTerm o={o} terms={allQ.data.terms as TermRow[]} />

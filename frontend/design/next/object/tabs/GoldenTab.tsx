@@ -12,6 +12,7 @@ import { describeField } from "@/lib/v2/sap-fields";
 import { int } from "@/lib/v2/score";
 import { lc, t } from "@/lib/v2/i18n";
 import { useSubmitGuard } from "@/design/next/more/states";
+import { ExportTable } from "@/design/next/more/ExportTable";
 import { Button, Chip, Code, DataTable, EmptyState, ErrorState, PartBar, ProgressBar, Skeleton, StatCard, useToast, type Column } from "../../kit";
 import type { ObjectRun } from "../useObjectRun";
 import { Dash, ItemLink } from "./tabs-g-parts";
@@ -537,7 +538,7 @@ export function GoldenTab({ o }: { o: ObjectRun }) {
           <h2 className="nx-sec-h">{t("Golden records")}</h2>
           {q.data ? <span className="nx-tg-sub">{t("{total} {total2, plural, one {record} other {records}}", { total: int(total), total2: total })}</span> : null}
         </div>
-        <DataTable
+        <ExportTable><DataTable
           rows={rows}
           columns={columns}
           rowKey={(r) => r.id}
@@ -547,7 +548,7 @@ export function GoldenTab({ o }: { o: ObjectRun }) {
           empty={{ heading: t("Golden records"), text: t("No golden record yet for {label}. The pairs above become golden records when a steward merges them.", { label }) }}
           onOpenRow={(r) => openItem({ kind: "golden", id: r.id })}
           density="compact"
-        />
+        /></ExportTable>
         {total > GOLDEN_PAGE ? (
           <div className="nx-tg-row">
             <span className="nx-tg-sub">{t("{from} to {to} of {total}", { from: int(from), to: int(to), total: int(total) })}</span>
