@@ -10,7 +10,7 @@ import { useSystemObjectList, useSystemProfiles } from "@/lib/v2/runs-queries";
 import { DASH } from "@/lib/v2/score";
 import { useRefreshV2 } from "@/lib/v2/sys-queries";
 import type { SyncProfile } from "@/types/api";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "../../kit/Link";
 import { useOutcome } from "@/design/v2/inspector/shared";
 import { Button, Chip, Confirm, DataTable, EmptyState, ErrorState, Skeleton, type Column } from "../../kit";
 import { ExportTable } from "../ExportTable";
@@ -94,7 +94,7 @@ export function Schedules({ id }: { id: string }) {
     });
 
   const columns: Column<SyncProfile>[] = [
-    { id: "object", label: t("Object"), cell: (p) => <V2Link className="nx-link" href={hrefFor({ kind: "syncschedule", id: `${id}:${p.id}` })}>{labelOf(p.domain)}</V2Link> },
+    { id: "object", label: t("Object"), cell: (p) => <NxLink className="nx-link" href={hrefFor({ kind: "syncschedule", id: `${id}:${p.id}` })}>{labelOf(p.domain)}</NxLink> },
     { id: "schedule", label: t("Schedule"), cell: (p) => describeCron(p.schedule_cron) },
     { id: "mode", label: t("Mode"), cell: (p) => (p.extraction_mode === "delta" ? t("Changes only") : t("Full")) },
     { id: "next", label: t("Next"), cell: (p) => (p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : DASH) },

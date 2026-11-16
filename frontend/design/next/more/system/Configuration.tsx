@@ -12,7 +12,7 @@ import { useConfigCompare, useConfigDrift, useRefreshV2, useSproConfig } from "@
 import { describeTable } from "@/lib/v2/sap-fields";
 import { DASH } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "../../kit/Link";
 import { useOutcome } from "@/design/v2/inspector/shared";
 import { Result } from "./Result";
 import { Button, Code, DataTable, EmptyState, ErrorState, SegmentedControl, Skeleton, type Column } from "../../kit";
@@ -36,7 +36,7 @@ function Areas({ id }: { id: string }) {
         return (
           <li key={a.area} className="nx-card nx-cell-stack">
             <span className="nx-row nx-wrap">
-              <V2Link className="nx-link" href={hrefFor({ kind: "config", id: `${id}:${a.area}` })}>{a.label}</V2Link>
+              <NxLink className="nx-link" href={hrefFor({ kind: "config", id: `${id}:${a.area}` })}>{a.label}</NxLink>
               <span className="nx-sub">{t("{AREA_STATUS_WORD}, {tables_done} of {tables_total} objects", { AREA_STATUS_WORD: AREA_STATUS_WORD[a.status] ?? labelOf(a.status), tables_done: a.tables_done, tables_total: a.tables_total })}</span>
             </span>
             {a.status === "loaded" || a.status === "failed" ? <span>{areaFound(a)}</span> : null}

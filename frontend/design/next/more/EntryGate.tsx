@@ -10,7 +10,7 @@ import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int } from "@/lib/v2/score";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "../kit/Link";
 import { Button, Code, DataTable, ErrorState, Skeleton, Stepper } from "../kit";
 import { AreaTrend } from "../viz";
 import { About, Banner, Fold, Panel } from "./cfg-parts";
@@ -101,7 +101,7 @@ function RequestTable({ rows, caption, empty, prefix }: { rows: GateRequest[]; c
       rowLabel={(r) => r.title || t("Untitled request")}
       empty={{ heading: empty }}
       columns={[
-        { id: "req", label: t("Request"), cell: (r) => <span data-testid={`${prefix}-${r.id}`}><V2Link href={hrefFor({ kind: "request", id: r.id })}>{r.title || t("Untitled request")}</V2Link></span> },
+        { id: "req", label: t("Request"), cell: (r) => <span data-testid={`${prefix}-${r.id}`}><NxLink href={hrefFor({ kind: "request", id: r.id })}>{r.title || t("Untitled request")}</NxLink></span> },
         { id: "obj", label: t("Object"), cell: (r) => objectWord(r.object) },
         { id: "status", label: t("Status"), cell: (r) => statusWord(r.status) },
         { id: "opened", label: t("Opened"), cell: (r) => formatDate(r.created_at, "date") },
@@ -150,7 +150,7 @@ function StewardResults({ records }: { records: { index: number; steward_request
         rowLabel={(r) => t("Record {n}", { n: r.index + 1 })}
         columns={[
           { id: "rec", label: t("Record"), align: "end", cell: (r) => int(r.index + 1) },
-          { id: "req", label: t("Request"), cell: ({ steward_request: sr }) => (sr?.request_id ? <V2Link href={hrefFor({ kind: "request", id: sr.request_id })}>{t("Open the request")}</V2Link> : <Dash />) },
+          { id: "req", label: t("Request"), cell: ({ steward_request: sr }) => (sr?.request_id ? <NxLink href={hrefFor({ kind: "request", id: sr.request_id })}>{t("Open the request")}</NxLink> : <Dash />) },
           { id: "status", label: t("Status"), cell: ({ steward_request: sr }) => (sr?.status ? statusWord(sr.status) : <Dash />) },
           { id: "note", label: t("Note"), cell: ({ steward_request: sr }) => (sr?.request_id ? (sr.existing ? t("Already open for this record. No second request was added.") : t("Opened and sent to the approval workflow.")) : notOpenedWord(sr?.reason)) },
         ]}
@@ -173,7 +173,7 @@ function HoldResults({ records }: { records: { index: number; hold?: RecordHold 
         columns={[
           { id: "rec", label: t("Record"), align: "end", cell: (r) => int(r.index + 1) },
           { id: "hold", label: t("Hold"), cell: (r) => holdWord(r.hold.state) },
-          { id: "req", label: t("Request"), cell: (r) => (r.hold.request_id ? <V2Link href={hrefFor({ kind: "request", id: r.hold.request_id })}>{t("Open the request")}</V2Link> : <Dash />) },
+          { id: "req", label: t("Request"), cell: (r) => (r.hold.request_id ? <NxLink href={hrefFor({ kind: "request", id: r.hold.request_id })}>{t("Open the request")}</NxLink> : <Dash />) },
           { id: "key", label: t("SAP key"), cell: (r) => (r.hold.sap_key ? <Code code={r.hold.sap_key} /> : <Dash why={t("SAP has not given a key.")} />) },
           { id: "means", label: t("What it means"), cell: (r) => holdNote(r.hold) },
         ]}

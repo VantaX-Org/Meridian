@@ -18,7 +18,6 @@ import { ZObjects } from "../more/ZObjects";
 import { Writeback } from "../more/Writeback";
 import { GoldenWriteback } from "../more/GoldenWriteback";
 import { AdminHome, AdminSectionView } from "../admin/Admin";
-import { LegacyMount } from "../shell/LegacyMount";
 import { AdminFlow, FlowCards, isAdminFlow } from "../admin/AdminFlows";
 import "../shell/shell.css";
 import "../more/more.css";
@@ -110,7 +109,7 @@ export function More({ slug }: { slug?: string[] }) {
   if (group) return <GroupView group={group} />;
 
   const single = SINGLES[key];
-  if (single) return <Frame title={single.title()}><LegacyMount><single.Screen /></LegacyMount></Frame>;
+  if (single) return <Frame title={single.title()}><single.Screen /></Frame>;
   return <EmptyState heading={t("Nothing at this address")} />;
 }
 
@@ -128,7 +127,7 @@ function GroupView({ group }: { group: (typeof GROUPS)[number] }) {
           <StripTitle own={own} title={group.title()} />
           <Tabs items={group.tabs.map((x) => ({ id: x.id, label: x.label() }))} value={tab.id} onChange={(id) => router.replace(`${path}?tab=${id}`)} label={group.title()} idBase="nx-more" />
         </header>
-        <div ref={ref} id={`nx-more-panel-${tab.id}`} role="tabpanel"><LegacyMount><tab.Screen /></LegacyMount></div>
+        <div ref={ref} id={`nx-more-panel-${tab.id}`} role="tabpanel"><tab.Screen /></div>
       </div>
     );
   }

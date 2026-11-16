@@ -10,7 +10,7 @@ import { describeTable } from "@/lib/v2/sap-fields";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { driftWords } from "@/lib/v2/step9";
 import { useAutomation, useDriftAlerts } from "@/lib/v2/step9-queries";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "../../kit/Link";
 import { Chip, Code, EmptyState, ErrorState, Skeleton } from "../../kit";
 import { Panel } from "../cfg-parts";
 
@@ -24,7 +24,7 @@ function areaWords(a: DriftAlert["areas"][number]): string {
 /** What a drift alert did about the change: the re-score, in words, with the run it re-scores. */
 function Rescore({ a }: { a: DriftAlert }) {
   if (a.rescore_queued && a.version_id) {
-    return <Chip tone="good">{tn("Re-score queued: {link}", { link: <V2Link href={`/run/${encodeURIComponent(a.version_id)}`}>{t("open the run")}</V2Link> })}</Chip>;
+    return <Chip tone="good">{tn("Re-score queued: {link}", { link: <NxLink href={`/run/${encodeURIComponent(a.version_id)}`}>{t("open the run")}</NxLink> })}</Chip>;
   }
   if (!a.objects.length) return <span>{t("Not re-scored: no rule of a scored object reads these tables.")}</span>;
   return <span>{t("Not re-scored: the run has no stored dataset, or an analysis of it was already running.")}</span>;
@@ -51,7 +51,7 @@ function AlertItem({ a, objectHref }: { a: DriftAlert; objectHref: (module: stri
           : a.rules.map((r, i) => (
               <span key={r.check_id}>
                 {i > 0 ? ", " : ""}
-                <V2Link href={hrefFor({ kind: "rule", id: r.check_id })} className="nx-link"><Code code={r.check_id} text={r.name ?? undefined} /></V2Link>
+                <NxLink href={hrefFor({ kind: "rule", id: r.check_id })} className="nx-link"><Code code={r.check_id} text={r.name ?? undefined} /></NxLink>
               </span>
             ))}
       </span>
@@ -64,7 +64,7 @@ function AlertItem({ a, objectHref }: { a: DriftAlert; objectHref: (module: stri
               return (
                 <span key={m}>
                   {i > 0 ? ", " : ""}
-                  {href ? <V2Link href={href} className="nx-link">{moduleText(m)}</V2Link> : moduleText(m)}
+                  {href ? <NxLink href={href} className="nx-link">{moduleText(m)}</NxLink> : moduleText(m)}
                 </span>
               );
             })}

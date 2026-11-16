@@ -16,7 +16,7 @@ import { moduleText } from "@/lib/v2/labels";
 import { describeField, sapField } from "@/lib/v2/sap-fields";
 import { int, moduleFromSlug } from "@/lib/v2/score";
 import { recordItemId } from "@/lib/v2/work";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "../kit/Link";
 import { Button, Code, DataTable, EmptyState, ErrorState, SegmentedControl, Skeleton, useToast, type Column } from "../kit";
 import { SevChip } from "../object/tabs/tabs-g-parts";
 import { About, Banner, Fold, HBars, Panel } from "./cfg-parts";
@@ -108,7 +108,7 @@ export function Issues() {
         const fieldText = i.field ? describeField(i.field) : null;
         return (
           <span className="nx-cell-stack">
-            <V2Link href={hrefFor({ kind: "rule", id: i.check_id })} className="nx-link nx-mono" data-testid="issues-rule">{i.check_id}</V2Link>
+            <NxLink href={hrefFor({ kind: "rule", id: i.check_id })} className="nx-link nx-mono" data-testid="issues-rule">{i.check_id}</NxLink>
             <span>{i.message ?? <span title={t("The run stored no message for this rule.")}>-</span>}</span>
             {i.field ? <Code code={sapField(i.field)} text={fieldText ?? undefined} /> : null}
           </span>
@@ -349,8 +349,8 @@ function IssueDetail({ id, onClose }: { id: string; onClose: () => void }) {
       ) : (
         <>
           <p className="nx-row nx-wrap">
-            <V2Link href={hrefFor({ kind: "record", id: recordItemId(one.data.issue) })} className="nx-link" data-testid="issues-open-record">{t("Open the record")}</V2Link>
-            <V2Link href={hrefFor({ kind: "rule", id: one.data.issue.check_id })} className="nx-link">{t("Open the rule")}</V2Link>
+            <NxLink href={hrefFor({ kind: "record", id: recordItemId(one.data.issue) })} className="nx-link" data-testid="issues-open-record">{t("Open the record")}</NxLink>
+            <NxLink href={hrefFor({ kind: "rule", id: one.data.issue.check_id })} className="nx-link">{t("Open the rule")}</NxLink>
           </p>
           <p className="nx-sub">
             {t("First failed {first}, last failed {last}", {

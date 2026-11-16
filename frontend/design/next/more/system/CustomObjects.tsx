@@ -9,7 +9,7 @@ import { useRefreshV2, useZAnomalies, useZDormant, useZDrift, useZGhost, useZMap
 import { describeField, describeTable } from "@/lib/v2/sap-fields";
 import { DASH, int } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "../../kit/Link";
 import { useOutcome } from "@/design/v2/inspector/shared";
 import { Button, Code, DataTable, EmptyState, ErrorState, SegmentedControl, Skeleton, type Column } from "../../kit";
 import { ExportTable } from "../ExportTable";
@@ -56,7 +56,7 @@ function Registry() {
   type E = NonNullable<typeof q.data>["entries"][number];
   const entries = [...(q.data?.entries ?? [])].sort((a, b) => b.transaction_count_total - a.transaction_count_total);
   const columns: Column<E>[] = [
-    { id: "object", label: t("Object"), cell: (e) => <V2Link className="nx-link" href={hrefFor({ kind: "zobject", id: e.id })}>{obj(e.object_name)}</V2Link> },
+    { id: "object", label: t("Object"), cell: (e) => <NxLink className="nx-link" href={hrefFor({ kind: "zobject", id: e.id })}>{obj(e.object_name)}</NxLink> },
     { id: "category", label: t("Category"), cell: (e) => labelOf(e.category) },
     { id: "module", label: t("Module"), cell: (e) => labelOf(e.module) },
     { id: "standard", label: t("Standard equivalent"), cell: (e) => (e.standard_equivalent ? obj(e.standard_equivalent) : DASH) },

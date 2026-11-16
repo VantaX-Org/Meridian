@@ -8,7 +8,7 @@ import { useOpenItem } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int, pct1 } from "@/lib/v2/score";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "../kit/Link";
 import { Button, Code, DataTable, EmptyState, ErrorState, Skeleton, type Column } from "../kit";
 import { About, Panel } from "./cfg-parts";
 import { Dash } from "./entry-parts";
@@ -242,7 +242,7 @@ function FieldHits({ q, system }: { q: string; system: string }) {
         empty={{ heading: t("No field matches this search.") }}
       />
       <p className="nx-sub">
-        <V2Link href={`/catalogue?q=${encodeURIComponent(q)}`}>{t("Search the tables for these words")}</V2Link>
+        <NxLink href={`/catalogue?q=${encodeURIComponent(q)}`}>{t("Search the tables for these words")}</NxLink>
       </p>
     </Panel>
   );

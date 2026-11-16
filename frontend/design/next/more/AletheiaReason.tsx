@@ -6,7 +6,7 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { f1, int } from "@/lib/v2/score";
-import { DeltaBar } from "@/design/v2/charts";
+import { DeltaBar } from "../kit/viz/DeltaBar";
 import { Code, DataTable, EmptyState, ErrorState, Skeleton, type Column } from "../kit";
 import { AreaTrend } from "../viz";
 import { Banner } from "./cfg-parts";
