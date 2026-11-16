@@ -11473,4 +11473,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.": "Regeln nach fehlerhaften Datensätzen geordnet; der Anteil ist der Teil der Grundgesamtheit dieser Regel, der fehlschlägt, ermittelt aus dem neuesten Lauf jedes Objekts.",
   "How the score is made": "So entsteht die Bewertung",
   "Score of {label}": "Bewertung von {label}",
+  // nx-admin: admin, shell, flows and feed native ports
+  "OAuth client credentials": "OAuth-Client-Anmeldedaten",
+  "{type} signs in with an SAP user and password. Meridian does not send passwords from this screen, so an administrator connects it on the server. You can connect a cloud system here.": "{type} meldet sich mit einem SAP-Benutzer und Passwort an. Meridian sendet von dieser Seite keine Passwörter, daher verbindet ein Administrator das System auf dem Server. Hier können Sie ein Cloud-System verbinden.",
 };

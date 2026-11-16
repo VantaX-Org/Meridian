@@ -11473,4 +11473,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.": "不合格レコード数の多い順に並べたルールです。割合は、そのルールの対象母集団のうち不合格となる部分で、各オブジェクトの最新の実行から算出しています。",
   "How the score is made": "スコアの算出方法",
   "Score of {label}": "{label}のスコア",
+  // nx-admin: admin, shell, flows and feed native ports
+  "OAuth client credentials": "OAuth クライアント資格情報",
+  "{type} signs in with an SAP user and password. Meridian does not send passwords from this screen, so an administrator connects it on the server. You can connect a cloud system here.": "{type} は SAP ユーザーとパスワードでサインインします。Meridian はこの画面からパスワードを送信しないため、管理者がサーバー上で接続します。ここではクラウドシステムを接続できます。",
 };
