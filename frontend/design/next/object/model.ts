@@ -4,7 +4,7 @@
  */
 import type { VersionHead } from "@/lib/api/v2/runs";
 import type { RunOption } from "@/design/next/kit";
-import { kindWord, shortDate, triggerOf } from "@/design/v2/RunTimeline";
+import { kindWord, shortDate, triggerOf } from "../runs/format";
 import { f1 } from "@/lib/v2/score";
 
 /** A score with one decimal, the decimal left off when it is zero ("77", "77.5"). */

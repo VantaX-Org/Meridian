@@ -3,7 +3,7 @@
 /** The Downloads menu of an object: each file says what it is for. Opens on `d` and on the `nx:download` event. */
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/design/next/kit";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { downloadFixSheet } from "@/lib/api/work";
 import { downloadCleaningWorkbook } from "@/lib/api/next/runs";
 import { exportObject } from "@/lib/api/v2/object-records";
@@ -56,10 +56,10 @@ export function DownloadsMenu({ o, open, onOpen }: { o: ObjectRun; open: boolean
               <span>{t("This object's dimension scores and every rule result at this run.")}</span>
             </button>
           ) : null}
-          <V2Link role="menuitem" className="nx-dl-item" href={id ? `/load?run=${encodeURIComponent(id)}` : "/load"}>
+          <NxLink role="menuitem" className="nx-dl-item" href={id ? `/load?run=${encodeURIComponent(id)}` : "/load"}>
             <strong>{t("Export in load order")}</strong>
             <span>{t("The cleaned data in the order the new system loads it.")}</span>
-          </V2Link>
+          </NxLink>
           {error ? <p role="alert" className="nx-error-line">{error}</p> : null}
         </div>
       ) : null}

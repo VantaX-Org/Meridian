@@ -101,7 +101,7 @@ describe("Policy packs, native", () => {
     const ev = await screen.findByTestId("pack-evidence-sox");
     const bank = await within(ev).findByTestId("class-vendor_bank");
     expect(norm(bank)).toContain("Vendor bank data");
-    expect(norm(bank)).toContain("LFBK.BANKN");
+    expect(norm(bank)).toContain("LFBK-BANKN");
     const table = within(bank).getByRole("table", { name: "Rules evidencing Vendor bank data" });
     expect(norm(table)).toContain("AP039");
     expect(norm(table)).toContain("6 of 12,884");

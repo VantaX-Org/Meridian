@@ -10,7 +10,7 @@ import { useLandscape } from "@/lib/v2/queries";
 import { useSystemExtractions, useSystemProfiles, useSystemsExtended, useV2Jobs } from "@/lib/v2/runs-queries";
 import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { useOpenItem, useV2Href } from "@/lib/v2/hooks";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { Configuration } from "@/design/v2/screens/system/Configuration";
 import { CustomObjects } from "@/design/v2/screens/system/CustomObjects";
 import { SourceDesign } from "@/design/v2/screens/system/SourceDesign";
@@ -62,7 +62,7 @@ function Extractions({ id }: { id: string }) {
               <LongText text={[when, v.baseline ? t("Baseline") : null, v.label].filter(Boolean).join(", ")} className="nx-row-main" />
               <span className="nx-sub">{t("{n} objects", { n: v.objects.length })}</span>
               <span className="nx-sub">{t("{records} records", { records: int(records) })}</span>
-              {v.analysed_at ? <V2Link href={`/run/${v.id}`}>{t("Open the run")}</V2Link> : <span className="nx-sub">{v.analysable ? t("Not analysed") : t("Cannot be analysed")}</span>}
+              {v.analysed_at ? <NxLink href={`/run/${v.id}`}>{t("Open the run")}</NxLink> : <span className="nx-sub">{v.analysable ? t("Not analysed") : t("Cannot be analysed")}</span>}
               <Button size={32} variant="quiet" aria-pressed={chosen?.id === v.id} aria-label={t("Change log of the download of {when}", { when })} onClick={() => setShown(v.id)}>{t("Change log")}</Button>
             </li>
           );
@@ -89,7 +89,7 @@ function About({ id }: { id: string }) {
         <ul className="nx-pick" aria-label={t("Objects")} data-testid="system-objects">
           {cells.map((c) => (
             <li key={c.module} className="nx-row">
-              <V2Link href={`/o/${systemSlug(system?.name ?? "")}/${moduleSlug(c.module)}`} className="nx-row-main">{L?.objects.find((o) => o.module === c.module)?.label ?? c.module}</V2Link>
+              <NxLink href={`/o/${systemSlug(system?.name ?? "")}/${moduleSlug(c.module)}`} className="nx-row-main">{L?.objects.find((o) => o.module === c.module)?.label ?? c.module}</NxLink>
               <span className="nx-sub">{f1(c.score)}</span>
               <Chip>{VERDICT_LABEL[c.verdict]}</Chip>
               <span className="nx-sub">{t("{records} records", { records: int(c.records_checked) })}</span>
@@ -102,7 +102,7 @@ function About({ id }: { id: string }) {
         <ul className="nx-pick" aria-label={t("Recent jobs")}>
           {mine.map((j) => (
             <li key={j.id} className="nx-row">
-              <V2Link href={hrefFor({ kind: "job", id: j.id })} className="nx-row-main">{`${JOB_KIND_LABEL[j.kind]}, ${jobObject(j)}`}</V2Link>
+              <NxLink href={hrefFor({ kind: "job", id: j.id })} className="nx-row-main">{`${JOB_KIND_LABEL[j.kind]}, ${jobObject(j)}`}</NxLink>
               <Chip>{JOB_STATUS_LABEL[j.status]}</Chip>
               <span className="nx-sub">{formatDate(j.started_at * 1000, "datetime")}</span>
             </li>
@@ -132,8 +132,8 @@ export function SystemPage({ id }: { id: string }) {
       <div className="nx-row nx-wrap"><Chip>{systemTypeText(s.system_type)}</Chip><Chip>{s.environment}</Chip><Chip tone={HEALTH_TONE[s.health_status]}>{healthText(s.health_status)}</Chip></div>
       {s.health_message ? <p className="nx-sub">{s.health_message}</p> : null}
       <div className="nx-row nx-wrap" data-testid="system-actions">
-        <V2Link href={hrefFor({ kind: "system", id })} className="nx-btn nx-btn-primary">{t("Test, load or extract")}</V2Link>
-        <V2Link href={hrefFor({ kind: "connection", id })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Connection settings")}</V2Link>
+        <NxLink href={hrefFor({ kind: "system", id })} className="nx-btn nx-btn-primary">{t("Test, load or extract")}</NxLink>
+        <NxLink href={hrefFor({ kind: "connection", id })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Connection settings")}</NxLink>
       </div>
       <SegmentedControl label={t("System")} value={seg} onChange={setSeg} items={[
         { value: "about", label: t("About") },

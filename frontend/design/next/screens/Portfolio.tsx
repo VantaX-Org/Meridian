@@ -6,7 +6,7 @@ import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { useV2Session } from "@/lib/v2/hooks";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { errorSentence } from "@/lib/api/v2/client";
 import { analyseRun } from "@/lib/api/v2/runs";
 import { downloadWorkbooks, startObjects, usePortfolio, type CycleStep, type PortfolioQuery, type PortfolioRow } from "@/lib/api/next/portfolio";
@@ -134,7 +134,7 @@ export function Portfolio() {
           <h1>{t("Portfolio")}</h1>
           <p>{t("Every object at its newest run, where it stands in the cycle, and what to do next.")}</p>
         </div>
-        <V2Link className="nx-btn nx-btn-quiet nx-btn-sm" href="/">{t("Landscape map")}</V2Link>
+        <NxLink className="nx-btn nx-btn-quiet nx-btn-sm" href="/">{t("Landscape map")}</NxLink>
       </header>
 
       <LiveRuns />

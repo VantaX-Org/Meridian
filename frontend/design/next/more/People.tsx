@@ -14,7 +14,7 @@ import { exportGrid } from "@/lib/api/v2/roles";
 import { errorSentence } from "@/lib/api/v2/client";
 import { downloadCsv, tableCsv } from "@/lib/v2/grid-export";
 import { failureText } from "@/lib/v2/errors";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { Button, Chip, DataTable, useToast, type Column } from "../kit";
 import { ListSearch, QueryView } from "./states";
 import { PeopleCard } from "./cards";
@@ -107,7 +107,7 @@ export function People() {
       id: "name", label: PEOPLE_SORT_LABEL.name, compare: (a, b) => a.name.localeCompare(b.name),
       cell: (p) => (
         <span className="nx-cell-stack">
-          <V2Link href={hrefFor({ kind: "person", id: p.id })}>{p.name}</V2Link>
+          <NxLink href={hrefFor({ kind: "person", id: p.id })}>{p.name}</NxLink>
           {p.is_me ? <Chip tone="accent">{t("you")}</Chip> : null}
           <span className="nx-sub">{roleWord(p.role)}</span>
         </span>
@@ -120,7 +120,7 @@ export function People() {
       id: "overdue", label: PEOPLE_SORT_LABEL.overdue, align: "end", compare: (a, b) => a.overdue - b.overdue,
       cell: (p) => p.overdue > 0 ? (
         <span className="nx-cell-stack">
-          <V2Link href={overdueHref(p.id)} data-testid="person-overdue">{int(p.overdue)}</V2Link>
+          <NxLink href={overdueHref(p.id)} data-testid="person-overdue">{int(p.overdue)}</NxLink>
           {canAssign && !p.is_me ? <RemindButton id={p.id} name={p.name} /> : null}
         </span>
       ) : int(p.overdue),
@@ -137,14 +137,14 @@ export function People() {
         <p className="nx-sub" data-testid="people-sentence">{sentenceOf(people)}</p>
         <div className="nx-row nx-wrap" data-testid="people-actions">
           {worst ? (
-            <V2Link href={overdueHref(worst.id)} className="nx-btn nx-btn-primary" data-testid="people-next">
+            <NxLink href={overdueHref(worst.id)} className="nx-btn nx-btn-primary" data-testid="people-next">
               {t("Open {name}'s overdue work", { name: worst.name })}
-            </V2Link>
+            </NxLink>
           ) : null}
-          {canAssign && live ? <V2Link href={hrefFor({ kind: "balance", id: "" })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Balance work")}</V2Link> : null}
-          <V2Link href={hrefFor({ kind: "contracts", id: "" })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Data contracts")}</V2Link>
-          {live ? <V2Link href={hrefFor({ kind: "away", id: "" })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Out of office")}</V2Link> : null}
-          <V2Link href={hrefFor({ kind: "triage", id: "" })} className="nx-btn nx-btn-quiet nx-btn-sm">{t("Triage and SLA")}</V2Link>
+          {canAssign && live ? <NxLink href={hrefFor({ kind: "balance", id: "" })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Balance work")}</NxLink> : null}
+          <NxLink href={hrefFor({ kind: "contracts", id: "" })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Data contracts")}</NxLink>
+          {live ? <NxLink href={hrefFor({ kind: "away", id: "" })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Out of office")}</NxLink> : null}
+          <NxLink href={hrefFor({ kind: "triage", id: "" })} className="nx-btn nx-btn-quiet nx-btn-sm">{t("Triage and SLA")}</NxLink>
           {session.can("export") ? (
             <>
               <Button size={32} variant="quiet" icon="download" onClick={() => void save("xlsx")}>{t("Export to Excel")}</Button>
@@ -166,7 +166,7 @@ export function People() {
         />
         {unassigned != null && summary ? (
           <p className="nx-sub" data-testid="people-unassigned">
-            <V2Link href="/work?assigned=unassigned">{t("{unassigned} of the {total} open records are assigned to nobody.", { unassigned: int(unassigned), total: int(summary.totals.open) })}</V2Link>{" "}
+            <NxLink href="/work?assigned=unassigned">{t("{unassigned} of the {total} open records are assigned to nobody.", { unassigned: int(unassigned), total: int(summary.totals.open) })}</NxLink>{" "}
             {t("Assign them on Work to give each an owner and an SLA.")}
           </p>
         ) : null}

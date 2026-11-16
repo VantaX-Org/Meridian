@@ -59,8 +59,8 @@ describe("What a rule reads sheet", () => {
   it("shows fields, lookups, tables, joins, owners and glossary terms", async () => {
     renderWithQuery(<RuleReadsSheet id="MM003" close={() => {}} />);
     const body = await screen.findByTestId("rule-reads");
-    await waitFor(() => expect(within(body).getAllByText("MARA.MEINS").length).toBe(2));
-    expect(within(body).getByText("T006.MSEHI")).toBeTruthy();
+    await waitFor(() => expect(within(body).getAllByText("MARA-MEINS").length).toBe(2));
+    expect(within(body).getByText("T006-MSEHI")).toBeTruthy();
     expect(within(body).getByText(/MARA to T006/)).toBeTruthy();
     expect(within(body).getByText("Thandi Mokoena")).toBeTruthy();
   });

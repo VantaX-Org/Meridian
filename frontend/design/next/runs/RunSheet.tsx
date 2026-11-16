@@ -14,7 +14,7 @@ import { startRun, useRunsPage, useTemplatesFor } from "@/lib/api/next/runs";
 import type { DownloadScope } from "@/lib/api/system-objects";
 import { Button, EmptyState, ErrorState, Sheet, Skeleton, useToast } from "../kit";
 import { clearDraft, loadDraft, saveDraft } from "./draft";
-import { RunForecast } from "@/design/v2/screens/step10/Prediction";
+import { RunForecast } from "./RunForecast";
 import "./runs.css";
 
 export interface RunDraft {

@@ -9,7 +9,7 @@ import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { useLandscape } from "@/lib/v2/queries";
 import { useWaves } from "@/lib/v2/admin-queries";
 import { NextStep } from "@/design/v2/screens/Landscape";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { errorSentence } from "@/lib/api/v2/client";
 import { analyseRun } from "@/lib/api/v2/runs";
 import { fixtureAllowed, useFixture } from "@/lib/api/v2/fixture";
@@ -149,11 +149,11 @@ export function Home() {
       {feed.isError ? <ErrorState error={feed.error} fallback={t("Home could not be read. Check that the API is reachable, then retry.")} onRetry={() => void feed.refetch()} />
         : feed.isLoading ? <div className="nx-fd-feed" aria-live="polite">{[0, 1, 2].map((i) => <StoryCardSkeleton key={i} />)}</div>
         : rows.length === 0 && systems.length > 0 ? (
-          <EmptyState heading={t("No run yet.")} action={<V2Link className="nx-btn nx-btn-primary" href={`/s/${systems[0].id}`}>{t("Run your first pull")}</V2Link>}>
+          <EmptyState heading={t("No run yet.")} action={<NxLink className="nx-btn nx-btn-primary" href={`/s/${systems[0].id}`}>{t("Run your first pull")}</NxLink>}>
             {t("A system is connected. Pull its objects to see their quality here.")}
           </EmptyState>
         ) : rows.length === 0 ? (
-          <EmptyState heading={t("Connect a system to start")} action={<><Button variant="primary" onClick={() => sheets.open({ kind: "connect", id: "" })}>{t("Connect a system")}</Button>{fixtureAllowed() ? <> <V2Link className="nx-btn nx-btn-quiet" href="/portfolio?fixture=1">{t("Use the demo data")}</V2Link></> : null}</>}>
+          <EmptyState heading={t("Connect a system to start")} action={<><Button variant="primary" onClick={() => sheets.open({ kind: "connect", id: "" })}>{t("Connect a system")}</Button>{fixtureAllowed() ? <> <NxLink className="nx-btn nx-btn-quiet" href="/portfolio?fixture=1">{t("Use the demo data")}</NxLink></> : null}</>}>
             {t("Meridian pulls your master data once, scores it, and gives you a workbook to clean it in Excel.")}
           </EmptyState>
         ) : (

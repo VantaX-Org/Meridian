@@ -13,7 +13,7 @@ import { t } from "@/lib/v2/i18n";
 import { f1, int, pct1 } from "@/lib/v2/score";
 import { useV2Session } from "@/lib/v2/hooks";
 import { useRuleList } from "@/lib/v2/sys-queries";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { Button, Chip, Code, DataTable, EmptyState, ErrorState, PartBar, Skeleton, Sparkline, StatCard, useToast, type ChipTone, type Column } from "../kit";
 import { AreaTrend, StackedBar } from "../viz";
 import "./analytics.css";
@@ -155,7 +155,7 @@ export function WorkAnalytics() {
             ? t("At {pace} closed a day over the last {n} days, the list is clear by {date}.", { pace: f1(b.pace_per_day), n: int(b.pace_window_days), date: formatDate(b.projected_finish, "date") })
             : t("At the pace of the last {n} days the list is not getting shorter, so there is no finish date.", { n: int(b.pace_window_days) })}
         </p>
-        {b.open_now > 0 ? <V2Link href="/work" className="nx-btn nx-btn-primary nx-btn-sm" data-testid="wa-primary">{t("Open the work list")}</V2Link> : null}
+        {b.open_now > 0 ? <NxLink href="/work" className="nx-btn nx-btn-primary nx-btn-sm" data-testid="wa-primary">{t("Open the work list")}</NxLink> : null}
       </section>
       <div className="nx-statgrid">
         <StatCard label={t("Records with an open issue")} value={b.open_records ?? 0} format={(n) => (b.open_records == null ? f1(null) : int(n))} />
@@ -231,7 +231,7 @@ function RunChangePanel() {
   return (
     <Section q={q} title={title} meta={t("Each object at its latest run against the run before")} testId="wa-run-change">
       {(d) => d.objects.length === 0 ? (
-        <EmptyState heading={t("No object has two runs to compare yet.")} action={<V2Link href="/runs" className="nx-btn nx-btn-secondary nx-btn-sm">{t("Open the runs")}</V2Link>} />
+        <EmptyState heading={t("No object has two runs to compare yet.")} action={<NxLink href="/runs" className="nx-btn nx-btn-secondary nx-btn-sm">{t("Open the runs")}</NxLink>} />
       ) : (
         <>
           <div className="nx-wa-bars">
