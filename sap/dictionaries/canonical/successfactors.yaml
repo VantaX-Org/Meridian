@@ -1023,6 +1023,14 @@ tables:
       LOCATION_GROUP:              {source: FOLocation.locationGroup, type: STRING, verify: true, check_table: FOLocationGroup, description: Location group}
       GEOZONE:                     {source: FOLocation.geozone, type: STRING, verify: true, check_table: FOGeozone, description: Geozone}
       CITY:                        {source: FOLocation.city, type: STRING, verify: true, description: City}
+      NAME:                        {source: FOLocation.name, type: STRING, verify: true, length: 128, description: Location name}
+      DESCRIPTION:                 {source: FOLocation.description, type: STRING, verify: true, length: 255, description: Location description}
+      LEGAL_ENTITY:                {source: FOLocation.companyFlx, type: STRING, verify: true, length: 128, check_table: FOCompany, description: Parent legal entity}
+      ADDRESS_LINE_1:              {source: FOLocation.addressNavDEFLT.address1, type: STRING, verify: true, length: 256, description: Address line 1}
+      ADDRESS_LINE_2:              {source: FOLocation.addressNavDEFLT.address2, type: STRING, verify: true, length: 256, description: Address line 2}
+      ADDRESS_LINE_3:              {source: FOLocation.addressNavDEFLT.address3, type: STRING, verify: true, length: 256, description: Address line 3}
+      STATE:                       {source: FOLocation.addressNavDEFLT.state, type: STRING, verify: true, length: 128, description: Region, state or county}
+      ZIP_CODE:                    {source: FOLocation.addressNavDEFLT.zipCode, type: STRING, verify: true, length: 32, description: Postal or ZIP code}
 
   FOJOBCODE:
     description: Job classifications (Foundation Object)
@@ -1077,6 +1085,12 @@ tables:
       EXTERNAL_CODE: {source: FOCostCenter.externalCode, type: STRING, length: 128, verify: true}
       STATUS:        {source: FOCostCenter.status, type: STRING, length: 2, verify: true}
       LEGAL_ENTITY:  {source: FOCostCenter.cust_LegalEntity.externalCode, type: STRING, length: 128, verify: true}
+      NAME:          {source: FOCostCenter.name, type: STRING, verify: true, length: 128, description: Cost centre name}
+      DESCRIPTION:   {source: FOCostCenter.description, type: STRING, verify: true, length: 255, description: Cost centre description}
+      PARENT:        {source: FOCostCenter.parent, type: STRING, verify: true, length: 128, check_table: FOCostCenter, description: Parent cost centre}
+      MANAGER:       {source: FOCostCenter.costcenterManager, type: STRING, verify: true, length: 100, description: Cost centre manager (user id)}
+      GL_STATEMENT_CODE: {source: FOCostCenter.glStatementCode, type: STRING, verify: true, length: 128, description: GL statement code}
+      EXTERNAL_OBJECT_ID: {source: FOCostCenter.costcenterExternalObjectID, type: STRING, verify: true, length: 128, description: Cost centre external object id (source system cost centre)}
 
   USERACCOUNT:
     # ponytail: named USERACCOUNT, not the bare entity name USER, to avoid any
@@ -1307,6 +1321,11 @@ tables:
       MAXIMUM_PAY:                 {source: FOPayRange.maximumPay, type: DECIMAL, verify: true, description: Maximum pay}
       CURRENCY:                    {source: FOPayRange.currency, type: STRING, verify: true, description: Currency}
       FREQUENCY_CODE:              {source: FOPayRange.frequencyCode, type: STRING, verify: true, description: Frequency code}
+      NAME:                        {source: FOPayRange.name, type: STRING, verify: true, length: 128, description: Pay range name}
+      DESCRIPTION:                 {source: FOPayRange.description, type: STRING, verify: true, length: 255, description: Pay range description}
+      LEGAL_ENTITY:                {source: FOPayRange.companyFlx, type: STRING, verify: true, length: 128, check_table: FOCompany, description: Legal entity}
+      GEOZONE:                     {source: FOPayRange.geozoneFlx, type: STRING, verify: true, length: 128, check_table: FOGeozone, description: Geozone}
+      PAY_GRADE:                   {source: FOPayRange.payGradeFlx, type: STRING, verify: true, length: 128, check_table: FOPayGrade, description: Pay grade}
 
   # Country-specific objects: one entity set per country (PerGlobalInfoUSA, PerGlobalInfoZAF, ...). A source
   # named Family* reads every set of that family the tenant has and stacks the rows; the country column tells
@@ -1330,6 +1349,23 @@ tables:
       COUNTRY:       {source: FOLegalEntityLocal*.country, type: STRING, length: 128, description: Country}
       START_DATE:    {source: FOLegalEntityLocal*.startDate, type: DATE, description: Effective start date}
       STATUS:        {source: FOLegalEntityLocal*.status, type: STRING, length: 2, description: A active / I inactive}
+      LEGAL_ENTITY_TYPE: {source: FOLegalEntityLocal*.legalEntityType, type: STRING, verify: true, length: 256, description: Legal entity type}
+      FEDERAL_RESERVE_BANK_ID: {source: FOLegalEntityLocal*.federalReserveBankID, type: STRING, verify: true, length: 256, description: Federal Reserve bank id (USA)}
+      FED_RESERVE_BANK_DISTRICT: {source: FOLegalEntityLocal*.fedReserveBankDistrict, type: STRING, verify: true, length: 256, description: Federal Reserve bank district (USA)}
+      EMPLOYER_ID: {source: FOLegalEntityLocal*.employerID, type: STRING, verify: true, length: 256, description: Employer id}
+      EEO_COMPANY_CODE: {source: FOLegalEntityLocal*.eeoCompanyCode, type: STRING, verify: true, length: 256, description: EEO company code (USA)}
+      TAX_UNIT: {source: FOLegalEntityLocal*.taxUnit, type: STRING, verify: true, length: 256, description: Tax unit}
+      SOCIAL_ACCIDENT_INSURANCE: {source: FOLegalEntityLocal*.socialAccidentInsurance, type: STRING, verify: true, length: 256, description: Social accident insurance}
+      SOCIAL_ACCIDENT_INSURANCE_REG_NO: {source: FOLegalEntityLocal*.socialAccidentInsuranceRegistrationNumber, type: STRING, verify: true, length: 256, description: Social accident insurance registration number}
+      SIREN_CODE: {source: FOLegalEntityLocal*.sirenCode, type: STRING, verify: true, length: 256, description: SIREN code (France)}
+      NAF_CODE: {source: FOLegalEntityLocal*.nafCodePost2008, type: STRING, verify: true, length: 256, description: NAF code post 2008 (France)}
+      CIF: {source: FOLegalEntityLocal*.certificadoDeIdentificacionFiscal, type: STRING, verify: true, length: 256, description: Certificado de identificacion fiscal (Spain)}
+      GOSI_REGISTRATION_NUMBER: {source: FOLegalEntityLocal*.gosiRegistrationNumber, type: STRING, verify: true, length: 256, description: GOSI registration number (Saudi Arabia)}
+      GOSI_OFFICE_BRANCH: {source: FOLegalEntityLocal*.gosiOfficeBranch, type: STRING, verify: true, length: 256, description: GOSI office branch (Saudi Arabia)}
+      CUIT_CODE: {source: FOLegalEntityLocal*.cuitCode, type: STRING, verify: true, length: 256, description: CUIT code (Argentina)}
+      UNP_NUMBER: {source: FOLegalEntityLocal*.unpNumber, type: STRING, verify: true, length: 256, description: UNP number (Belarus)}
+      OKPO_NUMBER: {source: FOLegalEntityLocal*.okpoNumber, type: STRING, verify: true, length: 256, description: OKPO number (Russia)}
+      SOCIAL_SECURITY_NUMBER: {source: FOLegalEntityLocal*.socialSecurityNumber, type: STRING, verify: true, length: 256, description: Social security number of the employer}
 
   FO_JOB_CLASS_LOCAL:
     description: Country-specific job classification fields (FOJobClassLocal per country)
@@ -1340,3 +1376,13 @@ tables:
       COUNTRY:       {source: FOJobClassLocal*.country, type: STRING, length: 128, description: Country}
       START_DATE:    {source: FOJobClassLocal*.startDate, type: DATE, description: Effective start date}
       STATUS:        {source: FOJobClassLocal*.status, type: STRING, length: 2, description: A active / I inactive}
+      LOCAL_JOB_TITLE: {source: FOJobClassLocal*.localJobTitle, type: STRING, verify: true, length: 256, description: Local job title}
+      EEO1_JOB_CATEGORY: {source: FOJobClassLocal*.eeo1JobCategory, type: STRING, verify: true, length: 256, description: EEO-1 job category (USA)}
+      EEO_JOB_GROUP: {source: FOJobClassLocal*.eeoJobGroup, type: STRING, verify: true, length: 256, description: EEO job group (USA)}
+      FLSA_STATUS: {source: FOJobClassLocal*.flsaStatusUSA, type: STRING, verify: true, length: 256, description: FLSA status (USA)}
+      ASCO_CODE: {source: FOJobClassLocal*.ascoCode, type: STRING, verify: true, length: 256, description: ASCO code (Australia)}
+      OCCUPATIONAL_CODE: {source: FOJobClassLocal*.occupationalCode, type: STRING, verify: true, length: 256, description: Occupational code}
+      EMPLOYEE_CATEGORY: {source: FOJobClassLocal*.employeeCategory, type: STRING, verify: true, length: 256, description: Employee category}
+      INSEE_CODE: {source: FOJobClassLocal*.inseeCode, type: STRING, verify: true, length: 256, description: INSEE code (France)}
+      OCCUPATIONAL_CLASSIFICATION: {source: FOJobClassLocal*.occupationalClassification, type: STRING, verify: true, length: 256, description: Occupational classification}
+      INAIL_CODE: {source: FOJobClassLocal*.inailCode, type: STRING, verify: true, length: 256, description: INAIL code (Italy)}
