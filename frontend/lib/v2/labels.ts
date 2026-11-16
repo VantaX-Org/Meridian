@@ -45,3 +45,23 @@ export function moneyCompactText(n: number | null | undefined, currency?: string
     return formatMoneyCompact(n, currency);
   }
 }
+
+/** A migration gap type in words; field_status_* names the target field status. Unknown types show as sent. */
+const GAP_TEXT: Record<string, () => string> = {
+  unmapped_field: () => t("Field with no mapping"),
+  obsolete_target: () => t("Target field no longer exists"),
+  target_field_missing: () => t("Target field missing"),
+  value_unmapped: () => t("Value with no target value"),
+  target_mandatory: () => t("Mandatory target field empty"),
+  key_missing: () => t("Key missing"),
+  key_collision: () => t("Two records get the same key"),
+  target_key_exists: () => t("Key already in the target"),
+  length_truncation: () => t("Value longer than the target field"),
+  type_conversion: () => t("Type does not convert"),
+  precision_loss: () => t("Decimals lost"),
+  case_change: () => t("Case changes"),
+  domain_value: () => t("Value outside the field's domain"),
+  check_table_value: () => t("Value not in the check table"),
+  target_config_unverified: () => t("Target configuration not verified"),
+};
+export const gapText = (g: string) => GAP_TEXT[g]?.() ?? (g.startsWith("field_status_") ? t("Field status in the target: {kind}", { kind: g.slice(13) }) : g);
