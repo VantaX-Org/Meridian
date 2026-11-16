@@ -44,7 +44,7 @@ export function Portfolio() {
   const [compared, setCompared] = useState<PortfolioRow[]>([]);
 
   const page = usePortfolio({ ...f, limit: PAGE, offset });
-  const all = usePortfolio({ limit: 500 });
+  const all = usePortfolio({}, true);
   const rows = page.data?.objects ?? [];
   const total = page.data?.total ?? 0;
   const owners = useMemo(() => [...new Set((all.data?.objects ?? []).map((r) => r.owner).filter((o): o is string => !!o))].sort(), [all.data]);
@@ -139,7 +139,11 @@ export function Portfolio() {
 
       <LiveRuns />
 
-      <StatRow rows={all.data?.objects ?? []} loading={all.isLoading} />
+      {all.isError ? (
+        <ErrorState error={all.error} fallback={t("The portfolio totals could not be read. Check that the API is reachable, then retry.")} onRetry={() => void all.refetch()} />
+      ) : (
+        <StatRow rows={all.data?.objects ?? []} loading={all.isLoading} />
+      )}
 
       <div className="nx-pf-filters" role="search" aria-label={t("Filter objects")}>
         <label className="nx-field">

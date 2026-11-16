@@ -11550,4 +11550,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The findings Aletheia ranked could not be read.": "Aletheia が順位付けした検出結果を読み込めませんでした。",
   "The work could not be read.": "作業を読み込めませんでした。",
   "The cost model could not be read.": "コストモデルを読み込めませんでした。",
+  "The portfolio totals could not be read. Check that the API is reachable, then retry.": "ポートフォリオの合計を読み込めませんでした。API に接続できることを確認してから、再試行してください。",
 };
