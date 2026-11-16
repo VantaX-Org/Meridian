@@ -18,7 +18,7 @@
 .nx-pn-table th, .nx-pn-table td { text-align: left; padding: var(--nx-s1) var(--nx-s2); border-bottom: 1px solid var(--nx-border); vertical-align: top; }
 .nx-pn-table thead th { color: var(--nx-ink-3); font-weight: var(--nx-w-heading); }
 .nx-pn-table .nx-pn-num { text-align: right; font-variant-numeric: tabular-nums; }
-.nx-pn-linkbtn { font: inherit; background: none; border: 0; padding: 0; color: var(--nx-accent-ink); text-decoration: underline; cursor: pointer; }
+.nx-pn-linkbtn { font: inherit; background: none; border: 0; padding: 0; color: var(--nx-accent); text-decoration: underline; cursor: pointer; }
 .nx-pn-linkbtn:disabled { color: var(--nx-ink-3); cursor: default; }
 .nx-pn-details > summary { cursor: pointer; color: var(--nx-ink-2); }
 .nx-pn-item { cursor: pointer; }

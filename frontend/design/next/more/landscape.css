@@ -4,7 +4,7 @@
 .nx-ls-sec, .nx-ls-prov { display: flex; flex-direction: column; gap: var(--nx-s3); padding: var(--nx-s4); background: var(--nx-surface); border: 1px solid var(--nx-border); border-radius: var(--nx-r-card); }
 .nx-ls-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--nx-s2) var(--nx-s4); }
 .nx-ls-head h2, .nx-ls-sec h2 { margin: 0; font-size: var(--nx-fs-h2); line-height: var(--nx-lh-h2); color: var(--nx-ink); }
-.nx-ls-banner { margin: 0; padding: var(--nx-s2) var(--nx-s3); background: var(--nx-accent-soft); color: var(--nx-accent-ink); border-radius: var(--nx-r-control); font-size: var(--nx-fs-small); }
+.nx-ls-banner { margin: 0; padding: var(--nx-s2) var(--nx-s3); background: var(--nx-accent-soft); color: var(--nx-ink); border-radius: var(--nx-r-control); font-size: var(--nx-fs-small); }
 .nx-ls-lede { margin: 0; color: var(--nx-ink-2); font-size: var(--nx-fs-body); max-width: 70ch; }
 .nx-ls-sentence { margin: 0; font-size: var(--nx-fs-headline); line-height: var(--nx-lh-headline); color: var(--nx-ink); max-width: 70ch; }
 .nx-ls-fail { margin: 0; padding: var(--nx-s2) var(--nx-s3); background: var(--nx-bad-soft); color: var(--nx-bad-ink); border-radius: var(--nx-r-control); }
@@ -67,7 +67,7 @@ dl.nx-notes dd { margin: 0; color: var(--nx-ink); }
 .nx-at-date { font-size: var(--nx-fs-micro); color: var(--nx-ink-3); white-space: nowrap; }
 .nx-at-mosaic { display: flex; flex-direction: column; gap: var(--nx-s4); }
 .nx-at-sys { display: flex; flex-direction: column; gap: var(--nx-s2); }
-.nx-at-sys[data-ran="true"] .nx-at-sysname { color: var(--nx-accent-ink); }
+.nx-at-sys[data-ran="true"] .nx-at-sysname { color: var(--nx-accent); }
 .nx-at-sysname { margin: 0; font-size: var(--nx-fs-body); font-weight: var(--nx-w-label); color: var(--nx-ink); }
 .nx-at-tiles { display: flex; flex-wrap: wrap; gap: var(--nx-s1); }
 .nx-at-tile { --nx-band: var(--nx-surface-2); display: flex; flex-direction: column; gap: var(--nx-s1); min-width: 8rem; padding: var(--nx-s2) var(--nx-s3); background: var(--nx-band); color: var(--nx-ink); border: 1px solid var(--nx-border); border-radius: var(--nx-r-control); text-decoration: none; }

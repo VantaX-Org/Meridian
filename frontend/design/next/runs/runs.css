@@ -12,7 +12,7 @@
 .nx-rn-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s3); }
 .nx-rn-filters select { height: var(--nx-h-control); padding: 0 var(--nx-s3); background: var(--nx-surface); color: var(--nx-ink); border: 1px solid var(--nx-border-strong); border-radius: var(--nx-r-control); font: inherit; }
 .nx-rn-trend { min-width: 0; }
-.nx-rn-pager { display: flex; align-items: center; justify-content: space-between; gap: var(--nx-s3); color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-rn-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--nx-s3); color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
 .nx-rn-detail { display: flex; flex-direction: column; gap: var(--nx-s4); min-width: 0; }
 .nx-rn-hero { display: flex; align-items: center; justify-content: space-between; gap: var(--nx-s4); min-width: 0; padding: var(--nx-s4); background: var(--nx-surface); border: 1px solid var(--nx-border); border-radius: var(--nx-r-card); }
 .nx-rn-hero > div:first-child { min-width: 0; }

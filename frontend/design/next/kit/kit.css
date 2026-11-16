@@ -40,7 +40,10 @@
   font-weight: var(--nx-w-label);
   cursor: pointer;
   white-space: nowrap;
+  max-width: 100%;
 }
+/* Reflow at 320 px (WCAG 1.4.10): a long label wraps inside the button instead of pushing the page sideways. */
+@media (max-width: 480px) { .nx-btn { white-space: normal; text-align: center; } }
 .nx-btn-sm { min-height: var(--nx-h-control-sm); padding: 0 var(--nx-s4); font-size: var(--nx-fs-small); }
 .nx-btn:hover { background: var(--nx-surface-2); }
 .nx-btn-primary { background: var(--nx-accent); border-color: var(--nx-accent); color: var(--nx-accent-ink); }

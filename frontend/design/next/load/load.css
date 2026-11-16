@@ -78,7 +78,7 @@
 .nx-stale p { margin: 0; }
 .nx-ld-partial { color: var(--nx-ink-2); margin: 0; }
 .nx-ld-trio-visual > div { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "ring dt" "ring dd"; align-items: center; column-gap: var(--nx-s3); }
-.nx-ld-trio-visual > div > .nx-vring { grid-area: ring; }
+.nx-ld-trio-visual > div > dd.nx-ld-ring { grid-area: ring; margin: 0; }
 .nx-ld-trio-visual dt { grid-area: dt; align-self: end; }
 .nx-ld-trio-visual dd { grid-area: dd; align-self: start; }
 .nx-hero-visual { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--nx-s3) var(--nx-s4); }

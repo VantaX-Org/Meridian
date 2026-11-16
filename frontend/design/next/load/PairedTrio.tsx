@@ -44,9 +44,9 @@ export function PairedTrio() {
           <section key={p.id} className="nx-card nx-ld-step" aria-label={t("{source} to {target}", { source: p.source.name, target: p.target.name })}>
             <h3><Trunc text={t("{source} to {target}", { source: p.source.name, target: p.target.name })} max={48} /></h3>
             <dl className="nx-ld-trio nx-ld-trio-visual nx-num">
-              <div><ScoreRing compact size={72} value={s.source} label={t("Source DQS")} testid="ring-source" /><dt>{t("Source DQS")}</dt><dd>{val(s.source)}</dd></div>
-              <div><ScoreRing compact size={72} value={s.projected} label={t("Projected target DQS")} testid="ring-projected" /><dt>{t("Projected target DQS")}</dt><dd>{val(s.projected)}</dd></div>
-              <div><ScoreRing compact size={72} value={s.actual} label={t("Actual target DQS")} testid="ring-actual" /><dt>{t("Actual target DQS")}</dt><dd>{val(s.actual)}</dd></div>
+              <div><dt>{t("Source DQS")}</dt><dd>{val(s.source)}</dd><dd className="nx-ld-ring" aria-hidden="true"><ScoreRing compact size={72} value={s.source} label={t("Source DQS")} testid="ring-source" /></dd></div>
+              <div><dt>{t("Projected target DQS")}</dt><dd>{val(s.projected)}</dd><dd className="nx-ld-ring" aria-hidden="true"><ScoreRing compact size={72} value={s.projected} label={t("Projected target DQS")} testid="ring-projected" /></dd></div>
+              <div><dt>{t("Actual target DQS")}</dt><dd>{val(s.actual)}</dd><dd className="nx-ld-ring" aria-hidden="true"><ScoreRing compact size={72} value={s.actual} label={t("Actual target DQS")} testid="ring-actual" /></dd></div>
             </dl>
             <PairTrend id={p.id} />
             {partial ? <p className="nx-ld-partial" data-testid="trio-partial">{t("Some scores are not known yet. The target has not been read back, or the projection has not run.")}</p> : null}

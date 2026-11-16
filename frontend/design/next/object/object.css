@@ -98,7 +98,7 @@
 .nx-hero-why-h { margin: 0; font-size: var(--nx-fs-body); font-weight: var(--nx-w-label); }
 .nx-hero-cap { margin: 0; color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
 .nx-aletheia-by { margin-inline-start: var(--nx-s2); color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
-.nx-aletheia .nx-btn-quiet { color: var(--nx-ink); text-decoration: underline; }
+.nx-aletheia .nx-btn-quiet, .nx-aletheia .nx-link { color: var(--nx-ink); text-decoration: underline; }
 .nx-aletheia { margin: 0; padding: var(--nx-s3) var(--nx-s4); background: var(--nx-accent-soft); border-radius: var(--nx-r-card); }
 .nx-segs { display: flex; gap: var(--nx-s2); align-items: center; min-inline-size: 0; flex-wrap: wrap; padding-block: var(--nx-s2); }
 .nx-seg { flex: none; min-block-size: var(--nx-h-control-sm); padding-inline: var(--nx-s4); border: 1px solid var(--nx-border); border-radius: var(--nx-r-pill); background: var(--nx-surface); color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); cursor: pointer; }

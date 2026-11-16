@@ -23,7 +23,7 @@
       {
         "route": "/admin/roles",
         "control": null,
-        "expect": "Roles and permissions"
+        "expect": "What each role may do"
       }
     ]
   },
@@ -160,7 +160,7 @@
       {
         "route": "/work",
         "control": null,
-        "expect": "Nothing reaches SAP until it is approved and applied."
+        "expect": "Most urgent first"
       }
     ]
   },
@@ -194,8 +194,8 @@
     "steps": [
       {
         "route": "/work/monitor",
-        "control": "Open cleansing",
-        "expect": "records failed a rule again since the last run"
+        "control": "After cleaning",
+        "expect": "Everything new, resolved or regressed"
       },
       {
         "route": "/cleansing",
@@ -338,14 +338,14 @@
     "target_clicks": 12,
     "steps": [
       {
-        "route": "/more/landscape?view=waves",
-        "control": "Open {wave}",
-        "expect": "Waves"
+        "route": "/load/waves",
+        "control": "Open the waves",
+        "expect": "Waves group objects into the loads"
       },
       {
-        "route": "/more/landscape?view=waves&open=waves",
-        "control": null,
-        "expect": "Analyse the whole wave"
+        "route": "/more/landscape?view=waves",
+        "control": "Waves",
+        "expect": "Coverage"
       }
     ]
   },
@@ -404,7 +404,7 @@
       {
         "route": "/go-live",
         "control": null,
-        "expect": "Go-live flight deck"
+        "expect": "Days to go-live"
       }
     ]
   },
@@ -489,7 +489,7 @@
       {
         "route": "/work",
         "control": null,
-        "expect": "Nothing reaches SAP until it is approved and applied."
+        "expect": "Most urgent first"
       }
     ]
   },
@@ -517,18 +517,18 @@
     "steps": [
       {
         "route": "/runs",
-        "control": "Compare with previous",
+        "control": "Compare",
         "expect": "Runs, newest first"
       },
       {
         "route": "/run/{a}/vs/{b}",
-        "control": "Rules and records",
+        "control": "Scores and rules",
         "expect": "Compare runs"
       },
       {
         "route": "/run/{a}/vs/{b}?view=full",
         "control": null,
-        "expect": "What changed between"
+        "expect": "Score of each object in each run"
       }
     ]
   },
@@ -561,18 +561,18 @@
       },
       {
         "route": "/run/{run_id}",
-        "control": "Export, baseline and more",
+        "control": "Export findings",
         "expect": "Back to runs"
       },
       {
         "route": "/run/{run_id}?view=full",
-        "control": "Export findings",
-        "expect": "What this run scored"
+        "control": "Pin as baseline",
+        "expect": "What changed"
       },
       {
         "route": "/run/{run_id}?view=full",
         "control": null,
-        "expect": "What this run scored"
+        "expect": "Score of each object in this run"
       }
     ]
   },
