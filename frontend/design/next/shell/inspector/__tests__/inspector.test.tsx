@@ -6,6 +6,7 @@ import { getUrl, setUrl } from "@/design/v2/__tests__/nav-store";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("../run", () => ({ RUN_BODIES: { run: ({ id }: { id: string }) => <p>run body {id}</p> } }));
+vi.mock("../objects", () => ({ OBJECTS_BODIES: {} }));
 vi.mock("../../AskBodyNative", () => ({ AskBodyNative: () => <p>ask body</p> }));
 
 import { Inspector } from "../Inspector";
@@ -31,10 +32,10 @@ describe("Inspector", () => {
     expect(await screen.findByText("run body v-1")).toBeInTheDocument();
   });
 
-  it("a kind with nothing more shows the plain frame and closes", () => {
+  it("a kind with nothing more shows the plain frame and closes", async () => {
     setUrl("/?open=term:T-1");
     renderWithQuery(<Inspector />);
-    expect(screen.getByText("Feature")).toBeInTheDocument();
+    expect(await screen.findByText("Feature")).toBeInTheDocument();
     expect(screen.getByText("This selection has nothing more to show. Close the inspector and choose a row.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Close inspector" }));
     expect(getUrl()).toBe("/");
