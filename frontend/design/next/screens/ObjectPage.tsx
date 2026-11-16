@@ -5,30 +5,38 @@
  * `?run=`; both survive a reload and a shared link.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Denied, isDenied } from "../object/edge";
 import { Popover, Skeleton, ErrorState, EmptyState } from "@/design/next/kit";
-import { V2Link } from "@/design/v2/parts";
-import { Inspector } from "@/design/v2/Inspector";
+import Link from "next/link";
 import { t } from "@/lib/v2/i18n";
 import { useObjectCycle } from "@/lib/api/next/runs";
 import { DownloadsMenu } from "../object/DownloadsMenu";
 import { ObjectBar } from "../object/ObjectBar";
 import { useObjectRun } from "../object/useObjectRun";
 import { MORE, SEGMENTS, renderTab, tabLabel, type TabId } from "../object/tabs";
-import { LegacyScope } from "../shell/LegacyMount";
+import { ProcessDesigner } from "../object/designer/ProcessDesigner";
+import { OldRunBand } from "../object/tabs/OldRunBand";
+import { RelatedObjects } from "../object/tabs/Related";
+import { useV2Href } from "@/lib/v2/hooks";
+import { useObjectRun as useRunSpine } from "@/lib/v2/scope";
+import { useTimeline } from "@/lib/v2/runs-queries";
 import { withSheets } from "@/lib/next/sheet";
+import { ANY_SYSTEM, moduleFromSlug, systemForModule, systemSlug } from "@/lib/v2/score";
+import { MODULE_LABELS } from "@/lib/format";
 import "../object/object.css";
 
 const ID = "nx-object";
 
-export function ObjectPage({ system, module, tab }: { system: string; module: string; tab: TabId }) {
+export function ObjectPage({ system, module, tab, design = false }: { system: string; module: string; tab: TabId; design?: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
+  const pathname = usePathname();
   const o = useObjectRun(system, module);
   const { cycle } = useObjectCycle(o.runId, o.module);
   const moreRef = useRef<HTMLButtonElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const v2href = useV2Href();
 
   const go = useCallback(
     (next: TabId, extra: Record<string, string | null> = {}) => {
@@ -74,18 +82,52 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  if (o.landscape.isLoading) return <div className="nx-object"><Skeleton lines={6} label={t("Loading the object")} /></div>;
+  // An address without its system (`/o/_/{module}`, from an old link or /objects/{module}): replace it with the system
+  // that holds the object.
+  const L = o.landscape.data;
+  const holder = system === ANY_SYSTEM && L ? systemForModule(L.systems, L.cells, moduleFromSlug(module)) : undefined;
+  useEffect(() => {
+    if (!holder) return;
+    const qs = params.toString();
+    router.replace(`${pathname.replace(`/o/${ANY_SYSTEM}/`, `/o/${systemSlug(holder.name)}/`)}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [holder, params, router, pathname]);
+
+  // `?as_of=<run>` is the old way to look at a past run; the run is now `?run=`.
+  const asOf = params.get("as_of");
+  useEffect(() => {
+    if (!asOf) return;
+    const next = new URLSearchParams(params.toString());
+    next.delete("as_of");
+    next.set("run", asOf);
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+  }, [asOf, params, pathname, router]);
+
+  if (o.landscape.isLoading || holder) return <div className="nx-object"><Skeleton lines={6} label={t("Loading the object")} /></div>;
   if (o.landscape.isError && isDenied(o.landscape.error)) return <div className="nx-object"><Denied what={t("this object")} /></div>;
   if (o.landscape.isError) return <div className="nx-object"><ErrorState sentence={t("The object could not be loaded.")} error={o.landscape.error} onRetry={() => void o.landscape.refetch()} /></div>;
   if (!o.systemId) {
     return (
       <div className="nx-object">
-        <EmptyState heading={t("No system called {name}", { name: decodeURIComponent(system) })} action={<V2Link className="nx-btn nx-btn-secondary" href="/objects">{t("All objects")}</V2Link>}>
+        <EmptyState heading={t("No system called {name}", { name: decodeURIComponent(system) })} action={<Link className="nx-btn nx-btn-secondary" href={v2href("/objects")}>{t("All objects")}</Link>}>
           {t("The address names a system this workspace does not hold. Pick the object from the list of objects.")}
         </EmptyState>
       </div>
     );
   }
+
+  // An address that names no object Meridian knows is not found, never a page that looks real.
+  const known = !!L && (L.objects.some((x) => x.module === o.module) || Object.hasOwn(MODULE_LABELS, o.module));
+  if (!known) {
+    return (
+      <div className="nx-object" data-testid="object-not-found">
+        <EmptyState heading={t("Object not found")} action={<Link className="nx-btn nx-btn-secondary" href={v2href("/")}>{t("Open the landscape")}</Link>}>
+          {t("{system} has no object called {segment}. Open the landscape and choose an object from the map.", { system: o.systemName, segment: decodeURIComponent(module) })}
+        </EmptyState>
+      </div>
+    );
+  }
+  const sys = L?.systems.find((s) => s.id === o.systemId);
+  const cell = L?.cells.find((c) => c.system_id === o.systemId && c.module === o.module);
 
   return (
     <div className="nx-object" data-testid="object-page">
@@ -110,8 +152,30 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
         className="nx-opanel"
         tabIndex={-1}
       >
-        <LegacyScope>{renderTab(tab, o, go)}<Inspector /></LegacyScope>
+        {/* An older run on screen says so, with the way back to the current one. */}
+          <OldRun systemId={o.systemId} module={o.module} system={o.systemName} />
+          {/* Overview keeps the related objects, watch toggle, data contracts and owner apply of the v2 object page. */}
+          {tab === "overview" && o.systemId ? <RelatedObjects module={o.module} system={o.systemSeg} systemId={o.systemId} label={o.label} /> : null}
+          {!cell && sys ? (
+            <div data-testid="object-no-run">
+              <EmptyState
+                heading={sys.state === "analysed" ? t("This object has no run on this system.") : sys.state === "extracted" ? t("Extracted, not analysed.") : t("Not extracted yet.")}
+                action={<Link className="nx-btn nx-btn-secondary" href={v2href(`/?open=system:${sys.id}`)}>{sys.state === "not_extracted" ? t("Extract {name}", { name: sys.name }) : t("Run analysis on {name}", { name: sys.name })}</Link>}
+              >
+                {t("No run yet. The ruler fills when an analysis scores this object.")}
+              </EmptyState>
+            </div>
+          ) : null}
+          {tab === "processes" && design ? <ProcessDesigner o={o} /> : renderTab(tab, o, go)}
       </section>
     </div>
   );
+}
+
+/** The band over an older run: read from the run timeline, which also knows runs older than the loaded page of heads. */
+function OldRun({ systemId, module, system }: { systemId: string | null; module: string; system: string }) {
+  const spine = useRunSpine(systemId, module);
+  const runs = useTimeline(systemId, 50, module).data?.runs ?? [];
+  if (spine.isLatest || !runs.length) return null;
+  return <OldRunBand shown={spine.chip} system={system} latest={runs[runs.length - 1]} />;
 }

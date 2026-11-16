@@ -8,6 +8,9 @@
  *   GET  /mining/relationships?scope=current   (fields whose values move together)
  *   GET  /mining/patterns                      (the outliers grouped by field and the duplicates by object)
  *   POST /mining/run                           (mine one analysis run again; needs mdm.write)
+ *   GET  /mining/summary/{version_id}          (duplicate, outlier and relationship counts per object of one run)
+ *   GET  /process/mining/graph/{version_id}/{module}  (process_mining.py: the module's activities, flows and
+ *                                              variants with the quality of each step; needs view and a licence)
  * scope=current keeps each object at the latest complete run of its lineage, so the lists are the current state.
  */
 import { v2Get, v2Send } from "./client";
@@ -95,3 +98,55 @@ export const getRelationships = () => v2Get<RelationshipItem[]>("/mining/relatio
 export const getPatterns = () => v2Get<{ patterns: MiningPattern[] }>("/mining/patterns", { limit: 500 });
 export const runMining = (version_id: string, modules: string[]) =>
   v2Send<{ task_id: string; version_id: string; include: string[] }>("POST", "/mining/run", { version_id, modules });
+
+export interface MiningRunSummary {
+  version_id: string;
+  per_module: Record<string, { duplicates: number; anomalies: number; relationships: number }>;
+  totals: { duplicates: number; anomalies: number; relationships: number };
+}
+
+export type StepStatus = "green" | "amber" | "red";
+
+export interface MiningActivity {
+  id: string;
+  label: string;
+  l4_id: string;
+  l4_name: string;
+  tcode?: string | null;
+  step_status: StepStatus;
+  affected_records: number;
+  finding_count: number;
+  avg_pass_rate?: number | null;
+}
+
+export interface MiningTransition {
+  from: string;
+  to: string;
+  weight: number;
+}
+
+export interface MiningVariant {
+  id: string;
+  label: string;
+  tcode?: string | null;
+  activity_count: number;
+  coverage: number;
+  readiness: StepStatus;
+  quality: number;
+  activity_ids: string[];
+}
+
+export interface MiningGraph {
+  version_id: string;
+  module: string;
+  activities: MiningActivity[];
+  transitions: MiningTransition[];
+  variants: MiningVariant[];
+  cases: Record<string, unknown>[];
+  cases_supported: boolean;
+}
+
+const enc = encodeURIComponent;
+export const getMiningRunSummary = (versionId: string) => v2Get<MiningRunSummary>(`/mining/summary/${enc(versionId)}`);
+export const getMiningGraph = (versionId: string, module: string) =>
+  v2Get<MiningGraph>(`/process/mining/graph/${enc(versionId)}/${enc(module)}`);

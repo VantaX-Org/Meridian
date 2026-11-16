@@ -1,0 +1,154 @@
+// frontend/design/next/shell/__tests__/authguard.test.tsx
+// A failed session check signs the user out only on a 401; a 5xx or a network failure keeps the token
+// and shows an error with Retry, so a server hiccup never throws everyone back to the sign-in page.
+import { AxiosError, AxiosHeaders } from "axios";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { render } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import apiClient from "@/lib/api/client";
+import { LocalAuthProvider } from "@/context/auth-context";
+import { AuthGuard, STUCK_MS } from "../AuthGuard";
+
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
+const TOKEN_KEY = "mn_auth_token";
+const USER = { id: "u1", email: "a@example.test", name: "Ana", role: "analyst", permissions: [] };
+
+function httpError(status: number) {
+  return new AxiosError("failed", "ERR_BAD_RESPONSE", undefined, undefined, {
+    status, data: {}, statusText: "", headers: {}, config: { headers: new AxiosHeaders() },
+  });
+}
+
+function mount() {
+  return render(
+    <LocalAuthProvider>
+      <AuthGuard><p>the app</p></AuthGuard>
+    </LocalAuthProvider>,
+  );
+}
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  push.mockClear();
+  localStorage.setItem(TOKEN_KEY, "tok");
+});
+
+describe("AuthGuard session check", () => {
+  it("renders the app when the stored token is valid", async () => {
+    vi.spyOn(apiClient, "get").mockResolvedValue({ data: { user: USER, must_change_password: false } });
+    mount();
+    expect(await screen.findByText("the app")).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("signs out and goes to sign-in on a 401", async () => {
+    vi.spyOn(apiClient, "get").mockRejectedValue(httpError(401));
+    mount();
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/sign-in"));
+    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
+    expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
+  });
+
+  it("signs out on a 403 as well: the server has judged the token", async () => {
+    vi.spyOn(apiClient, "get").mockRejectedValue(httpError(403));
+    mount();
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/sign-in"));
+    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
+  });
+
+  it("keeps the token and shows an error with Retry on a 5xx, then recovers on retry", async () => {
+    const get = vi.spyOn(apiClient, "get")
+      .mockRejectedValueOnce(httpError(503))
+      .mockResolvedValueOnce({ data: { user: USER, must_change_password: false } });
+    mount();
+    expect(await screen.findByText("Could not check your session: The server answered 503 while checking your session.")).toBeInTheDocument();
+    expect(localStorage.getItem(TOKEN_KEY)).toBe("tok");
+    expect(push).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    expect(await screen.findByText("the app")).toBeInTheDocument();
+    expect(get).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats a network failure like a server failure, not a sign-out", async () => {
+    vi.spyOn(apiClient, "get").mockRejectedValue(new AxiosError("Network Error", "ERR_NETWORK"));
+    mount();
+    expect(await screen.findByText(/Could not reach the server to check your session/)).toBeInTheDocument();
+    expect(localStorage.getItem(TOKEN_KEY)).toBe("tok");
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("marks the loading screen busy, and turns a session check that never answers into an error with Retry", async () => {
+    vi.useFakeTimers();
+    try {
+      const get = vi.spyOn(apiClient, "get")
+        .mockReturnValueOnce(new Promise(() => {}))
+        .mockResolvedValueOnce({ data: { user: USER, must_change_password: false } });
+      mount();
+      const loading = screen.getByRole("status", { name: "Loading Meridian" });
+      expect(loading).toHaveAttribute("aria-busy", "true");
+      await act(async () => { vi.advanceTimersByTime(STUCK_MS); });
+      expect(screen.getByText(/^This is taking longer than expected\./)).toBeInTheDocument();
+      expect(localStorage.getItem(TOKEN_KEY)).toBe("tok");
+      fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+      // The retry starts a fresh check with a fresh timeout, and recovers.
+      await act(async () => { await Promise.resolve(); });
+      vi.useRealTimers();
+      expect(await screen.findByText("the app")).toBeInTheDocument();
+      expect(get).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("moves a pre-cookie localStorage token over: sent once as a bearer header, then removed", async () => {
+    const get = vi.spyOn(apiClient, "get").mockResolvedValue({ data: { user: USER, must_change_password: false } });
+    mount();
+    expect(await screen.findByText("the app")).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith("/api/v1/auth/me", { headers: { Authorization: "Bearer tok" } });
+    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
+    expect(document.cookie).toContain("mn_session=1");
+  });
+
+  it("checks a cookie-only session with no header and no stored token", async () => {
+    localStorage.removeItem(TOKEN_KEY);
+    document.cookie = "mn_session=1; Path=/";
+    const get = vi.spyOn(apiClient, "get").mockResolvedValue({ data: { user: USER, must_change_password: false } });
+    mount();
+    expect(await screen.findByText("the app")).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith("/api/v1/auth/me", undefined);
+  });
+
+  it("goes to sign-in when there is no stored token and no session marker", async () => {
+    localStorage.removeItem(TOKEN_KEY);
+    document.cookie = "mn_session=; Path=/; Max-Age=0";
+    const get = vi.spyOn(apiClient, "get");
+    mount();
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/sign-in"));
+    expect(get).not.toHaveBeenCalled();
+  });
+});
+
+describe("the forced password change", () => {
+  it("shows instead of the app while the account still has its default password", async () => {
+    vi.spyOn(apiClient, "get").mockResolvedValue({ data: { user: USER, must_change_password: true } });
+    mount();
+    expect(await screen.findByRole("heading", { name: "Change your password to continue" })).toBeInTheDocument();
+    expect(screen.queryByText("the app")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Use at least 12 characters");
+  });
+
+  it("explains an admin-set password and a rate-limited change", async () => {
+    vi.spyOn(apiClient, "get").mockResolvedValue({ data: { user: USER, must_change_password: true } });
+    vi.spyOn(apiClient, "post").mockRejectedValue(httpError(429));
+    mount();
+    expect(await screen.findByText(/set for you, by setup or by an admin/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Current password"), { target: { value: "synthetic-old-pass-1" } });
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: "synthetic-new-pass-2" } });
+    fireEvent.change(screen.getByLabelText("Confirm new password"), { target: { value: "synthetic-new-pass-2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Change password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Too many password changes");
+  });
+});

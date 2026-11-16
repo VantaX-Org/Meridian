@@ -4,12 +4,14 @@
  * Compare: two runs side by side (the run and the one it was cleaned from, by default). The score change, the
  * dimensions, and the failing records split into new, resolved, regressed and persisting, each paged on the server.
  */
-import { useMemo, useState } from "react";
-import { Button, DataTable, EmptyState, SegmentedControl, type Column } from "@/design/next/kit";
-import { V2Link } from "@/design/v2/parts";
-import { DimensionBars } from "@/design/v2/screens/object/Banner";
+import { useDeferredValue, useMemo, useState } from "react";
+import { Button, DataTable, EmptyState, ErrorState, SegmentedControl, Skeleton, type Column } from "@/design/next/kit";
+import { NxLink } from "@/design/next/kit";
+import { DimensionBars } from "../ScoreParts";
 import { downloadCleaningWorkbook, useCompareSets, useCompareSummary, type Change, type CompareRecord } from "@/lib/api/next/runs";
 import type { RuleRow } from "@/lib/api/v2/types";
+import type { RecordChange } from "@/lib/api/v2/run-ops";
+import { useCompareRecordKeys, useCompareRecords, useVersionChanges } from "@/lib/v2/runs-queries";
 import { useUrlParam } from "@/lib/v2/hooks";
 import { useObjectRules } from "@/lib/v2/queries";
 import { t } from "@/lib/v2/i18n";
@@ -43,6 +45,12 @@ export function CompareStep({ o, cycle, onNextCycle }: { o: ObjectRun; cycle: nu
     for (const r of [...(rulesA.data ?? []), ...(rulesB.data ?? [])]) m.set(r.check_id, r);
     return m;
   }, [rulesA.data, rulesB.data]);
+  const changes = useVersionChanges(before, after);
+  const messages = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const list of Object.values(changes.data?.checks ?? {})) for (const c of list) if (c.message) m.set(c.check_id, c.message);
+    return m;
+  }, [changes.data]);
 
   if (o.heads.length < 2 && !o.runs.isLoading) {
     return (
@@ -71,7 +79,12 @@ export function CompareStep({ o, cycle, onNextCycle }: { o: ObjectRun; cycle: nu
 
   const columns: Column<CompareRecord>[] = [
     { id: "sev", label: t("Severity"), cell: (r) => { const s = rules.get(r.check_id)?.severity; return s ? SEV[s]?.() ?? s : "—"; } },
-    { id: "rule", label: t("Rule"), cell: (r) => <span><span className="nx-mono">{r.check_id}</span> {rules.get(r.check_id)?.name ?? ""}</span>, compare: (x, y) => x.check_id.localeCompare(y.check_id) },
+    { id: "rule", label: t("Rule"), cell: (r) => (
+      <span>
+        <span className="nx-mono">{r.check_id}</span> {rules.get(r.check_id)?.name ?? ""}
+        {messages.get(r.check_id) ? <span className="nx-muted" data-testid="change-message"> {messages.get(r.check_id)}</span> : null}
+      </span>
+    ), compare: (x, y) => x.check_id.localeCompare(y.check_id) },
     { id: "field", label: t("Field"), cell: (r) => { const ru = rules.get(r.check_id); return ru?.field ? <span><span className="nx-mono">{ru.field}</span> {ru.field_description ?? ""}</span> : "—"; } },
     { id: "key", label: t("Record key"), cell: (r) => <span className="nx-mono">{r.record_key}</span>, compare: (x, y) => x.record_key.localeCompare(y.record_key) },
     { id: "before", label: t("Value before"), cell: (r) => valuesText(r.values_before) },
@@ -128,6 +141,7 @@ export function CompareStep({ o, cycle, onNextCycle }: { o: ObjectRun; cycle: nu
         <span className="nx-num nx-muted">{shownTotal ? t("{from} to {to} of {total}", { from: int(offset + 1), to: int(Math.min(offset + PAGE, shownTotal)), total: int(shownTotal) }) : null}</span>
         <Button variant="secondary" size={32} disabled={!page || page.next_offset === null} onClick={() => page?.next_offset != null && setOffset(page.next_offset)}>{t("Next")}</Button>
       </div>
+      {before && after && before !== after ? <RecordSearch before={before} after={after} rules={rules} /> : null}
       <div className="nx-actions">
         {totals && totals.new > 0 ? (
           <Button variant="secondary" icon="download" onClick={() => void downloadCleaningWorkbook(after, o.module)}>
@@ -135,8 +149,86 @@ export function CompareStep({ o, cycle, onNextCycle }: { o: ObjectRun; cycle: nu
           </Button>
         ) : null}
         <Button variant="secondary" onClick={onNextCycle}>{t("Start cycle {n}", { n: nextNumber })}</Button>
-        <V2Link className="nx-btn nx-btn-secondary" href="/migration/load-plan">{t("Prepare load files")}</V2Link>
+        <NxLink className="nx-btn nx-btn-secondary" href="/migration/load-plan">{t("Prepare load files")}</NxLink>
       </div>
     </div>
+  );
+}
+
+const KEY_PAGE = 100;
+const KEY_CHANGES: readonly RecordChange[] = ["new", "resolved", "persisting"];
+const CHANGE_WORD: Record<RecordChange, () => string> = { new: () => t("Newly failing"), resolved: () => t("Fixed"), persisting: () => t("Still failing") };
+
+/** Find a record key: pick a rule and a change, then search its keys on the server (the record-level compare). */
+export function RecordSearch({ before, after, rules }: { before: string; after: string; rules: ReadonlyMap<string, RuleRow> }) {
+  const recs = useCompareRecords(after, before);
+  const [rule, setRule] = useState("");
+  const [change, setChange] = useState<RecordChange>("new");
+  const [query, setQuery] = useState("");
+  const [offset, setOffset] = useState(0);
+  const search = useDeferredValue(query.trim());
+  const checks = recs.data?.checks ?? [];
+  const checkId = rule || checks[0]?.check_id || "";
+  const total = checks.find((c) => c.check_id === checkId)?.[change];
+
+  let body;
+  if (recs.isPending) body = <Skeleton lines={3} label={t("Reading the rules that changed")} />;
+  else if (recs.isError) body = <ErrorState sentence={t("The record changes could not be read.")} error={recs.error} onRetry={() => void recs.refetch()} />;
+  else if (checks.length === 0) body = <EmptyState heading={t("No rule changed between these runs")}>{t("Every record fails the same rules in both runs.")}</EmptyState>;
+  else body = (
+    <>
+      <div className="nx-compare-pick">
+        <label className="nx-field-label" htmlFor="nx-rs-rule">
+          {t("Rule")}
+          <select id="nx-rs-rule" className="nx-field" value={checkId} onChange={(e) => { setRule(e.target.value); setOffset(0); }}>
+            {checks.map((c) => <option key={c.check_id} value={c.check_id}>{`${c.check_id} ${rules.get(c.check_id)?.name ?? ""}`}</option>)}
+          </select>
+        </label>
+        <label className="nx-field-label" htmlFor="nx-rs-change">
+          {t("Change")}
+          <select id="nx-rs-change" className="nx-field" value={change} onChange={(e) => { setChange(e.target.value as RecordChange); setOffset(0); }}>
+            {KEY_CHANGES.map((c) => <option key={c} value={c}>{CHANGE_WORD[c]()}</option>)}
+          </select>
+        </label>
+        <label className="nx-field-label" htmlFor="nx-rs-q">
+          {t("Search record keys")}
+          <input id="nx-rs-q" type="search" className="nx-field" value={query} onChange={(e) => { setQuery(e.target.value); setOffset(0); }} data-testid="record-search" />
+        </label>
+      </div>
+      <KeyList checkId={checkId} before={before} after={after} change={change} search={search} offset={offset} setOffset={setOffset} total={total} />
+    </>
+  );
+  return (
+    <section aria-label={t("Find a record")} data-testid="record-search-section">
+      <h3 className="nx-rn-h3">{t("Find a record")}</h3>
+      {body}
+    </section>
+  );
+}
+
+/** One page of the record keys of one rule and one change. Mounted only once a rule is known, so it never asks for an empty id. */
+function KeyList({ checkId, before, after, change, search, offset, setOffset, total }: {
+  checkId: string; before: string; after: string; change: RecordChange; search: string; offset: number; setOffset: (n: number) => void; total?: number;
+}) {
+  const keys = useCompareRecordKeys(checkId, { v2: after, v1: before, change, search: search || undefined, limit: KEY_PAGE, offset });
+  const list = keys.data?.record_keys ?? [];
+  return (
+    <>
+      {keys.isPending ? <Skeleton lines={3} label={t("Reading the record keys")} /> : null}
+      {keys.isError ? <ErrorState sentence={t("The record keys could not be read.")} error={keys.error} onRetry={() => void keys.refetch()} /> : null}
+      {keys.isSuccess && list.length === 0 ? <p className="nx-muted" data-testid="record-search-empty">{search ? t("No record key matches the search.") : t("No records in this group.")}</p> : null}
+      {list.length ? (
+        <ul className="nx-stack" aria-label={t("Record keys")} data-testid="record-keys">
+          {list.map((k) => <li key={k}><span className="nx-mono">{k}</span></li>)}
+        </ul>
+      ) : null}
+      <div className="nx-pager">
+        <Button variant="secondary" size={32} disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - KEY_PAGE))}>{t("Previous")}</Button>
+        <span className="nx-num nx-muted">
+          {list.length ? (total != null && !search ? t("{from} to {to} of {total}", { from: int(offset + 1), to: int(offset + list.length), total: int(total) }) : t("{from} to {to}", { from: int(offset + 1), to: int(offset + list.length) })) : null}
+        </span>
+        <Button variant="secondary" size={32} disabled={list.length < KEY_PAGE} onClick={() => setOffset(offset + KEY_PAGE)}>{t("Next")}</Button>
+      </div>
+    </>
   );
 }

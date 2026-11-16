@@ -4,7 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
-import { V2Link } from "@/design/v2/parts";
+import { useV2Session } from "@/lib/v2/hooks";
+import { NxLink } from "@/design/next/kit";
 import { useRequest, useRequests, type RequestRow, type RequestState } from "@/lib/api/next/approvals";
 import { Chip, DataTable, EmptyState, ErrorState, SegmentedControl, Skeleton } from "../kit";
 import { ChangeTable } from "../approvals/ChangeTable";
@@ -12,25 +13,33 @@ import { DecisionPanel, stateLabel } from "../approvals/DecisionPanel";
 import "../approvals/approvals.css";
 
 type Filter = "all" | RequestState;
+
+/** Approving writes nothing to SAP when live write-back is off; the fixes then go out with the export. */
+function LiveOff() {
+  return <p role="note" className="nx-ap-note" data-testid="live-off">{t("Live write-back is off on this deployment, so approving writes nothing. Deliver the fixes with the export.")}</p>;
+}
 const TONE = { pending: "warn", approved: "good", rejected: "bad", dry_run: "neutral" } as const;
 
 /** Write-back requests: the list with a state filter, and one request with its before and after and its decision. */
-export function Approvals() {
+export function Approvals({ base = "/next/approvals", back = "/approvals" }: { base?: string; back?: string } = {}) {
   const id = useSearchParams().get("id");
-  return id ? <Detail id={id} /> : <List />;
+  return id ? <Detail id={id} back={back} /> : <List base={base} />;
 }
 
-function List() {
+function List({ base }: { base: string }) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("pending");
   const q = useRequests(filter === "all" ? undefined : filter);
   const rows = q.data?.items ?? [];
+  const { can } = useV2Session();
   return (
-    <main className="nx-ap" data-testid="approvals-list">
+    <div className="nx-ap" data-testid="approvals-list">
       <header className="nx-ap-head">
         <h1>{t("Approvals")}</h1>
         <p>{t("Every write-back needs a second person. Requests you made wait for someone else.")}</p>
       </header>
+      {q.data && !q.data.live_enabled ? <LiveOff /> : null}
+      {can("approve") ? null : <p role="note" className="nx-ap-note" data-testid="no-approve">{t("You can read these requests. Deciding one needs the approve permission.")}</p>}
       <SegmentedControl<Filter>
         label={t("Show requests")}
         value={filter}
@@ -50,7 +59,7 @@ function List() {
         loading={q.isLoading}
         error={q.isError ? { sentence: t("The requests could not be read. Check that the API is reachable, then retry."), onRetry: () => void q.refetch() } : undefined}
         empty={{ heading: t("No requests here."), text: t("A write-back request appears when someone sends a fix for approval.") }}
-        onOpenRow={(r) => router.push(`/next/approvals?id=${encodeURIComponent(r.id)}`)}
+        onOpenRow={(r) => router.push(`${base}?id=${encodeURIComponent(r.id)}`)}
         columns={[
           { id: "rule", label: t("Rule"), cell: (r) => <><span className="nx-mono">{r.check_id ?? "-"}</span> <span className="nx-ap-text">{r.rule_message}</span></> },
           { id: "state", label: t("State"), cell: (r) => <Chip tone={TONE[r.state]}>{stateLabel(r.state)}</Chip> },
@@ -59,16 +68,16 @@ function List() {
           { id: "at", label: t("Requested"), cell: (r) => (r.created_at ? r.created_at.slice(0, 10) : "-"), compare: (a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "") },
         ]}
       />
-    </main>
+    </div>
   );
 }
 
-function Detail({ id }: { id: string }) {
+function Detail({ id, back }: { id: string; back: string }) {
   const q = useRequest(id);
   const r = q.data;
   return (
-    <main className="nx-ap" data-testid="approvals-detail">
-      <V2Link className="nx-btn nx-btn-quiet" href="/approvals">{t("All requests")}</V2Link>
+    <div className="nx-ap" data-testid="approvals-detail">
+      <NxLink className="nx-btn nx-btn-quiet" href={back}>{t("All requests")}</NxLink>
       {q.isError ? <ErrorState error={q.error} fallback={t("The request could not be read.")} onRetry={() => void q.refetch()} />
         : q.isLoading || !r ? <Skeleton lines={6} label={t("Loading the request")} />
         : (
@@ -77,6 +86,7 @@ function Detail({ id }: { id: string }) {
               <h1>{r.rule_message ?? r.check_id ?? t("Write-back request")}</h1>
               <p><span className="nx-mono">{r.check_id}</span> {r.module ? <span className="nx-mono">{r.module}</span> : null}</p>
             </header>
+            {r.live_enabled ? null : <LiveOff />}
             <DecisionPanel req={r} />
             {r.errors.length ? <ul className="nx-ap-errors">{r.errors.map((e, i) => <li key={i}>{e}</li>)}</ul> : null}
             {r.changes.length === 0
@@ -84,6 +94,6 @@ function Detail({ id }: { id: string }) {
               : <ChangeTable changes={r.changes} />}
           </>
         )}
-    </main>
+    </div>
   );
 }

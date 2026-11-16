@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { getShareMode } from "@/lib/v2/view-as";
 import { ReportsCanvas } from "../../screens/Reports";
 import { PeopleCanvas } from "../../screens/People";
-import { ShareLanding } from "../../shell/RoleBanners";
+import { ShareLanding } from "@/design/next/shell/ShareLanding";
 import { getUrl } from "../nav-store";
 import { mount, norm, reset, visit } from "./helpers";
 

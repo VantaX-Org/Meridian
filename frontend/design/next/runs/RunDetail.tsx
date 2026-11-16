@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { DeltaBar } from "@/design/v2/charts";
-import { shortDate } from "@/design/v2/RunTimeline";
+import { DeltaBar } from "../kit";
+import { shortDate } from "./format";
 import { useCompareSummary, useRun } from "@/lib/api/next/runs";
 import { analyseRun, type VersionHead } from "@/lib/api/v2/runs";
 import { formatInt } from "@/lib/format";
@@ -17,6 +17,10 @@ import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import { Chip, EmptyState, ErrorState, Sheet, Skeleton, Stepper, type StepItem } from "../kit";
 import { isForbidden } from "./draft";
 import { ReasonPanel } from "./ReasonPanel";
+import { RunOps } from "./RunOps";
+import { RunAdmin } from "./RunAdmin";
+import { RunSemantics } from "./RunSemantics";
+import { CleaningPlan } from "../object/tabs/CleaningPlan";
 import "./runs.css";
 
 /** Steps of a run, derived from what the run stored: pulled, scored, then checked by Aletheia. */
@@ -73,8 +77,17 @@ export function RunBody({ id }: { id: string }) {
   const sev = Object.entries(h.severity_counts ?? {}).map(([k, v], i) => ({ id: k, label: k, value: v, tone: (["bad", "warn", "chart1", "mute"] as const)[Math.min(i, 3)] }));
   const partial = !failed && modules.some((m) => typeof h.dqs_summary?.[m]?.composite_score !== "number");
 
+  const latest = timeline.data?.runs[0] ?? null;
+  const isOld = Boolean(latest && latest.id !== h.id);
+
   return (
     <div className="nx-rn-detail" data-testid="run-detail">
+      {isOld && latest ? (
+        <p role="status" className="nx-rn-note" data-testid="run-old">
+          {t("This is not the current run, so actions are off. Open the current run to act.")}{" "}
+          <Link className="nx-rn-link" href={`/next/run/${latest.id}`}>{t("Open the current run ({name})", { name: runLabel(h.system_name, latest.run_number ?? null) })}</Link>
+        </p>
+      ) : null}
       <header className="nx-rn-hero">
         <div>
           <h2 className="nx-rn-h2 nx-rn-trunc" title={name}>{name}</h2>
@@ -159,16 +172,20 @@ export function RunBody({ id }: { id: string }) {
           ) : null}
       </section>
       <ReasonPanel versionId={h.id} systemId={h.metadata?.system_id ?? null} />
+      <RunOps id={h.id} label={h.label ?? null} status={h.status} />
+      <RunAdmin head={h} old={isOld} />
+      <RunSemantics id={h.id} />
+      {modules.map((m) => <CleaningPlan key={m} module={m} label={moduleText(m)} versionId={h.id} />)}
     </div>
   );
 }
 
 export function RunDetail({ id }: { id: string }) {
   return (
-    <main className="nx-rn-page">
+    <div className="nx-rn-page">
       <p><Link className="nx-rn-link" href="/next/runs">{t("Back to runs")}</Link></p>
       <RunBody id={id} />
-    </main>
+    </div>
   );
 }
 

@@ -11,7 +11,7 @@ import { v2Get, errorSentence } from "@/lib/api/v2/client";
 import { describeField } from "@/lib/v2/sap-fields";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { createWriteback, useRequests, type FieldSupport, type RequestRow, type StructuredFix, type WritebackResult } from "@/lib/api/next/approvals";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { Button, Chip, Confirm, DataTable, useToast, type Column } from "../kit";
 import { QueryView } from "./states";
 
@@ -143,7 +143,7 @@ export function Writeback() {
             <Button variant="primary" loading={send.isPending && send.variables === false} loadingLabel={t("Sending")} disabled={!!blocked || !check} reason={blocked ?? (!check ? t("Check with SAP first.") : undefined)} onClick={() => setAsking(true)} data-testid="writeback-send">
               {t("Send for approval")}
             </Button>
-            <V2Link className="nx-btn nx-btn-quiet" href="/approvals">{t("Open Approvals")}</V2Link>
+            <NxLink className="nx-btn nx-btn-quiet" href="/approvals">{t("Open Approvals")}</NxLink>
           </div>
         ) : (
           <p className="nx-sub">{t("Sending fixes to SAP needs the apply permission.")}</p>

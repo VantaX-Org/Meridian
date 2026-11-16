@@ -52,7 +52,7 @@ function RemindButton({ id, name }: { id: string; name: string }) {
   );
 }
 
-function sentenceOf(people: readonly Person[]): string {
+export function sentenceOf(people: readonly Person[]): string {
   if (people.length === 0) return "";
   const holders = people.filter((p) => p.open_work > 0).length;
   const open = people.reduce((a, p) => a + p.open_work, 0);

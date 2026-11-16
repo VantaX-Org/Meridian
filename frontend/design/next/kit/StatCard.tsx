@@ -63,9 +63,11 @@ export interface StatCardProps {
   delta?: { value: number; tone?: "good" | "bad" | "neutral"; against?: string };
   spark?: number[];
   sparkLabel?: string;
+  /** One short sentence under the number: what it counts. */
+  note?: string;
 }
 
-export function StatCard({ label, value, format = int, delta, spark, sparkLabel }: StatCardProps) {
+export function StatCard({ label, value, format = int, delta, spark, sparkLabel, note }: StatCardProps) {
   const shown = useCountTo(value);
   const dir = delta ? (delta.value > 0 ? "up" : delta.value < 0 ? "down" : "flat") : null;
   return (
@@ -89,6 +91,7 @@ export function StatCard({ label, value, format = int, delta, spark, sparkLabel 
           {delta.against ? <span className="nx-stat-against">{delta.against}</span> : null}
         </div>
       ) : null}
+      {note ? <p className="nx-stat-note">{note}</p> : null}
     </div>
   );
 }

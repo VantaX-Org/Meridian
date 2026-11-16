@@ -8,8 +8,9 @@ import { Skeleton, StatCard } from "../kit";
 
 const WEEK = 7 * 86_400_000;
 
-/** Five figures over every object. ponytail: computed from one page of up to 500 rows; a server summary endpoint is
- *  the upgrade path past 500 objects. "Runs this week" has no source, so the card counts objects run this week. */
+/** Five figures over every object, from every portfolio page joined (getPortfolioAll). ponytail: a server summary
+ *  endpoint is the upgrade path if the joined pages get slow. "Runs this week" has no source, so the card counts
+ *  objects run this week. */
 export function StatRow({ rows, loading, now: at }: { rows: PortfolioRow[]; loading?: boolean; now?: number }) {
   const [mounted] = useState(() => Date.now());
   const now = at ?? mounted;

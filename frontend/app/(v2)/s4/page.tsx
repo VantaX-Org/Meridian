@@ -1,5 +1,4 @@
-import { S4Readiness } from "@/design/v2/screens/S4Readiness";
-
-export default function S4Page() {
-  return <S4Readiness />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }

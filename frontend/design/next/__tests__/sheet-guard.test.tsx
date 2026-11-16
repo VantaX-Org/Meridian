@@ -11,6 +11,9 @@ describe("Sheet steps", () => {
     expect(clampStep(1, steps)).toBe(1);
     expect(clampStep(9, [{ done: true }, { done: true }])).toBe(2);
     expect(clampStep(4, undefined)).toBe(1);
+    // Steps without done flags are not gated, so a self-driven flow keeps its step.
+    expect(clampStep(3, [{}, {}, {}])).toBe(3);
+    expect(clampStep(5, [{}, {}, {}])).toBe(3);
   });
 
   it("moves a link to step 3 back to step 2 when step 2 is not done", () => {

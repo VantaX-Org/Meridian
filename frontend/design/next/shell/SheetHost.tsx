@@ -4,11 +4,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { t } from "@/lib/v2/i18n";
 import { Sheet, closingSheet } from "../kit/Sheet";
-import { AskBody } from "@/design/v2/inspector/ask";
-import { LegacyScope } from "./LegacyMount";
+import { AskBodyNative } from "./AskBodyNative";
 import { NextPalette } from "../CommandPalette";
 import { Button } from "../kit/Button";
-import { ConnectCanvas } from "@/design/v2/screens/system/ConnectCanvas";
+import { ConnectCanvasNative } from "./ConnectCanvasNative";
 import { popSheet, pushSheet, sheetsOf, stepOf, withSheets, type SheetRef } from "@/lib/next/sheet";
 import { registry, registerSheet } from "./registry";
 import "./sheets";
@@ -86,13 +85,13 @@ export function useSheets(): SheetsApi {
 registerSheet("command", ({ dismiss }) => <NextPalette open onClose={dismiss} />);
 registerSheet("ask", ({ close, under }) => (
   <Sheet open onClose={close} title={t("Ask Meridian")} size="small" under={under}>
-    <LegacyScope><AskBody hero /></LegacyScope>
+    <AskBodyNative hero />
   </Sheet>
 ));
 
 registerSheet("connect", ({ close, under }) => (
   <Sheet open onClose={close} title={t("Connect a system")} size="large" under={under}>
-    <LegacyScope><ConnectCanvas /></LegacyScope>
+    <ConnectCanvasNative />
   </Sheet>
 ));
 

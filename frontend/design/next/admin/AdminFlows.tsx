@@ -2,20 +2,19 @@
 
 /**
  * Guided admin tasks under /more/admin/flow/[name]. They compose the StepFlow kit and the flows of feat/process-stepper
- * and mount the v2 screens untouched; Admin.tsx, ConnectCanvas and SourceDesign stay the full screens, linked from here.
+ * and mount the native screens; Admin.tsx, ConnectCanvas and SourceDesign stay the full screens, linked from here.
  */
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getLicenceManifest } from "@/lib/api/licence";
 import { listRoles } from "@/lib/api/roles";
-import { RulePromotion } from "@/design/v2/screens/RulePromotion";
 import { useV2Href } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { EmptyState, Skeleton, StepFlow, type FlowStep } from "../kit";
 import { ConnectSteps } from "../flows/ConnectSteps";
 import { InviteSteps } from "../flows/InviteSteps";
-import { LegacyMount } from "../shell/LegacyMount";
+import { RulePromotion } from "../more/RulePromotion";
 
 export const ADMIN_FLOWS = ["connect", "users", "rules"] as const;
 export type AdminFlowName = (typeof ADMIN_FLOWS)[number];
@@ -61,7 +60,7 @@ export function RuleTask() {
   const steps: FlowStep[] = [
     { id: "review", label: t("Dry-run and review"), blocked: reviewed ? undefined : t("Confirm that you reviewed the impact."),
       body: <>
-        <LegacyMount><RulePromotion /></LegacyMount>
+        <RulePromotion />
         <label className="nx-field"><span><input type="checkbox" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)} /> {t("I reviewed the impact of these rules.")}</span></label>
       </> },
     { id: "done", label: t("Done"), body: <p>{t("Promoted rules score the next run. Open the catalogue to see them.")} <Link className="nx-link" href={href("/more/rules")}>{t("Rules")}</Link></p> },

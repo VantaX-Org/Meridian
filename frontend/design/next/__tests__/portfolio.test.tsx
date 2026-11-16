@@ -9,7 +9,7 @@ import { Portfolio } from "../screens/Portfolio";
 import { ObjectsList } from "../screens/ObjectsList";
 import { UploadPanel } from "../panels/UploadPanel";
 import { checkFile, pool, MAX_BYTES } from "@/lib/api/next/upload";
-import type { PortfolioRow } from "@/lib/api/next/portfolio";
+import { getPortfolioAll, type PortfolioPage, type PortfolioQuery, type PortfolioRow } from "@/lib/api/next/portfolio";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
@@ -158,5 +158,21 @@ describe("upload helpers", () => {
     });
     expect(seen.sort()).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(peak).toBe(3);
+  });
+});
+
+describe("Portfolio totals", () => {
+  it("joins every page past the 500 row cap so the stat row counts every object", async () => {
+    const row = (i: number) => ({ module_id: `m${i}` }) as unknown as PortfolioRow;
+    const total = 1203;
+    const get = vi.fn(async (q: PortfolioQuery): Promise<PortfolioPage> => {
+      const off = q.offset ?? 0;
+      const n = Math.min(500, total - off);
+      return { objects: Array.from({ length: n }, (_, i) => row(off + i)), total, limit: 500, offset: off, next_offset: off + n < total ? off + n : null };
+    });
+    const all = await getPortfolioAll({}, get);
+    expect(all.objects).toHaveLength(total);
+    expect(all.total).toBe(total);
+    expect(get).toHaveBeenCalledTimes(3);
   });
 });

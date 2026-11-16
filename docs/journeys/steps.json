@@ -6,7 +6,7 @@
     "target_clicks": 30,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Open Administration",
         "expect": "Landscape"
       },
@@ -23,7 +23,7 @@
       {
         "route": "/admin/roles",
         "control": null,
-        "expect": "Roles and permissions"
+        "expect": "What each role may do"
       }
     ]
   },
@@ -85,17 +85,17 @@
     "object": null,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Extract",
         "expect": "Landscape"
       },
       {
-        "route": "/?open=system:{system_id}",
+        "route": "/more/landscape?open=system:{system_id}",
         "control": "Extract",
         "expect": "Test connection"
       },
       {
-        "route": "/?open=system:{system_id}",
+        "route": "/more/landscape?open=system:{system_id}",
         "control": "Extract {n} objects",
         "expect": "Analyse straight after extracting",
         "needs": "Extract pressed on the system card"
@@ -114,12 +114,12 @@
     "target_clicks": 3,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Fix the {system} sign-in",
         "expect": "Landscape"
       },
       {
-        "route": "/?open=connection:{system_id}",
+        "route": "/more/landscape?open=connection:{system_id}",
         "control": null,
         "expect": "Test connection"
       }
@@ -131,7 +131,7 @@
     "object": null,
     "steps": [
       {
-        "route": "/?open=system:{system_id}",
+        "route": "/more/landscape?open=system:{system_id}",
         "control": "Schedule",
         "expect": "Test connection"
       },
@@ -150,7 +150,7 @@
       {
         "route": "/o/_/material-master",
         "control": "Rules",
-        "expect": "out of 100"
+        "expect": "How this is scored"
       },
       {
         "route": "/o/_/material-master/rules",
@@ -160,7 +160,7 @@
       {
         "route": "/work",
         "control": null,
-        "expect": "Nothing reaches SAP until it is approved and applied."
+        "expect": "Most urgent first"
       }
     ]
   },
@@ -171,7 +171,7 @@
     "target_clicks": 5,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Accept {count} suggested values for {check}",
         "expect": "Landscape"
       },
@@ -194,8 +194,8 @@
     "steps": [
       {
         "route": "/work/monitor",
-        "control": "Open cleansing",
-        "expect": "records failed a rule again since the last run"
+        "control": "After cleaning",
+        "expect": "Everything new, resolved or regressed"
       },
       {
         "route": "/cleansing",
@@ -251,29 +251,29 @@
     "target_clicks": 4,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Approve batch {label}",
         "expect": "for your approval"
       },
       {
-        "route": "/?open=batch:{batch_id}",
+        "route": "/more/landscape?open=batch:{batch_id}",
         "control": "Approve",
         "expect": "Send back"
       },
       {
-        "route": "/?open=batch:{batch_id}",
+        "route": "/more/landscape?open=batch:{batch_id}",
         "control": "Export load file",
         "expect": "Export load file",
         "needs": "the batch approved"
       },
       {
-        "route": "/?open=batch:{batch_id}",
+        "route": "/more/landscape?open=batch:{batch_id}",
         "control": "Loaded in SAP",
         "expect": "Who loads it in SAP",
         "needs": "the batch approved"
       },
       {
-        "route": "/?open=batch:{batch_id}",
+        "route": "/more/landscape?open=batch:{batch_id}",
         "control": null,
         "expect": "Sent to SAP",
         "needs": "the batch approved"
@@ -338,14 +338,14 @@
     "target_clicks": 12,
     "steps": [
       {
-        "route": "/?view=waves",
-        "control": "Open {wave}",
-        "expect": "Waves"
+        "route": "/load/waves",
+        "control": "Open the waves",
+        "expect": "Waves group objects into the loads"
       },
       {
-        "route": "/?view=waves&open=waves",
-        "control": null,
-        "expect": "Analyse the whole wave"
+        "route": "/more/landscape?view=waves",
+        "control": "Waves",
+        "expect": "Coverage"
       }
     ]
   },
@@ -355,7 +355,7 @@
     "object": null,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Clear the {n} no-go objects in {wave}",
         "expect": "Landscape"
       },
@@ -375,7 +375,7 @@
       {
         "route": "/people",
         "control": "Open {name}'s overdue work",
-        "expect": "Owners and stewards"
+        "expect": "Open work"
       },
       {
         "route": "/work",
@@ -390,7 +390,7 @@
     "object": null,
     "steps": [
       {
-        "route": "/migration",
+        "route": "/load/analysis",
         "control": null,
         "expect": "Migration"
       }
@@ -404,7 +404,7 @@
       {
         "route": "/go-live",
         "control": null,
-        "expect": "Go-live flight deck"
+        "expect": "Days to go-live"
       }
     ]
   },
@@ -427,18 +427,18 @@
     "object": "employee_central",
     "steps": [
       {
-        "route": "/migration",
+        "route": "/load/analysis",
         "control": "Check the workbook",
         "expect": "Workbook from the new system"
       },
       {
-        "route": "/migration",
+        "route": "/load/analysis",
         "control": "Export in the same format",
         "expect": "Check what fits",
         "needs": "a workbook from the new system uploaded and checked"
       },
       {
-        "route": "/migration",
+        "route": "/load/analysis",
         "control": null,
         "expect": "Export the data",
         "needs": "a workbook from the new system uploaded and checked"
@@ -459,7 +459,7 @@
       {
         "route": "/o/_/employee-central",
         "control": "Rules",
-        "expect": "out of 100",
+        "expect": "How this is scored",
         "needs": "a SuccessFactors system connected and analysed"
       },
       {
@@ -478,7 +478,7 @@
       {
         "route": "/o/_/sd-customer-master",
         "control": "Rules",
-        "expect": "out of 100"
+        "expect": "How this is scored"
       },
       {
         "route": "/o/_/sd-customer-master/rules",
@@ -489,7 +489,7 @@
       {
         "route": "/work",
         "control": null,
-        "expect": "Nothing reaches SAP until it is approved and applied."
+        "expect": "Most urgent first"
       }
     ]
   },
@@ -499,12 +499,12 @@
     "object": null,
     "steps": [
       {
-        "route": "/migration",
+        "route": "/load/analysis",
         "control": "Start an analysis",
         "expect": "Migration"
       },
       {
-        "route": "/migration",
+        "route": "/load/analysis",
         "control": null,
         "expect": "Source to target system"
       }
@@ -517,13 +517,18 @@
     "steps": [
       {
         "route": "/runs",
-        "control": "Compare with previous",
-        "expect": "Every run of every system"
+        "control": "Compare",
+        "expect": "Runs, newest first"
       },
       {
         "route": "/run/{a}/vs/{b}",
+        "control": "Scores and rules",
+        "expect": "Compare runs"
+      },
+      {
+        "route": "/run/{a}/vs/{b}?view=full",
         "control": null,
-        "expect": "What changed between"
+        "expect": "Score of each object in each run"
       }
     ]
   },
@@ -535,7 +540,7 @@
       {
         "route": "/o/_/material-master",
         "control": "Trend",
-        "expect": "out of 100"
+        "expect": "How this is scored"
       },
       {
         "route": "/o/_/material-master/trend",
@@ -552,17 +557,22 @@
       {
         "route": "/runs",
         "control": "{run}",
-        "expect": "Every run of every system"
+        "expect": "Runs, newest first"
       },
       {
         "route": "/run/{run_id}",
         "control": "Export findings",
-        "expect": "What this run scored"
+        "expect": "Back to runs"
       },
       {
-        "route": "/run/{run_id}",
+        "route": "/run/{run_id}?view=full",
+        "control": "Pin as baseline",
+        "expect": "What changed"
+      },
+      {
+        "route": "/run/{run_id}?view=full",
         "control": null,
-        "expect": "What this run scored"
+        "expect": "Score of each object in this run"
       }
     ]
   },
@@ -572,7 +582,7 @@
     "object": null,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Open {l1} step {n}",
         "expect": "Landscape"
       },
@@ -602,7 +612,7 @@
     "target_clicks": 12,
     "steps": [
       {
-        "route": "/",
+        "route": "/more/landscape",
         "control": "Open the rules library",
         "expect": "Landscape"
       },
@@ -649,7 +659,7 @@
       {
         "route": "/o/{system}/{object}",
         "control": null,
-        "expect": "out of 100"
+        "expect": "How this is scored"
       }
     ]
   },

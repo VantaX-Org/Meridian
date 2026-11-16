@@ -150,6 +150,8 @@ test("3. lead: the object canvas, its receipt and every tab", async ({ page }) =
   // The receipt lives on the Rules tab (design spec 2.4: Overview is the default tab).
   await page.goto(`/o/${SYSTEM}/${OBJECT}/rules`);
   await expect(page.getByTestId("receipt")).toBeVisible({ timeout: 30_000 });
+  // The receipt is a closed disclosure on the rules tab; open it so its rows are in the accessibility tree.
+  await page.getByTestId("receipt").locator("summary").click();
   note((await page.getByTestId("receipt").getByRole("row", { name: /^Measured/ }).first().innerText()).replace(/\s+/g, " ").trim());
   for (const tab of ["records", "fixes", "runs", "readiness", "processes", "lineage", "glossary", "golden"]) {
     await page.goto(`/o/${SYSTEM}/${OBJECT}/${tab}`);

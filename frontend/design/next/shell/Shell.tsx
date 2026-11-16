@@ -1,25 +1,24 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { AuthGuard } from "@/design/v2/auth/Guard";
+import { usePathname, useRouter } from "next/navigation";
+import { AuthGuard } from "./AuthGuard";
 import { useAuth } from "@/context/auth-context";
 import { usePreferences, usePreferencesSync } from "@/hooks/use-preferences";
 import { PermissionsProvider } from "@/lib/permissions";
-import { RequestAccessHost } from "@/design/v2/RequestAccess";
-import { Inspector } from "@/design/v2/Inspector";
+import { RequestAccessHost } from "./RequestAccess";
+import { Inspector } from "./inspector/Inspector";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { isTyping } from "@/lib/v2/keys";
 import { useOpenItem, useV2Href, useV2Session } from "@/lib/v2/hooks";
 import { resolveDensity } from "@/lib/v2/density";
 import { t } from "@/lib/v2/i18n";
-import { PATHS } from "@/lib/next/nav-defaults";
+import { PATHS, redirectFor } from "@/lib/next/nav-defaults";
 import { Button } from "../kit";
-import { LegacyScope } from "./LegacyMount";
 import { StoryHeader } from "./StoryHeader";
 import { StoryTabs } from "./StoryTabs";
 import { JobHairline } from "./JobHairline";
-import { Banners } from "./Banners";
+import { Banners, RoleChangeNotice } from "./Banners";
 import { SheetHost, useSheets } from "./SheetHost";
 import { SessionExpired } from "./SessionExpired";
 import "./shell.css";
@@ -73,7 +72,9 @@ function Frame({ children }: { children: ReactNode }) {
   const href = useV2Href();
   const { persona } = useV2Session();
   const sheets = useSheets();
-  const { open, close } = useOpenItem();
+  const { open: asked, close } = useOpenItem();
+  // An old address is about to move (NextRedirect): the inspector waits for the new one, so it opens once.
+  const open = redirectFor(usePathname() ?? "/") ? null : asked;
   const { prefs } = usePreferences();
   const density = resolveDensity(prefs.density, persona);
   const [sheet, setSheet] = useState(false);
@@ -152,15 +153,17 @@ function Frame({ children }: { children: ReactNode }) {
       <nav className="nx-skips" aria-label={t("Skip links")}>
         <a className="nx-skip" href="#nx-main">{t("Skip to content")}</a>
         <a className="nx-skip" href="#nx-tabs">{t("Skip to the tabs")}</a>
+        {open ? <a className="nx-skip" href="#m2-inspector">{t("Skip to the inspector")}</a> : null}
       </nav>
       <StoryHeader onShortcuts={() => setSheet(true)} />
       <StoryTabs />
       <JobHairline />
       <Banners />
+      <RoleChangeNotice />
       <main id="nx-main" className="nx-main" tabIndex={-1}>{children}</main>
       {open ? (
         <div className="nx-insp-host">
-          <LegacyScope><Inspector /></LegacyScope>
+          <Inspector />
         </div>
       ) : null}
       {sheet ? <KeysDialog onClose={() => setSheet(false)} /> : null}

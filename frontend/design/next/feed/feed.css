@@ -2,7 +2,8 @@
 .nx-fd-greet { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--nx-s4); flex-wrap: wrap; }
 .nx-fd-greet h1 { margin: 0; font-size: var(--nx-fs-h1); line-height: var(--nx-lh-h1); font-weight: var(--nx-w-heading); color: var(--nx-ink); }
 .nx-fd-greet p { margin: var(--nx-s2) 0 0; color: var(--nx-ink-2); font-size: var(--nx-fs-body); }
-.nx-fd-greet-actions { display: flex; gap: var(--nx-s2); }
+.nx-fd-greet > div { min-width: 0; }
+.nx-fd-greet-actions { display: flex; flex-wrap: wrap; gap: var(--nx-s2); min-width: 0; }
 .nx-fd-feed { display: flex; flex-direction: column; gap: var(--nx-s4); }
 .nx-fd-card { background: var(--nx-surface); border: 1px solid var(--nx-border); border-radius: var(--nx-r-card); padding: var(--nx-s5); display: flex; flex-direction: column; gap: var(--nx-s4); }
 .nx-fd-card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--nx-s3); }
@@ -41,3 +42,5 @@
 .nx-fd-first { margin: 0; padding: var(--nx-s3) var(--nx-s4); border-radius: var(--nx-r-control); background: var(--nx-accent-soft); color: var(--nx-ink); }
 .nx-fd-bulk { position: sticky; bottom: var(--nx-s4); z-index: 5; }
 .nx-fd-bulk .nx-pf-bulk { margin-bottom: 0; }
+.nx-fd-next { margin-top: var(--nx-s3); display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2); }
+.nx-fd-next .m2-next { max-width: 100%; white-space: normal; height: auto; min-height: 36px; text-align: start; }

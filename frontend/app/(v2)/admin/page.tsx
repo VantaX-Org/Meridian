@@ -1,7 +1,4 @@
-"use client";
-
-import { AdminHome } from "@/design/v2/admin/Admin";
-
-export default function AdminPage() {
-  return <AdminHome />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }

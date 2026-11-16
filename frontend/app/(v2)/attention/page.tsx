@@ -1,5 +1,4 @@
-import { Attention } from "@/design/v2/screens/Attention";
-
-export default function AttentionPage() {
-  return <Attention />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }

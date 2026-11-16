@@ -36,6 +36,7 @@ import { insightsRead, insightsWrite, NONE_INSIGHTS, NONE_INSIGHTS_WRITE } from 
 import { analyticsRead, NONE_ANALYTICS } from "./analytics";
 import { NONE_S4, s4Read } from "./s4";
 import { NONE_SCORE, scoreRead } from "./score";
+import { NONE_RECORDS, recordsRead, recordsWrite } from "./records";
 import { designRead, designWrite, NONE_DESIGN } from "./design";
 import { linksRead, NONE_LINKS } from "./links";
 import { catalogueRead, NONE_CATALOGUE } from "./catalogue";
@@ -168,6 +169,8 @@ const fxWritebacks = [
   { id: "wb-2", finding_id: "f-2", version_id: null, requested_by: "u-me", records_updated: 4, sap_host: "sap-ecc.example.com", created_at: "2026-10-16T09:00:00Z", check_id: "MM031", module: "material_master", rule_message: "Base unit is blank.", requested_by_name: "Demo user" },
 ];
 export function fixtureWrite<T>(method: string, path: string, body: unknown, params: Params): T {
+  const recw = recordsWrite(method, path, body);
+  if (recw !== NONE_RECORDS) return recw as T;
   const wbw = wbWrite(method, path, body);
   if (wbw !== NONE_WB) return wbw as T;
   const pfw = portfolioWrite(method, path, body);
@@ -420,6 +423,8 @@ function forecastRead(path: string): unknown {
 }
 
 export function fixtureResponse<T>(path: string, params: Params): T {
+  const rec = recordsRead(path, params);
+  if (rec !== NONE_RECORDS) return rec as T;
   const wbq = wbRead(path, params);
   if (wbq !== NONE_WB) return wbq as T;
   const pfr = portfolioRead(path, params);

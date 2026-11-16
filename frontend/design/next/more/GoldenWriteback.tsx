@@ -6,8 +6,7 @@ import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 import { useGoldenRecords } from "@/lib/v2/mdm-queries";
 import type { MasterRecordSummary } from "@/types/api";
-import { FieldHistory, SendToSap } from "@/design/v2/inspector/golden-writeback";
-import { LegacyScope } from "../shell/LegacyMount";
+import { GoldenRecordPanel } from "./GoldenRecordPanel";
 import { Button, Chip, DataTable, SegmentedControl, SidePanel, type Column } from "../kit";
 import { QueryView } from "./states";
 
@@ -69,10 +68,7 @@ export function GoldenWriteback() {
       </QueryView>
       <SidePanel open={open !== null} onClose={() => setOpen(null)} title={open ? open.sap_object_key : t("Golden record")}>
         {open ? (
-          <LegacyScope>
-            <SendToSap id={open.id} status={open.status} />
-            <FieldHistory id={open.id} />
-          </LegacyScope>
+          <GoldenRecordPanel id={open.id} status={open.status} />
         ) : null}
       </SidePanel>
     </div>

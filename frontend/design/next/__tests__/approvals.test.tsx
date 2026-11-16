@@ -10,6 +10,7 @@ import { ChangeTable } from "../approvals/ChangeTable";
 import { resetWbFixture } from "@/lib/api/v2/fixtures/writeback-requests";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
+vi.mock("@/lib/v2/hooks", async (orig) => ({ ...(await orig<object>()), useV2Session: () => ({ can: () => true }) }));
 
 let undo: () => void = () => undefined;
 beforeEach(() => {

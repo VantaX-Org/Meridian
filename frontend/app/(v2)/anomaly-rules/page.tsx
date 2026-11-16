@@ -1,5 +1,4 @@
-import { AnomalyRules } from "@/design/v2/screens/AnomalyRules";
-
-export default function AnomalyRulesPage() {
-  return <AnomalyRules />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }

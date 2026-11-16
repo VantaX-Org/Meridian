@@ -3,7 +3,7 @@
 /** Clean: download the cleaning workbook of the open run, fix it in Excel or inside Meridian. */
 import { useState } from "react";
 import { Button, SegmentedControl, useToast } from "@/design/next/kit";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { downloadCleaningWorkbook } from "@/lib/api/next/runs";
 import { uploadSentence } from "@/lib/api/v2/roundtrip";
 import { useV2Session } from "@/lib/v2/hooks";
@@ -66,7 +66,7 @@ export function CleanStep({ o, onDownloaded }: { o: ObjectRun; onDownloaded?: ()
           <li>{t("A hidden fingerprint sheet, so the upload can check that the workbook belongs to this object and run.")}</li>
         </ol>
       </details>
-      <V2Link className="nx-link" href={`/next/o/${o.systemSeg}/${o.moduleSeg}/fixes${o.runId ? `?run=${encodeURIComponent(o.runId)}` : ""}`}>{t("Fix inside Meridian instead")}</V2Link>
+      <NxLink className="nx-link" href={`/next/o/${o.systemSeg}/${o.moduleSeg}/fixes${o.runId ? `?run=${encodeURIComponent(o.runId)}` : ""}`}>{t("Fix inside Meridian instead")}</NxLink>
     </div>
   );
 }

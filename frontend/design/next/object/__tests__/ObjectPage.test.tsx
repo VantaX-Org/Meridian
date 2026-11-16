@@ -91,9 +91,10 @@ describe("object page, batch 4", () => {
     await screen.findByTestId("object-bar");
     window.dispatchEvent(new Event("nx:download"));
     const menu = await screen.findByTestId("downloads-menu");
-    expect(within(menu).getAllByRole("menuitem").length).toBe(3);
+    expect(within(menu).getAllByRole("menuitem").length).toBe(4);
     expect(menu.textContent).toMatch(/Cleaning workbook/);
     expect(menu.textContent).toMatch(/load order/);
+    expect(menu.textContent).toMatch(/Scores and rule results/);
   });
   it("opens the downloads menu on the d key", async () => {
     open("cycle");

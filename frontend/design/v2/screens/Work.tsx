@@ -9,7 +9,7 @@ import type { WorkGroup } from "@/lib/api/work";
 import type { WorkRow } from "@/lib/api/v2/types";
 import { errorSentence, exportExceptions, exportFixSheet, exportFixSheetByObject, importFixSheet, type ImportResult } from "@/lib/api/v2/work";
 import { useOpenItem, useV2Session } from "@/lib/v2/hooks";
-import { ledgerRegistry, type LedgerTarget } from "@/lib/v2/keys";
+import { isTyping, ledgerRegistry, type LedgerTarget } from "@/lib/v2/keys";
 import { refreshV2, useLandscape, useStatus } from "@/lib/v2/queries";
 import { int } from "@/lib/v2/score";
 import {
@@ -436,6 +436,18 @@ export function WorkCanvas() {
     ledgerRegistry.set(t);
     return () => ledgerRegistry.clear(t);
   }, [targets, can, actions, doExport, needRows, open, openItem, ask]);
+
+  // Ctrl+Z or Cmd+Z undoes the last change. The old shell's dispatcher takes it first (and marks it handled); the
+  // next shell has no dispatcher, so the ledger listens on the window for what is left.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || !(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "z" || isTyping(e.target)) return;
+      e.preventDefault();
+      void toast.undoLast();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toast]);
 
   // While the confirmation bar shows, Enter confirms and Escape keeps the rows; nothing else on the page takes them.
   useEffect(() => {

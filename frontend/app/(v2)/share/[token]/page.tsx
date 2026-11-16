@@ -1,4 +1,4 @@
-import { ShareLanding } from "@/design/v2/shell/RoleBanners";
+import { ShareLanding } from "@/design/next/shell/ShareLanding";
 
 export default function SharePage() {
   return <ShareLanding />;

@@ -1,5 +1,4 @@
-import { RequestsCanvas } from "@/design/v2/screens/Requests";
-
-export default function RequestsPage() {
-  return <RequestsCanvas />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }
