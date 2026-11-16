@@ -11368,6 +11368,9 @@ export const en = {
   "No rule or dimension stands out as a driver.": "No rule or dimension stands out as a driver.",
   "Runs that broke from the trend": "Runs that broke from the trend",
   "Every run sits inside its normal range.": "Every run sits inside its normal range.",
+  // J9 people and admin, native sections
+  "Needs action": "Needs action",
+  "No logo yet": "No logo yet",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

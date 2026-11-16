@@ -11369,4 +11369,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "No rule or dimension stands out as a driver.": "目立った要因となるルールやディメンションはありません。",
   "Runs that broke from the trend": "傾向から外れた実行",
   "Every run sits inside its normal range.": "すべての実行が通常の範囲内にあります。",
+  // J9 people and admin, native sections
+  "Needs action": "対応が必要",
+  "No logo yet": "ロゴはまだありません",
 };

@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { AdminCanvas } from "@/design/v2/admin/Admin";
 import { ADMIN_SECTIONS, canAdminister, isAdminSlug, visibleSections } from "@/lib/v2/admin-sections";
 import { useV2Href, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
-import { LegacyMount } from "../shell/LegacyMount";
+import { AdminCanvas, AdminHealth } from "./sections/Canvas";
 import { Denied } from "../more/states";
 import { EmptyState } from "../kit";
 import { ChartCard } from "../more/ChartCard";
@@ -22,7 +21,10 @@ export function AdminHome() {
     return [...out.entries()];
   }, [can]);
   if (!canAdminister(can)) return <Denied what={t("Administration")} />;
+  const slugs = new Set(groups.flatMap(([, items]) => items.map((s) => s.slug)));
   return (
+    <>
+    <AdminHealth people={slugs.has("users")} licensed={slugs.has("licence")} />
     <div className="nx-chartcards" data-testid="admin-cards">
       {groups.map(([group, items]) => {
         const list = (
@@ -38,10 +40,11 @@ export function AdminHome() {
         return <ChartCard key={group} title={group} state="empty" chart={null} emptyLine={t("No usage figures for this group yet.")}>{list}</ChartCard>;
       })}
     </div>
+    </>
   );
 }
 
-/** One section in the new frame. Each mounts the existing section behind the same permission check; roles keeps its requests and change log. */
+/** One section in the new frame. Each renders the native section behind the same permission check; roles keeps its requests and change log. */
 export function AdminSectionView({ slug }: { slug: string }) {
   const { can } = useV2Session();
   const href = useV2Href();
@@ -52,8 +55,8 @@ export function AdminSectionView({ slug }: { slug: string }) {
   if (slug === "users") return (
     <>
       <div className="nx-row"><Link className="nx-link" href={href("/more/admin/roles")}>{t("Roles and permissions")}</Link></div>
-      <LegacyMount><AdminCanvas section="users" /></LegacyMount>
+      <AdminCanvas section="users" />
     </>
   );
-  return <LegacyMount><AdminCanvas section={slug} /></LegacyMount>;
+  return <AdminCanvas section={slug} />;
 }

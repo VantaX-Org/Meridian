@@ -1,0 +1,302 @@
+"use client";
+
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatDate } from "@/lib/format";
+import { errorSentence } from "@/lib/api/v2/client";
+import { activateDefinition, createDefinition, dryRun, getDefinition, newVersion, type DryRun, type WorkflowDefinition } from "@/lib/api/v2/requests";
+import { useDefinitions, useFacts } from "@/lib/v2/requests-queries";
+import { int } from "@/lib/v2/score";
+import { t as tr } from "@/lib/v2/i18n";
+import { Mono } from "./parts";
+import { AdminPage, Block, Confirm, Fld, Loaded, NeedsPermission, Note, StatusWord, Sw, useCan, useDone } from "./kit";
+import { TableExport } from "./TableExport";
+import { Button } from "@/design/next/kit";
+
+const pretty = (x: unknown): string => JSON.stringify(x, null, 2);
+
+/** Parse a JSON object typed into a field, or say what is wrong with it. */
+function parseObject(text: string): { value: Record<string, unknown> } | { error: string } {
+  try {
+    const v: unknown = JSON.parse(text);
+    if (v && typeof v === "object" && !Array.isArray(v)) return { value: v as Record<string, unknown> };
+  } catch {
+    // fall through
+  }
+  return { error: tr("This is not a JSON object.") };
+}
+
+function Preview({ d }: { d: DryRun }) {
+  return (
+    <div data-testid="workflow-dry-run">
+      {d.problems.length ? (
+        <Note tone="bad">{d.problems.join(" ")}</Note>
+      ) : (
+        <Note>{tr("The definition is valid. With these facts, {n} of {total} steps apply.", { n: int(d.steps.filter((s) => s.applies).length), total: int(d.steps.length) })}</Note>
+      )}
+      {d.steps.length ? (
+        <TableExport><table className="nx-table" aria-label={tr("Steps with these facts")}>
+          <thead>
+            <tr className="nx-tr">
+              <th className="nx-th" scope="col">{tr("Step")}</th>
+              <th className="nx-th" scope="col">{tr("Applies")}</th>
+              <th className="nx-th" scope="col">{tr("Approvers")}</th>
+              <th className="nx-th" scope="col">{tr("Due within")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.steps.map((s) => (
+              <tr className="nx-tr" key={s.index}>
+                <td className="nx-td">{s.name}</td>
+                <td className="nx-td">{s.applies ? tr("Yes") : tr("No: {reason}", { reason: s.reason ?? "" })}</td>
+                <td className="nx-td">{s.assignees.map((a) => a.name).join(", ") || s.assignee_note || "—"}</td>
+                <td className="nx-td">{s.sla_hours != null ? tr("{hours} hours", { hours: int(s.sla_hours) }) : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table></TableExport>
+      ) : null}
+    </div>
+  );
+}
+
+/** One workflow, its versions, and the editor for the next version with its dry run. */
+/** One stored version, read from GET /workflows/definitions/{id}: the definition exactly as the engine holds it. */
+function DefinitionDetail({ id, onClose }: { id: string; onClose: () => void }) {
+  const q = useQuery({ queryKey: ["v2", "workflow-definition", id], queryFn: () => getDefinition(id), retry: false });
+  return (
+    <div data-testid="workflow-definition">
+      {q.isError ? <Note tone="bad">{errorSentence(q.error, tr("The workflow version could not be opened."))}</Note> : null}
+      {q.data ? (
+        <>
+          <p className="nx-reason">{tr("Version {version}, {state}", { version: int(q.data.version), state: q.data.active ? tr("Active") : tr("Inactive") })}</p>
+          {q.data.description ? <p>{q.data.description}</p> : null}
+          <pre className="nx-code">{pretty(q.data.definition)}</pre>
+        </>
+      ) : null}
+      <Button variant="quiet" size={32} onClick={onClose}>
+        {tr("Close")}
+      </Button>
+    </div>
+  );
+}
+
+function Workflow({ versions }: { versions: WorkflowDefinition[] }) {
+  const qc = useQueryClient();
+  const done = useDone();
+  const facts = useFacts();
+  const active = versions.find((v) => v.active) ?? versions[versions.length - 1];
+  const [text, setText] = useState(() => pretty(active.definition));
+  const [sample, setSample] = useState(() => pretty({ value_at_risk: 150000, records: 1, rule_failures: 0 }));
+  const [activate, setActivate] = useState(false);
+  const [preview, setPreview] = useState<DryRun | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [confirm, setConfirm] = useState<WorkflowDefinition | null>(null);
+  const [view, setView] = useState<string | null>(null);
+  const def = parseObject(text);
+  const fx = parseObject(sample);
+  const act = async (fn: () => Promise<unknown>, label: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      await qc.invalidateQueries({ queryKey: ["v2", "workflow-definitions"] });
+      done(label);
+    } catch (e) {
+      setError(errorSentence(e, tr("The workflow could not be saved.")));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Block title={active.name} hint={tr("{key} for {kind}", { key: active.key, kind: active.object_kind.replace(/_/g, " ") })}>
+      <TableExport><table className="nx-table" aria-label={tr("Versions of {name}", { name: active.name })} data-testid={`workflow-${active.key}`}>
+        <thead>
+          <tr className="nx-tr">
+            <th className="nx-th" scope="col">{tr("Version")}</th>
+            <th className="nx-th" scope="col">{tr("State")}</th>
+            <th className="nx-th" scope="col">{tr("Created")}</th>
+            <th className="nx-th" scope="col">{tr("Activated")}</th>
+            <th className="nx-th" scope="col" />
+          </tr>
+        </thead>
+        <tbody>
+          {versions.map((v) => (
+            <tr className="nx-tr" key={v.id}>
+              <td className="nx-td">
+                <Mono>{`v${v.version}`}</Mono>
+              </td>
+              <td className="nx-td">{v.active ? <StatusWord tone="go">{tr("Active")}</StatusWord> : <StatusWord tone="neutral">{tr("Inactive")}</StatusWord>}</td>
+              <td className="nx-td">{`${formatDate(v.created_at, "date")}${v.created_by_label ? `, ${v.created_by_label}` : ""}`}</td>
+              <td className="nx-td">{v.activated_at ? `${formatDate(v.activated_at, "date")}${v.activated_by_label ? `, ${v.activated_by_label}` : ""}` : "—"}</td>
+              <td className="nx-td">
+                {v.active ? null : (
+                  <Button variant="quiet" size={32} disabled={busy} onClick={() => setConfirm(v)}>
+                    {tr("Activate")}
+                  </Button>
+                )}
+                <Button variant="quiet" size={32} aria-label={tr("Open version {version}", { version: int(v.version) })} onClick={() => setView(v.id)}>
+                  {tr("Open")}
+                </Button>
+                <Button variant="quiet" size={32} onClick={() => setText(pretty(v.definition))}>
+                  {tr("Edit from this one")}
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table></TableExport>
+      {view ? <DefinitionDetail id={view} onClose={() => setView(null)} /> : null}
+      <Fld label={tr("Definition of the next version")} hint={facts.data ? tr("Facts a step can test: {facts}. Operators: {ops}.", { facts: Object.keys(facts.data.facts).join(", "), ops: facts.data.ops.join(", ") }) : undefined} error={"error" in def ? def.error : null} wide mono>
+        <textarea rows={14} value={text} spellCheck={false} onChange={(e) => setText(e.target.value)} />
+      </Fld>
+      <Fld label={tr("Sample facts for the dry run")} error={"error" in fx ? fx.error : null} wide mono>
+        <textarea rows={4} value={sample} spellCheck={false} onChange={(e) => setSample(e.target.value)} />
+      </Fld>
+      <Sw checked={activate} onChange={setActivate} label={tr("Activate the new version when saved")} hint={tr("New approvals use the active version; ones already under way keep theirs.")} />
+      <div className="nx-adm-acts">
+        <Button
+          disabled={busy || "error" in def || "error" in fx}
+          onClick={() => {
+            if ("error" in def || "error" in fx) return;
+            setBusy(true);
+            setError(null);
+            void dryRun(def.value, active.object_kind, fx.value)
+              .then(setPreview)
+              .catch((e: unknown) => setError(errorSentence(e, tr("The dry run failed."))))
+              .finally(() => setBusy(false));
+          }}
+        >
+          {tr("Dry run")}
+        </Button>
+        <Button variant="primary" disabled={busy || "error" in def} onClick={() => "value" in def && void act(() => newVersion(active.id, def.value, activate), activate ? tr("New version saved and active.") : tr("New version saved."))}>
+          {tr("Save as a new version")}
+        </Button>
+      </div>
+      {preview ? <Preview d={preview} /> : null}
+      {error ? <Note tone="bad">{error}</Note> : null}
+      {confirm ? (
+        <Confirm
+          title={tr("Activate version {version}?", { version: int(confirm.version) })}
+          body={tr("New approvals of {kind} follow version {version}. Approvals already under way keep the version they started with.", { kind: confirm.object_kind.replace(/_/g, " "), version: int(confirm.version) })}
+          confirm={tr("Activate")}
+          pending={busy}
+          onCancel={() => setConfirm(null)}
+          onConfirm={() => {
+            const v = confirm;
+            setConfirm(null);
+            void act(() => activateDefinition(v.id), tr("Version {version} is active.", { version: int(v.version) }));
+          }}
+        />
+      ) : null}
+    </Block>
+  );
+}
+
+const starter = () => ({ steps: [{ name: tr("Data owner approves"), assignee: { rule: "data_owner" }, quorum: "any", sla_hours: 48, requester_may_approve: false }] });
+
+/** A new workflow: its name, what it approves, and version 1 of its definition. */
+function NewWorkflow() {
+  const qc = useQueryClient();
+  const done = useDone();
+  const facts = useFacts();
+  const kinds = facts.data?.object_kinds ?? ["change_request", "fix_batch"];
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [kind, setKind] = useState(kinds[0]);
+  const [text, setText] = useState(() => pretty(starter()));
+  const [activate, setActivate] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const def = parseObject(text);
+  if (!open) {
+    return (
+      <div className="nx-adm-acts">
+        <Button variant="primary" onClick={() => setOpen(true)}>
+          {tr("New workflow")}
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <Block title={tr("New workflow")} hint={tr("Saved as version 1. Activate it to use it for new approvals.")}>
+      <Fld label={tr("Name")}>
+        <input value={name} maxLength={200} onChange={(e) => setName(e.target.value)} />
+      </Fld>
+      <Fld label={tr("What it approves")}>
+        <select value={kind} onChange={(e) => setKind(e.target.value)}>
+          {kinds.map((k) => (
+            <option key={k} value={k}>
+              {k.replace(/_/g, " ")}
+            </option>
+          ))}
+        </select>
+      </Fld>
+      <Fld label={tr("Description")} wide>
+        <input value={description} maxLength={2000} onChange={(e) => setDescription(e.target.value)} />
+      </Fld>
+      <Fld label={tr("Definition")} error={"error" in def ? def.error : null} wide mono>
+        <textarea rows={10} value={text} spellCheck={false} onChange={(e) => setText(e.target.value)} />
+      </Fld>
+      <Sw checked={activate} onChange={setActivate} label={tr("Activate it when saved")} />
+      <div className="nx-adm-acts">
+        <Button disabled={busy} onClick={() => setOpen(false)}>
+          {tr("Cancel")}
+        </Button>
+        <Button variant="primary"
+          disabled={busy || !name.trim() || "error" in def}
+          onClick={async () => {
+            if ("error" in def) return;
+            setBusy(true);
+            setError(null);
+            try {
+              await createDefinition({ name: name.trim(), description: description.trim() || null, object_kind: kind, definition: def.value, activate });
+              await qc.invalidateQueries({ queryKey: ["v2", "workflow-definitions"] });
+              done(tr("Workflow {name} created.", { name: name.trim() }));
+              setOpen(false);
+              setName("");
+              setDescription("");
+            } catch (e) {
+              setError(errorSentence(e, tr("The workflow could not be saved.")));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {tr("Create workflow")}
+        </Button>
+      </div>
+      {error ? <Note tone="bad">{error}</Note> : null}
+    </Block>
+  );
+}
+
+/** /admin/workflows: the approval workflows, their versions, a version editor with a dry run, and activation. */
+export function WorkflowsSection() {
+  const can = useCan();
+  const q = useDefinitions(can("manage_workflows"));
+  if (!can("manage_workflows")) {
+    return (
+      <AdminPage title={tr("Approval workflows")}>
+        <NeedsPermission what={tr("Approval workflows")} permission="manage_workflows" />
+      </AdminPage>
+    );
+  }
+  return (
+    <AdminPage title={tr("Approval workflows")} lead={tr("Who approves fix batches and change requests, in which order, and when a step applies. Each change is a new version; activate one to use it.")}>
+      <NewWorkflow />
+      <Loaded q={q} what={tr("The workflows")}>
+        {(d) => {
+          const keys = [...new Set(d.items.map((x) => x.key))];
+          return keys.length === 0 ? (
+            <p className="nx-reason">{tr("No workflow is defined.")}</p>
+          ) : (
+            keys.map((k) => <Workflow key={k} versions={d.items.filter((x) => x.key === k).sort((a, b) => a.version - b.version)} />)
+          );
+        }}
+      </Loaded>
+    </AdminPage>
+  );
+}

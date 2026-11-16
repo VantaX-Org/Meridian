@@ -1,0 +1,31 @@
+/* Administration, native: layout only. Colour, type, radii and surfaces come from the kit (design/next/kit). */
+.nx-adm-root { min-width: 0; display: grid; grid-template-columns: minmax(0, 14rem) minmax(0, 1fr); gap: var(--nx-s6); align-items: start; }
+@media (max-width: 900px) { .nx-adm-root { grid-template-columns: minmax(0, 1fr); } }
+.nx-adm-mnav { display: flex; flex-direction: column; gap: var(--nx-s1); min-width: 0; }
+.nx-adm-adm-grp { padding: var(--nx-s3) var(--nx-s3) var(--nx-s1); }
+.nx-adm-cc, .nx-adm-cards, .nx-adm-rows, .nx-adm-hlist, .nx-adm-procs, .nx-adm-s10-packs, .nx-adm-digrows { display: flex; flex-direction: column; gap: var(--nx-s4); min-width: 0; }
+.nx-adm-blk, .nx-adm-cc-card, .nx-adm-danger-panel { display: flex; flex-direction: column; gap: var(--nx-s3); min-width: 0; padding: var(--nx-s5); }
+.nx-adm-blk-h, .nx-adm-scim-h, .nx-adm-hitem, .nx-adm-digrow, .nx-adm-s10-pack, .nx-adm-tx-bar, .nx-adm-cc-lede { display: flex; gap: var(--nx-s3); align-items: center; justify-content: space-between; flex-wrap: wrap; min-width: 0; }
+.nx-adm-acts, .nx-adm-tags, .nx-adm-rfilters, .nx-adm-pick, .nx-adm-gtools, .nx-adm-pager, .nx-adm-mr-domains, .nx-adm-mapping-objects, .nx-adm-tmpl { display: flex; gap: var(--nx-s2); align-items: center; flex-wrap: wrap; }
+.nx-adm-acts { margin-top: var(--nx-s3); }
+.nx-adm-tx { display: flex; flex-direction: column; gap: var(--nx-s2); min-width: 0; }
+.nx-adm-tx-bar { justify-content: flex-end; }
+.nx-adm-fgrid, .nx-adm-aform, .nx-adm-apgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--nx-s3) var(--nx-s4); max-width: 45rem; }
+@media (max-width: 640px) { .nx-adm-fgrid, .nx-adm-aform, .nx-adm-apgrid { grid-template-columns: minmax(0, 1fr); } }
+.nx-adm-wide { grid-column: 1 / -1; min-width: 0; }
+.nx-adm-fld { display: flex; flex-direction: column; gap: var(--nx-s2); min-width: 0; }
+.nx-adm-sw { display: flex; gap: var(--nx-s3); align-items: flex-start; }
+.nx-adm-sw-t { display: flex; flex-direction: column; gap: var(--nx-s1); }
+.nx-adm-kv, .nx-adm-contrast { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--nx-s2) var(--nx-s4); margin: 0; }
+.nx-adm-kv dd, .nx-adm-contrast dd { margin: 0; min-width: 0; }
+.nx-adm-map, .nx-adm-maptbl, .nx-adm-diff, .nx-adm-hist, .nx-adm-predict, .nx-adm-target, .nx-adm-s10-cov, .nx-adm-pmx { min-width: 0; overflow-x: auto; }
+.nx-adm-mwin { border: 0; padding: 0; margin: 0; display: flex; gap: var(--nx-s3); align-items: flex-end; flex-wrap: wrap; }
+.nx-adm-dlg { display: flex; flex-direction: column; gap: var(--nx-s3); }
+.nx-adm-result { display: flex; flex-direction: column; gap: var(--nx-s2); margin-top: var(--nx-s3); }
+.nx-adm-preview { display: flex; gap: var(--nx-s3); align-items: center; flex-wrap: wrap; padding: var(--nx-s4); }
+.nx-adm-logo { max-height: 2.5rem; max-width: 10rem; object-fit: contain; }
+.nx-adm-swatch { display: inline-block; width: var(--nx-s5); height: var(--nx-s5); vertical-align: middle; }
+.nx-adm-cc-track { display: inline-flex; min-width: 6rem; }
+.nx-adm-sep { border: 0; margin: var(--nx-s2) 0; height: 0; }
+.nx-adm-secret, .nx-adm-plain { min-width: 0; overflow-wrap: anywhere; }
+.nx-adm-empty, .nx-adm-note, .nx-adm-anote, .nx-adm-card-lead { margin: 0; max-width: 78ch; }

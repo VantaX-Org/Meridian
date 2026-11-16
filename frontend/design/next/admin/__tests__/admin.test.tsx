@@ -12,7 +12,6 @@ import { PersonSheet } from "../PersonSheet";
 import { InviteFlow } from "../../flows/InviteFlow";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
-vi.mock("@/design/v2/admin/Admin", () => ({ AdminCanvas: () => <div data-testid="legacy-admin" /> }));
 
 const S = vi.hoisted(() => ({
   can: (): boolean => true,
@@ -23,7 +22,8 @@ const S = vi.hoisted(() => ({
   remove: vi.fn(),
 }));
 vi.mock("@/lib/v2/hooks", async (orig) => ({ ...(await orig<object>()), useV2Session: () => ({ can: S.can, id: S.self, name: "Me", email: "me@example.com", persona: "admin", label: "Admin", fixture: true, viewAs: null, shared: false }) }));
-vi.mock("@/lib/v2/admin-queries", () => ({
+vi.mock("@/lib/v2/admin-queries", async (orig) => ({
+  ...(await orig<object>()),
   useUsers: () => S.users,
   useRoles: () => ({ data: S.roles }),
   useGrants: () => ({ data: [] }),
@@ -31,7 +31,7 @@ vi.mock("@/lib/v2/admin-queries", () => ({
   useScheduleOptions: () => ({ data: { modules: ["material_master"] } }),
   refreshAdmin: () => Promise.resolve(),
 }));
-vi.mock("@/lib/api/v2/admin", () => ({ inviteUser: S.invite, setUserActive: vi.fn(), removeGrant: vi.fn(), removeUser: S.remove }));
+vi.mock("@/lib/api/v2/admin", async (orig) => ({ ...(await orig<object>()), inviteUser: S.invite, setUserActive: vi.fn(), removeGrant: vi.fn(), removeUser: S.remove }));
 
 const u = (id: string, role: "analyst" | "admin" = "analyst", extra: object = {}) => ({ id, name: `Person ${id}`, email: `${id}@example.com`, role, is_active: true, ...extra });
 const setUsers = (list: unknown[] | undefined, over: object = {}) => (S.users = { data: list ? { users: list } : undefined, isLoading: false, error: null, refetch: () => Promise.resolve(), ...over });
@@ -128,12 +128,12 @@ describe("states of users and roles", () => {
     expect(screen.getByTestId("denied")).toBeInTheDocument();
   });
 
-  it("unknown section is an empty screen, known legacy section mounts", () => {
+  it("unknown section is an empty screen, a known section renders natively", () => {
     const a = wrap(<AdminSectionView slug="nope" />);
     expect(screen.getByText("Nothing at this address")).toBeInTheDocument();
     a.unmount();
     wrap(<AdminSectionView slug="audit" />);
-    expect(screen.getByTestId("legacy-admin")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Audit log" })).toBeInTheDocument();
   });
 
   it("loading shows a skeleton", () => {

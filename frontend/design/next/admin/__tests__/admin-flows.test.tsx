@@ -7,7 +7,13 @@ import { ADMIN_FLOWS, isAdminFlow } from "../AdminFlows";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
-vi.mock("@/design/v2/screens/RulePromotion", async () => (await import("../../__tests__/stub")).stub("RulePromotion"));
+vi.mock("@/lib/api/v2/rule-promotion", () => ({
+  getPromotionModules: vi.fn().mockResolvedValue({ modules: [] }),
+  getPromotionPreview: vi.fn(),
+  applyPromotion: vi.fn(),
+  revertPromotion: vi.fn(),
+  promoteAnyway: vi.fn(),
+}));
 vi.mock("@/lib/api/roles", () => ({
   listRoles: vi.fn().mockResolvedValue([
     { key: "steward", name: "Steward", legacy: false },
@@ -40,9 +46,9 @@ describe("admin flows", () => {
     expect(screen.getAllByText("Enter a name and a host.")[0]).toBeTruthy();
   });
 
-  it("the rule flow mounts RulePromotion and holds on the review gate", async () => {
+  it("the rule flow renders the native rule promotion and holds on the review gate", async () => {
     renderWithQuery(<More slug={["admin", "flow", "rules"]} />);
-    expect(screen.getByTestId("mounted")).toHaveTextContent("RulePromotion");
+    expect(await screen.findByTestId("rule-promotion-modules")).toBeInTheDocument();
     expect(screen.getAllByText("Confirm that you reviewed the impact.")[0]).toBeTruthy();
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
