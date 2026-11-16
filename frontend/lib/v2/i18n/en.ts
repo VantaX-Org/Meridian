@@ -11585,6 +11585,17 @@ export const en = {
   "The rules of this run could not be read.": "The rules of this run could not be read.",
   "The score receipt could not be read.": "The score receipt could not be read.",
   "The source and target scores could not be read.": "The source and target scores could not be read.",
+  "Loading the failing records": "Loading the failing records",
+  "Where the failures sit could not be read.": "Where the failures sit could not be read.",
+  "No breakdown yet": "No breakdown yet",
+  "The failing records of this rule are not split by plant or another field yet.": "The failing records of this rule are not split by plant or another field yet.",
+  "No origin traced": "No origin traced",
+  "No change document names who set these values.": "No change document names who set these values.",
+  "Loading the blast radius": "Loading the blast radius",
+  "Nothing mapped": "Nothing mapped",
+  "Your role cannot export records.": "Your role cannot export records.",
+  "Open the work queue for this rule": "Open the work queue for this rule",
+  "Find the rule in the library": "Find the rule in the library",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
