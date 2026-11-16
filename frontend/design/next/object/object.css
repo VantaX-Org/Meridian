@@ -9,7 +9,7 @@
 .nx-fieldset:disabled { color: var(--nx-ink-3); }
 .nx-details summary { cursor: pointer; color: var(--nx-ink-2); }
 .nx-details[open] summary { margin-block-end: var(--nx-s2); }
-.nx-link { color: var(--nx-accent); text-underline-offset: 2px; }
+.nx-link { color: var(--nx-accent); text-decoration: underline; text-underline-offset: 2px; }
 .nx-linkbtn { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-align: start; min-width: 0; }
 .nx-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--nx-s3); }
 .nx-actions { display: flex; flex-wrap: wrap; gap: var(--nx-s2); align-items: center; }
@@ -98,6 +98,7 @@
 .nx-hero-why-h { margin: 0; font-size: var(--nx-fs-body); font-weight: var(--nx-w-label); }
 .nx-hero-cap { margin: 0; color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
 .nx-aletheia-by { margin-inline-start: var(--nx-s2); color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-aletheia .nx-btn-quiet { color: var(--nx-ink); text-decoration: underline; }
 .nx-aletheia { margin: 0; padding: var(--nx-s3) var(--nx-s4); background: var(--nx-accent-soft); border-radius: var(--nx-r-card); }
 .nx-segs { display: flex; gap: var(--nx-s2); align-items: center; min-inline-size: 0; flex-wrap: wrap; padding-block: var(--nx-s2); }
 .nx-seg { flex: none; min-block-size: var(--nx-h-control-sm); padding-inline: var(--nx-s4); border: 1px solid var(--nx-border); border-radius: var(--nx-r-pill); background: var(--nx-surface); color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); cursor: pointer; }
