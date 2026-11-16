@@ -9,7 +9,7 @@ import { describeField, describeTable } from "@/lib/v2/sap-fields";
 import { useRecordHistory } from "@/lib/v2/step10-queries";
 import { useRecordLinks, useWorkRecord } from "@/lib/v2/work-queries";
 import { STATUS_LABEL, splitKey, keyLabel } from "@/lib/v2/work";
-import { Button, Card, DataTable, EmptyState, FieldChip, Select, Skeleton, StatTile } from "@/ui/kit";
+import { Button, Card, DataTable, EmptyState, FieldChip, Select, Skeleton, StatTile, SeverityPill } from "@/ui/kit";
 import type { ObjectRun } from "@/ui/screens/object/useObjectRun";
 import { useAsOf } from "./hooks";
 import { PostClean, sevLabel } from "./Records";
@@ -77,7 +77,7 @@ export function Record({ o, system, module, recordKey }: { o: ObjectRun; system:
             {d?.issues.length ? (
               <DataTable label={t("Findings")} rows={d.issues} rowKey={(i) => i.check_id + i.field} height={Math.min(360, 60 + 44 * d.issues.length)} columns={[
                 { key: "rule", label: t("Rule"), render: (i) => <code className="mx-code">{i.check_id}</code> },
-                { key: "sev", label: t("Severity"), render: (i) => <span className="mx-sev" data-sev={i.severity}><i className="mx-dot" aria-hidden="true" />{sevLabel(i.severity)}</span> },
+                { key: "sev", label: t("Severity"), render: (i) => <SeverityPill sev={i.severity} label={sevLabel(i.severity)} /> },
                 { key: "field", label: t("Field"), render: (i) => i.field ? <FieldChip code={i.field} description={describeField(i.field, descr) ?? undefined} /> : null },
                 { key: "now", label: t("Current value"), render: (i) => i.current_value ?? t("empty") },
                 { key: "fix", label: t("Suggested value"), render: (i) => i.suggestion?.value ?? t("n/a") },

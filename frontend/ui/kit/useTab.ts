@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-/** The open tab, kept in `?tab=` so a link or reload lands on it. Other params (fixture, run) stay. Local until the kit has one. */
+/** The open tab, kept in `?tab=` so a link or reload lands on it. Other params (fixture, run) stay. An unknown value falls back. */
 export function useTab<T extends string>(ids: readonly T[], fallback: T): [T, (next: T) => void] {
   const params = useSearchParams();
   const router = useRouter();

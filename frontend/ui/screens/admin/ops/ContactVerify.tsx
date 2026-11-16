@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { putContactVerification } from "@/lib/api/v2/step9";
 import { refreshStep9, useContactVerification } from "@/lib/v2/step9-queries";
 import { t } from "@/lib/v2/i18n";
-import { Card, Code, DataTable, StatTile, Toggle, useToast } from "@/ui/kit";
+import { Card, Code, DataTable, StatTile, Toggle, useToast, EmptyState } from "@/ui/kit";
 import { Sec, errText } from "./shared";
 
 export function ContactVerify() {
@@ -28,7 +28,7 @@ export function ContactVerify() {
         <Toggle label={t("Check the mail server of each email domain")} checked={mx} onChange={save} />
       </Card>
       <Card title={t("Contact rules")}>
-        {rules.length === 0 ? <p className="mx-muted">{t("No contact rules apply.")}</p> : (
+        {rules.length === 0 ? <EmptyState heading={t("No contact rules apply.")} /> : (
           <DataTable label={t("Contact rules")} rows={rules} rowKey={(r) => r.check_id} height={380}
             columns={[
               { key: "rule", label: t("Rule"), render: (r) => <Code code={r.check_id} description={r.message} /> },

@@ -1,12 +1,4 @@
 /* Batch 3 (runs): local pieces the kit does not have yet. Tokens only. */
-.mx-root .rn-hair { display: grid; gap: var(--mx-s1); padding: var(--mx-s2) var(--mx-s3); border: 1px solid var(--mx-border); border-radius: var(--mx-r-control); background: var(--mx-surface); }
-.mx-root .rn-hair-row { display: flex; align-items: center; justify-content: space-between; gap: var(--mx-s3); }
-.mx-root .rn-hair-bar { block-size: var(--mx-s1); border-radius: var(--mx-r-pill); background: var(--mx-surface-2); overflow: hidden; }
-.mx-root .rn-hair-fill { block-size: 100%; background: var(--mx-accent); border-radius: var(--mx-r-pill); }
-.mx-root .rn-hair-fill[data-indeterminate="true"] { inline-size: 40%; opacity: 0.6; }
-.mx-root .rn-drop { display: grid; gap: var(--mx-s2); justify-items: start; padding: var(--mx-s5); border: 1px dashed var(--mx-border-strong); border-radius: var(--mx-r-card); background: var(--mx-surface); }
-.mx-root .rn-drop[data-over="true"] { border-color: var(--mx-accent); background: var(--mx-accent-soft); }
-.mx-root .rn-drop input[type="file"] { max-inline-size: 100%; }
 .mx-root .rn-list { display: grid; gap: var(--mx-s2); margin: 0; padding: 0; list-style: none; }
 .mx-root .rn-list li { display: flex; justify-content: space-between; align-items: center; gap: var(--mx-s3); padding: var(--mx-s2) var(--mx-s3); border: 1px solid var(--mx-border); border-radius: var(--mx-r-control); background: var(--mx-surface); }
 .mx-root .rn-list li[data-tone="bad"] { border-color: var(--mx-bad); }

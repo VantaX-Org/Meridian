@@ -95,7 +95,7 @@ export function SignIn() {
       </Card>
 
       <Card title={t("Group to role")} sub={t("A person in a group gets the mapped role.")}>
-        {maps.length === 0 && <p className="mx-muted">{t("No groups are mapped yet.")}</p>}
+        {maps.length === 0 && <EmptyState heading={t("No groups are mapped yet.")} />}
         <form className="mx-col" onSubmit={(e) => { e.preventDefault(); void run(() => putScimGroupRoles(maps.filter((m) => m.group.trim())), t("Group mapping saved."), ["scim"]); }}>
           {maps.map((m, i) => (
             <div key={i} className="mx-links">

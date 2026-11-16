@@ -7,7 +7,7 @@ import { discoverDesign, getConfigDeviation, getDesign, getDesignCoverage, getDe
 import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
-import { Button, Card, Chip, DataTable, FieldChip, Search, StatTile, useToast, type Column } from "@/ui/kit";
+import { Button, Card, Chip, DataTable, FieldChip, Search, StatTile, useToast, type Column, EmptyState } from "@/ui/kit";
 import { errMsg, Gate, when } from "./shared";
 
 export function DesignTab({ id }: { id: string }) {
@@ -52,7 +52,7 @@ export function DesignTab({ id }: { id: string }) {
       <Card title={t("Tables")} action={<Chip selected={custom} onClick={() => setCustom(!custom)}>{t("Customer tables only")}</Chip>}>
         <Search value={search} onChange={setSearch} label={t("Search tables")} clearLabel={t("Clear search")} />
         <Gate q={tables} empty={{ heading: t("No tables read yet") }}>
-          {(d) => d.items.length === 0 ? <p className="mx-muted">{t("No tables match.")}</p> : <DataTable columns={cols} rows={d.items} rowKey={(r) => r.table} label={t("Source tables")} />}
+          {(d) => d.items.length === 0 ? <EmptyState heading={t("No tables match.")} /> : <DataTable columns={cols} rows={d.items} rowKey={(r) => r.table} label={t("Source tables")} />}
         </Gate>
       </Card>
       <Card title={t("Configuration against the standard")}>
@@ -72,7 +72,7 @@ export function DesignTab({ id }: { id: string }) {
         <Gate q={cover} empty={{ heading: t("No coverage yet") }}>
           {(d) => {
             const rows = Object.entries(d.coverage).flatMap(([area, es]) => es.map((e, i) => ({ k: `${area}-${i}`, area, ...e })));
-            return rows.length === 0 ? <p className="mx-muted">{t("No coverage yet.")}</p> : (
+            return rows.length === 0 ? <EmptyState heading={t("No coverage yet.")} /> : (
               <DataTable columns={[
                 { key: "area", label: t("Area"), render: (r) => r.area },
                 { key: "table", label: t("Table"), render: (r) => (r.table ? <FieldChip code={r.table} description={r.purpose} /> : "-") },
@@ -85,7 +85,7 @@ export function DesignTab({ id }: { id: string }) {
       </Card>
       <Card title={t("Snapshots")}>
         <Gate q={snaps} empty={{ heading: t("No snapshots yet") }}>
-          {(d) => d.length === 0 ? <p className="mx-muted">{t("No snapshots yet.")}</p> : (
+          {(d) => d.length === 0 ? <EmptyState heading={t("No snapshots yet.")} /> : (
             <DataTable columns={[
               { key: "completed_at", label: t("Read"), render: (r) => when(r.completed_at ?? r.started_at) },
               { key: "status", label: t("Status"), render: (r) => r.status },

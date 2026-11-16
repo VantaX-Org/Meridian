@@ -3,7 +3,7 @@
 import { decideAccessRequest } from "@/lib/api/v2/admin";
 import { useAccessRequests } from "@/lib/v2/admin-queries";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable } from "@/ui/kit";
+import { Button, Card, Code, DataTable, EmptyState } from "@/ui/kit";
 import { Row, Sec, useAct, when } from "./shared";
 
 export function Access() {
@@ -14,7 +14,7 @@ export function Access() {
     <Sec title={t("Access requests")} scope="access" q={[q]} context={t("{n} open", { n: rows.length })}
       facts={[t("{n} access requests are open.", { n: rows.length })]}>
       <Card title={t("Open requests")}>
-        {rows.length === 0 ? <p className="mx-muted">{t("No open access requests.")}</p> : (
+        {rows.length === 0 ? <EmptyState heading={t("No open access requests.")} /> : (
           <DataTable label={t("Open access requests")} rows={rows} rowKey={(r) => r.id} height={360}
             columns={[
               { key: "created_at", label: t("Asked"), render: (r) => when(r.created_at), sort: (r) => r.created_at },

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import type { S4Area } from "@/lib/api/v2/s4";
-import { Card, DataTable, EmptyState, FieldChip, MasterList, PageHeader, Sheet, StatTile, useAletheiaScope, useStacked, type Severity } from "@/ui/kit";
+import { Card, DataTable, EmptyState, FieldChip, MasterList, PageHeader, Sheet, StatTile, useAletheiaScope, useStacked, type Severity, SeverityPill } from "@/ui/kit";
 import { AskButton, Gate, humanize, pct } from "./common";
 import { useS4 } from "./hooks";
 
@@ -50,7 +50,7 @@ export function S4() {
           columns={[
             { key: "id", label: t("Rule"), sort: (c) => c.check_id, render: (c) => <FieldChip code={c.check_id} description={humanize(c.module ?? "")} /> },
             { key: "i", label: t("Impact"), render: (c) => (c.impact === "blocking" ? t("Blocking") : t("Warning")) },
-            { key: "s", label: t("Status"), render: (c) => <span className="mx-sev" data-sev={sevOf(c.status)}><i className="mx-dot" aria-hidden="true" />{statusLabel(c.status)}</span> },
+            { key: "s", label: t("Status"), render: (c) => <SeverityPill sev={sevOf(c.status)} label={statusLabel(c.status)} /> },
             { key: "a", label: t("Records affected"), align: "end", sort: (c) => c.affected_count, render: (c) => c.affected_count },
             { key: "p", label: t("Pass rate"), align: "end", sort: (c) => c.pass_rate ?? -1, render: (c) => pct(c.pass_rate) },
           ]}

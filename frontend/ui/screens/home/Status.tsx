@@ -4,7 +4,7 @@ import { useStatusPage } from "@/lib/v2/enterprise-queries";
 import { formatDate } from "@/lib/format";
 import { currentMaintenance, dayCells, overallVerdict, overallWord, statusWord } from "@/lib/v2/status";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
-import { Card, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, Skeleton, StatTile, TrendArea, type Severity } from "@/ui/kit";
+import { Card, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, Skeleton, StatTile, TrendArea, type Severity, SeverityPill } from "@/ui/kit";
 
 const pct = (n: number | null | undefined) => (n == null ? t("n/a") : `${n.toFixed(2)}%`);
 const SEV: Record<string, Severity> = { go: "low", "at-risk": "medium", "no-go": "critical" };
@@ -24,7 +24,7 @@ export function Status() {
     <>
       <PageHeader title={t("Status")} context={t("Checked {updated}. This page reads again every minute.", { updated: formatDate(page.generated_at, "datetime") })} />
       <dl className="mx-tiles">
-        <StatTile label={t("Overall")} value={<span className="mx-sev" data-sev={SEV[verdict]}><i className="mx-dot" aria-hidden="true" />{overallWord(page.status)}</span>} note={page.status === "operational" ? t("Every part of the platform is working.") : page.status === "degraded" ? t("Part of the platform is slower or less available than usual.") : t("A core part of the platform is down.")} />
+        <StatTile label={t("Overall")} value={<SeverityPill sev={SEV[verdict]} label={overallWord(page.status)} />} note={page.status === "operational" ? t("Every part of the platform is working.") : page.status === "degraded" ? t("Part of the platform is slower or less available than usual.") : t("A core part of the platform is down.")} />
         <StatTile label={t("Uptime, last 30 days")} value={pct(page.uptime.overall_pct)} bar={page.uptime.overall_pct ?? 0} barTone="pass" />
         <StatTile label={t("Server errors, last 24 hours")} value={page.incidents.reduce((n, i) => n + i.count, 0)} />
       </dl>
@@ -44,7 +44,7 @@ export function Status() {
           height={280}
           columns={[
             { key: "label", label: t("Component"), sort: (c) => c.label, render: (c) => <>{c.label} <FieldChip code={c.id} description={c.label} /></> },
-            { key: "status", label: t("State"), sort: (c) => c.status, render: (c) => <span className="mx-sev" data-sev={c.status === "up" ? "low" : c.status === "degraded" ? "medium" : c.status === "down" ? "critical" : "info"}><i className="mx-dot" aria-hidden="true" />{statusWord(c.status)}</span> },
+            { key: "status", label: t("State"), sort: (c) => c.status, render: (c) => <SeverityPill sev={c.status === "up" ? "low" : c.status === "degraded" ? "medium" : c.status === "down" ? "critical" : "info"} label={statusWord(c.status)} /> },
             { key: "lat", label: t("Latency"), align: "end", sort: (c) => c.latency_ms ?? -1, render: (c) => <span className="mx-num">{c.latency_ms == null ? t("n/a") : t("{n} ms", { n: Math.round(c.latency_ms) })}</span> },
             { key: "up", label: t("Uptime, 30 days"), align: "end", sort: (c) => upBy.get(c.id) ?? -1, render: (c) => <span className="mx-num">{pct(upBy.get(c.id))}</span> },
             { key: "detail", label: t("Detail"), render: (c) => c.detail ?? "" },

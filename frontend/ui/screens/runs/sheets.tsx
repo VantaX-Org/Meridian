@@ -12,8 +12,7 @@ import { startRun, useRunsPage } from "@/lib/api/next/runs";
 import { FIXTURE_MODULES } from "@/lib/api/next/runs-fixture";
 import { checkCleaned, checksOf, needsParent, uploadCleaned, uploadSentence, type UploadChecks } from "@/lib/api/v2/roundtrip";
 import { getRunExtractTarget, openExtractTargetFile, refillExtractTarget } from "@/lib/api/v2/extract-target";
-import { Button, Chip, DataTable, EmptyState, Field, Select, Skeleton, Toggle, useSheet, useToast, type Column, type SheetDef } from "@/ui/kit";
-import { FileDrop } from "./FileDrop";
+import { Button, Chip, DataTable, EmptyState, Field, FileDrop, Select, Skeleton, Toggle, useSheet, useToast, type Column, type SheetDef } from "@/ui/kit";
 import { runPath, runTitle } from "./util";
 import "./runs.css";
 
@@ -92,7 +91,7 @@ function Upload({ arg }: { arg: unknown }) {
   ];
   return (
     <div className="rn-stack">
-      <FileDrop accept=".xlsx,.csv" file={file} onFile={pick} label={t("Cleaned file")} hint={t("Drop the Excel file you cleaned.")} />
+      <FileDrop accept=".xlsx,.csv" onFile={pick} label={t("Cleaned file")} status={file ? t("{name} ({kb} KB)", { name: file.name, kb: Math.max(1, Math.round(file.size / 1024)) }) : t("Drop the Excel file you cleaned.")} />
       {parent && !a.run ? <p className="mx-muted">{t("The file does not say which run it came from. Open this sheet from a run.")}</p> : null}
       {checks ? <DataTable columns={cols} rows={checks.checks} rowKey={(c) => c.id} label={t("File checks")} height={300} /> : null}
       {msg ? <p role="alert">{msg}</p> : null}

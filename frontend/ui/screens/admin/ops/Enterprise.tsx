@@ -2,7 +2,7 @@
 
 import { useCompliance, useScimToken, useStatusPage, useThemeSettings } from "@/lib/v2/enterprise-queries";
 import { t } from "@/lib/v2/i18n";
-import { Card, Code, DataTable, SeverityPill, StatTile } from "@/ui/kit";
+import { Card, Code, DataTable, SeverityPill, StatTile, EmptyState } from "@/ui/kit";
 import { day, Sec, when } from "./shared";
 
 const SEV = { up: "low", degraded: "medium", down: "critical", not_configured: "info" } as const;
@@ -31,7 +31,7 @@ export function Enterprise() {
           ]} />
       </Card>
       <Card title={t("Maintenance windows")}>
-        {(s?.maintenance.length ?? 0) === 0 ? <p className="mx-muted">{t("No maintenance is planned.")}</p> : (
+        {(s?.maintenance.length ?? 0) === 0 ? <EmptyState heading={t("No maintenance is planned.")} /> : (
           <DataTable label={t("Maintenance windows")} rows={s?.maintenance ?? []} rowKey={(r) => r.id ?? r.starts_at} height={200}
             columns={[
               { key: "title", label: t("Title"), render: (r) => r.title },
