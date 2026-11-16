@@ -11596,6 +11596,10 @@ export const en = {
   "Your role cannot export records.": "Your role cannot export records.",
   "Open the work queue for this rule": "Open the work queue for this rule",
   "Find the rule in the library": "Find the rule in the library",
+  "Change the model first.": "Change the model first.",
+  "Exporting needs the export permission.": "Exporting needs the export permission.",
+  "Loading the process models": "Loading the process models",
+  "Loading the model": "Loading the model",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

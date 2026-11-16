@@ -1,6 +1,6 @@
-import { CanvasSkeleton } from "@/design/v2/parts";
+import { Skeleton } from "@/design/next/kit";
 
-/** A canvas on its way (a route's code or data): its placeholder in the canvas, inside the shell that stays put. */
+/** A screen on its way (a route's code or data): its placeholder inside the shell that stays put. */
 export default function Loading() {
-  return <CanvasSkeleton />;
+  return <Skeleton lines={6} />;
 }

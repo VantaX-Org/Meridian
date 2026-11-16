@@ -8,9 +8,7 @@ import { resetActions } from "@/lib/v2/undo";
 import { clearPatches } from "@/lib/v2/work-overrides";
 import { Inspector } from "../Inspector";
 import { ToastProvider } from "../Toast";
-import { V2Shell } from "../shell/V2Shell";
-import { WorkCanvas } from "../screens/Work";
-import { getUrl, setUrl } from "./nav-store";
+import { setUrl } from "./nav-store";
 import { stubLayout } from "./layout-stub";
 
 vi.mock("next/navigation", async () => (await import("./nav-store")).navigationMock);
@@ -263,29 +261,6 @@ describe("actions by permission", () => {
     expect(within(acts).queryByRole("button")).toBeNull();
     expect(screen.queryByLabelText("New value for MM142")).toBeNull();
     expect(screen.queryByLabelText("Decision for MM142")).toBeNull();
-  });
-});
-
-describe("stepping through the ledger", () => {
-  it("] opens the next row and [ the previous one", async () => {
-    window.sessionStorage.setItem("mn_v2_fixture", "1");
-    const url = `/work?fixture=1&persona=steward&open=${encodeURIComponent("record:material_master:MATNR=000000000000000232")}`;
-    window.history.pushState({}, "", url);
-    setUrl(url);
-    renderWithQuery(
-      <V2Shell>
-        <WorkCanvas />
-      </V2Shell>,
-    );
-    await screen.findByRole("heading", { level: 2, name: "000000000000000232" });
-    await screen.findByTestId("record-facts");
-    fireEvent.keyDown(document.body, { key: "]" });
-    await waitFor(() => expect(decodeURIComponent(getUrl())).not.toContain("MATNR=000000000000000232"));
-    const second = decodeURIComponent(getUrl()).match(/MATNR=(\d+)/)?.[1];
-    expect(second).toBeTruthy();
-    await screen.findByRole("heading", { level: 2, name: second as string });
-    fireEvent.keyDown(document.body, { key: "[" });
-    await waitFor(() => expect(decodeURIComponent(getUrl())).toContain("MATNR=000000000000000232"));
   });
 });
 

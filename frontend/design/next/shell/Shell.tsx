@@ -73,7 +73,7 @@ function Frame({ children }: { children: ReactNode }) {
   const { persona } = useV2Session();
   const sheets = useSheets();
   const { open: asked, close } = useOpenItem();
-  // An old address is about to move (NextRedirect): the inspector waits for the new one, as LegacyFrame does, so it opens once.
+  // An old address is about to move (NextRedirect): the inspector waits for the new one, so it opens once.
   const open = redirectFor(usePathname() ?? "/") ? null : asked;
   const { prefs } = usePreferences();
   const density = resolveDensity(prefs.density, persona);

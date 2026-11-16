@@ -40,6 +40,14 @@ export const REDIRECTS: Readonly<Record<string, string>> = {
   "/s": "/more/systems",
   "/s/new": "/more/systems?sheet=connect",
   "/reports": "/more/reports",
+  "/aletheia-survivorship": "/more/aletheia?tab=survivorship",
+  "/aletheia/evidence": "/more/aletheia?tab=evidence",
+  "/aletheia/foresight": "/more/aletheia?tab=foresight",
+  "/aletheia/reason": "/more/aletheia?tab=reason",
+  "/catalogue": "/more/master-data?tab=catalogue",
+  "/entry-gate": "/more/master-data?tab=entry-gate",
+  "/migration/load-plan": "/load?tab=plan",
+  "/system-compare": "/load?tab=compare",
   "/admin": "/more/admin",
   // Preview interface
   "/portfolio": "/",
@@ -68,7 +76,11 @@ export function redirectFor(path: string): string | null {
   for (const [from, to] of PREFIXES) {
     if (p.startsWith(from) && p.length > from.length) {
       const rest = p.slice(from.length);
-      if (from === "/o/") return rest.split("/").length <= 3 ? `${to}${rest}` : null;
+      if (from === "/o/") {
+        const [sys, mod, tab, ...key] = rest.split("/");
+        if (tab === "records" && key.length) return `${to}${sys}/${mod}/records?open=record:${mod.replace(/-/g, "_")}:${key.join("/")}`;
+        return `${to}${rest}`;
+      }
       if (from === "/load/") return rest.includes("/") ? "/load" : `${to}${rest}`;
       return `${to}${rest}`;
     }

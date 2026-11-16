@@ -15,6 +15,7 @@ import { DownloadsMenu } from "../object/DownloadsMenu";
 import { ObjectBar } from "../object/ObjectBar";
 import { useObjectRun } from "../object/useObjectRun";
 import { MORE, SEGMENTS, renderTab, tabLabel, type TabId } from "../object/tabs";
+import { ProcessDesigner } from "../object/designer/ProcessDesigner";
 import { OldRunBand } from "../object/tabs/OldRunBand";
 import { RelatedObjects } from "../object/tabs/Related";
 import { useV2Href } from "@/lib/v2/hooks";
@@ -27,7 +28,7 @@ import "../object/object.css";
 
 const ID = "nx-object";
 
-export function ObjectPage({ system, module, tab }: { system: string; module: string; tab: TabId }) {
+export function ObjectPage({ system, module, tab, design = false }: { system: string; module: string; tab: TabId; design?: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
   const pathname = usePathname();
@@ -165,7 +166,7 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
               </EmptyState>
             </div>
           ) : null}
-          {renderTab(tab, o, go)}
+          {tab === "processes" && design ? <ProcessDesigner o={o} /> : renderTab(tab, o, go)}
       </section>
     </div>
   );

@@ -11597,4 +11597,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Your role cannot export records.": "Ihre Rolle kann keine Datensätze exportieren.",
   "Open the work queue for this rule": "Arbeitsvorrat für diese Regel öffnen",
   "Find the rule in the library": "Regel in der Bibliothek suchen",
+  "Change the model first.": "Ändern Sie zuerst das Modell.",
+  "Exporting needs the export permission.": "Der Export braucht die Exportberechtigung.",
+  "Loading the process models": "Prozessmodelle werden geladen",
+  "Loading the model": "Modell wird geladen",
 };

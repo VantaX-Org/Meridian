@@ -58,10 +58,6 @@
 }
 
 /* The v2 screens ride inside the next shell as a sheet, so none of them changes. */
-.nx-legacy { padding: var(--nx-s4) var(--nx-gutter) var(--nx-s8); min-width: 0; }
-.nx-legacy > .m2-root { background: transparent; min-height: 0; }
-.nx-legacy .m2-sheetwrap { margin: 0; min-height: 60vh; }
-.nx-legacy .m2-canvas { overflow: visible; }
 .nx-insp-host { position: fixed; top: var(--nx-h-header); right: 0; bottom: 0; z-index: 40; display: flex; }
 .nx-insp-host > .m2-root { background: transparent; min-height: 0; display: flex; }
 .nx-insp-host .m2-insp { position: static; height: 100%; }

@@ -20,7 +20,7 @@ import { ExportTable } from "@/design/next/more/ExportTable";
 import { Dash, DqChip } from "./tabs-g-parts";
 
 /** The process designer of an object: a canvas of its own under the object. */
-export const designerHref = (system: string, module: string): string => `/o/${system}/${module}/processes/design`;
+export const designerHref = (system: string, module: string): string => `/next/o/${system}/${module}/processes/design`;
 
 type FieldRow = StepView["activities"][number]["fields"][number];
 

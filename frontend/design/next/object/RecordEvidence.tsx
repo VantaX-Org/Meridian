@@ -8,13 +8,14 @@
  */
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, Chip, Code, EmptyState, ErrorState, NxLink, Skeleton, useToast } from "@/design/next/kit";
+import { Button, Chip, Code, ErrorState, NxLink, Skeleton, useToast } from "@/design/next/kit";
 import { useSheets } from "@/design/next/shell/SheetHost";
 import type { WorkIssue, WorkRecordDetail, WorkAction } from "@/lib/api/work";
 import { errorSentence, postApproveBatch, postDecide, postSendBack, type RecordLinks } from "@/lib/api/v2/work";
 import { formatDate } from "@/lib/format";
 import { useOpenItem, useRunParam } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
+import { RecordDuplicates, RecordSheetFallback } from "./RecordDuplicates";
 import { objectHref } from "@/lib/v2/people";
 import { refreshV2, useLandscape } from "@/lib/v2/queries";
 import { describeField, sapField } from "@/lib/v2/sap-fields";
@@ -189,11 +190,7 @@ export function RecordEvidence({ id }: { id: string }) {
   if (detailQ.isError || !detail) {
     const e = detailQ.error as { status?: number; response?: { status?: number } } | null;
     if (e?.response?.status === 404 || e?.status === 404) {
-      return (
-        <div data-testid="record-not-found">
-          <EmptyState heading={t("Record not found")}>{t("No failing record with the key {key} is in the latest run. Check the key; a record fixed since the list was read also leaves it.", { key })}</EmptyState>
-        </div>
-      );
+      return <RecordSheetFallback module={module} recordKey={key} notFound={t("No failing record with the key {key} is in the latest run. Check the key; a record fixed since the list was read also leaves it.", { key })} />;
     }
     return <ErrorState fallback={t("The record could not be read.")} error={detailQ.error} onRetry={() => void detailQ.refetch()} />;
   }
@@ -312,6 +309,8 @@ export function RecordEvidence({ id }: { id: string }) {
         </>
       ) : null}
 
+      <h3 className="nx-rn-h3">{t("Possible duplicate")}</h3>
+      <RecordDuplicates module={module} detail={detail} />
       <h3 className="nx-rn-h3">{t("Provenance")}</h3>
       {links ? (
         <dl className="nx-paired-row" data-testid="provenance">

@@ -1,5 +1,4 @@
-import { ScoreLens } from "@/design/v2/screens/ScoreLens";
-
-export default function ScorePage() {
-  return <ScoreLens />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }

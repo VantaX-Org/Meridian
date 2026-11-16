@@ -11597,4 +11597,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Your role cannot export records.": "あなたのロールではレコードをエクスポートできません。",
   "Open the work queue for this rule": "このルールの作業キューを開く",
   "Find the rule in the library": "ライブラリでルールを探す",
+  "Change the model first.": "先にモデルを変更してください。",
+  "Exporting needs the export permission.": "エクスポートにはエクスポート権限が必要です。",
+  "Loading the process models": "プロセスモデルを読み込み中",
+  "Loading the model": "モデルを読み込み中",
 };

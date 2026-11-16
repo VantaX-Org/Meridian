@@ -3,7 +3,7 @@
 /**
  * Persona gating from GET /api/v1/me/permissions (rbac.md §3.3, §5).
  *
- * `PermissionsProvider` is mounted once inside the shell's AuthGuard (design/v2/shell/V2Shell.tsx).
+ * `PermissionsProvider` is mounted once inside the shell's AuthGuard (design/next/NextRoot.tsx).
  * Until the payload arrives every check answers false, so no mutating
  * control renders while loading (fail closed). `useRole().can()` reads the
  * same payload when a provider is present, so the existing page gates are

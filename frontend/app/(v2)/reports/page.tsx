@@ -1,7 +1,4 @@
-"use client";
-
-import { ReportsCanvas } from "@/design/v2/screens/Reports";
-
-export default function ReportsPage() {
-  return <ReportsCanvas />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }

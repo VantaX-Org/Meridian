@@ -36,9 +36,9 @@ describe("Record sheet", () => {
     expect(within(body).getAllByText("MM003").length).toBeGreaterThan(0);
   });
 
-  it("says a record that fails nothing is not found", async () => {
+  it("reads a record that fails nothing straight from the run", async () => {
     renderWithQuery(<ToastProvider><RecordSheet id="material_master:MATNR=9" close={() => {}} under={false} /></ToastProvider>);
-    expect(await screen.findByTestId("record-not-found")).toBeTruthy();
+    expect(await screen.findByTestId("record-sheet")).toBeTruthy();
   });
 
   it("parses ids and words history rows", () => {
