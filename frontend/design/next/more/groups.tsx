@@ -2,9 +2,9 @@
 
 import type { ComponentType } from "react";
 import { t } from "@/lib/v2/i18n";
-import { AletheiaEvidence } from "@/design/v2/screens/AletheiaEvidence";
-import { AletheiaForesight } from "@/design/v2/screens/AletheiaForesight";
-import { AletheiaReason } from "@/design/v2/screens/AletheiaReason";
+import { AletheiaEvidence } from "./AletheiaEvidence";
+import { AletheiaForesight } from "./AletheiaForesight";
+import { AletheiaReason } from "./AletheiaReason";
 import { AletheiaSurvivorship } from "@/design/v2/screens/AletheiaSurvivorship";
 import { MdmHealth } from "@/design/v2/screens/MdmHealth";
 import { EntryGate } from "@/design/v2/screens/EntryGate";
