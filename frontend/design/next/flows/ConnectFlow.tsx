@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { t } from "@/lib/v2/i18n";
 import { systemTypeText } from "@/lib/v2/labels";
-import { ConnectionForm } from "@/design/v2/screens/system/ConnectionForm";
-import { LegacyScope } from "../shell/LegacyMount";
+import { ConnectDetails } from "./ConnectDetails";
 import { useSystemObjectList } from "@/lib/v2/runs-queries";
 import { useRefreshV2 } from "@/lib/v2/sys-queries";
 import { createProfile } from "@/lib/api/v2/sys";
@@ -16,7 +15,7 @@ import type { SystemType } from "@/types/api";
 export const CONNECT_TYPES: SystemType[] = ["ecc", "s4hana_onprem", "s4hana_cloud", "successfactors", "concur", "ariba", "btp", "ewm"];
 const CRON: Record<string, string | null> = { manual: null, daily: "0 2 * * *", weekly: "0 2 * * 1" };
 
-/** Connect a system in six steps. The details step is the existing secure form; this flow never sees a secret. */
+/** Connect a system in six steps. The details step is the native OAuth form; no password is ever sent. */
 export function ConnectFlow({ ctx }: { ctx: SheetCtx }) {
   const { step, setStep, close, under } = ctx;
   const toast = useToast();
@@ -79,9 +78,7 @@ export function ConnectFlow({ ctx }: { ctx: SheetCtx }) {
     primary = <Button variant="primary" disabled={!type} reason={t("Pick a system type first.")} onClick={() => setStep(2)}>{t("Next")}</Button>;
   } else if (step === 2) {
     body = (
-      <LegacyScope>
-        <ConnectionForm initialType={type ?? undefined} saveLabel={t("Save and continue")} onSaved={(s) => { setSaved(s); setStep(3); }} />
-      </LegacyScope>
+      <ConnectDetails initialType={type ?? undefined} saveLabel={t("Save and continue")} onSaved={(s) => { setSaved(s); setStep(3); }} />
     );
   } else if (step === 3) {
     body = (

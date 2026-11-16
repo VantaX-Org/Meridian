@@ -38,10 +38,11 @@ describe("admin flows", () => {
     expect(screen.queryByRole("radio", { name: /Old/ })).toBeNull();
   });
 
-  it("the connect flow is gated on a name and a host", async () => {
+  it("the connect flow uses the OAuth form, has no password field, and is gated on a save", async () => {
     renderWithQuery(<More slug={["admin", "flow", "connect"]} />);
-    await screen.findByLabelText(/^Name/);
-    expect(screen.getAllByText("Enter a name and a host.")[0]).toBeTruthy();
+    expect(await screen.findByTestId("connection-form")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Password/)).toBeNull();
+    expect(screen.getAllByText("Save the connection first.")[0]).toBeTruthy();
   });
 
   it("the rule flow draws the native rule promotion and holds on the review gate", async () => {

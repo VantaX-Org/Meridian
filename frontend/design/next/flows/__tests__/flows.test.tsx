@@ -10,28 +10,34 @@ import { NotifySteps } from "../NotifySteps";
 const type = (label: RegExp, v: string) => fireEvent.change(screen.getByLabelText(label), { target: { value: v } });
 const next = (name = "Next") => fireEvent.click(screen.getByRole("button", { name }));
 
+vi.mock("../ConnectDetails", () => ({
+  ConnectDetails: ({ onSaved }: { onSaved: (s: { id: string; name: string }) => void }) => (
+    <button type="button" onClick={() => onSaved({ id: "s1", name: "Test system" })}>Save details</button>
+  ),
+}));
+
 describe("connect flow", () => {
-  it("tests before it saves and extracts only after", async () => {
-    const api = { test: vi.fn().mockResolvedValue({ ok: true }), save: vi.fn().mockResolvedValue({ id: "s1" }), extract: vi.fn().mockResolvedValue({}) };
+  it("saves the OAuth details, tests by id, then extracts", async () => {
+    const api = { test: vi.fn().mockResolvedValue({ connected: true }), extract: vi.fn().mockResolvedValue({}) };
     renderWithQuery(<ConnectSteps api={api} objects={["material-master"]} />);
-    type(/^Name/, "Test system");
-    type(/^Host/, "host.example");
+    next("Save details");
+    await screen.findByText("Test system");
     next();
     await screen.findByTestId("flow-step-test");
     next("Test connection");
     await screen.findByTestId("flow-step-objects");
-    expect(api.save).not.toHaveBeenCalled();
+    expect(api.test).toHaveBeenCalledWith("s1");
     fireEvent.click(screen.getByRole("checkbox"));
-    next("Save and continue");
+    next();
     await screen.findByTestId("flow-step-extract");
     next("Start extraction");
     await waitFor(() => expect(api.extract).toHaveBeenCalledWith("s1", ["material-master"]));
   });
   it("stays on the test step when the logon fails", async () => {
-    const api = { test: vi.fn().mockResolvedValue({ ok: false, message: "Logon refused." }), save: vi.fn(), extract: vi.fn() };
+    const api = { test: vi.fn().mockResolvedValue({ connected: false, message: "Logon refused." }), extract: vi.fn() };
     renderWithQuery(<ConnectSteps api={api} objects={[]} />);
-    type(/^Name/, "x");
-    type(/^Host/, "h");
+    next("Save details");
+    await screen.findByText("Test system");
     next();
     await screen.findByTestId("flow-step-test");
     next("Test connection");
