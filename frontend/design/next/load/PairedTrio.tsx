@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getPairs, getTrend } from "@/lib/api/v2/compare";
 import { useFixture } from "@/lib/api/v2/fixture";
-import { gapText } from "@/design/v2/screens/Migration";
+import { gapText } from "@/lib/v2/labels";
 import { t } from "@/lib/v2/i18n";
 import { EmptyState, ErrorState, Skeleton } from "../kit";
 import { AreaSpark, ScoreRing } from "../kit/viz";
