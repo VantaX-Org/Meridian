@@ -6,7 +6,7 @@
  */
 import { useMemo, useState } from "react";
 import { Button, DataTable, EmptyState, SegmentedControl, type Column } from "@/design/next/kit";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { DimensionBars } from "@/design/v2/screens/object/Banner";
 import { downloadCleaningWorkbook, useCompareSets, useCompareSummary, type Change, type CompareRecord } from "@/lib/api/next/runs";
 import type { RuleRow } from "@/lib/api/v2/types";
@@ -135,7 +135,7 @@ export function CompareStep({ o, cycle, onNextCycle }: { o: ObjectRun; cycle: nu
           </Button>
         ) : null}
         <Button variant="secondary" onClick={onNextCycle}>{t("Start cycle {n}", { n: nextNumber })}</Button>
-        <V2Link className="nx-btn nx-btn-secondary" href="/migration/load-plan">{t("Prepare load files")}</V2Link>
+        <NxLink className="nx-btn nx-btn-secondary" href="/migration/load-plan">{t("Prepare load files")}</NxLink>
       </div>
     </div>
   );

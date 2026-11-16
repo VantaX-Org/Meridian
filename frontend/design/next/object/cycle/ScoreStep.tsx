@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, useToast } from "@/design/next/kit";
-import { RunForecast } from "@/design/v2/screens/step10/Prediction";
+import { RunForecast } from "../../runs/RunForecast";
 import { analyseRun } from "@/lib/api/v2/runs";
 import { uploadSentence } from "@/lib/api/v2/roundtrip";
 import { useV2Session } from "@/lib/v2/hooks";

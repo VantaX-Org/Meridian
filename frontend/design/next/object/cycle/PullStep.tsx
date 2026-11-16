@@ -4,8 +4,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, Confirm, EmptyState, ProgressBar, useToast } from "@/design/next/kit";
-import { V2Link } from "@/design/v2/parts";
-import { RunForecast } from "@/design/v2/screens/step10/Prediction";
+import { NxLink } from "@/design/next/kit";
+import { RunForecast } from "../../runs/RunForecast";
 import { startExtraction } from "@/lib/api/v2/admin";
 import { cancelJob } from "@/lib/api/v2/run-ops";
 import { uploadSentence } from "@/lib/api/v2/roundtrip";
@@ -63,7 +63,7 @@ export function PullStep({ o }: { o: ObjectRun }) {
 
   if (!o.systemId) {
     return (
-      <EmptyState heading={t("No system holds {object} yet", { object: o.label })} action={<V2Link className="nx-btn nx-btn-primary" href="/s/new">{t("Connect a system")}</V2Link>}>
+      <EmptyState heading={t("No system holds {object} yet", { object: o.label })} action={<NxLink className="nx-btn nx-btn-primary" href="/s/new">{t("Connect a system")}</NxLink>}>
         {t("Connect the SAP system that holds this object, then pull it here.")}
       </EmptyState>
     );

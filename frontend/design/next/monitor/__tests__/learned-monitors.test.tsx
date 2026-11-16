@@ -23,7 +23,7 @@ describe("LearnedMonitors (native)", () => {
   it("renders the fixture breaks with every code beside its text", async () => {
     wrap();
     const breaks = await screen.findByTestId("monitors-breaks");
-    expect(within(breaks).getAllByText("MARA.BRGEW").length).toBeGreaterThan(0);
+    expect(within(breaks).getAllByText("MARA-BRGEW").length).toBeGreaterThan(0);
     expect(within(breaks).getAllByText(/Gross weight/).length).toBeGreaterThan(0);
     expect(screen.getByTestId("monitors-coverage")).toBeTruthy();
     expect(screen.getByTestId("monitors-chart")).toBeTruthy();

@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { useRequest, useRequests, type RequestRow, type RequestState } from "@/lib/api/next/approvals";
 import { Chip, DataTable, EmptyState, ErrorState, SegmentedControl, Skeleton } from "../kit";
 import { ChangeTable } from "../approvals/ChangeTable";
@@ -68,7 +68,7 @@ function Detail({ id, back }: { id: string; back: string }) {
   const r = q.data;
   return (
     <div className="nx-ap" data-testid="approvals-detail">
-      <V2Link className="nx-btn nx-btn-quiet" href={back}>{t("All requests")}</V2Link>
+      <NxLink className="nx-btn nx-btn-quiet" href={back}>{t("All requests")}</NxLink>
       {q.isError ? <ErrorState error={q.error} fallback={t("The request could not be read.")} onRetry={() => void q.refetch()} />
         : q.isLoading || !r ? <Skeleton lines={6} label={t("Loading the request")} />
         : (

@@ -12,7 +12,7 @@ import { getConfigAlignment, getConfigProcess, getConfigProcesses, getConfigGhos
 import type { ImpactResult } from "@/lib/api/v2/object";
 import type { ProcessHealth, ProcessStep } from "@/lib/api/config-intelligence";
 import { describeTable } from "@/lib/v2/sap-fields";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { Chip, Code, DataTable, PartBar, SegmentedControl, SidePanel, type ChipTone, type Column } from "../kit";
 import { ChartCard, cardState, compact } from "./ChartCard";
 import { QueryView } from "./states";
@@ -155,7 +155,7 @@ export function ConfigImpact() {
   return (
     <div className="nx-body" data-testid="config-impact-page">
       <div className="nx-row nx-wrap">
-        <V2Link href="/more/systems/config">{t("Inventory, processes, alignment, health and drift")}</V2Link>
+        <NxLink href="/more/systems/config">{t("Inventory, processes, alignment, health and drift")}</NxLink>
       </div>
       <QueryView loading={alignment.isLoading} error={alignment.error} onRetry={() => void alignment.refetch()} empty={false} emptyHeading="" label={t("Loading configuration findings")}>
         <div className="nx-chartcards">

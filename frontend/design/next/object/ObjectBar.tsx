@@ -7,9 +7,8 @@
  */
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PointSpark, Button, LargeTitle, Popover, Ring } from "@/design/next/kit";
+import { Button, Code, LargeTitle, NxLink, PointSpark, Popover, Ring } from "@/design/next/kit";
 import { writeClipboard } from "@/lib/browser";
-import { Coded, V2Link } from "@/design/v2/parts";
 import { CapSentence } from "@/design/v2/screens/Object";
 import { useSheets } from "@/design/next/shell/SheetHost";
 import { getPairs } from "@/lib/api/v2/compare";
@@ -52,7 +51,7 @@ function Paired({ o }: { o: ObjectRun }) {
           <h3 className="nx-hero-why-h">{t("Why they differ")}</h3>
           <ul className="nx-paired-reasons">
             {s.reasons.slice(0, 5).map((r) => (
-              <li key={r.check_id}><Coded code={r.check_id} text={r.description} first /> <span className="nx-num">({signed(r.change)})</span></li>
+              <li key={r.check_id}><Code code={r.check_id} text={r.description} /> <span className="nx-num">({signed(r.change)})</span></li>
             ))}
           </ul>
         </div>
@@ -86,9 +85,9 @@ export function ObjectBar({ o, cycle, downloads }: { o: ObjectRun; cycle: Object
   return (
     <div className="nx-obar nx-hero" data-testid="object-bar" data-title-scope="">
       <nav aria-label={t("Breadcrumb")} className="nx-obar-crumbs">
-        <V2Link href="/objects">{t("Objects")}</V2Link>
+        <NxLink href="/objects">{t("Objects")}</NxLink>
         <span aria-hidden="true">{"›"}</span>
-        <V2Link href={`/s/${encodeURIComponent(o.systemSeg)}`}><Trunc text={o.systemName} /></V2Link>
+        <NxLink href={`/s/${encodeURIComponent(o.systemSeg)}`}><Trunc text={o.systemName} /></NxLink>
       </nav>
       <LargeTitle
         title={o.label}

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDate, formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { getVersionsPage } from "@/lib/api/v2/runs";
 import { needsParent, uploadCleaned, uploadSentence, type RoundTripResult } from "@/lib/api/v2/roundtrip";
 import { blocks, checkWorkbook, holdReason, worstOf, type UploadCheck } from "@/lib/api/v2/upload-checks";
@@ -166,7 +166,7 @@ export function UploadPanel({ open, onClose, expected, onDone }: {
                 </label>
               ) : null}
               {it.error ? <p className="nx-pf-error" role="alert">{it.error}</p> : null}
-              {it.result ? <V2Link href={`/run/${it.result.version_id}`}>{t("Open the new run")}</V2Link> : null}
+              {it.result ? <NxLink href={`/run/${it.result.version_id}`}>{t("Open the new run")}</NxLink> : null}
             </li>
           );
         })}

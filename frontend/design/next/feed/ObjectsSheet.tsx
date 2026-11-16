@@ -5,7 +5,7 @@ import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { f1 } from "@/lib/v2/score";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { Chip, EmptyState, ErrorState, Skeleton } from "../kit";
 import { Sheet } from "../kit/Sheet";
@@ -39,7 +39,7 @@ export function ObjectsSheet({ onClose }: { onClose: () => void }) {
             <ul className="nx-fd-os-list">
               {list.map((r) => (
                 <li key={r.version_id}>
-                  <V2Link href={objectHref(r, sysName, `?run=${r.version_id}`)}><strong>{r.label}</strong> <span className="nx-mono nx-fd-code">{r.module}</span></V2Link>
+                  <NxLink href={objectHref(r, sysName, `?run=${r.version_id}`)}><strong>{r.label}</strong> <span className="nx-mono nx-fd-code">{r.module}</span></NxLink>
                   <span className="nx-fd-meta">{r.composite_score == null ? t("Not scored yet") : t("DQS {v}", { v: f1(r.composite_score) })}</span>
                 </li>
               ))}

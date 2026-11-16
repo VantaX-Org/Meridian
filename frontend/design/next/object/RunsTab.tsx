@@ -7,7 +7,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Chip, DataTable, SegmentedControl, type Column } from "@/design/next/kit";
-import { RunTimelineChart, shortDate } from "@/design/v2/RunTimeline";
+import { RunTimelineChart } from "../runs/RunTimelineChart";
+import { shortDate } from "../runs/format";
 import { useCompareSummary, useRunsPage, type Change, type RunStatusFilter } from "@/lib/api/next/runs";
 import type { VersionHead } from "@/lib/api/v2/runs";
 import { usePhone, useUrlParam } from "@/lib/v2/hooks";

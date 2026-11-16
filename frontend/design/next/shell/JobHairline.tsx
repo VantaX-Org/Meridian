@@ -1,6 +1,6 @@
 "use client";
 
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { t } from "@/lib/v2/i18n";
 import { useOpenItem } from "@/lib/v2/hooks";
 import { useV2Jobs } from "@/lib/v2/runs-queries";
@@ -21,7 +21,7 @@ export function JobHairline() {
         <div className="nx-hairline-fill" style={{ width: `${pct}%` }} />
       </div>
       <p className="nx-hairline-text">
-        <V2Link href={hrefFor({ kind: "job", id: job.id })}>{text}</V2Link>
+        <NxLink href={hrefFor({ kind: "job", id: job.id })}>{text}</NxLink>
       </p>
     </div>
   );

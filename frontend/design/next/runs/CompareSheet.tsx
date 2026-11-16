@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { DeltaBar } from "@/design/v2/charts";
-import { shortDate } from "@/design/v2/RunTimeline";
+import { DeltaBar } from "../kit";
+import { shortDate } from "./format";
 import { useRuns } from "@/lib/api/next/runs";
 import type { VersionHead } from "@/lib/api/v2/runs";
 import { t } from "@/lib/v2/i18n";

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { DeltaBar } from "@/design/v2/charts";
-import { shortDate } from "@/design/v2/RunTimeline";
+import { DeltaBar } from "../kit";
+import { shortDate } from "./format";
 import { useCompareSummary, useRun } from "@/lib/api/next/runs";
 import { analyseRun, type VersionHead } from "@/lib/api/v2/runs";
 import { formatInt } from "@/lib/format";

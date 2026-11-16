@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { DeltaBar } from "@/design/v2/charts";
+import { DeltaBar } from "../kit";
 import { EvidencePanel } from "@/design/v2/screens/AletheiaForesight";
 import { ENGINE_OFF } from "@/design/v2/screens/Insights";
 import { getReason, type Anomaly, type CausalRisk, type Reason } from "@/lib/api/v2/aletheia-engine";
