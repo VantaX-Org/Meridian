@@ -8,6 +8,7 @@ import { Monitor } from "../screens/Monitor";
 import { More } from "../screens/More";
 import { NextRedirect } from "../shell/NextRedirect";
 import { GROUPS, LINKS } from "../more/groups";
+import { ToastProvider } from "../kit";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
@@ -125,7 +126,7 @@ describe("More", () => {
     expect(master.tabs).toHaveLength(8);
     for (const tab of master.tabs) {
       setUrl(`/more/master-data?tab=${tab.id}&fixture=1`);
-      const { unmount } = renderWithQuery(<More slug={["master-data"]} />);
+      const { unmount } = renderWithQuery(<ToastProvider><More slug={["master-data"]} /></ToastProvider>);
       expect(screen.getByRole("tab", { name: tab.label() })).toHaveAttribute("aria-selected", "true");
       unmount();
     }
