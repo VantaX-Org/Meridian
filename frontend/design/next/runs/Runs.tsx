@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RunsCanvas } from "@/design/v2/screens/Runs";
 import { SmallMultiples, scoreDomain } from "@/design/v2/charts";
 import { shortDate } from "@/design/v2/RunTimeline";
 import { useRunsPage, type RunStatusFilter } from "@/lib/api/next/runs";
@@ -16,10 +15,10 @@ import { useLandscape } from "@/lib/v2/queries";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { runLabel, runStatusWord } from "@/lib/v2/run-label";
 import { Button, Chip, DataTable, EmptyState, LargeTitle, SegmentedControl, type Column } from "../kit";
-import { LegacyMount } from "../shell/LegacyMount";
 import { useSheets } from "../shell/SheetHost";
 import { MAX_COMPARE_RUNS } from "./CompareSheet";
 import { isForbidden } from "./draft";
+import { Jobs } from "./Jobs";
 import "./runs.css";
 
 const PAGE = 25;
@@ -37,7 +36,7 @@ export function runScore(h: VersionHead): number | null {
 export function Runs() {
   // ?view=jobs keeps the extraction and analysis job queue the old Runs screen showed.
   const jobs = useSearchParams().get("view") === "jobs";
-  return jobs ? <LegacyMount><RunsCanvas /></LegacyMount> : <RunList />;
+  return jobs ? <Jobs /> : <RunList />;
 }
 
 function RunList() {
