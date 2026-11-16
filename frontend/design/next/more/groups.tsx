@@ -5,7 +5,7 @@ import { t } from "@/lib/v2/i18n";
 import { AletheiaEvidence } from "./AletheiaEvidence";
 import { AletheiaForesight } from "./AletheiaForesight";
 import { AletheiaReason } from "./AletheiaReason";
-import { AletheiaSurvivorship } from "@/design/v2/screens/AletheiaSurvivorship";
+import { AletheiaSurvivorship } from "./AletheiaSurvivorship";
 import { MdmHealth } from "@/design/v2/screens/MdmHealth";
 import { EntryGate } from "@/design/v2/screens/EntryGate";
 import { ReferenceData } from "@/design/v2/screens/ReferenceData";
