@@ -1,7 +1,4 @@
-"use client";
-
-import { RulesLibrary } from "@/design/v2/screens/RulesLibrary";
-
-export default function RulesLibraryPage() {
-  return <RulesLibrary />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }

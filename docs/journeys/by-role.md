@@ -121,12 +121,12 @@ With no wave, the button is **Open the no-go objects** (`/work?verdict=no-go`).
 
 1. `/?view=waves`. The matrix groups by wave. The toggle group is "Group the matrix".
 2. Click a wave's **Readiness certificate of {wave}**, or **Edit {wave}** to change it.
-3. `/migration` ("Migration") for per-object verdicts: "Ready to load", "Ready with conditions", "Not ready to load".
+3. `/load/analysis` ("Migration") for per-object verdicts: "Ready to load", "Ready with conditions", "Not ready to load".
 4. `/go-live` ("Go-live flight deck"), `/forecast` ("Sprint plan") and `/value` ("Cost avoided month by month").
 
 **Weekly: who holds the work**
 
-1. `/people` ("Owners and stewards"). Click **Open {name}'s overdue work** or **Open the work list**.
+1. `/people` (People: open work, overdue and SLA per person). Click **Open {name}'s overdue work** or **Open the work list**.
 2. Click **Remind** on a person, or **Balance work**.
 
 **Month end**
@@ -325,7 +325,7 @@ approved batch comes to Basis outside Meridian; they or the owner click **Loaded
 
 1. `/objects` ("Objects"). Click an object (`/o/{system}/{object}`).
 2. Tab **Trend** ("Why the score moved"). Use "Compare two runs".
-3. `/runs` and click **Compare with previous** (goes to `/run/{a}/vs/{b}`).
+3. `/runs` and click **Compare with previous** (goes to `/run/{a}/vs/{b}`; **Rules and records** opens the rule and record comparison).
 4. `/score` ("Score lens"), `/insights`, `/mining`.
 5. Export with **Share and export**, then **Export to Excel** or **Export to CSV**.
 

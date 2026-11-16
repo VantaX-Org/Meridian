@@ -1,9 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { EmptyTab, ObjectFrame, RulesTab } from "./Object";
+import { EmptyTab, RulesTab } from "./Object";
 import { OverviewTab } from "./object/OverviewTab";
 import { Skeleton } from "../parts";
 
@@ -37,16 +36,6 @@ interface ObjectParams {
   system: string;
   module: string;
   [key: string]: string | string[];
-}
-
-/** The object layout: reads the address, draws the header, ruler, receipt and tabs, and puts the tab below. */
-export function ObjectRouteFrame({ children }: { children: ReactNode }) {
-  const p = useParams<ObjectParams>();
-  return (
-    <ObjectFrame system={String(p.system)} module={String(p.module)}>
-      {children}
-    </ObjectFrame>
-  );
 }
 
 export function ObjectRulesRoute() {

@@ -155,7 +155,7 @@ function Blockers({ results, module, names }: { results: ImpactResult[]; module:
                 <V2Link href={hrefFor({ kind: "rule", id })} className="m2-mono">{id}</V2Link>
                 <span className="m2-meta m2-frule-name">{names.get(id) ?? "—"}</span>
               </th>
-              <td>{e.features.join(", ")}</td>
+              <td className="m2-wrap">{e.features.join(", ")}</td>
               <td className="m2-r">{int(e.count)}</td>
             </tr>
           ))}

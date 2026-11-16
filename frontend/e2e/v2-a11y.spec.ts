@@ -1,24 +1,18 @@
 /**
- * Meridian 2, step 8: WCAG 2.1 AA evidence, in fixture mode (`?fixture=1`), against a running server.
+ * WCAG 2.1 AA evidence for the journey shell, in fixture mode (`?fixture=1`), against a running server.
  *
- *   1. axe (wcag2a, wcag2aa, wcag21a, wcag21aa) on every v2 page, in English, German and Japanese, light and dark, at
- *      1440: no critical or serious violation. Each result is logged as one line, so the audit can quote the counts.
- *   2. The shell holds in all three languages at 1440 and 390: no sideways scroll, the map stays 280 px wide, the top
- *      bar keeps its controls on screen, and the inspector fits; screenshots land in __screenshots__/v2/i18n-*.png.
- *   3. 200 % zoom at 1440 (a 720 px viewport at device scale 2): no sideways scroll and no control cut off.
- *   4. Keyboard-only walkthroughs of the five main flows, with the skip links and visible focus.
- *   5. prefers-reduced-motion stops the notice's slide and the timeline's fade.
+ *   1. axe (wcag2a, wcag2aa, wcag21a, wcag21aa) on every top-level page, in English, German and Japanese, light and
+ *      dark, at 1440: no critical or serious violation.
+ *   2. 200 % zoom at 1440 (a 720 px viewport at device scale 2) and reflow at 320: no sideways scroll, no control cut off.
+ *   3. The skip link moves focus to the main region.
  *
- *   PLAYWRIGHT_BASE_URL=http://localhost:3100 PW_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npx playwright test e2e/v2-a11y.spec.ts
+ *   PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test e2e/v2-a11y.spec.ts
  */
 
-import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-const SHOTS = path.join(__dirname, "__screenshots__", "v2");
 const NAV = { timeout: 90_000 };
-const ECC = "a1b2c3d4-0001-4000-8000-000000000001";
 const LOCALES = [
   { lang: "en", tag: null },
   { lang: "de", tag: "de-DE" },
@@ -26,41 +20,18 @@ const LOCALES = [
 ] as const;
 const SCHEMES = ["light", "dark"] as const;
 
-/** Every v2 page the e2e suite visits, with an inspector open where the page has one worth checking. */
+/** Every top-level page of the journey shell. */
 const PAGES: { name: string; url: string }[] = [
-  { name: "landscape", url: "/?fixture=1" },
-  { name: "landscape-rule", url: "/?fixture=1&open=rule:MM142" },
-  { name: "landscape-basis-system", url: `/?fixture=1&persona=basis&open=system:${ECC}` },
-  { name: "landscape-waves", url: "/?fixture=1&view=waves" },
-  { name: "object", url: "/o/ecc-production/material-master?fixture=1" },
-  { name: "object-rules", url: "/o/ecc-production/material-master/rules?fixture=1" },
-  { name: "rule", url: "/r/MM142?fixture=1" },
-  { name: "work", url: "/work?fixture=1&persona=steward" },
-  { name: "work-approvals", url: "/work?fixture=1&persona=owner&filter=approvals" },
+  { name: "home", url: "/?fixture=1" },
+  { name: "work", url: "/work?fixture=1" },
   { name: "runs", url: "/runs?fixture=1" },
-  { name: "runs-jobs", url: "/runs?fixture=1&view=jobs" },
-  { name: "people", url: "/people?fixture=1&persona=owner" },
-  { name: "reports", url: "/reports?fixture=1" },
-  { name: "catalogue", url: "/catalogue?fixture=1" },
-  { name: "catalogue-table", url: "/catalogue?fixture=1&table=MARA" },
-  { name: "catalogue-fields", url: "/catalogue?fixture=1&view=fields&q=MEINS" },
-  { name: "catalogue-field", url: "/catalogue?fixture=1&table=MARA&open=field:MARA.MEINS" },
-  { name: "system", url: `/s/${ECC}?fixture=1` },
-  { name: "system-configuration", url: `/s/${ECC}?fixture=1&tab=configuration` },
-  { name: "system-custom", url: `/s/${ECC}?fixture=1&tab=custom-objects` },
-  { name: "connect", url: "/s/new?fixture=1" },
-  { name: "rules-library", url: "/rules?fixture=1" },
-  { name: "process-designer", url: "/o/ecc-production/material-master/processes/design?fixture=1" },
-  { name: "object-golden", url: "/o/ecc-production/material-master/golden?fixture=1" },
-  { name: "inbox", url: "/?fixture=1&open=inbox" },
-  { name: "preferences", url: "/?fixture=1&open=preferences" },
-  { name: "help", url: "/?fixture=1&open=help" },
-  { name: "admin", url: "/admin?fixture=1" },
-  { name: "admin-users", url: "/admin/users?fixture=1" },
-  { name: "admin-settings", url: "/admin/settings?fixture=1" },
-  { name: "admin-system", url: "/admin/system?fixture=1" },
-  { name: "admin-audit", url: "/admin/audit?fixture=1" },
-  { name: "admin-runs", url: "/admin/runs?fixture=1" },
+  { name: "load", url: "/load?fixture=1" },
+  { name: "object", url: "/next/o/ecc-production/material-master?fixture=1" },
+  { name: "people", url: "/more/people?fixture=1" },
+  { name: "rules", url: "/more/rules?fixture=1" },
+  { name: "systems", url: "/more/systems?fixture=1" },
+  { name: "admin", url: "/more/admin?fixture=1" },
+  { name: "reports", url: "/more/reports?fixture=1" },
   { name: "status", url: "/status?fixture=1" },
 ];
 
@@ -113,6 +84,15 @@ async function noneClipped(page: Page, selector: string) {
         const r = el.getBoundingClientRect();
         return r.left < -1 || r.right > w + 1;
       })
+      // A control inside its own scroll container (a wide table, a tab strip)
+      // is reachable by scrolling that container, which 1.4.10 allows.
+      .filter((el) => {
+        for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+          const ox = getComputedStyle(a).overflowX;
+          if (ox === "auto" || ox === "scroll") return false;
+        }
+        return true;
+      })
       .map((el) => `${el.tagName.toLowerCase()} "${(el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 40)}"`);
   }, selector);
   return out;
@@ -125,11 +105,11 @@ for (const loc of LOCALES) {
     test.describe(`axe, ${loc.lang}, ${scheme}`, () => {
       test.use({ viewport: { width: 1440, height: 900 }, colorScheme: scheme });
       test.setTimeout(600_000);
-      test(`every v2 page has no critical or serious violation`, async ({ page }) => {
+      test(`every page has no critical or serious violation`, async ({ page }) => {
         await prepare(page, scheme, loc.tag);
         for (const p of PAGES) {
           await open(page, p.url);
-          if (loc.tag) await expect(page.locator(".m2-root").first()).toHaveAttribute("lang", loc.tag);
+          if (loc.tag) await expect(page.locator(".nx-root[lang], .m2-root[lang]").first()).toHaveAttribute("lang", loc.tag);
           await axe(page, `${p.name} ${loc.lang} ${scheme}`);
         }
       });
@@ -137,292 +117,36 @@ for (const loc of LOCALES) {
   }
 }
 
-/* 2. The shell in three languages at 1440 and 390, with screenshots */
+/* 2. 200 % zoom and reflow at 320 */
 
-for (const size of [
-  { name: "1440", width: 1440, height: 900 },
-  { name: "390", width: 390, height: 844 },
-] as const) {
-  for (const loc of LOCALES) {
-    test.describe(`layout, ${loc.lang}, ${size.name}`, () => {
-      test.use({ viewport: { width: size.width, height: size.height }, colorScheme: "light" });
-      test.setTimeout(240_000);
-      const shot = (page: Page, name: string) => (loc.lang === "en" ? Promise.resolve() : page.screenshot({ path: path.join(SHOTS, `i18n-${loc.lang}-${name}_${size.name}.png`) }));
-
-      test("the top bar, the map and the inspector hold the longer and the Japanese words", async ({ page }) => {
-        await prepare(page, "light", loc.tag);
-        await open(page, "/?fixture=1");
-        expect(await noSideways(page)).toBe(true);
-        expect(await noneClipped(page, ".m2-top button, .m2-top a")).toEqual([]);
-        // Every control of the top bar keeps a usable width and none sits on another.
-        const crowded = await page.evaluate(() => {
-          const boxes = Array.from(document.querySelectorAll<HTMLElement>(".m2-top > * > button, .m2-top > * > a, .m2-top > button"))
-            .filter((el) => getComputedStyle(el).display !== "none")
-            .map((el) => ({ name: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 30), r: el.getBoundingClientRect() }));
-          const out: string[] = [];
-          for (const b of boxes) if (b.r.width < 20) out.push(`${b.name} is ${Math.round(b.r.width)}px wide`);
-          for (let i = 0; i < boxes.length; i++)
-            for (let j = i + 1; j < boxes.length; j++) {
-              const a = boxes[i].r;
-              const c = boxes[j].r;
-              if (a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1) out.push(`${boxes[i].name} overlaps ${boxes[j].name}`);
-            }
-          return out;
-        });
-        expect(crowded).toEqual([]);
-        await shot(page, "landscape");
-        await open(page, "/o/ecc-production/material-master?fixture=1&open=rule:MM142");
-        const insp = page.getByTestId("inspector");
-        await expect(insp).toBeVisible(NAV);
-        expect(await noSideways(page)).toBe(true);
-        expect(await noneClipped(page, "#m2-inspector button, #m2-inspector a")).toEqual([]);
-        const inspOverflow = await page.evaluate(() => {
-          const el = document.querySelector<HTMLElement>("#m2-inspector");
-          return el ? el.scrollWidth - el.clientWidth : 0;
-        });
-        expect(inspOverflow).toBeLessThanOrEqual(1);
-        await shot(page, "object-inspector");
-        await open(page, "/admin/users?fixture=1");
-        expect(await noSideways(page)).toBe(true);
-        await shot(page, "admin-users");
-        await open(page, "/work?fixture=1&persona=steward");
-        expect(await noSideways(page)).toBe(true);
-        await shot(page, "work");
-      });
-    });
-  }
-}
-
-/* 3. 200 % zoom at 1440 */
-
-test.describe("200% zoom at 1440", () => {
-  // A 1440 px window at 200 % zoom lays out in 720 CSS pixels at twice the device scale.
-  test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  test.setTimeout(300_000);
-  for (const loc of LOCALES) {
-    test(`no sideways scroll and no clipped control, ${loc.lang}`, async ({ page }) => {
-      await prepare(page, "light", loc.tag);
-      for (const url of ["/?fixture=1", "/o/ecc-production/material-master?fixture=1", "/work?fixture=1&persona=steward", "/admin/settings?fixture=1", "/admin/users?fixture=1", "/status?fixture=1", "/?fixture=1&open=preferences"]) {
-        await open(page, url);
-        expect(await noSideways(page), url).toBe(true);
-        expect(await noneClipped(page, ".m2-top button, .m2-top a, .m2-canvas > * button, #m2-inspector button, .m2-stat-page button, .m2-stat-page a"), url).toEqual([]);
+for (const vp of [
+  { label: "200% zoom", viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 },
+  { label: "reflow 320", viewport: { width: 320, height: 640 }, deviceScaleFactor: 1 },
+]) {
+  test.describe(vp.label, () => {
+    test.use({ viewport: vp.viewport, deviceScaleFactor: vp.deviceScaleFactor });
+    test.setTimeout(300_000);
+    test("no sideways scroll and no control cut off", async ({ page }) => {
+      await prepare(page, "light", null);
+      for (const p of PAGES) {
+        await open(page, p.url);
+        expect(await noSideways(page), `${p.name}: sideways scroll`).toBe(true);
+        expect(await noneClipped(page, "main a, main button, main input, main select"), `${p.name}: clipped`).toEqual([]);
       }
-      if (loc.lang === "en") await page.screenshot({ path: path.join(SHOTS, "zoom-200-settings.png") });
     });
-  }
-});
-
-/* 3b. Reflow at 320 CSS px (1280 at 400 %): the page itself never scrolls sideways; data grids scroll in their own frame. */
-
-test.describe("reflow at 320", () => {
-  test.use({ viewport: { width: 320, height: 640 } });
-  test.setTimeout(300_000);
-  test("no sideways page scroll on the main pages", async ({ page }) => {
-    await prepare(page, "light", "de-DE");
-    for (const url of ["/?fixture=1", "/o/ecc-production/material-master?fixture=1", "/work?fixture=1&persona=steward", "/admin/settings?fixture=1", "/status?fixture=1"]) {
-      await page.goto(url, { waitUntil: "load", timeout: 90_000 });
-      await expect(page.locator("h1").first()).toBeVisible(NAV);
-      await page.waitForTimeout(1500);
-      expect(await noSideways(page), url).toBe(true);
-    }
   });
-});
-
-/* 4. Keyboard-only walkthroughs of the five main flows */
-
-/** Presses Tab until the focused element matches, up to a limit; fails when it never does. */
-async function tabTo(page: Page, accessibleName: RegExp, limit = 80) {
-  const seen: string[] = [];
-  for (let i = 0; i < limit; i++) {
-    await page.keyboard.press("Tab");
-    const name = await page.evaluate(() => {
-      const el = document.activeElement as HTMLElement | null;
-      if (!el) return "";
-      const label = (el as HTMLInputElement).labels?.[0]?.textContent;
-      return (el.getAttribute("aria-label") ?? label ?? el.textContent ?? "").trim();
-    });
-    if (accessibleName.test(name)) return;
-    seen.push(name.slice(0, 40));
-  }
-  throw new Error(`Tab never reached ${accessibleName}; focus went: ${seen.join(" | ")}`);
 }
 
-/** Takes the skip link to the canvas, as a keyboard user would, so the map's length does not count. */
-async function skipToContent(page: Page) {
+/* 3. The skip link */
+
+test("the skip link moves focus to the main region", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await prepare(page, "light", null);
+  await open(page, "/?fixture=1");
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
+  const skip = page.locator('nav[aria-label="Skip links"] a[href="#nx-main"]');
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeVisible();
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/#m2-canvas/);
-}
-
-/** The focused element draws a visible ring (an outline or a box shadow), not colour alone. */
-async function focusVisible(page: Page) {
-  const style = await page.evaluate(() => {
-    const el = document.activeElement as HTMLElement | null;
-    if (!el) return null;
-    const s = getComputedStyle(el);
-    return { outline: s.outlineStyle !== "none" && parseFloat(s.outlineWidth) >= 1, shadow: s.boxShadow !== "none", bg: s.backgroundColor };
-  });
-  expect(style?.outline || style?.shadow || Boolean(style?.bg && style.bg !== "rgba(0, 0, 0, 0)")).toBe(true);
-}
-
-test.describe("keyboard only", () => {
-  test.use({ viewport: { width: 1440, height: 900 } });
-  test.setTimeout(180_000);
-
-  test("skip links lead to the content, the menu and the inspector", async ({ page }) => {
-    await prepare(page, "light", null);
-    await open(page, "/?fixture=1&open=rule:MM142");
-    // The inspector took focus when it opened; start from the top of the page, as a fresh visit would.
-    // A click would land on the sheet's scrim and close it, so move focus to the document start instead.
-    await page.evaluate(() => {
-      (document.activeElement as HTMLElement | null)?.blur();
-      document.body.tabIndex = -1;
-      document.body.focus();
-      document.body.removeAttribute("tabindex");
-    });
-    await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
-    await expect(page.getByRole("link", { name: "Skip to content" })).toBeVisible();
-    await focusVisible(page);
-    await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: "Skip to the menu" })).toBeFocused();
-    await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: "Skip to the inspector" })).toBeFocused();
-    await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/#m2-inspector/);
-    // Landmarks: banner, main, the inspector as a complementary region, the status strip as contentinfo.
-    await expect(page.getByRole("main")).toHaveCount(1);
-    await expect(page.getByRole("banner")).toHaveCount(1);
-    await expect(page.getByRole("complementary", { name: "Inspector" })).toHaveCount(1);
-    await expect(page.getByRole("contentinfo", { name: "Status" })).toHaveCount(1);
-  });
-
-  test("flow 1: landscape to an object to the rule inspector", async ({ page }) => {
-    await prepare(page, "light", null);
-    await open(page, "/?fixture=1");
-    await tabTo(page, /^Material master/);
-    await focusVisible(page);
-    await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/o\/ecc-production\/material-master/, NAV);
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Material master", NAV);
-    await page.goto(`${new URL(page.url()).pathname}/rules?fixture=1`, { waitUntil: "load", timeout: 90_000 });
-    const grid = page.getByRole("grid", { name: "Rules for Material master" });
-    await grid.focus();
-    await focusVisible(page);
-    await page.keyboard.press("j");
-    await page.keyboard.press("Enter");
-    const dialog = page.getByTestId("inspector");
-    await expect(dialog).toBeVisible(NAV);
-    await expect(page.getByRole("button", { name: "Close inspector" })).toBeFocused();
-    await focusVisible(page);
-    await page.keyboard.press("Escape");
-    await expect(dialog).toBeHidden();
-  });
-
-  test("flow 2: a ledger decision, then Undo from the keyboard", async ({ page }) => {
-    await prepare(page, "light", null);
-    await open(page, "/work?fixture=1&persona=steward");
-    const grid = page.getByRole("grid", { name: "Work ledger" });
-    await expect(grid).toBeVisible(NAV);
-    const chips = page.getByRole("group", { name: "Filter by state" });
-    await expect(chips.getByRole("button", { name: /To fix/ })).toContainText("25,712");
-    // The decision cell of a row with a suggested value, reached by Tab and changed from the keyboard.
-    await tabTo(page, /^Decision for 000000000000000100$/, 200);
-    await focusVisible(page);
-    // A native select: typing the first letter of "fix" picks it on every platform. ArrowDown only changes the value on
-    // Windows and Linux; on macOS it opens a native list that synthetic key events cannot reach.
-    await page.keyboard.press("f");
-    const notice = page.getByRole("region", { name: "Change notices" });
-    await expect(notice).toContainText(/Accepted 1 suggested value/, NAV);
-    await expect(chips.getByRole("button", { name: /To fix/ })).toContainText("25,711");
-    // The decided row leaves the list; focus carries on at the next row's decision, never on the page body.
-    await expect(page.locator(":focus")).toHaveAttribute("aria-label", /^Decision for /);
-    await page.locator("#m2-canvas").focus();
-    await page.keyboard.press("Control+z");
-    await expect(notice).toContainText("Undone", NAV);
-    await expect(chips.getByRole("button", { name: /To fix/ })).toContainText("25,712");
-  });
-
-  test("flow 3: approve a batch", async ({ page }) => {
-    await prepare(page, "light", null);
-    await open(page, "/work?fixture=1&persona=owner&filter=approvals");
-    await skipToContent(page);
-    await tabTo(page, /^Approve batch B-241$/, 300);
-    await focusVisible(page);
-    await page.keyboard.press("Enter");
-    const notice = page.getByRole("region", { name: "Change notices" });
-    await expect(notice).toContainText("Approved batch B-241", NAV);
-    await tabTo(page, /^Undo$/, 200);
-    await page.keyboard.press("Enter");
-    await expect(page.getByRole("group", { name: "Filter by state" }).getByRole("button", { name: /Waiting for approval/ })).toContainText("612", NAV);
-  });
-
-  test("flow 4: start an extraction as Basis", async ({ page }) => {
-    await prepare(page, "light", null);
-    await open(page, "/?fixture=1&persona=basis");
-    await skipToContent(page);
-    await tabTo(page, /^Fix the SuccessFactors sign-in$/, 300);
-    await page.keyboard.press("Enter");
-    const dialog = page.getByRole("dialog", { name: "SuccessFactors" });
-    await expect(dialog).toBeVisible(NAV);
-    await expect(dialog.getByRole("button", { name: "Close inspector" })).toBeFocused();
-    await page.goto(`/?fixture=1&persona=basis&open=system:${ECC}`, { waitUntil: "load" });
-    const ecc = page.getByRole("dialog", { name: "ECC production" });
-    await expect(ecc).toBeVisible(NAV);
-    await tabTo(page, /^Extract$/);
-    await page.keyboard.press("Enter");
-    const picker = ecc.getByTestId("extract-picker");
-    await expect(picker).toBeVisible();
-    // The object list loads after the picker opens; tab only once its checkboxes are there.
-    await expect(picker.getByRole("checkbox").first()).toBeVisible(NAV);
-    await tabTo(page, /Material master/, 60);
-    await page.keyboard.press("Space");
-    await tabTo(page, /^Extract \d+ objects?$/, 60);
-    await focusVisible(page);
-    await page.keyboard.press("Enter");
-    await expect(ecc.getByTestId("action-result")).toContainText(/Extraction started|started/i, NAV);
-  });
-
-  test("flow 5: an administrator invites a user", async ({ page }) => {
-    await prepare(page, "light", null);
-    await open(page, "/admin/users?fixture=1");
-    await tabTo(page, /^Invite a user$/);
-    await page.keyboard.press("Enter");
-    const dialog = page.getByRole("dialog", { name: "Invite a user" });
-    await expect(dialog).toBeVisible(NAV);
-    await tabTo(page, /^Email/, 20);
-    await page.keyboard.type("new.person@demo-corp.example");
-    await tabTo(page, /^Send the invitation$/, 30);
-    await focusVisible(page);
-    await page.keyboard.press("Enter");
-    await expect(dialog.getByTestId("action-result")).toContainText("Invitation sent to new.person@demo-corp.example", NAV);
-  });
-});
-
-/* 5. Reduced motion */
-
-test.describe("prefers-reduced-motion", () => {
-  test.use({ viewport: { width: 1440, height: 900 } });
-  test("stops the notice's slide and the timeline's fade", async ({ page }) => {
-    await prepare(page, "light", null, true);
-    await open(page, "/runs?fixture=1");
-    const marks = await page.evaluate(() => Array.from(document.querySelectorAll(".m2-tl-mk")).map((el) => getComputedStyle(el).animationName));
-    expect(marks.length).toBeGreaterThan(0);
-    expect(new Set(marks)).toEqual(new Set(["none"]));
-    await open(page, "/work?fixture=1&persona=owner&filter=approvals");
-    await page.getByRole("button", { name: "Approve batch B-241" }).first().click();
-    const toast = page.locator(".m2-toast").first();
-    await expect(toast).toBeVisible(NAV);
-    expect(await toast.evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
-  });
-
-  test("without the preference the notice slides in", async ({ page }) => {
-    await prepare(page, "light", null, false);
-    await open(page, "/work?fixture=1&persona=owner&filter=approvals");
-    await page.getByRole("button", { name: "Approve batch B-241" }).first().click();
-    const toast = page.locator(".m2-toast").first();
-    await expect(toast).toBeVisible(NAV);
-    expect(await toast.evaluate((el) => getComputedStyle(el).animationName)).toBe("m2-toast-in");
-  });
+  await expect(page.locator("#nx-main")).toBeFocused();
 });

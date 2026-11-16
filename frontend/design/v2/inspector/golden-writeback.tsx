@@ -194,7 +194,7 @@ export function SendToSap({ id, status }: { id: string; status: string }) {
               <div key={tg.system_id}>
                 <p className="m2-strong">{tg.system_name ?? tg.system_id}</p>
                 <p className="m2-meta">{tg.supported ? (tg.method === "rfc_bapi" ? t("Goes by BAPI {bapi}", { bapi: tg.bapi ?? "" }) : t("Goes by OData update")) : (tg.reason ?? t("This system takes no write-back."))}</p>
-                <table className="m2-tbl m2-ftbl" aria-label={t("Fields sent to {system}", { system: tg.system_name ?? tg.system_id })}>
+                <table className="m2-tbl m2-ftbl" tabIndex={0} aria-label={t("Fields sent to {system}", { system: tg.system_name ?? tg.system_id })}>
                   <thead>
                     <tr>
                       <th scope="col">{t("Field")}</th>

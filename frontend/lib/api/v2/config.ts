@@ -15,6 +15,8 @@ export type { AlignmentFinding, ConfigDriftEntry, ConfigElement, ConfigHealthSco
 export const getConfigHealth = () => v2Get<{ run_id: string; scores: ConfigHealthScore[] }>("/config/health-score");
 export const getConfigInventory = () => v2Get<{ run_id: string; total: number; elements: ConfigElement[] }>("/config/inventory");
 export const getConfigProcesses = () => v2Get<{ run_id: string; processes: ProcessHealth[] }>("/config/processes");
+/** One business process (PTP, OTC, ...) of the latest run, step by step. */
+export const getConfigProcess = (id: string) => v2Get<ProcessHealth>(`/config/processes/${encodeURIComponent(id)}`);
 export const getConfigAlignment = () => v2Get<AlignmentList & { total: number }>("/config/alignment");
 export const getConfigDrift = () => v2Get<{ current_run_id: string; previous_run_id: string; drift_entries: ConfigDriftEntry[] }>("/config/drift");
 /** Ghost settings: configured but never used in the data. */

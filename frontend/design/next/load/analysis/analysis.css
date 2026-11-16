@@ -1,0 +1,3 @@
+/* Analysis tab of Load: layout only, kit tokens only. */
+.nx-mig-form { display: grid; gap: var(--nx-s3); }
+.nx-mig-checks { display: grid; gap: var(--nx-s2); border: 0; margin: 0; padding: 0; }

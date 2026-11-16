@@ -164,11 +164,6 @@ export function PreferencesPanel({ onClose }: { onClose: () => void }) {
         </label>
       </div>
       <p className="m2-prov">{tr("It changes the next step on the landscape and the work it shows first. Your access does not change.")}</p>
-      <h3>{tr("Try the new Meridian")}</h3>
-      <label className="m2-sw" style={{ display: "flex", gap: "var(--m2-s2)" }}>
-        <input type="checkbox" checked={prefs.ui_next === true} onChange={(e) => save({ ui_next: e.target.checked })} data-testid="ui-next-toggle" />
-        <span>{tr("Use the redesigned interface where it is ready")}</span>
-      </label>
       <h3>{tr("Keyboard")}</h3>
       <label className="m2-sw" style={{ display: "flex", gap: "var(--m2-s2)" }}>
         <input type="checkbox" checked={hints} onChange={(e) => setKeyHints(e.target.checked)} />
@@ -258,7 +253,8 @@ function DeliveryLog() {
       ) : !items.length ? (
         <p className="m2-prov">{tr("Nothing has been sent to you yet.")}</p>
       ) : (
-        <table className="m2-tbl">
+        <div className="m2-frame" tabIndex={0} role="region" aria-label={tr("Delivery log, scrollable")}>
+<table className="m2-tbl">
           <thead>
             <tr>
               <th scope="col">{tr("When")}</th>
@@ -281,6 +277,7 @@ function DeliveryLog() {
             ))}
           </tbody>
         </table>
+</div>
       )}
     </section>
   );

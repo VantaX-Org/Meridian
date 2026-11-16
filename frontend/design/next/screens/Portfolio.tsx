@@ -6,7 +6,7 @@ import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { useV2Session } from "@/lib/v2/hooks";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { errorSentence } from "@/lib/api/v2/client";
 import { analyseRun } from "@/lib/api/v2/runs";
 import { downloadWorkbooks, startObjects, usePortfolio, type CycleStep, type PortfolioQuery, type PortfolioRow } from "@/lib/api/next/portfolio";
@@ -44,7 +44,7 @@ export function Portfolio() {
   const [compared, setCompared] = useState<PortfolioRow[]>([]);
 
   const page = usePortfolio({ ...f, limit: PAGE, offset });
-  const all = usePortfolio({ limit: 500 });
+  const all = usePortfolio({}, true);
   const rows = page.data?.objects ?? [];
   const total = page.data?.total ?? 0;
   const owners = useMemo(() => [...new Set((all.data?.objects ?? []).map((r) => r.owner).filter((o): o is string => !!o))].sort(), [all.data]);
@@ -128,18 +128,22 @@ export function Portfolio() {
   ) : null;
 
   return (
-    <main className="nx-pf" data-testid="portfolio">
+    <div className="nx-pf" data-testid="portfolio">
       <header className="nx-pf-head">
         <div>
           <h1>{t("Portfolio")}</h1>
           <p>{t("Every object at its newest run, where it stands in the cycle, and what to do next.")}</p>
         </div>
-        <V2Link className="nx-btn nx-btn-quiet nx-btn-sm" href="/">{t("Landscape map")}</V2Link>
+        <NxLink className="nx-btn nx-btn-quiet nx-btn-sm" href="/">{t("Landscape map")}</NxLink>
       </header>
 
       <LiveRuns />
 
-      <StatRow rows={all.data?.objects ?? []} loading={all.isLoading} />
+      {all.isError ? (
+        <ErrorState error={all.error} fallback={t("The portfolio totals could not be read. Check that the API is reachable, then retry.")} onRetry={() => void all.refetch()} />
+      ) : (
+        <StatRow rows={all.data?.objects ?? []} loading={all.isLoading} />
+      )}
 
       <div className="nx-pf-filters" role="search" aria-label={t("Filter objects")}>
         <label className="nx-field">
@@ -233,6 +237,6 @@ export function Portfolio() {
           refresh();
         }}
       />
-    </main>
+    </div>
   );
 }

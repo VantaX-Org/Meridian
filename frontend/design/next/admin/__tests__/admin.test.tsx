@@ -12,7 +12,11 @@ import { PersonSheet } from "../PersonSheet";
 import { InviteFlow } from "../../flows/InviteFlow";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
-vi.mock("@/design/v2/admin/Admin", () => ({ AdminCanvas: () => <div data-testid="legacy-admin" /> }));
+vi.mock("../ops", () => ({ OPS_SECTIONS: {} }));
+vi.mock("../tenant", () => ({ TENANT_SECTIONS: {} }));
+vi.mock("../notify", () => ({ NOTIFY_SECTIONS: {} }));
+vi.mock("../data", () => ({ DATA_SECTIONS: { audit: () => <div data-testid="native-audit" /> } }));
+vi.mock("../people", () => ({ PEOPLE_SECTIONS: { users: () => <div data-testid="native-users" /> } }));
 
 const S = vi.hoisted(() => ({
   can: (): boolean => true,
@@ -128,12 +132,16 @@ describe("states of users and roles", () => {
     expect(screen.getByTestId("denied")).toBeInTheDocument();
   });
 
-  it("unknown section is an empty screen, known legacy section mounts", () => {
+  it("unknown section is an empty screen, a known section draws natively", () => {
     const a = wrap(<AdminSectionView slug="nope" />);
     expect(screen.getByText("Nothing at this address")).toBeInTheDocument();
     a.unmount();
-    wrap(<AdminSectionView slug="audit" />);
-    expect(screen.getByTestId("legacy-admin")).toBeInTheDocument();
+    const b = wrap(<AdminSectionView slug="audit" />);
+    expect(screen.getByTestId("native-audit")).toBeInTheDocument();
+    b.unmount();
+    wrap(<AdminSectionView slug="users" />);
+    expect(screen.getByTestId("native-users")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Roles and permissions" })).toBeInTheDocument();
   });
 
   it("loading shows a skeleton", () => {

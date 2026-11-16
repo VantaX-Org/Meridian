@@ -1,5 +1,4 @@
-import { Issues } from "@/design/v2/screens/Issues";
-
-export default function IssuesPage() {
-  return <Issues />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }

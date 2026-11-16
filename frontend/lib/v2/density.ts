@@ -31,7 +31,7 @@ export function resolveDensity(chosen: DensityTier | null | undefined, persona: 
   return chosen === "compact" || chosen === "comfortable" ? chosen : personaDensity(persona);
 }
 
-/** The density of the shell (V2Shell provides it); comfortable outside one. */
+/** The density of the shell (the next shell provides it); comfortable outside one. */
 export const DensityContext = createContext<Density>("comfortable");
 
 export const useDensity = (): Density => useContext(DensityContext);

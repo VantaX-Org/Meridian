@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { formatInt } from "@/lib/format";
+import { useAssignable } from "@/lib/v2/approvals-queries";
 import { t } from "@/lib/v2/i18n";
 import { useWorkActions, useWorkCan, type DecideKind, type RowRef } from "@/lib/v2/work-actions";
-import { Button, Confirm } from "../kit";
+import { Button, Confirm, Popover } from "../kit";
+import { useNativeWorkToast } from "./undo";
 
 type Pending = { kind: DecideKind; title: string; consequence: string; confirm: string; needsNote: boolean; danger?: boolean };
 
@@ -13,11 +15,13 @@ type Pending = { kind: DecideKind; title: string; consequence: string; confirm: 
  * comes from the work actions themselves, so it only appears where the server has a real inverse to run.
  */
 export function WorkBulkBar({ rows, onDone }: { rows: RowRef[]; onDone: () => void }) {
-  const act = useWorkActions();
+  const act = useWorkActions(useNativeWorkToast());
   const can = useWorkCan();
   const [pending, setPending] = useState<Pending | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [menu, setMenu] = useState<HTMLElement | null>(null);
+  const people = useAssignable(menu !== null);
   if (!rows.length) return null;
 
   const withValue = rows.filter((r) => r.suggested_value).length;
@@ -68,6 +72,29 @@ export function WorkBulkBar({ rows, onDone }: { rows: RowRef[]; onDone: () => vo
       >
         {t("Assign to me")}
       </Button>
+      <Button size={32} disabled={!can.assign} reason={no(can.assign)} aria-haspopup="menu" data-testid="reassign" onClick={(e) => setMenu(e.currentTarget)}>
+        {t("Reassign…")}
+      </Button>
+      <Popover anchor={menu} open={menu !== null} onClose={() => setMenu(null)} label={t("Reassign to")}>
+        <div role="menu" aria-label={t("Reassign to")} className="nx-wk-menu">
+          {people.isPending ? <p>{t("Reading the people…")}</p> : null}
+          {people.isError ? <p>{t("The people could not be read")}</p> : null}
+          {(people.data ?? []).map((u) => (
+            <Button
+              key={u.id}
+              role="menuitem"
+              variant="quiet"
+              size={40}
+              onClick={() => {
+                setMenu(null);
+                void act.decide(rows, "assign", { assignee: u.id, label: t("Reassigned {rowsCount} {rowsCount2, plural, one {record} other {records}} of {subject} to {name}{more}", { rowsCount: n, rowsCount2: rows.length, subject: t("the chosen records"), name: u.name, more: "" }) }).then((ok) => ok && onDone());
+              }}
+            >
+              {u.name}
+            </Button>
+          ))}
+        </div>
+      </Popover>
       <Button
         size={32}
         disabled={!can.approve}

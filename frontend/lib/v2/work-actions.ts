@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRole } from "@/hooks/use-role";
 import { fixtureParam } from "@/lib/api/v2/fixture";
-import { useToast } from "@/design/v2/Toast";
+import { useToast, type ToastApi } from "@/design/v2/Toast";
 import type { WorkRow } from "@/lib/api/v2/types";
 import { errorSentence, postAcceptAll, postDecide, type Decision, type GroupResult } from "@/lib/api/v2/work";
 import { useV2Session } from "./hooks";
@@ -78,9 +78,10 @@ function labelFor(kind: DecideKind, opts: DecideOptions, rows: readonly RowRef[]
  * once, calls the API, and then either keeps it (a notice with Undo for six seconds, the counts and the map refetch)
  * or puts the rows back and shows the server's own sentence. One call per run, because a decision names its run.
  */
-export function useWorkActions() {
+export function useWorkActions(api?: ToastApi) {
   const qc = useQueryClient();
-  const toast = useToast();
+  const v2toast = useToast();
+  const toast = api ?? v2toast;
   const session = useV2Session();
   const me = useMemo(() => session.name || null, [session.name]);
 

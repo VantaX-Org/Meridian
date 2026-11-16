@@ -1,9 +1,4 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { SystemCanvas } from "@/design/v2/screens/System";
-
-export default function SystemPage() {
-  const { id } = useParams<{ id: string }>();
-  return <SystemCanvas id={String(id)} />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }

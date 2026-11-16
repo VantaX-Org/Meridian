@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
-import { V2Link } from "@/design/v2/parts";
+import Link from "next/link";
 import { errorSentence } from "@/lib/api/v2/client";
 import { exportLoadFiles, type LoadFileFormat } from "@/lib/api/v2/migration";
 import { loadKeys, useLoadHistory, useLoadOrder, useLoadSimulation } from "@/lib/api/next/load";
@@ -88,7 +88,7 @@ export function Files({ runId, objects, onBack }: { runId: string; objects: stri
           <ul>
             {(hist.data?.items ?? []).slice(0, 3).map((e) => <li key={e.id}>{eventSentence(e)}</li>)}
           </ul>
-          <V2Link href="/load/history">{t("See all files handed over")}</V2Link>
+          <Link href="/load/history">{t("See all files handed over")}</Link>
         </div>
       ) : null}
 
@@ -96,7 +96,7 @@ export function Files({ runId, objects, onBack }: { runId: string; objects: stri
         <h3>{t("After you load")}</h3>
         <Chip tone="neutral">{t("Check the result in the target")}</Chip>
         <p className="nx-ld-meta">{t("Pull the loaded data back from the target and compare it with what you sent.")}</p>
-        <V2Link href="/load/analysis#mig-post-load">{t("Check the result in the target")}</V2Link>
+        <Link href="/load/analysis#mig-post-load">{t("Check the result in the target")}</Link>
       </div>
     </section>
   );

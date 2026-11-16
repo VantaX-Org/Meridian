@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The Load area: Prepare (target, check, files) and the existing migration screens as tabs. The tab is a path
+ * The Load area: Prepare (target, check, files) and the native migration tabs. The tab is a path
  * segment under /load; step, target, run and objects are query so a reload or a shared link lands in the same place.
  */
 import { useCallback, useEffect, useMemo } from "react";
@@ -12,12 +12,12 @@ import { pushSheet, sheetsOf, withSheets } from "@/lib/next/sheet";
 import { useV2Session } from "@/lib/v2/hooks";
 import { PairedTrio } from "../load/PairedTrio";
 import { StaleNudge, Denied } from "../load/states";
-import { V2Link } from "@/design/v2/parts";
-import { Migration } from "@/design/v2/screens/Migration";
-import { SystemCompare } from "@/design/v2/screens/SystemCompare";
-import { LoadPlan } from "@/design/v2/screens/LoadPlan";
-import { S4Readiness } from "@/design/v2/screens/S4Readiness";
-import { FlightDeck } from "@/design/v2/screens/FlightDeck";
+import Link from "next/link";
+import { Analysis } from "../load/analysis/Analysis";
+import { Compare } from "../load/Compare";
+import { Plan } from "../load/Plan";
+import { S4 } from "../load/S4";
+import { GoLive } from "../load/GoLive";
 import { t } from "@/lib/v2/i18n";
 import { useLoadRuns } from "@/lib/api/next/load";
 import { ChooseTarget } from "../load/ChooseTarget";
@@ -115,16 +115,16 @@ export function Load({ tab }: { tab: LoadTab }) {
   const body = () => {
     switch (tab) {
       case "prepare": return prepare();
-      case "analysis": return <Migration />;
-      case "compare": return <SystemCompare />;
-      case "plan": return <LoadPlan />;
-      case "s4": return <S4Readiness />;
-      case "go-live": return <FlightDeck />;
+      case "analysis": return <Analysis />;
+      case "compare": return <Compare />;
+      case "plan": return <Plan />;
+      case "s4": return <S4 />;
+      case "go-live": return <GoLive />;
       case "waves": return (
         <section className="nx-ld-step" data-testid="load-waves">
           <h2>{t("Waves")}</h2>
           <p className="nx-ld-lede">{t("Waves group objects into the loads that go live together. They are planned on the landscape.")}</p>
-          <V2Link className="nx-btn nx-btn-secondary" href="/?view=waves">{t("Open the waves")}</V2Link>
+          <Link className="nx-btn nx-btn-secondary" href="/?view=waves">{t("Open the waves")}</Link>
         </section>
       );
       case "history": return <History />;

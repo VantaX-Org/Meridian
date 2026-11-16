@@ -1,7 +1,4 @@
-"use client";
-
-import { SystemsCanvas } from "@/design/v2/screens/system/SystemsCanvas";
-
-export default function SystemsPage() {
-  return <SystemsCanvas />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }

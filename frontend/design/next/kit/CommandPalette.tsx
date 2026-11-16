@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { t } from "@/lib/v2/i18n";
 import { Icon } from "../Icon";
 import { cx } from "./cx";
@@ -16,20 +16,30 @@ export interface CommandGroup {
   id: string;
   label: string;
   items: Command[];
+  /** Already matched by the caller (a server search), so typing does not filter it again. */
+  found?: boolean;
 }
 
 /**
  * Ctrl or Cmd K, in the caller. Type to filter across groups; a leading ? lists what the palette can do. Combobox
  * pattern: focus stays in the input, aria-activedescendant names the highlighted result.
  */
-type PaletteProps = { open: boolean; onClose: () => void; groups: CommandGroup[] };
+type PaletteProps = {
+  open: boolean;
+  onClose: () => void;
+  groups: CommandGroup[];
+  label?: string;
+  onQuery?: (q: string) => void;
+  /** A caller panel for a leading ? (the natural language question) in place of the help line and the list. */
+  ask?: { panel: ReactNode; onEnter: () => void } | null;
+};
 
 /** Mounts the palette body only while open, so the query and selection reset by remounting. */
 export function CommandPalette(props: PaletteProps) {
   return props.open ? <PaletteBody {...props} /> : null;
 }
 
-function PaletteBody({ onClose, groups }: PaletteProps) {
+function PaletteBody({ onClose, groups, label, onQuery, ask }: PaletteProps) {
   const [q, setQ] = useState("");
   const [at, setAt] = useState(0);
   const box = useRef<HTMLDivElement>(null);
@@ -43,11 +53,12 @@ function PaletteBody({ onClose, groups }: PaletteProps) {
     return () => opener.current?.focus?.();
   }, []);
 
-  const help = q.startsWith("?");
+  const asking = Boolean(ask) && q.trimStart().startsWith("?");
+  const help = q.startsWith("?") && !asking;
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return groups
-      .map((g) => ({ ...g, items: help || !needle ? g.items : g.items.filter((c) => c.label.toLowerCase().includes(needle)) }))
+      .map((g) => ({ ...g, items: help || !needle || g.found ? g.items : g.items.filter((c) => c.label.toLowerCase().includes(needle)) }))
       .filter((g) => g.items.length > 0);
   }, [groups, q, help]);
   const flat = shown.flatMap((g) => g.items);
@@ -64,7 +75,7 @@ function PaletteBody({ onClose, groups }: PaletteProps) {
         ref={box}
         role="dialog"
         aria-modal="true"
-        aria-label={t("Command palette")}
+        aria-label={label ?? t("Command palette")}
         className="nx-dialog nx-palette"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
@@ -80,15 +91,16 @@ function PaletteBody({ onClose, groups }: PaletteProps) {
             ref={input}
             className="nx-palette-input"
             role="combobox"
-            aria-expanded="true"
-            aria-controls={`${base}-list`}
-            aria-activedescendant={flat[at] ? `${base}-${flat[at].id}` : undefined}
+            aria-expanded={!asking}
+            aria-controls={asking ? undefined : `${base}-list`}
+            aria-activedescendant={!asking && flat[at] ? `${base}-${flat[at].id}` : undefined}
             aria-label={t("Type a command or ? for help")}
             placeholder={t("Type a command or ? for help")}
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
               setAt(0);
+              onQuery?.(e.target.value);
             }}
             onKeyDown={(e) => {
               if (e.key === "ArrowDown") {
@@ -99,13 +111,15 @@ function PaletteBody({ onClose, groups }: PaletteProps) {
                 setAt((a) => Math.max(0, a - 1));
               } else if (e.key === "Enter") {
                 e.preventDefault();
-                run(flat[at]);
+                if (asking) ask?.onEnter();
+                else run(flat[at]);
               }
             }}
           />
         </div>
+        {asking ? ask?.panel : null}
         {help ? <p className="nx-palette-help">{t("Pick a command with the arrow keys and press Enter. Type a word to filter. Esc closes.")}</p> : null}
-        <div id={`${base}-list`} role="listbox" aria-label={t("Commands")} className="nx-palette-list">
+        {asking ? null : <div id={`${base}-list`} role="listbox" aria-label={t("Commands")} className="nx-palette-list">
           {shown.length === 0 ? <p className="nx-palette-empty">{t("No command matches.")}</p> : null}
           {shown.map((g, gi) => (
             <div key={g.id} role="group" aria-labelledby={`${base}-g-${g.id}`}>
@@ -121,7 +135,7 @@ function PaletteBody({ onClose, groups }: PaletteProps) {
               })}
             </div>
           ))}
-        </div>
+        </div>}
       </div>
     </div>
   );

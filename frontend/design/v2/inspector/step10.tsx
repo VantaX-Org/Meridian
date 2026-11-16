@@ -422,6 +422,7 @@ function PreviewDialog({ d, onClose }: { d: Digest; onClose: () => void }) {
               <Fact label={t("Waves")}>{num.data.waves.length ? num.data.waves.map((w) => `${w.name}: ${w.gate_open ? t("gate open") : t("gate closed")}`).join("; ") : "—"}</Fact>
             </dl>
             {num.data.score_moves.length ? (
+              <div className="m2-frame" role="region" aria-label={t("Score moves")} tabIndex={0}>
               <table className="m2-tbl" aria-label={t("Score moves")}>
                 <thead>
                   <tr>
@@ -442,6 +443,7 @@ function PreviewDialog({ d, onClose }: { d: Digest; onClose: () => void }) {
                   ))}
                 </tbody>
               </table>
+              </div>
             ) : null}
             <p className="m2-meta" style={{ margin: 0 }}>{t("Built {when}", { when: formatDate(num.data.generated_at, "datetime") })}</p>
           </div>

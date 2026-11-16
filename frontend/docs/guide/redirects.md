@@ -12,6 +12,9 @@ Two kinds of target need a word:
 
 - `/o/_/{object}`: the old object pages named an object without its system. The object canvas replaces `_` with the
   system that holds the object (the one with the most records checked for it) and keeps the rest of the address.
+  Every `/o/{system}/{object}/...` address then moves to the same path under `/next/o/`, the object screen of the
+  Story feed; a record address (`/o/{system}/{object}/records/{key}`) opens the records tab with that record in the
+  inspector (`?open=record:{object}:{key}`).
 - `?open=kind:id`: the thing opens in the inspector over the page (`/?open=help`, `/work?open=inbox`,
   `/?open=golden:G1`).
 

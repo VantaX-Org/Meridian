@@ -12,8 +12,7 @@ import { int } from "@/lib/v2/score";
 import { Fact, InspectorFrame } from "../Inspector";
 import { FactList, Sec } from "./mdm-parts";
 import { Dash, EmptyFrame, ErrorFrame, Mono, Skeleton } from "../parts";
-import { RULE_LABEL, confidencePct, shortKey } from "../screens/object/GoldenTab";
-import { COMPARATOR_LABEL } from "../screens/object/MatchDepth";
+import { COMPARATOR_LABEL, RULE_LABEL, confidencePct, shortKey } from "@/design/next/object/tabs/GoldenTab";
 import { FieldHistory, PromoteAction, SendToSap } from "./golden-writeback";
 import { ResultFrame, useOutcome } from "./shared";
 import { t } from "@/lib/v2/i18n";
@@ -155,7 +154,7 @@ function GoldenBody({ id, onClose }: { id: string; onClose: () => void }) {
             {explain.isError ? (
               <ErrorFrame onRetry={() => void explain.refetch()}>{t("How each value was chosen could not be read.")}</ErrorFrame>
             ) : (
-              <table className="m2-tbl m2-ftbl" aria-label={t("Golden fields and how each value was chosen")}>
+              <table className="m2-tbl m2-ftbl" tabIndex={0} aria-label={t("Golden fields and how each value was chosen")}>
                 <thead>
                   <tr>
                     <th scope="col">{t("Field")}</th>

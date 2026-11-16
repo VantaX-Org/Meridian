@@ -80,4 +80,13 @@ describe("SheetHost", () => {
     expect(screen.queryByText("This panel was not found")).toBeNull();
     expect(screen.getByRole("dialog", { name: "Connect a system" })).toBeInTheDocument();
   });
+
+  it("draws the native ask and connect bodies, with no legacy scope", async () => {
+    window.history.replaceState({}, "", "/work?sheet=ask:new");
+    setUrl("/work?sheet=ask:new");
+    const { container } = renderWithQuery(<SheetHost><Probe /></SheetHost>);
+    expect(screen.getByRole("dialog", { name: "Ask Meridian" })).toBeInTheDocument();
+    expect(document.querySelector(".m2-legacy, [data-legacy]")).toBeNull();
+    expect(container).toBeTruthy();
+  });
 });

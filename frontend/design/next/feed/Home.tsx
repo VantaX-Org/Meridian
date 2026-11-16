@@ -6,7 +6,10 @@ import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { useV2Session } from "@/lib/v2/hooks";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
-import { V2Link } from "@/design/v2/parts";
+import { useLandscape } from "@/lib/v2/queries";
+import { useWaves } from "@/lib/v2/admin-queries";
+import { NextStep } from "./NextStep";
+import { NxLink } from "@/design/next/kit";
 import { errorSentence } from "@/lib/api/v2/client";
 import { analyseRun } from "@/lib/api/v2/runs";
 import { fixtureAllowed, useFixture } from "@/lib/api/v2/fixture";
@@ -24,6 +27,7 @@ import { QuietRow } from "./QuietRow";
 import { StoryCard } from "./StoryCard";
 import { StoryCardSkeleton } from "./StoryCardSkeleton";
 import { CapNotice } from "./CapNotice";
+import { AutoCleanedCard, FixPipelineCard, GoLiveCard, ReadinessCard, RiskWaterfallCard } from "./HomePanels";
 import "./feed.css";
 
 // The Objects switcher opens from the greeting; registered here so SheetHost and sheets.ts stay free of a cycle.
@@ -37,6 +41,10 @@ export function Home() {
   const sheets = useSheets();
   const fixture = useFixture();
   const systems = useSystemsExtended().data ?? [];
+  // The persona's next step the old landscape led with (the owner's batch to approve, basis's system to fix).
+  const landscapeQ = useLandscape(null);
+  const landscape = landscapeQ.data;
+  const waves = useWaves().data ?? [];
   const [all, setAll] = useState(false);
   const feed = usePortfolio({ limit: 500 }, all);
   const found = useQuery({ queryKey: ["aletheia-found", fixture, "home"], queryFn: () => getFindings(), staleTime: 60_000 });
@@ -138,16 +146,16 @@ export function Home() {
   );
 
   return (
-    <main className="nx-fd" data-testid="home">
-      <Greeting name={session.name} needs={needs.length} running={rows.filter(runningNow).length} onCompare={() => sheets.open({ kind: "compare", id: "" })} onObjects={() => sheets.open({ kind: "objects", id: "" })} />
+    <div className="nx-fd" data-testid="home">
+      <Greeting name={session.name} needs={needs.length} running={rows.filter(runningNow).length} onCompare={() => sheets.open({ kind: "compare", id: "" })} onObjects={() => sheets.open({ kind: "objects", id: "" })} next={landscape ? <NextStep landscape={landscape} persona={session.persona} waves={waves} /> : null} />
       {feed.isError ? <ErrorState error={feed.error} fallback={t("Home could not be read. Check that the API is reachable, then retry.")} onRetry={() => void feed.refetch()} />
         : feed.isLoading ? <div className="nx-fd-feed" aria-live="polite">{[0, 1, 2].map((i) => <StoryCardSkeleton key={i} />)}</div>
         : rows.length === 0 && systems.length > 0 ? (
-          <EmptyState heading={t("No run yet.")} action={<V2Link className="nx-btn nx-btn-primary" href={`/s/${systems[0].id}`}>{t("Run your first pull")}</V2Link>}>
+          <EmptyState heading={t("No run yet.")} action={<NxLink className="nx-btn nx-btn-primary" href={`/s/${systems[0].id}`}>{t("Run your first pull")}</NxLink>}>
             {t("A system is connected. Pull its objects to see their quality here.")}
           </EmptyState>
         ) : rows.length === 0 ? (
-          <EmptyState heading={t("Connect a system to start")} action={<><Button variant="primary" onClick={() => sheets.open({ kind: "connect", id: "" })}>{t("Connect a system")}</Button>{fixtureAllowed() ? <> <V2Link className="nx-btn nx-btn-quiet" href="/portfolio?fixture=1">{t("Use the demo data")}</V2Link></> : null}</>}>
+          <EmptyState heading={t("Connect a system to start")} action={<><Button variant="primary" onClick={() => sheets.open({ kind: "connect", id: "" })}>{t("Connect a system")}</Button>{fixtureAllowed() ? <> <NxLink className="nx-btn nx-btn-quiet" href="/portfolio?fixture=1">{t("Use the demo data")}</NxLink></> : null}</>}>
             {t("Meridian pulls your master data once, scores it, and gives you a workbook to clean it in Excel.")}
           </EmptyState>
         ) : (
@@ -159,11 +167,22 @@ export function Home() {
             {selected.length ? <div className="nx-fd-bulk"><BulkBar rows={selected} act={act} onClear={() => setPicked(new Set())} /></div> : null}
           </>
         )}
+      {found.isError ? <ErrorState error={found.error} fallback={t("The findings Aletheia ranked could not be read.")} onRetry={() => void found.refetch()} /> : null}
+      {landscapeQ.isError ? <ErrorState error={landscapeQ.error} fallback={t("The landscape could not be read.")} onRetry={() => void landscapeQ.refetch()} /> : null}
+      <AutoCleanedCard />
+      {landscape?.cells.length ? (
+        <>
+          <GoLiveCard landscape={landscape} waves={waves} />
+          <ReadinessCard landscape={landscape} />
+          <FixPipelineCard landscape={landscape} />
+          <RiskWaterfallCard />
+        </>
+      ) : null}
       <Confirm open={!!pulling} title={t("Pull {n} objects now?", { n: formatInt(new Set((pulling ?? []).map((r) => r.module)).size) })} consequence={t("Meridian reads {n} objects from their systems again and scores the new runs. Nothing is written to the systems.", { n: formatInt(new Set((pulling ?? []).map((r) => r.module)).size) })} confirmLabel={t("Pull now")} onConfirm={() => void confirmPull()} onCancel={() => setPulling(null)} />
       <UploadPanel open={!!uploadFor} expected={uploadFor ?? []} onClose={() => setUploadFor(null)} onDone={(res) => { unpick(res.map((r) => r.parent_version_id)); setUploadFor(null); refresh(); }} />
       <Sheet open={!!compared} onClose={() => setCompared(null)} title={t("Compare objects")} size="large">
         <CompareObjects rows={compared ?? []} sysName={sysName} />
       </Sheet>
-    </main>
+    </div>
   );
 }

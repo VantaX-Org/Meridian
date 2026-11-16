@@ -4,14 +4,14 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDate, formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { getVersionsPage } from "@/lib/api/v2/runs";
 import { needsParent, uploadCleaned, uploadSentence, type RoundTripResult } from "@/lib/api/v2/roundtrip";
 import { blocks, checkWorkbook, holdReason, worstOf, type UploadCheck } from "@/lib/api/v2/upload-checks";
 import { CheckList } from "../object/cycle/UploadStep";
 import { checkFile, pool, readMarker, type Marker } from "@/lib/api/next/upload";
 import type { PortfolioRow } from "@/lib/api/next/portfolio";
-import { Button, Chip, DropZone, SidePanel, type ChipTone } from "../kit";
+import { Button, Chip, DropZone, ErrorState, SidePanel, Skeleton, type ChipTone } from "../kit";
 
 type Status = "ready" | "needs" | "uploading" | "scoring" | "done" | "failed";
 
@@ -155,6 +155,11 @@ export function UploadPanel({ open, onClose, expected, onDone }: {
                     {expected.map((r) => <option key={r.version_id} value={r.version_id}>{`${r.label} (${r.module}), ${runName(r.version_id)}`}</option>)}
                     {(runs.data?.versions ?? []).filter((v) => !known.has(v.id)).map((v) => <option key={v.id} value={v.id}>{`${v.label ?? v.id.slice(0, 8)}, ${runName(v.id)}`}</option>)}
                   </select>
+                  {runs.isPending ? <Skeleton lines={1} label={t("Reading the runs")} /> : null}
+                  {runs.isError ? <ErrorState sentence={t("The runs could not be read.")} error={runs.error} onRetry={() => void runs.refetch()} /> : null}
+                  {runs.isSuccess && expected.length === 0 && runs.data.versions.length === 0 ? (
+                    <span className="nx-muted" data-testid="upload-no-runs">{t("No run to pick yet. Extract the object first, then upload the workbook.")}</span>
+                  ) : null}
                 </label>
               ) : null}
               {it.checking ? <p className="nx-pf-meta" role="status">{t("Checking the workbook")}</p> : null}
@@ -166,7 +171,7 @@ export function UploadPanel({ open, onClose, expected, onDone }: {
                 </label>
               ) : null}
               {it.error ? <p className="nx-pf-error" role="alert">{it.error}</p> : null}
-              {it.result ? <V2Link href={`/run/${it.result.version_id}`}>{t("Open the new run")}</V2Link> : null}
+              {it.result ? <NxLink href={`/run/${it.result.version_id}`}>{t("Open the new run")}</NxLink> : null}
             </li>
           );
         })}

@@ -14,7 +14,7 @@ import {
   STEWARD_STATUSES, assignStewardItem, bulkApproveSteward, escalateStewardItem, getStewardMetrics, listStewardQueue, resolveStewardItem,
   type StewardItem,
 } from "@/lib/api/v2/stewardship";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { Button, Chip, Code, DataTable, PartBar, Ring, SegmentedControl, useToast, type ChipTone, type Column } from "../kit";
 import { ChartCard, cardState, compact } from "./ChartCard";
 import { QueryView } from "./states";
@@ -186,7 +186,7 @@ export function Stewardship() {
       </div>
       <div className="nx-row nx-wrap" data-testid="steward-actions">
         <SegmentedControl<StatusFilter> label={t("Show items")} value={status} onChange={setStatus} items={STEWARD_STATUSES.map((s) => ({ value: s, label: statusText(s) }))} />
-        <V2Link href="/work/exceptions" className="nx-btn nx-btn-quiet nx-btn-sm">{t("Exceptions")}</V2Link>
+        <NxLink href="/work/exceptions" className="nx-btn nx-btn-quiet nx-btn-sm">{t("Exceptions")}</NxLink>
       </div>
       <QueryView
         loading={list.isLoading} error={list.error} onRetry={() => void list.refetch()} empty={items.length === 0}

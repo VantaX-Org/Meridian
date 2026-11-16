@@ -40,7 +40,10 @@
   font-weight: var(--nx-w-label);
   cursor: pointer;
   white-space: nowrap;
+  max-width: 100%;
 }
+/* Reflow at 320 px (WCAG 1.4.10): a long label wraps inside the button instead of pushing the page sideways. */
+@media (max-width: 480px) { .nx-btn { white-space: normal; text-align: center; } }
 .nx-btn-sm { min-height: var(--nx-h-control-sm); padding: 0 var(--nx-s4); font-size: var(--nx-fs-small); }
 .nx-btn:hover { background: var(--nx-surface-2); }
 .nx-btn-primary { background: var(--nx-accent); border-color: var(--nx-accent); color: var(--nx-accent-ink); }
@@ -105,6 +108,7 @@
 .nx-spark { color: var(--nx-accent); flex: none; }
 .nx-stat-delta { display: flex; align-items: center; gap: var(--nx-s1); font-size: var(--nx-fs-small); font-weight: var(--nx-w-label); }
 .nx-stat-against { color: var(--nx-ink-3); font-weight: var(--nx-w-body); margin-inline-start: var(--nx-s1); }
+.nx-stat-note { margin: 0; color: var(--nx-ink-3); font-size: var(--nx-fs-small); }
 .nx-tone-good { color: var(--nx-good-ink); }
 .nx-tone-bad { color: var(--nx-bad-ink); }
 .nx-tone-neutral { color: var(--nx-ink-2); }
@@ -247,10 +251,10 @@ button.nx-step-btn:hover, .nx-step-btn[data-open] { border-color: var(--nx-accen
 .nx-tabs { display: flex; gap: var(--nx-s1); overflow-x: auto; }
 .nx-tab { display: inline-flex; align-items: center; gap: var(--nx-s2); min-height: var(--nx-h-control-sm); padding: 0 var(--nx-s4); border: 0; border-radius: var(--nx-r-pill); background: transparent; color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); font-weight: var(--nx-w-label); cursor: pointer; white-space: nowrap; }
 .nx-tab:hover { background: var(--nx-surface-2); color: var(--nx-ink); }
-.nx-tab-on, .nx-tab-on:hover { background: var(--nx-accent-soft); color: var(--nx-accent-ink); }
+.nx-tab-on, .nx-tab-on:hover { background: var(--nx-accent-soft); color: var(--nx-ink); }
 .nx-tab-badge { padding: 0 var(--nx-s2); border-radius: var(--nx-r-pill); background: var(--nx-surface-2); color: var(--nx-ink); font-size: var(--nx-fs-small); }
-.nx-seg { display: inline-flex; padding: var(--nx-s1); gap: var(--nx-s1); border: 1px solid var(--nx-control-edge); border-radius: var(--nx-r-pill); background: var(--nx-surface); }
-.nx-seg-item { min-height: var(--nx-h-control-sm); padding: 0 var(--nx-s4); border: 0; border-radius: var(--nx-r-pill); background: transparent; color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); font-weight: var(--nx-w-label); cursor: pointer; }
+.nx-seg { display: inline-flex; max-width: 100%; overflow-x: auto; padding: var(--nx-s1); gap: var(--nx-s1); border: 1px solid var(--nx-control-edge); border-radius: var(--nx-r-pill); background: var(--nx-surface); }
+.nx-seg-item { min-height: var(--nx-h-control-sm); padding: 0 var(--nx-s4); border: 0; border-radius: var(--nx-r-pill); background: transparent; color: var(--nx-ink-2); font: inherit; font-size: var(--nx-fs-small); font-weight: var(--nx-w-label); cursor: pointer; flex: none; }
 .nx-seg-item.nx-seg-on { background: var(--nx-accent); color: var(--nx-accent-ink); }
 
 /* Code */

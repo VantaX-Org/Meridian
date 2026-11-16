@@ -1,9 +1,4 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { ProcessDesigner } from "@/design/v2/screens/ProcessDesigner";
-
-export default function ProcessDesignerPage() {
-  const p = useParams<{ system: string; module: string }>();
-  return <ProcessDesigner system={String(p.system)} module={String(p.module)} />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }

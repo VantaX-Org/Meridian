@@ -1,0 +1,29 @@
+/* Triage (design/next/work/Triage.tsx). Tokens only; the shared work.css stays untouched. */
+.nx-tg { display: grid; gap: var(--nx-s5); padding: var(--nx-s5) var(--nx-gutter); }
+.nx-tg-hero { display: grid; gap: var(--nx-s2); }
+.nx-tg-title { margin: 0; }
+.nx-tg-dim { color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-tg-banner, .nx-tg-card { display: grid; gap: var(--nx-s4); padding: var(--nx-s5); background: var(--nx-surface); border: 1px solid var(--nx-border); border-radius: var(--nx-r-card); }
+.nx-tg-banner > p, .nx-tg-headline { margin: 0; }
+.nx-tg-headline { color: var(--nx-ink); }
+.nx-tg-figs { display: grid; gap: var(--nx-s4); grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }
+.nx-tg-fig { display: grid; gap: var(--nx-s2); padding: var(--nx-s4); border: 1px solid var(--nx-border); border-radius: var(--nx-r-control); }
+.nx-tg-figval { display: flex; align-items: center; justify-content: space-between; gap: var(--nx-s3); }
+.nx-tg-lede { margin: 0; color: var(--nx-ink-2); }
+.nx-tg-steps { display: grid; gap: var(--nx-s3); margin: 0; padding-left: var(--nx-s5); }
+.nx-tg-count { font-variant-numeric: tabular-nums; }
+.nx-tg-more summary { cursor: pointer; }
+.nx-tg-dl { display: grid; gap: var(--nx-s3); margin: var(--nx-s3) 0 0; }
+.nx-tg-dl dt { font-weight: 600; }
+.nx-tg-dl dd { margin: 0; color: var(--nx-ink-2); }
+.nx-tg-filters { display: flex; flex-wrap: wrap; align-items: end; gap: var(--nx-s4); }
+.nx-tg-inline { display: inline-flex; align-items: center; gap: var(--nx-s2); }
+.nx-tg-cardhead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--nx-s3); }
+.nx-tg-h { margin: 0; }
+.nx-tg-stack { display: grid; gap: var(--nx-s2); }
+.nx-tg-acts { display: inline-flex; flex-wrap: wrap; gap: var(--nx-s2); }
+.nx-tg-charts { display: grid; gap: var(--nx-s4); grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); }
+.nx-tg-bars { display: grid; gap: var(--nx-s3); margin: 0; padding: 0; list-style: none; }
+.nx-tg-bars li { display: grid; gap: var(--nx-s2); }
+.nx-tg-form { display: grid; gap: var(--nx-s4); }
+.nx-tg-pick { display: grid; gap: var(--nx-s2); margin: 0; padding: var(--nx-s3); border: 1px solid var(--nx-border); border-radius: var(--nx-r-control); }

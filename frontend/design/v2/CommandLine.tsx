@@ -258,7 +258,7 @@ export function CommandLine({ onClose }: { onClose: () => void }) {
  * server's explanation, the words it did not understand, and Open. Nothing is hidden: the filter shown is the one the
  * ledger reads.
  */
-function NlPanel({ question, answer, pending, failed, onOpen }: { question: string | null; answer: NlAnswer | undefined; pending: boolean; failed: boolean; onOpen: () => void }) {
+export function NlPanel({ question, answer, pending, failed, onOpen }: { question: string | null; answer: NlAnswer | undefined; pending: boolean; failed: boolean; onOpen: () => void }) {
   if (!question) {
     return (
       <div id="m2-nl" className="m2-nl" role="region" aria-label={tr("Ask in a sentence")} data-testid="nl-panel">

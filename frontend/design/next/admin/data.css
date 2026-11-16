@@ -1,0 +1,14 @@
+/* Admin data group: mappings, reference, audit, contact verification, match rules, rule accuracy, stewardship, bundle, rules io. Layout only, tokens only. */
+.nx-data { display: flex; flex-direction: column; gap: var(--nx-s4); min-width: 0; }
+.nx-data-block { display: flex; flex-direction: column; gap: var(--nx-s3); min-width: 0; padding: var(--nx-s4); background: var(--nx-surface); border: 1px solid var(--nx-border); border-radius: var(--nx-r-card); }
+.nx-data-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--nx-s3); min-width: 0; }
+.nx-data-head > div:first-child { min-width: 0; }
+.nx-data-h2 { margin: 0; font-size: var(--nx-fs-h2); line-height: var(--nx-lh-h2); font-weight: var(--nx-w-heading); color: var(--nx-ink); }
+.nx-data-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: var(--nx-s3); min-width: 0; }
+.nx-data-wide { grid-column: 1 / -1; }
+.nx-data-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2); }
+.nx-data-toggle { display: flex; align-items: flex-start; gap: var(--nx-s2); }
+.nx-data-toggle > span { display: flex; flex-direction: column; gap: var(--nx-s1); }
+.nx-data-list { margin: 0; padding-left: var(--nx-s5); display: flex; flex-direction: column; gap: var(--nx-s1); }
+.nx-data-bad { color: var(--nx-bad-ink); }
+.nx-data-pre { margin: 0; padding: var(--nx-s3); overflow-x: auto; background: var(--nx-surface-2); border-radius: var(--nx-r-card); font-family: var(--nx-mono); font-size: var(--nx-fs-small); white-space: pre-wrap; }

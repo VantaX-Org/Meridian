@@ -60,7 +60,7 @@ export function StepInspector({ id, onClose }: { id: string; onClose: () => void
             {step.description ? <p className="m2-rp m2-meta">{step.description}</p> : null}
           </Sec>
           <Sec title={`Fields: ${step.fields.length}`}>
-            <table className="m2-tbl m2-ftbl" aria-label={t("Fields this step writes")}>
+            <table className="m2-tbl m2-ftbl" tabIndex={0} aria-label={t("Fields this step writes")}>
               <thead>
                 <tr>
                   <th scope="col">{t("Field")}</th>

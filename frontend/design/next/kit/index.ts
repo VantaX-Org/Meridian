@@ -20,4 +20,5 @@ export { ProgressBar } from "./ProgressBar";
 export { Sheet, clampStep, hasUnsavedSheet, type SheetProps, type SheetSize, type SheetStep } from "./Sheet";
 export { Popover, place, type PopoverProps, type Placement } from "./Popover";
 export { LargeTitle, type LargeTitleProps } from "./LargeTitle";
-export { Ring, PointSpark, PartBar, type SparkPoint, type Part } from "./viz";
+export { Ring, PointSpark, PartBar, DeltaBar, SeverityMark, SmallMultiples, scoreDomain, sparkGeometry, type SparkPoint, type Part, type SeverityKey, type Multiple } from "./viz";
+export { NxLink } from "./Link";

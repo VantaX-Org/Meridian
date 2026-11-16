@@ -5,10 +5,8 @@
  * and the field's words, how many records fail. "Why" opens the rule sheet. One Aletheia sentence and its evidence close it.
  */
 import { useMemo } from "react";
-import { Button, EmptyState, ErrorState, PartBar, Skeleton } from "@/design/next/kit";
+import { Button, Code, EmptyState, ErrorState, PartBar, SeverityMark, Skeleton } from "@/design/next/kit";
 import { useSheets } from "@/design/next/shell/SheetHost";
-import { Coded, Mono } from "@/design/v2/parts";
-import { SeverityMark } from "@/design/v2/marks";
 import { useObjectRules } from "@/lib/v2/queries";
 import { describeField } from "@/lib/v2/sap-fields";
 import { int } from "@/lib/v2/score";
@@ -58,8 +56,8 @@ export function WhySection({ o, limit }: { o: ObjectRun; limit?: number }) {
               <tr key={r.check_id}>
                 <td>
                   <span className="nx-num">{i + 1}</span>{" "}
-                  <Trunc text={`${r.check_id} ${r.name}`}><Coded code={r.check_id} text={r.name} /></Trunc>
-                  {r.field ? <div className="nx-muted"><Coded code={r.field} text={r.field_description ?? describeField(r.field)} first /></div> : null}
+                  <Trunc text={`${r.check_id} ${r.name}`}><Code code={r.check_id} text={r.name} /></Trunc>
+                  {r.field ? <div className="nx-muted"><Code code={r.field} text={r.field_description ?? describeField(r.field)} /></div> : null}
                 </td>
                 <td><SeverityMark severity={r.severity === "info" ? "low" : r.severity} /> {SEV(r.severity)}</td>
                 <td className="nx-r nx-num"><span title={int(r.affected_count)}>{t("{n} records", { n: compactCount(r.affected_count) })}</span></td>
@@ -78,7 +76,7 @@ export function WhySection({ o, limit }: { o: ObjectRun; limit?: number }) {
           <Button variant="quiet" size={32} onClick={() => sheets.open({ kind: "evidence", id: o.module })}>{t("Evidence ({n})", { n: found.data?.findings.length ?? 0 })}</Button>
         </p>
       ) : (
-        <p className="nx-muted"><Mono>{t("Aletheia")}</Mono> {found.isLoading ? t("is reading the run.") : t("has no evidence for this yet.")}</p>
+        <p className="nx-muted">{t("Aletheia")} {found.isLoading ? t("is reading the run.") : t("has no evidence for this yet.")}</p>
       )}
     </section>
   );
