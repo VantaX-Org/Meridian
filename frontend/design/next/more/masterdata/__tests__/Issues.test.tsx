@@ -6,7 +6,7 @@ import * as api from "@/lib/api/v2/issues";
 import { ToastProvider } from "../../../kit";
 import { RecordIssues } from "../Issues";
 
-const Q = vi.hoisted(() => ({ can: (_p: string): boolean => true }));
+const Q = vi.hoisted(() => ({ can: (() => true) as (p: string) => boolean }));
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("@/lib/v2/hooks", async (orig) => ({ ...(await orig<object>()), useV2Session: () => ({ can: Q.can, id: "me", name: "Me", email: "me@example.com", persona: "admin", label: "Admin", fixture: true, viewAs: null, shared: false }) }));
 

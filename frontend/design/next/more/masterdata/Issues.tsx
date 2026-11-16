@@ -13,7 +13,6 @@ import { moduleText } from "@/lib/v2/labels";
 import { describeField, sapField } from "@/lib/v2/sap-fields";
 import { int, moduleFromSlug } from "@/lib/v2/score";
 import { recordItemId } from "@/lib/v2/work";
-import { V2Link } from "@/design/v2/parts";
 import { Button, Chip, Code, DataTable, EmptyState, ErrorState, PartBar, SegmentedControl, SidePanel, Skeleton, StatCard, useToast, type Column } from "../../kit";
 import { ChartCard, compact } from "../ChartCard";
 import { TableSave } from "./TableSave";
@@ -50,7 +49,7 @@ export function RecordIssues() {
   const fixture = useFixture();
   const session = useV2Session();
   const toast = useToast();
-  const { hrefFor } = useOpenItem();
+  const { openItem } = useOpenItem();
   const [view, setView] = useUrlParam<IssueStatus | "all">("status", "open", [...ISSUE_STATUSES, "all"]);
   const tab: IssueStatus | "" = view === "all" ? "" : view;
   const [urlSearch] = useUrlParam<string>("search", "");
@@ -95,7 +94,7 @@ export function RecordIssues() {
     {
       id: "rule", label: t("Rule"), cell: (i) => (
         <span className="nx-cell-stack">
-          <V2Link href={hrefFor({ kind: "rule", id: i.check_id })} data-testid="issues-rule"><Code code={i.check_id} text={i.message ?? t("The run stored no message for this rule.")} /></V2Link>
+          <Button variant="quiet" size={32} onClick={() => openItem({ kind: "rule", id: i.check_id })} data-testid="issues-rule"><Code code={i.check_id} text={i.message ?? t("The run stored no message for this rule.")} /></Button>
           {i.field ? <span className="nx-sub"><Code code={sapField(i.field)} text={describeField(i.field) ?? undefined} /></span> : null}
         </span>
       ),
@@ -267,7 +266,7 @@ function IssueDetail({ id }: { id: string }) {
   const session = useV2Session();
   const toast = useToast();
   const qc = useQueryClient();
-  const { hrefFor } = useOpenItem();
+  const { openItem } = useOpenItem();
   const [body, setBody] = useState("");
   const people = useQuery({ queryKey: ["assignable", fixture], queryFn: getAssignable, staleTime: 300_000, enabled: session.can("assign"), retry: noRetry4xx });
   const names = new Map((people.data ?? []).map((u) => [u.id, u.name]));
@@ -289,8 +288,8 @@ function IssueDetail({ id }: { id: string }) {
       <h3>{t("{key} against {rule}", { key: issue.record_key, rule: issue.check_id })}</h3>
       <p className="nx-sub">{statusText(issue.status)}</p>
       <p className="nx-row nx-wrap">
-        <V2Link href={hrefFor({ kind: "record", id: recordItemId(issue) })} className="nx-btn nx-btn-secondary nx-btn-sm" data-testid="issues-open-record">{t("Open the record")}</V2Link>
-        <V2Link href={hrefFor({ kind: "rule", id: issue.check_id })} className="nx-btn nx-btn-secondary nx-btn-sm">{t("Open the rule")}</V2Link>
+        <Button size={32} onClick={() => openItem({ kind: "record", id: recordItemId(issue) })} data-testid="issues-open-record">{t("Open the record")}</Button>
+        <Button size={32} onClick={() => openItem({ kind: "rule", id: issue.check_id })}>{t("Open the rule")}</Button>
       </p>
       <p className="nx-sub">
         {t("First failed {first}, last failed {last}", {

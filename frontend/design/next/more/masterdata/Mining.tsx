@@ -11,12 +11,11 @@ import { t } from "@/lib/v2/i18n";
 import { labelText, moduleText } from "@/lib/v2/labels";
 import { useLandscape } from "@/lib/v2/queries";
 import { f1, int, pct1 } from "@/lib/v2/score";
-import { V2Link } from "@/design/v2/parts";
-import { byObject, runsToMine } from "@/design/v2/screens/Mining";
 import { Button, Chip, Code, DataTable, EmptyState, ErrorState, PartBar, Skeleton, StatCard, useToast, type Column } from "../../kit";
 import { ChartCard, compact } from "../ChartCard";
 import { TableSave } from "./TableSave";
-import { httpStatus, noRetry4xx, sevTone, sevWord } from "./util";
+import { httpStatus, noRetry4xx, sevTone, sevWord, useGo } from "./util";
+import { byObject, runsToMine } from "./words";
 
 /**
  * Data mining, native: likely duplicate records, values far outside their field's usual range and fields whose values
@@ -59,6 +58,7 @@ function Section({ title, meta, testId, children }: { title: string; meta?: stri
 }
 
 export function DataMining() {
+  const go = useGo();
   const overview = useMining("summary", getMiningOverview);
   const dupes = useMining("duplicates", getDuplicates);
   const outliers = useMining("anomalies", getAnomalies);
@@ -133,7 +133,7 @@ export function DataMining() {
         </div>
         <div className="nx-row nx-wrap">
           <MineAction />
-          <V2Link href="/rule-promotion" className="nx-btn nx-btn-secondary nx-btn-sm">{t("Review rule candidates")}</V2Link>
+          <Button size={32} onClick={go("/rule-promotion")}>{t("Review rule candidates")}</Button>
         </div>
         <p className="nx-sub">{t("Mining again reads the data and lists candidates. No record and no rule is changed until you promote a candidate.")}</p>
       </section>

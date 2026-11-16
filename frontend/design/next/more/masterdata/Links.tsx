@@ -8,11 +8,11 @@ import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { int, pct1 } from "@/lib/v2/score";
-import { typeText } from "@/design/v2/screens/Links";
 import { Button, Chip, Code, DataTable, EmptyState, PartBar, StatCard, type Column } from "../../kit";
 import { ChartCard, compact } from "../ChartCard";
 import { QueryView } from "../states";
 import { httpStatus, noRetry4xx } from "./util";
+import { typeText } from "./words";
 
 /**
  * Record links, native: which records of different objects point at each other, as relationship discovery read them

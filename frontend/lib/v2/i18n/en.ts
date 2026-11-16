@@ -11371,6 +11371,18 @@ export const en = {
   // journey-masterdata strings start
   "Tables with rules": "Tables with rules",
   "Tables by object": "Tables by object",
+  "Checking records at the gate needs the {permission} permission.": "Checking records at the gate needs the {permission} permission.",
+  "Code list": "Code list",
+  "Held requests": "Held requests",
+  "Hold state of each record": "Hold state of each record",
+  "Mapping coverage": "Mapping coverage",
+  "Proposing a mapping needs the {permission} permission.": "Proposing a mapping needs the {permission} permission.",
+  "Requests opened for flagged records": "Requests opened for flagged records",
+  "Source codes by mapping result, every list": "Source codes by mapping result, every list",
+  "Target codes": "Target codes",
+  "Your role cannot read the firewall traffic.": "Your role cannot read the firewall traffic.",
+  "Your role cannot read the reference data.": "Your role cannot read the reference data.",
+  "Your role cannot read the process discovery data.": "Your role cannot read the process discovery data.",
   // journey-masterdata strings end
 } as const satisfies Record<string, string>;
 

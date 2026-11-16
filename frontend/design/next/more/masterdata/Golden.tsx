@@ -7,12 +7,11 @@ import { getMdmHealth, getMdmHistory, type MdmSnapshot } from "@/lib/api/v2/mdm-
 import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { f1, int, pct1 } from "@/lib/v2/score";
-import { PARTS, points } from "@/design/v2/screens/MdmHealth";
-import { V2Link } from "@/design/v2/parts";
-import { DataTable, EmptyState, ErrorState, PointSpark, Skeleton, Sparkline, StatCard, type Column } from "../../kit";
+import { Button, DataTable, EmptyState, ErrorState, PointSpark, Skeleton, Sparkline, StatCard, type Column } from "../../kit";
 import { ChartCard, cardState } from "../ChartCard";
 import { TableSave } from "./TableSave";
-import { httpStatus, noRetry4xx } from "./util";
+import { httpStatus, noRetry4xx, useGo } from "./util";
+import { PARTS, points } from "./words";
 
 /**
  * Golden records health, native: the daily MDM snapshot. The score is the weighted sum of four shares, so the
@@ -20,6 +19,7 @@ import { httpStatus, noRetry4xx } from "./util";
  */
 export function GoldenHealth() {
   const fixture = useFixture();
+  const go = useGo();
   const now = useQuery({ queryKey: ["mdm-health", fixture], queryFn: getMdmHealth, staleTime: 60_000, retry: noRetry4xx });
   const hist = useQuery({ queryKey: ["mdm-health", fixture, "history"], queryFn: () => getMdmHistory(90), staleTime: 60_000, retry: noRetry4xx });
   const card = useQuery({ queryKey: ["mdm-health", fixture, "series"], queryFn: () => getMdmHealthSeries(56), staleTime: 60_000, retry: noRetry4xx });
@@ -84,7 +84,7 @@ export function GoldenHealth() {
           <StatCard label={t("Systems synced")} value={s.sync_coverage_pct * 100} format={(n) => pct1(n / 100)} />
           <StatCard label={t("{n} active systems", { n: "" }).trim()} value={now.data.active_systems_count} />
         </div>
-        <p className="nx-row nx-wrap"><V2Link href="/issues" className="nx-btn nx-btn-secondary nx-btn-sm">{t("Open the issues")}</V2Link></p>
+        <p className="nx-row nx-wrap"><Button size={32} onClick={go("/issues")}>{t("Open the issues")}</Button></p>
       </section>
       <div className="nx-chartcards">
         <ChartCard

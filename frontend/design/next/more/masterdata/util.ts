@@ -15,3 +15,13 @@ import type { ChipTone } from "../../kit";
 export const sevTone = (s: string | null | undefined): ChipTone => (s === "critical" || s === "high" ? "bad" : s === "medium" ? "warn" : "neutral");
 export const sevWord = (s: string | null | undefined): string =>
   s === "critical" ? t("Critical") : s === "high" ? t("High") : s === "medium" ? t("Medium") : s === "low" ? t("Low") : s === "info" ? t("Info") : s ?? "-";
+
+import { useRouter } from "next/navigation";
+import { useV2Href } from "@/lib/v2/hooks";
+
+/** Navigate inside the app from a kit Button: the kit has no link button, so a click pushes the route. */
+export function useGo(): (to: string) => () => void {
+  const router = useRouter();
+  const href = useV2Href();
+  return (to) => () => router.push(href(to));
+}

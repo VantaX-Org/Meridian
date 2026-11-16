@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
-import { setUrl } from "@/design/v2/__tests__/nav-store";
+import { getUrl, setUrl } from "@/design/v2/__tests__/nav-store";
 import * as api from "@/lib/api/v2/mdm-health";
 import { ToastProvider } from "../../../kit";
 import { GoldenHealth } from "../Golden";
 
-const Q = vi.hoisted(() => ({ can: (_p: string): boolean => true }));
+const Q = vi.hoisted(() => ({ can: (() => true) as (p: string) => boolean }));
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 vi.mock("@/lib/v2/hooks", async (orig) => ({ ...(await orig<object>()), useV2Session: () => ({ can: Q.can, id: "me", name: "Me", email: "me@example.com", persona: "admin", label: "Admin", fixture: true, viewAs: null, shared: false }) }));
 
@@ -24,7 +24,8 @@ describe("Golden records health (native)", () => {
 
   it("links on to the issues", async () => {
     wrap();
-    expect(await screen.findByRole("link", { name: "Open the issues" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Open the issues" }));
+    expect(getUrl()).toMatch(/^\/issues/);
   });
 
   it("says a 403 cannot be read", async () => {
