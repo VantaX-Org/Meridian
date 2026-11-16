@@ -11479,5 +11479,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The JSON file the export writes.": "エクスポートで書き出される JSON ファイル。",
   "Save the connection first.": "先に接続を保存してください。",
   "Meridian logs on with these details. The next step opens only if the logon works.": "Meridian はこの情報でログオンします。ログオンが成功した場合にのみ次のステップが開きます。",
+  "expired": "期限切れ",
+  "until": "期限",
+  "expires": "有効期限",
   "Fields: {count}": "フィールド: {count}",
 };

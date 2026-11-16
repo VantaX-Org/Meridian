@@ -11479,5 +11479,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The JSON file the export writes.": "Die JSON-Datei, die der Export schreibt.",
   "Save the connection first.": "Speichern Sie zuerst die Verbindung.",
   "Meridian logs on with these details. The next step opens only if the logon works.": "Meridian meldet sich mit diesen Angaben an. Der nächste Schritt öffnet sich nur, wenn die Anmeldung funktioniert.",
+  "expired": "abgelaufen",
+  "until": "bis",
+  "expires": "läuft ab",
   "Fields: {count}": "Felder: {count}",
 };

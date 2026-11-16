@@ -38,6 +38,7 @@ const group = (load: () => Promise<Bodies>) =>
 
 const Reports = group(() => import("./reports").then((m) => m.REPORTS_BODIES));
 const Run = group(() => import("./run").then((m) => m.RUN_BODIES));
+const People = group(() => import("./people").then((m) => m.PEOPLE_BODIES));
 const Work = group(() => import("./work").then((m) => m.WORK_BODIES));
 
 function AskPanelNative({ onClose }: BodyProps) {
@@ -52,6 +53,7 @@ function AskPanelNative({ onClose }: BodyProps) {
 /** `?open=<kind>:<id>` picks the group here. Kinds not listed get the plain frame. */
 export const INSPECTOR_GROUPS: Partial<Record<OpenKind, ComponentType<GroupProps>>> = {
   run: Run,
+  ...Object.fromEntries(["user", "role", "apikey", "audit", "channel"].map((k) => [k, People])),
   ...Object.fromEntries(["job", "batch", "request", "step", "person", "certificate"].map((k) => [k, Work])),
   ...Object.fromEntries(["report", "schedule", "webhook", "delivery", "policypack", "digest"].map((k) => [k, Reports])),
 };

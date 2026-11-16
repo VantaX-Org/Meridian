@@ -11478,6 +11478,9 @@ export const en = {
   "The JSON file the export writes.": "The JSON file the export writes.",
   "Save the connection first.": "Save the connection first.",
   "Meridian logs on with these details. The next step opens only if the logon works.": "Meridian logs on with these details. The next step opens only if the logon works.",
+  "expired": "expired",
+  "until": "until",
+  "expires": "expires",
   "Fields: {count}": "Fields: {count}",
 } as const satisfies Record<string, string>;
 
