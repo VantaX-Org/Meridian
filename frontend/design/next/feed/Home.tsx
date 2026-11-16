@@ -27,6 +27,7 @@ import { QuietRow } from "./QuietRow";
 import { StoryCard } from "./StoryCard";
 import { StoryCardSkeleton } from "./StoryCardSkeleton";
 import { CapNotice } from "./CapNotice";
+import { AutoCleanedCard, FixPipelineCard, GoLiveCard, ReadinessCard, RiskWaterfallCard } from "./HomePanels";
 import "./feed.css";
 
 // The Objects switcher opens from the greeting; registered here so SheetHost and sheets.ts stay free of a cycle.
@@ -41,7 +42,8 @@ export function Home() {
   const fixture = useFixture();
   const systems = useSystemsExtended().data ?? [];
   // The persona's next step the old landscape led with (the owner's batch to approve, basis's system to fix).
-  const landscape = useLandscape(null).data;
+  const landscapeQ = useLandscape(null);
+  const landscape = landscapeQ.data;
   const waves = useWaves().data ?? [];
   const [all, setAll] = useState(false);
   const feed = usePortfolio({ limit: 500 }, all);
@@ -165,6 +167,17 @@ export function Home() {
             {selected.length ? <div className="nx-fd-bulk"><BulkBar rows={selected} act={act} onClear={() => setPicked(new Set())} /></div> : null}
           </>
         )}
+      {found.isError ? <ErrorState error={found.error} fallback={t("The findings Aletheia ranked could not be read.")} onRetry={() => void found.refetch()} /> : null}
+      {landscapeQ.isError ? <ErrorState error={landscapeQ.error} fallback={t("The landscape could not be read.")} onRetry={() => void landscapeQ.refetch()} /> : null}
+      <AutoCleanedCard />
+      {landscape?.cells.length ? (
+        <>
+          <GoLiveCard landscape={landscape} waves={waves} />
+          <ReadinessCard landscape={landscape} />
+          <FixPipelineCard landscape={landscape} />
+          <RiskWaterfallCard />
+        </>
+      ) : null}
       <Confirm open={!!pulling} title={t("Pull {n} objects now?", { n: formatInt(new Set((pulling ?? []).map((r) => r.module)).size) })} consequence={t("Meridian reads {n} objects from their systems again and scores the new runs. Nothing is written to the systems.", { n: formatInt(new Set((pulling ?? []).map((r) => r.module)).size) })} confirmLabel={t("Pull now")} onConfirm={() => void confirmPull()} onCancel={() => setPulling(null)} />
       <UploadPanel open={!!uploadFor} expected={uploadFor ?? []} onClose={() => setUploadFor(null)} onDone={(res) => { unpick(res.map((r) => r.parent_version_id)); setUploadFor(null); refresh(); }} />
       <Sheet open={!!compared} onClose={() => setCompared(null)} title={t("Compare objects")} size="large">

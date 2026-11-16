@@ -11547,4 +11547,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The objects could not be read.": "Die Objekte konnten nicht gelesen werden.",
   "The update status could not be read.": "Der Update-Status konnte nicht gelesen werden.",
   "You can read these requests. Deciding one needs the approve permission.": "Sie können diese Anfragen lesen. Für eine Entscheidung brauchen Sie die Genehmigungsberechtigung.",
+  "The findings Aletheia ranked could not be read.": "Die von Aletheia priorisierten Befunde konnten nicht gelesen werden.",
+  "The work could not be read.": "Die Arbeit konnte nicht gelesen werden.",
+  "The cost model could not be read.": "Das Kostenmodell konnte nicht gelesen werden.",
 };

@@ -38,6 +38,17 @@ vi.mock("@/lib/v2/runs-queries", async (orig) => {
   return { ...m, useSystemsExtended: () => (systems ? { data: systems } : m.useSystemsExtended()) };
 });
 
+// A test may set `broken` to make the landscape and the Aletheia findings fail to load.
+let broken = false;
+vi.mock("@/lib/v2/queries", async (orig) => {
+  const m = await orig<typeof import("@/lib/v2/queries")>();
+  return { ...m, useLandscape: (s: Parameters<typeof m.useLandscape>[0]) => (broken ? { data: undefined, isError: true, error: null, refetch: vi.fn() } as unknown as ReturnType<typeof m.useLandscape> : m.useLandscape(s)) };
+});
+vi.mock("@/lib/api/v2/insights", async (orig) => {
+  const m = await orig<typeof import("@/lib/api/v2/insights")>();
+  return { ...m, getFindings: (...a: Parameters<typeof m.getFindings>) => (broken ? Promise.reject(new Error("")) : m.getFindings(...a)) };
+});
+
 const row = (o: Partial<PortfolioRow> = {}): PortfolioRow => ({
   module: "material_master", label: "Material master", version_id: "v1", run_at: null, system_id: null,
   composite_score: 80, raw_score: 80, measured_score: 80, capped: false, readiness: "pass", step: "compare", cycle: null,
@@ -56,6 +67,7 @@ beforeEach(() => {
   start.mockClear();
   page = null;
   systems = null;
+  broken = false;
 });
 afterEach(() => {
   undo();
@@ -208,6 +220,12 @@ describe("Home", () => {
       await waitFor(() => expect(screen.getAllByTestId("pf-card").length + screen.queryAllByTestId("quiet-card").length).toBeGreaterThan(0));
     });
   }
+  it("says when the landscape or the ranked findings cannot be read", async () => {
+    broken = true;
+    wrap(<Home />);
+    expect(await screen.findByText("The landscape could not be read.")).toBeInTheDocument();
+    expect(await screen.findByText("The findings Aletheia ranked could not be read.")).toBeInTheDocument();
+  });
   it("pulls after the confirm", async () => {
     const u = userEvent.setup();
     page = pageOf([row({ step: "pull", readiness: "fail", composite_score: 30 })]);

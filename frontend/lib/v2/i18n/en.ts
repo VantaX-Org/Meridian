@@ -11546,6 +11546,9 @@ export const en = {
   "The objects could not be read.": "The objects could not be read.",
   "The update status could not be read.": "The update status could not be read.",
   "You can read these requests. Deciding one needs the approve permission.": "You can read these requests. Deciding one needs the approve permission.",
+  "The findings Aletheia ranked could not be read.": "The findings Aletheia ranked could not be read.",
+  "The work could not be read.": "The work could not be read.",
+  "The cost model could not be read.": "The cost model could not be read.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
