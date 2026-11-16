@@ -80,7 +80,7 @@ export function Reports() {
   return (
     <div className="nx-body">
       <div className="nx-chartcards"><FilesCard /><SchedulesCard /></div>
-      <div className="nx-row">
+      <div className="nx-row nx-row-wrap">
         <SegmentedControl label={t("Reports")} value={seg} onChange={(v) => setSeg(v as Seg)} items={[{ value: "files", label: t("Files") }, { value: "schedules", label: t("Schedules") }, { value: "links", label: t("Shared links") }]} />
         <Button variant="primary" onClick={() => sheets.open({ kind: "report", id: "new" })}>{t("New report")}</Button>
       </div>

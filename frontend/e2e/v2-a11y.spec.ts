@@ -129,7 +129,7 @@ for (const loc of LOCALES) {
         await prepare(page, scheme, loc.tag);
         for (const p of PAGES) {
           await open(page, p.url);
-          if (loc.tag) await expect(page.locator(".m2-root").first()).toHaveAttribute("lang", loc.tag);
+          if (loc.tag) await expect(page.locator(".nx-root[lang], .m2-root[lang]").first()).toHaveAttribute("lang", loc.tag);
           await axe(page, `${p.name} ${loc.lang} ${scheme}`);
         }
       });
@@ -153,10 +153,10 @@ for (const size of [
         await prepare(page, "light", loc.tag);
         await open(page, "/?fixture=1");
         expect(await noSideways(page)).toBe(true);
-        expect(await noneClipped(page, ".m2-top button, .m2-top a")).toEqual([]);
+        expect(await noneClipped(page, ".nx-header button, .nx-header a")).toEqual([]);
         // Every control of the top bar keeps a usable width and none sits on another.
         const crowded = await page.evaluate(() => {
-          const boxes = Array.from(document.querySelectorAll<HTMLElement>(".m2-top > * > button, .m2-top > * > a, .m2-top > button"))
+          const boxes = Array.from(document.querySelectorAll<HTMLElement>(".nx-header > * > button, .nx-header > * > a, .nx-header > button"))
             .filter((el) => getComputedStyle(el).display !== "none")
             .map((el) => ({ name: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 30), r: el.getBoundingClientRect() }));
           const out: string[] = [];
@@ -205,7 +205,7 @@ test.describe("200% zoom at 1440", () => {
       for (const url of ["/?fixture=1", "/o/ecc-production/material-master?fixture=1", "/work?fixture=1&persona=steward", "/admin/settings?fixture=1", "/admin/users?fixture=1", "/status?fixture=1", "/?fixture=1&open=preferences"]) {
         await open(page, url);
         expect(await noSideways(page), url).toBe(true);
-        expect(await noneClipped(page, ".m2-top button, .m2-top a, .m2-canvas > * button, #m2-inspector button, .m2-stat-page button, .m2-stat-page a"), url).toEqual([]);
+        expect(await noneClipped(page, ".nx-header button, .nx-header a, #nx-main > * button, #m2-inspector button, .m2-stat-page button, .m2-stat-page a"), url).toEqual([]);
       }
       if (loc.lang === "en") await page.screenshot({ path: path.join(SHOTS, "zoom-200-settings.png") });
     });
@@ -252,7 +252,7 @@ async function skipToContent(page: Page) {
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/#m2-canvas/);
+  await expect(page).toHaveURL(/#nx-main/);
 }
 
 /** The focused element draws a visible ring (an outline or a box shadow), not colour alone. */
@@ -286,25 +286,28 @@ test.describe("keyboard only", () => {
     await expect(page.getByRole("link", { name: "Skip to content" })).toBeVisible();
     await focusVisible(page);
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: "Skip to the menu" })).toBeFocused();
+    await expect(page.getByRole("link", { name: "Skip to the tabs" })).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: "Skip to the inspector" })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/#m2-inspector/);
-    // Landmarks: banner, main, the inspector as a complementary region, the status strip as contentinfo.
+    // Landmarks: banner, main, the inspector as a complementary region; the platform status sits in the banner.
     await expect(page.getByRole("main")).toHaveCount(1);
     await expect(page.getByRole("banner")).toHaveCount(1);
     await expect(page.getByRole("complementary", { name: "Inspector" })).toHaveCount(1);
-    await expect(page.getByRole("contentinfo", { name: "Status" })).toHaveCount(1);
+    await expect(page.getByRole("banner").getByRole("link", { name: /open the status page/ })).toHaveCount(1);
   });
 
   test("flow 1: landscape to an object to the rule inspector", async ({ page }) => {
     await prepare(page, "light", null);
     await open(page, "/?fixture=1");
-    await tabTo(page, /^Material master/);
+    await skipToContent(page);
+    // Each Home card names its object on its Open link.
+    await tabTo(page, /^Open Material master/, 400);
     await focusVisible(page);
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/o\/ecc-production\/material-master/, NAV);
+    // The feed is ranked by work to do, so the first Material master card can belong to any connected system.
+    await expect(page).toHaveURL(/\/o\/[^/]+\/material-master/, NAV);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Material master", NAV);
     await page.goto(`${new URL(page.url()).pathname}/rules?fixture=1`, { waitUntil: "load", timeout: 90_000 });
     const grid = page.getByRole("grid", { name: "Rules for Material master" });
@@ -338,7 +341,7 @@ test.describe("keyboard only", () => {
     await expect(chips.getByRole("button", { name: /To fix/ })).toContainText("25,711");
     // The decided row leaves the list; focus carries on at the next row's decision, never on the page body.
     await expect(page.locator(":focus")).toHaveAttribute("aria-label", /^Decision for /);
-    await page.locator("#m2-canvas").focus();
+    await page.locator("#nx-main").focus();
     await page.keyboard.press("Control+z");
     await expect(notice).toContainText("Undone", NAV);
     await expect(chips.getByRole("button", { name: /To fix/ })).toContainText("25,712");
@@ -406,7 +409,8 @@ test.describe("prefers-reduced-motion", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
   test("stops the notice's slide and the timeline's fade", async ({ page }) => {
     await prepare(page, "light", null, true);
-    await open(page, "/runs?fixture=1");
+    // The run timeline lives on the object's Runs tab in the next shell.
+    await open(page, "/o/ecc-production/material-master/runs?fixture=1");
     const marks = await page.evaluate(() => Array.from(document.querySelectorAll(".m2-tl-mk")).map((el) => getComputedStyle(el).animationName));
     expect(marks.length).toBeGreaterThan(0);
     expect(new Set(marks)).toEqual(new Set(["none"]));

@@ -253,7 +253,8 @@ function DeliveryLog() {
       ) : !items.length ? (
         <p className="m2-prov">{tr("Nothing has been sent to you yet.")}</p>
       ) : (
-        <table className="m2-tbl">
+        <div className="m2-frame" tabIndex={0} role="region" aria-label={tr("Delivery log, scrollable")}>
+<table className="m2-tbl">
           <thead>
             <tr>
               <th scope="col">{tr("When")}</th>
@@ -276,6 +277,7 @@ function DeliveryLog() {
             ))}
           </tbody>
         </table>
+</div>
       )}
     </section>
   );

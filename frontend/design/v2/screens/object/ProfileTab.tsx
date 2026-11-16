@@ -53,7 +53,7 @@ function TableBlock({ tp }: { tp: TableProfile }) {
         </span>
       </div>
       <ScrollFrame label={t("Fields of {table}, scrollable", { table: tp.table })}>
-        <TableExport><table className="m2-tbl m2-ftbl" aria-label={t("Field profile of {table}", { table: tp.table })}>
+        <TableExport><table className="m2-tbl m2-ftbl" tabIndex={0} aria-label={t("Field profile of {table}", { table: tp.table })}>
           <thead>
             <tr>
               <th scope="col">{t("Field")}</th>

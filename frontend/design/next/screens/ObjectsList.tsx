@@ -25,7 +25,7 @@ export function ObjectsList() {
   }
 
   return (
-    <main className="nx-pf" data-testid="objects-list">
+    <div className="nx-pf" data-testid="objects-list">
       <header className="nx-pf-head">
         <div>
           <h1>{t("Objects")}</h1>
@@ -58,6 +58,6 @@ export function ObjectsList() {
             </div>
           </details>
         ))}
-    </main>
+    </div>
   );
 }

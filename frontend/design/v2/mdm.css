@@ -92,7 +92,7 @@ svg.m2-lineage.m2-lgx { max-width: none; height: auto; }
 }
 
 /* links inside running text are underlined, never colour alone */
-.m2-rp a, .m2-pager a { text-decoration: underline; text-underline-offset: 2px; }
+.m2-root .m2-rp a, .m2-root .m2-pager a { text-decoration: underline; text-underline-offset: 2px; }
 
 .m2-procs .m2-ftbl { table-layout: fixed; min-width: 520px; }
 .m2-procs .m2-ftbl th:nth-child(1) { width: 44%; }

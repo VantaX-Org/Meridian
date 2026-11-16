@@ -128,7 +128,7 @@ export function Portfolio() {
   ) : null;
 
   return (
-    <main className="nx-pf" data-testid="portfolio">
+    <div className="nx-pf" data-testid="portfolio">
       <header className="nx-pf-head">
         <div>
           <h1>{t("Portfolio")}</h1>
@@ -233,6 +233,6 @@ export function Portfolio() {
           refresh();
         }}
       />
-    </main>
+    </div>
   );
 }

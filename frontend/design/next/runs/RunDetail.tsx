@@ -162,10 +162,10 @@ export function RunBody({ id }: { id: string }) {
 
 export function RunDetail({ id }: { id: string }) {
   return (
-    <main className="nx-rn-page">
+    <div className="nx-rn-page">
       <p><Link className="nx-rn-link" href="/next/runs">{t("Back to runs")}</Link> <Link className="nx-rn-link" href={`/run/${id}?view=full`} data-testid="run-full">{t("Export, baseline and more")}</Link></p>
       <RunBody id={id} />
-    </main>
+    </div>
   );
 }
 

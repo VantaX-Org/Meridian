@@ -96,7 +96,7 @@ export function StoryCard({ row, act, finding, evidence = 0, onEvidence, selecte
       ) : null}
       <footer className="nx-fd-card-foot">
         <Primary row={row} act={act} />
-        <V2Link className="nx-btn nx-btn-quiet nx-btn-sm" href={objectHref(row, act.sysName, `?run=${row.version_id}`)}>{t("Open")}</V2Link>
+        <V2Link className="nx-btn nx-btn-quiet nx-btn-sm" href={objectHref(row, act.sysName, `?run=${row.version_id}`)} aria-label={t("Open {name}", { name: row.label })}>{t("Open")}</V2Link>
         <V2Link className="nx-btn nx-btn-quiet nx-btn-sm" href={compare}>{t("Runs")}</V2Link>
       </footer>
     </article>

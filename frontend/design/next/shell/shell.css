@@ -47,6 +47,16 @@
   .nx-main { padding-bottom: calc(var(--nx-h-tabbar) + var(--m-attribution-h) + var(--nx-s5)); }
 }
 
+/* Reflow at 320: the header's controls tighten and the wordmark gives way before the page ever scrolls sideways. */
+@media (max-width: 420px) {
+  .nx-header { gap: var(--nx-s2); }
+  .nx-wordmark { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nx-title-slot { flex: 0 1 0; }
+  .nx-header-r { gap: 0; flex: none; }
+  .nx-header-btn { min-width: var(--nx-h-control-sm); padding: 0 var(--nx-s1); }
+  .nx-account-btn { padding: 0 var(--nx-s1); }
+}
+
 /* The v2 screens ride inside the next shell as a sheet, so none of them changes. */
 .nx-legacy { padding: var(--nx-s4) var(--nx-gutter) var(--nx-s8); min-width: 0; }
 .nx-legacy > .m2-root { background: transparent; min-height: 0; }
@@ -63,4 +73,4 @@
 .nx-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2) var(--nx-s5); padding: var(--nx-s4) var(--nx-gutter) 0; border-bottom: 1px solid var(--nx-border); }
 .nx-strip h1, .nx-strip .nx-strip-title { margin: 0; font-weight: var(--nx-w-heading); font-size: var(--nx-fs-h1); line-height: var(--nx-lh-h1); }
 .nx-more-body { display: contents; }
-.nx-strip .nx-tabs { margin-bottom: -1px; }
+.nx-strip .nx-tabs { margin-bottom: -1px; flex-wrap: wrap; min-inline-size: 0; }

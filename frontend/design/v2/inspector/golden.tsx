@@ -155,7 +155,7 @@ function GoldenBody({ id, onClose }: { id: string; onClose: () => void }) {
             {explain.isError ? (
               <ErrorFrame onRetry={() => void explain.refetch()}>{t("How each value was chosen could not be read.")}</ErrorFrame>
             ) : (
-              <table className="m2-tbl m2-ftbl" aria-label={t("Golden fields and how each value was chosen")}>
+              <table className="m2-tbl m2-ftbl" tabIndex={0} aria-label={t("Golden fields and how each value was chosen")}>
                 <thead>
                   <tr>
                     <th scope="col">{t("Field")}</th>

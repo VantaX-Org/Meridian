@@ -26,7 +26,7 @@ function List() {
   const q = useRequests(filter === "all" ? undefined : filter);
   const rows = q.data?.items ?? [];
   return (
-    <main className="nx-ap" data-testid="approvals-list">
+    <div className="nx-ap" data-testid="approvals-list">
       <header className="nx-ap-head">
         <h1>{t("Approvals")}</h1>
         <p>{t("Every write-back needs a second person. Requests you made wait for someone else.")}</p>
@@ -59,7 +59,7 @@ function List() {
           { id: "at", label: t("Requested"), cell: (r) => (r.created_at ? r.created_at.slice(0, 10) : "-"), compare: (a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "") },
         ]}
       />
-    </main>
+    </div>
   );
 }
 
@@ -67,7 +67,7 @@ function Detail({ id }: { id: string }) {
   const q = useRequest(id);
   const r = q.data;
   return (
-    <main className="nx-ap" data-testid="approvals-detail">
+    <div className="nx-ap" data-testid="approvals-detail">
       <V2Link className="nx-btn nx-btn-quiet" href="/approvals">{t("All requests")}</V2Link>
       {q.isError ? <ErrorState error={q.error} fallback={t("The request could not be read.")} onRetry={() => void q.refetch()} />
         : q.isLoading || !r ? <Skeleton lines={6} label={t("Loading the request")} />
@@ -84,6 +84,6 @@ function Detail({ id }: { id: string }) {
               : <ChangeTable changes={r.changes} />}
           </>
         )}
-    </main>
+    </div>
   );
 }

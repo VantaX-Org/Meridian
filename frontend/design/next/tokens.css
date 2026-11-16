@@ -108,7 +108,7 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
   --nx-seq-3: #4B70D6;
   --nx-seq-4: #86A5FF;
   --nx-seq-5: #C5D4FF;
-  --nx-glass-bg: rgb(21 24 29 / 72%);
+  --nx-glass-bg: rgb(21 24 29 / 86%);
   --nx-glass-line: rgb(236 238 242 / 10%);
   --nx-elev-1: 0 1px 2px rgb(0 0 0 / 30%);
   --nx-elev-3: 0 16px 48px rgb(0 0 0 / 60%);
@@ -160,7 +160,7 @@ html[data-theme="dark"] .nx-root:not([data-nx-theme="light"]),
     --nx-seq-3: #4B70D6;
     --nx-seq-4: #86A5FF;
     --nx-seq-5: #C5D4FF;
-    --nx-glass-bg: rgb(21 24 29 / 72%);
+    --nx-glass-bg: rgb(21 24 29 / 86%);
     --nx-glass-line: rgb(236 238 242 / 10%);
     --nx-elev-1: 0 1px 2px rgb(0 0 0 / 30%);
     --nx-elev-3: 0 16px 48px rgb(0 0 0 / 60%);

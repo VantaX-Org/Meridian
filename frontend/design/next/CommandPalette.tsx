@@ -59,7 +59,7 @@ export function NextPalette({ open, onClose }: { open: boolean; onClose: () => v
   const nl = useNl(question ?? "", nlMode && Boolean(question));
   const openNl = () => {
     if (!nl.data) return;
-    onClose();
+    // No dismiss first: its replaceState races the push and can strand the page on the old address.
     router.push(href(nlTarget(nl.data)));
   };
 

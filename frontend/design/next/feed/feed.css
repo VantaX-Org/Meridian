@@ -41,3 +41,5 @@
 .nx-fd-first { margin: 0; padding: var(--nx-s3) var(--nx-s4); border-radius: var(--nx-r-control); background: var(--nx-accent-soft); color: var(--nx-ink); }
 .nx-fd-bulk { position: sticky; bottom: var(--nx-s4); z-index: 5; }
 .nx-fd-bulk .nx-pf-bulk { margin-bottom: 0; }
+.nx-fd-next { margin-top: var(--nx-s3); display: flex; flex-wrap: wrap; align-items: center; gap: var(--nx-s2); }
+.nx-fd-next .m2-next { max-width: 100%; white-space: normal; height: auto; min-height: 36px; text-align: start; }

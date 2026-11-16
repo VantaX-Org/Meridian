@@ -52,7 +52,7 @@ for (const size of SIZES) {
       const phone = size.width < 500;
       /** The tab is below the object's ruler and receipt: scroll the tab bar to the top, then shoot. */
       const shotTab = async (page: Page, name: string) => {
-        await page.locator(".m2-tabs").first().evaluate((el) => el.scrollIntoView({ block: "start" }));
+        await page.locator(".nx-segs").first().evaluate((el) => el.scrollIntoView({ block: "start" }));
         await shot(page, name);
       };
 
@@ -206,7 +206,8 @@ for (const size of SIZES) {
 
       test("Runs: the measured score over 8 runs with the cap, the baseline and why the score moved", async ({ page }) => {
         await prepare(page, scheme);
-        await page.goto(`${OBJECT}/runs?fixture=1`, { waitUntil: "load", timeout: 90_000 });
+        // The Runs segment is now the run list; the score chart lives at the trend address ("Open its trend" in the palette).
+        await page.goto(`${OBJECT}/trend?fixture=1`, { waitUntil: "load", timeout: 90_000 });
         const chart = page.getByTestId("score-chart");
         await expect(chart).toBeVisible(NAV);
         await expect(chart.locator("line.m2-gl")).toHaveCount(4);
@@ -248,7 +249,7 @@ for (const size of SIZES) {
         await prepare(page, scheme);
         await page.goto(`${OBJECT}/records?fixture=1`, { waitUntil: "load", timeout: 90_000 });
         await expect(page.locator("[data-testid='ledger'], [data-testid='empty-frame'], [data-testid='grid']").first()).toBeVisible(NAV);
-        await expect(page.getByRole("navigation", { name: "Views of Material master" }).getByRole("link", { name: /^Records/ })).toHaveAttribute("aria-current", "page");
+        await expect(page.getByRole("tablist", { name: "Object views" }).getByRole("tab", { name: "Records", exact: true })).toHaveAttribute("aria-selected", "true");
         expect(await noSideScroll(page)).toBe(true);
         await page.waitForLoadState("networkidle");
         await shotTab(page, "object-records");

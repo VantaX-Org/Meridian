@@ -14,7 +14,7 @@ export function QuietCard({ row, sysName }: { row: PortfolioRow; sysName: (id: s
       <strong>{row.label}</strong>
       <span className="nx-fd-quiet-score"><span className="nx-sr">{t("DQS {v}", { v: f1(row.composite_score) })}</span><span aria-hidden="true">{f1(row.composite_score)}</span></span>
       {row.trend.length > 1 ? <Sparkline points={row.trend.slice(-12)} label={t("DQS trend of {name}", { name: row.label })} /> : null}
-      <V2Link className="nx-btn nx-btn-quiet nx-btn-sm" href={objectHref(row, sysName, `?run=${row.version_id}`)}>{t("Open")}</V2Link>
+      <V2Link className="nx-btn nx-btn-quiet nx-btn-sm" href={objectHref(row, sysName, `?run=${row.version_id}`)} aria-label={t("Open {name}", { name: row.label })}>{t("Open")}</V2Link>
     </li>
   );
 }

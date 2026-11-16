@@ -6,6 +6,9 @@ import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { useV2Session } from "@/lib/v2/hooks";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
+import { useLandscape } from "@/lib/v2/queries";
+import { useWaves } from "@/lib/v2/admin-queries";
+import { NextStep } from "@/design/v2/screens/Landscape";
 import { V2Link } from "@/design/v2/parts";
 import { errorSentence } from "@/lib/api/v2/client";
 import { analyseRun } from "@/lib/api/v2/runs";
@@ -37,6 +40,9 @@ export function Home() {
   const sheets = useSheets();
   const fixture = useFixture();
   const systems = useSystemsExtended().data ?? [];
+  // The persona's next step the old landscape led with (the owner's batch to approve, basis's system to fix).
+  const landscape = useLandscape(null).data;
+  const waves = useWaves().data ?? [];
   const [all, setAll] = useState(false);
   const feed = usePortfolio({ limit: 500 }, all);
   const found = useQuery({ queryKey: ["aletheia-found", fixture, "home"], queryFn: () => getFindings(), staleTime: 60_000 });
@@ -138,8 +144,8 @@ export function Home() {
   );
 
   return (
-    <main className="nx-fd" data-testid="home">
-      <Greeting name={session.name} needs={needs.length} running={rows.filter(runningNow).length} onCompare={() => sheets.open({ kind: "compare", id: "" })} onObjects={() => sheets.open({ kind: "objects", id: "" })} />
+    <div className="nx-fd" data-testid="home">
+      <Greeting name={session.name} needs={needs.length} running={rows.filter(runningNow).length} onCompare={() => sheets.open({ kind: "compare", id: "" })} onObjects={() => sheets.open({ kind: "objects", id: "" })} next={landscape ? <NextStep landscape={landscape} persona={session.persona} waves={waves} /> : null} />
       {feed.isError ? <ErrorState error={feed.error} fallback={t("Home could not be read. Check that the API is reachable, then retry.")} onRetry={() => void feed.refetch()} />
         : feed.isLoading ? <div className="nx-fd-feed" aria-live="polite">{[0, 1, 2].map((i) => <StoryCardSkeleton key={i} />)}</div>
         : rows.length === 0 && systems.length > 0 ? (
@@ -164,6 +170,6 @@ export function Home() {
       <Sheet open={!!compared} onClose={() => setCompared(null)} title={t("Compare objects")} size="large">
         <CompareObjects rows={compared ?? []} sysName={sysName} />
       </Sheet>
-    </main>
+    </div>
   );
 }

@@ -87,7 +87,7 @@ function RunList() {
   const anyFilter = Boolean(system || module || status !== "all");
 
   return (
-    <main className="nx-rn-page" data-testid="runs-page">
+    <div className="nx-rn-page" data-testid="runs-page">
       <LargeTitle
         title={t("Runs")}
         subtitle={total != null ? `${formatInt(total)} ${t("{n, plural, one {run} other {runs}}", { n: total })}` : undefined}
@@ -154,6 +154,6 @@ function RunList() {
           <Button variant="secondary" size={32} disabled={offset + PAGE >= total} onClick={() => setOffset(offset + PAGE)}>{t("Older")}</Button>
         </nav>
       ) : null}
-    </main>
+    </div>
   );
 }

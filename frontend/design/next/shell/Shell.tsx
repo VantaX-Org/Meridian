@@ -152,6 +152,7 @@ function Frame({ children }: { children: ReactNode }) {
       <nav className="nx-skips" aria-label={t("Skip links")}>
         <a className="nx-skip" href="#nx-main">{t("Skip to content")}</a>
         <a className="nx-skip" href="#nx-tabs">{t("Skip to the tabs")}</a>
+        {open ? <a className="nx-skip" href="#m2-inspector">{t("Skip to the inspector")}</a> : null}
       </nav>
       <StoryHeader onShortcuts={() => setSheet(true)} />
       <StoryTabs />

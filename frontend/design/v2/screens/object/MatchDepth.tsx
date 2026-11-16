@@ -113,7 +113,7 @@ export function MatchProfile({ module }: { module: string }) {
           </li>
         ))}
       </ul>
-      <TableExport><table className="m2-tbl m2-ftbl" aria-label={t("Rule weights learned from steward decisions")}>
+      <TableExport><table className="m2-tbl m2-ftbl" tabIndex={0} aria-label={t("Rule weights learned from steward decisions")}>
         <thead>
           <tr>
             <th scope="col">{t("Field")}</th>
@@ -207,7 +207,7 @@ export function ConsolidationPackSection({ module }: { module: string }) {
       {p.rows.length === 0 ? (
         <p className="m2-rp m2-meta">{t("No record has been merged away yet. When a steward merges a pair, the record that does not survive is listed here with what to set in SAP.")}</p>
       ) : (
-        <TableExport><table className="m2-tbl m2-ftbl" aria-label={t("Merged-away records and their survivors")}>
+        <TableExport><table className="m2-tbl m2-ftbl" tabIndex={0} aria-label={t("Merged-away records and their survivors")}>
           <thead>
             <tr>
               <th scope="col">{t("Merged-away record")}</th>
