@@ -9,6 +9,9 @@ vi.mock("@/design/v2/screens/system/Configuration", () => ({ Configuration: () =
 vi.mock("@/design/v2/screens/system/CustomObjects", () => ({ CustomObjects: () => <div data-testid="v-custom" /> }));
 vi.mock("@/design/v2/screens/system/SourceDesign", () => ({ SourceDesign: () => <div data-testid="v-design" /> }));
 vi.mock("@/design/v2/screens/system/Schedules", () => ({ Schedules: () => <div data-testid="v-schedules" /> }));
+vi.mock("../system/Connectivity", () => ({ Connectivity: () => <div data-testid="n-connectivity" /> }));
+vi.mock("../system/ProcessModel", () => ({ ProcessModel: () => <div data-testid="n-process" /> }));
+vi.mock("../system/Mining", () => ({ Mining: () => <div data-testid="n-mining" /> }));
 vi.mock("@/design/v2/screens/step9/Drift", () => ({ ConfigChanges: () => <div data-testid="v-changes" /> }));
 vi.mock("@/design/v2/screens/step9/ChangeLog", () => ({ ChangeLog: ({ versionId }: { versionId: string }) => <div data-testid="v-changelog">{versionId}</div> }));
 
@@ -53,7 +56,7 @@ describe("SystemPage (next)", () => {
 
   it("reaches schedules, custom objects, source design and changes", () => {
     renderWithQuery(<SystemPage id="s1" />);
-    for (const [name, id] of [["Schedules", "v-schedules"], ["Custom objects", "v-custom"], ["Source design", "v-design"], ["Configuration changes", "v-changes"]] as const) {
+    for (const [name, id] of [["Schedules", "v-schedules"], ["Custom objects", "v-custom"], ["Source design", "v-design"], ["Configuration changes", "v-changes"], ["Connectivity", "n-connectivity"], ["Process model", "n-process"], ["Mining", "n-mining"]] as const) {
       fireEvent.click(screen.getByRole("radio", { name }));
       expect(screen.getByTestId(id)).toBeTruthy();
     }

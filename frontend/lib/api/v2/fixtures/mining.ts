@@ -3,7 +3,9 @@
  * run, shaped like api/routes/mining.py. The patterns are grouped from the same rows the way the route groups them, so
  * the counts agree across the screen. A run request answers with a task id and remembers nothing, as the route does.
  */
-import type { AnomalyItem, DuplicatePair, MiningOverview, MiningPattern, RelationshipItem, Severity } from "../mining";
+import type {
+  AnomalyItem, DuplicatePair, MiningGraph, MiningOverview, MiningPattern, MiningRunSummary, RelationshipItem, Severity,
+} from "../mining";
 
 export const NONE_MINING = Symbol("not a mining path");
 
@@ -114,7 +116,57 @@ function overview(): MiningOverview {
   };
 }
 
+function runSummary(vid: string): MiningRunSummary {
+  if (vid !== RUN) refuse(404, "version not found");
+  const per: MiningRunSummary["per_module"] = {};
+  const bump = (m: string, k: "duplicates" | "anomalies" | "relationships") => {
+    per[m] ??= { duplicates: 0, anomalies: 0, relationships: 0 };
+    per[m][k] += 1;
+  };
+  DUPES.forEach((d) => bump(d[0], "duplicates"));
+  OUTLIERS.forEach((o) => bump(o[0], "anomalies"));
+  LINKS.forEach((l) => bump(l[0], "relationships"));
+  const sum = (k: "duplicates" | "anomalies" | "relationships") => Object.values(per).reduce((n, m) => n + m[k], 0);
+  return { version_id: vid, per_module: per, totals: { duplicates: sum("duplicates"), anomalies: sum("anomalies"), relationships: sum("relationships") } };
+}
+
+// Material master steps as process_mining.py projects them from the L1-L5 definitions (ids, names and t-codes are
+// the generator's own for module material_master), with findings that touch the material fields.
+type Act = [string, string, string, string, string, "green" | "amber" | "red", number, number, number | null];
+const ACTS: Act[] = [
+  ["PTP-PR-ME51N-01", "Requisition Item", "PTP-PR-ME51N", "Create Purchase Requisition", "ME51N", "amber", 286, 3, 0.93],
+  ["PTP-PO-ME21N-01", "PO Header", "PTP-PO-ME21N", "Create Standard PO", "ME21N", "green", 0, 0, 1],
+  ["PTP-PO-ME21N-02", "PO Line Items", "PTP-PO-ME21N", "Create Standard PO", "ME21N", "red", 1_180, 7, 0.74],
+  ["PTP-GR-MIGO-01", "Goods Receipt Item", "PTP-GR-MIGO", "Post Goods Receipt", "MIGO", "amber", 412, 4, 0.88],
+  ["PP-BOM-CS01-01", "BOM Header", "PP-BOM-CS01", "Create BOM", "CS01", "green", 18, 1, 0.99],
+  ["PP-BOM-CS01-02", "BOM Items", "PP-BOM-CS01", "Create BOM", "CS01", "amber", 204, 2, 0.9],
+];
+const QUALITY = { green: 100, amber: 60, red: 25 } as const;
+
+function graph(vid: string, module: string): MiningGraph {
+  if (vid !== RUN || module !== "material_master") refuse(404, "no mining graph for this run and module");
+  const activities = ACTS.map(([id, label, l4_id, l4_name, tcode, step_status, affected_records, finding_count, avg_pass_rate]) => ({
+    id, label, l4_id, l4_name, tcode, step_status, affected_records, finding_count, avg_pass_rate,
+  }));
+  const weight = (id: string) => Math.max(activities.find((a) => a.id === id)?.affected_records ?? 0, 1);
+  const transitions = [["PTP-PO-ME21N-01", "PTP-PO-ME21N-02"], ["PP-BOM-CS01-01", "PP-BOM-CS01-02"]].map(([from, to]) => ({ from, to, weight: weight(from) }));
+  const l4s = [...new Set(ACTS.map((a) => a[2]))];
+  const variants = l4s.map((l4) => {
+    const acts = activities.filter((a) => a.l4_id === l4);
+    const readiness = acts.some((a) => a.step_status === "red") ? "red" : acts.some((a) => a.step_status === "amber") ? "amber" : "green";
+    return {
+      id: l4, label: acts[0].l4_name, tcode: acts[0].tcode, activity_count: acts.length, coverage: Math.round(10_000 / l4s.length) / 10_000,
+      readiness, quality: QUALITY[readiness], activity_ids: acts.map((a) => a.id),
+    } satisfies MiningGraph["variants"][number];
+  });
+  return { version_id: vid, module, activities, transitions, variants, cases: [], cases_supported: false };
+}
+
 export function miningRead(path: string): unknown {
+  let m = /^\/mining\/summary\/([^/]+)$/.exec(path);
+  if (m) return runSummary(decodeURIComponent(m[1]));
+  m = /^\/process\/mining\/graph\/([^/]+)\/([^/]+)$/.exec(path);
+  if (m) return graph(decodeURIComponent(m[1]), decodeURIComponent(m[2]));
   if (path === "/mining/summary") return overview();
   if (path === "/mining/duplicates") return duplicates();
   if (path === "/mining/anomalies") return anomalies();

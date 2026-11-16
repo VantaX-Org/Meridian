@@ -8,6 +8,7 @@
  *   GET    /systems/{id}/health                      (per L1: fitness drift since the run before, schedule, freshness)
  *   GET    /systems/{id}/schedules, POST, PATCH /{sid}, DELETE /{sid}   (needs run_process_discovery to change)
  *   GET    /runs/{run_id}                            (one run)
+ *   GET    /runs/{run_id}/model                      (the discovered model, L1 to L5)
  *   GET    /runs/{run_id}/dfg?node_id=               (the children of a node, L2 to L5, and the as-is edges between them)
  *   GET    /runs/{run_id}/variants                   (the case paths, most frequent first)
  *   GET    /runs/{run_id}/conformance                (fitness against the reference, step by step)
@@ -16,6 +17,7 @@
  */
 import { v2Get, v2Send } from "./client";
 import { v2Download } from "./download";
+import type { ProcessModelDocument } from "@/types/process-model";
 
 const base = "/process-discovery";
 const sys = (id: string) => `${base}/systems/${encodeURIComponent(id)}`;
@@ -66,6 +68,18 @@ export interface RunSummary {
   error: string | null;
   started_at: string | null;
   finished_at: string | null;
+}
+
+/** GET /runs/{id}: one run with its window, stats and the system it read. */
+export interface RunDetail extends RunSummary {
+  watermark?: string | null;
+  extraction_version_id?: string | null;
+  job_id?: string | null;
+  filters?: Record<string, unknown>;
+  /** process_discovery_runs.stats: case_types, variants, throughput, automation_rate, conformance, tables. */
+  stats?: { case_types?: Record<string, number>; variants?: number | null; throughput?: { median_seconds?: number | null }; automation_rate?: number | null; conformance?: { fitness?: number | null }; tables?: Record<string, { rows?: number; partial?: boolean }> };
+  system_id: string;
+  system_type: string;
 }
 
 export interface L1Health {
@@ -158,6 +172,9 @@ export const patchSchedule = (systemId: string, id: string, body: { schedule_cro
   v2Send<Schedule>("PATCH", `${sys(systemId)}/schedules/${encodeURIComponent(id)}`, body);
 export const deleteSchedule = (systemId: string, id: string) => v2Send<void>("DELETE", `${sys(systemId)}/schedules/${encodeURIComponent(id)}`);
 
+export const getRun = (runId: string) => v2Get<RunDetail>(run(runId));
+/** GET /runs/{id}/model: the discovered as-is model, L1 to L5, with the mined counts on every node. */
+export const getRunModel = (runId: string) => v2Get<ProcessModelDocument>(`${run(runId)}/model`);
 export const getDfg = (runId: string, nodeId: string | null) => v2Get<Dfg>(`${run(runId)}/dfg`, { node_id: nodeId ?? undefined });
 export const getVariants = (runId: string) => v2Get<{ case_type: string; total: number; items: Variant[] }>(`${run(runId)}/variants`, { limit: 25 });
 export const getConformance = (runId: string) => v2Get<Conformance>(`${run(runId)}/conformance`);

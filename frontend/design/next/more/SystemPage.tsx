@@ -19,13 +19,16 @@ import { ChangeLog } from "@/design/v2/screens/step9/ChangeLog";
 import { ConfigChanges } from "@/design/v2/screens/step9/Drift";
 import { Button, Chip, EmptyState, SegmentedControl, Skeleton } from "../kit";
 import { HEALTH_TONE, healthText } from "./Systems";
+import { Connectivity } from "./system/Connectivity";
+import { Mining } from "./system/Mining";
+import { ProcessModel } from "./system/ProcessModel";
 import { LongText, QueryView } from "./states";
 
-type Seg = "about" | "profiles" | "extractions" | "configuration" | "changes" | "schedules" | "custom-objects" | "design";
+type Seg = "about" | "profiles" | "extractions" | "configuration" | "changes" | "schedules" | "custom-objects" | "design" | "connectivity" | "process-model" | "mining";
 
 /** Old `?tab=` words from the System page, so an old link opens the same view. */
 const OLD_TAB: Record<string, Seg> = { overview: "about", runs: "extractions", config: "configuration", health: "schedules", custom: "custom-objects" };
-const SEGS: readonly Seg[] = ["about", "profiles", "extractions", "configuration", "changes", "schedules", "custom-objects", "design"];
+const SEGS: readonly Seg[] = ["about", "profiles", "extractions", "configuration", "changes", "schedules", "custom-objects", "design", "connectivity", "process-model", "mining"];
 const segFrom = (tab: string | null): Seg => (tab && (SEGS as readonly string[]).includes(tab) ? (tab as Seg) : (tab && OLD_TAB[tab]) || "about");
 
 function Profiles({ id }: { id: string }) {
@@ -141,6 +144,9 @@ export function SystemPage({ id }: { id: string }) {
         { value: "schedules", label: t("Schedules") },
         { value: "custom-objects", label: t("Custom objects") },
         { value: "design", label: t("Source design") },
+        { value: "connectivity", label: t("Connectivity") },
+        { value: "process-model", label: t("Process model") },
+        { value: "mining", label: t("Mining") },
       ]} />
       {seg === "about" ? (
         <>
@@ -157,6 +163,9 @@ export function SystemPage({ id }: { id: string }) {
         : seg === "changes" ? <ConfigChanges systemId={id} />
         : seg === "schedules" ? <Schedules id={id} />
         : seg === "custom-objects" ? <CustomObjects id={id} />
+        : seg === "connectivity" ? <Connectivity id={id} />
+        : seg === "process-model" ? <ProcessModel id={id} />
+        : seg === "mining" ? <Mining id={id} />
         : <SourceDesign id={id} />}
     </div>
   );
