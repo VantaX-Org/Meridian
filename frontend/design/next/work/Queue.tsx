@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { errorSentence } from "@/lib/api/v2/client";
@@ -20,10 +20,10 @@ import { useTimeline } from "@/lib/v2/runs-queries";
 import { int } from "@/lib/v2/score";
 import { policyLabel } from "@/lib/v2/step10";
 import { usePolicyPacks } from "@/lib/v2/step10-queries";
-import { CHIPS, SORT_LABEL, type ChipId, STATUS_LABEL, exportQueryOf, filtersOf, ownerLabel, readState, viewFilters, withState, type LedgerState, type SortKey } from "@/lib/v2/work";
-import { needsConfirm, useWorkActions, useWorkCan } from "@/lib/v2/work-actions";
+import { CHIPS, SORT_LABEL, type ChipId, STATUS_LABEL, exportQueryOf, filtersOf, ownerLabel, readState, splitKey, viewFilters, withState, type LedgerState, type SortKey } from "@/lib/v2/work";
+import { needsConfirm, useWorkActions, useWorkCan, type WorkCan } from "@/lib/v2/work-actions";
 import { allWorkRows, useWorkGroups, useWorkRows, useWorkSummary } from "@/lib/v2/work-queries";
-import { Button, Chip, Code, Confirm, DataTable, DropZone, PartBar, SegmentedControl, Sparkline, useToast, type Column } from "../kit";
+import { Button, Chip, Code, Confirm, DataTable, DropZone, PartBar, SegmentedControl, Sheet, Sparkline, useToast, type Column } from "../kit";
 import { WorkBatches } from "./Batches";
 import { WorkBulkBar } from "./BulkBar";
 import { Banner, Consequence, FixHead, FlowSteps, MoreDetail } from "./parts";
@@ -48,6 +48,69 @@ function severityWord(s: string): string {
     case "low": return t("Low");
     default: return t("Info");
   }
+}
+
+const keyOf = (r: WorkRow) => splitKey(r.record_key)[0]?.value ?? r.record_key;
+/** A select or input in a row must not open the row (DataTable opens it on any click outside input, button or a). */
+const stay = (e: SyntheticEvent) => e.stopPropagation();
+type Decision = "fix" | "not an issue" | "accept risk";
+const DECISIONS: { value: Decision; label: () => string }[] = [
+  { value: "fix", label: () => t("fix") },
+  { value: "not an issue", label: () => t("not an issue") },
+  { value: "accept risk", label: () => t("accept risk") },
+];
+function decisionOf(r: WorkRow): Decision | "" {
+  // i18n-ignore: these are the select's values, not its words (DECISIONS carries the words)
+  if (r.status === "not_an_issue") return r.resolution === "accepted_risk" ? "accept risk" : "not an issue";
+  return r.status === "to_fix" ? "" : "fix";
+}
+
+/** New value: typed here, saved into the draft batch when the decision is fix (or Enter). Escape clears it. */
+function NewValueInput({ row, can, drafts, onCommit }: { row: WorkRow; can: WorkCan; drafts: Map<string, string>; onCommit: (r: WorkRow, value: string) => void }) {
+  const [v, setV] = useState(drafts.get(rowId(row)) ?? row.new_value ?? "");
+  if (!can.apply) return row.new_value ? <Code code={row.new_value} /> : <span title={t("Read-only for your role")}>—</span>;
+  const dirty = v !== (row.new_value ?? "");
+  const set = (x: string) => {
+    setV(x);
+    drafts.set(rowId(row), x);
+  };
+  return (
+    <input
+      className="nx-wq-in"
+      aria-label={t("New value for {keyValue}", { keyValue: keyOf(row) })}
+      placeholder={row.suggested_value ?? t("Enter")}
+      title={dirty ? t("Not saved yet: press Enter") : undefined}
+      value={v}
+      onClick={stay}
+      onChange={(e) => set(e.target.value)}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter" && v.trim()) onCommit(row, v.trim());
+        if (e.key === "Escape") set(row.new_value ?? "");
+      }}
+    />
+  );
+}
+
+/** Decision: fix, not an issue or accept risk. The last two ask for a reason first. */
+function DecisionSelect({ row, can, onChoose }: { row: WorkRow; can: WorkCan; onChoose: (r: WorkRow, d: Decision) => void }) {
+  const value = decisionOf(row);
+  if (!can.apply && !can.approve) return <span>{DECISIONS.find((d) => d.value === value)?.label() ?? "—"}</span>;
+  return (
+    <select
+      className="nx-wq-in"
+      aria-label={t("Decision for {keyValue}", { keyValue: keyOf(row) })}
+      value={value}
+      onClick={stay}
+      onKeyDown={stay}
+      onChange={(e) => e.target.value && onChoose(row, e.target.value as Decision)}
+    >
+      {value === "" ? <option value="">{t("Decide")}</option> : null}
+      {DECISIONS.map((d) => (
+        <option key={d.value} value={d.value} disabled={d.value === "fix" ? !can.apply : !can.approve}>{d.label()}</option>
+      ))}
+    </select>
+  );
 }
 
 /**
@@ -157,6 +220,29 @@ export function WorkQueue() {
     }
   };
 
+  // Typed new values not yet saved, by row; a decision remounts the table (gen) and drops them with it.
+  const drafts = useRef(new Map<string, string>()).current;
+  const [reason, setReason] = useState<{ row: WorkRow; kind: "not_an_issue" | "accept_risk" } | null>(null);
+  const [note, setNote] = useState("");
+  const done = (ok: boolean) => ok && setGen((g) => g + 1);
+  const commit = (r: WorkRow, value: string) => void act.decide([r], "edit", { value }).then(done);
+  const onChoose = (r: WorkRow, d: Decision) => {
+    if (d === "fix") {
+      const typed = (drafts.get(rowId(r)) ?? "").trim();
+      void (typed ? act.decide([r], "edit", { value: typed }) : act.decide([r], "accept")).then(done);
+      return;
+    }
+    setNote("");
+    setReason({ row: r, kind: d === "accept risk" ? "accept_risk" : "not_an_issue" });
+  };
+  const sendReason = () => {
+    if (!reason || !note.trim()) return;
+    const { row, kind } = reason;
+    setReason(null);
+    void act.decide([row], kind, { note: note.trim() }).then(done);
+  };
+  const reasonTitle = reason?.kind === "accept_risk" ? t("Accept the risk") : t("Mark as not an issue");
+
   const cols: Column<WorkRow>[] = [
     {
       id: "record",
@@ -182,6 +268,8 @@ export function WorkQueue() {
     { id: "severity", label: t("Severity"), cell: (r) => <Chip tone={SEVERITY_TONE[r.severity] ?? "neutral"}>{severityWord(r.severity)}</Chip> },
     { id: "state", label: t("State"), cell: (r) => <Chip tone={r.status === "fixed" ? "resolved" : "neutral"}>{STATUS_LABEL[r.status] ?? r.status}</Chip> },
     { id: "who", label: t("Who"), cell: (r) => ownerLabel(r) ?? t("Nobody yet") },
+    { id: "newvalue", label: t("New value"), cell: (r) => (pastRun ? (r.new_value ? <Code code={r.new_value} /> : "—") : <NewValueInput row={r} can={can} drafts={drafts} onCommit={commit} />) },
+    { id: "decision", label: t("Decision"), cell: (r) => (pastRun ? (DECISIONS.find((d) => d.value === decisionOf(r))?.label() ?? "—") : <DecisionSelect row={r} can={can} onChoose={onChoose} />) },
   ];
   const tools = cols.map((c) => ({ id: c.id, header: c.label, cell: c.cell }));
   const hidden = hiddenColumns("work-queue", tools);
@@ -421,6 +509,21 @@ export function WorkQueue() {
           </ul>
         </MoreDetail>
       ) : null}
+      <Sheet
+        open={reason !== null}
+        onClose={() => setReason(null)}
+        title={reasonTitle}
+        size="small"
+        secondary={<Button variant="secondary" onClick={() => setReason(null)}>{t("Cancel")}</Button>}
+        primary={<Button variant="primary" disabled={!note.trim()} onClick={sendReason}>{reasonTitle}</Button>}
+      >
+        <div className="nx-wq-form">
+          <p>{t("{rowsCount} {rowsCount2, plural, one {record} other {records}} will leave the list of rows to fix and show under Exceptions.", { rowsCount: int(1), rowsCount2: 1 })}</p>
+          <label>{t("Reason")}
+            <textarea data-autofocus value={note} onChange={(e) => setNote(e.target.value)} />
+          </label>
+        </div>
+      </Sheet>
       <Confirm
         open={ask !== null}
         title={ask?.title ?? ""}
