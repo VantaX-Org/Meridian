@@ -24,3 +24,4 @@
 .nx-tf-stack { display: flex; flex-direction: column; gap: var(--nx-s3); }
 .nx-tf-card { display: flex; flex-direction: column; gap: var(--nx-s2); }
 .nx-tf-card h3 { margin: 0; display: flex; flex-wrap: wrap; gap: var(--nx-s2); align-items: baseline; }
+.nx-tf-dec{display:inline-flex;flex-wrap:wrap;gap:var(--nx-s2);align-items:center}

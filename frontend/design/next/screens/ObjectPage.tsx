@@ -8,16 +8,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Denied, isDenied } from "../object/edge";
 import { Popover, Skeleton, ErrorState, EmptyState } from "@/design/next/kit";
-import { V2Link } from "@/design/v2/parts";
+import Link from "next/link";
 import { t } from "@/lib/v2/i18n";
 import { useObjectCycle } from "@/lib/api/next/runs";
 import { DownloadsMenu } from "../object/DownloadsMenu";
 import { ObjectBar } from "../object/ObjectBar";
 import { useObjectRun } from "../object/useObjectRun";
 import { MORE, SEGMENTS, renderTab, tabLabel, type TabId } from "../object/tabs";
-import { LegacyScope } from "../shell/LegacyMount";
-import { OldRunBand } from "@/design/v2/RunParts";
-import { RelatedObjects } from "@/design/v2/screens/object/Related";
+import { OldRunBand } from "../object/tabs/OldRunBand";
+import { RelatedObjects } from "../object/tabs/Related";
+import { useV2Href } from "@/lib/v2/hooks";
 import { useObjectRun as useRunSpine } from "@/lib/v2/scope";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { withSheets } from "@/lib/next/sheet";
@@ -34,6 +34,7 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
   const { cycle } = useObjectCycle(o.runId, o.module);
   const moreRef = useRef<HTMLButtonElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const v2href = useV2Href();
 
   const go = useCallback(
     (next: TabId, extra: Record<string, string | null> = {}) => {
@@ -95,7 +96,7 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
   if (!o.systemId) {
     return (
       <div className="nx-object">
-        <EmptyState heading={t("No system called {name}", { name: decodeURIComponent(system) })} action={<V2Link className="nx-btn nx-btn-secondary" href="/objects">{t("All objects")}</V2Link>}>
+        <EmptyState heading={t("No system called {name}", { name: decodeURIComponent(system) })} action={<Link className="nx-btn nx-btn-secondary" href={v2href("/objects")}>{t("All objects")}</Link>}>
           {t("The address names a system this workspace does not hold. Pick the object from the list of objects.")}
         </EmptyState>
       </div>
@@ -125,13 +126,11 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
         className="nx-opanel"
         tabIndex={-1}
       >
-        <LegacyScope>
-          {/* An older run on screen says so, with the way back to the current one. */}
+        {/* An older run on screen says so, with the way back to the current one. */}
           <OldRun systemId={o.systemId} module={o.module} system={o.systemName} />
           {/* Overview keeps the related objects, watch toggle, data contracts and owner apply of the v2 object page. */}
           {tab === "overview" && o.systemId ? <RelatedObjects module={o.module} system={o.systemSeg} systemId={o.systemId} label={o.label} /> : null}
           {renderTab(tab, o, go)}
-        </LegacyScope>
       </section>
     </div>
   );
