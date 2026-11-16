@@ -14,7 +14,7 @@ import { Catalogue } from "./Catalogue";
 import { Issues } from "@/design/v2/screens/Issues";
 import { Mining } from "@/design/v2/screens/Mining";
 import { ProcessDiscovery } from "@/design/v2/screens/ProcessDiscovery";
-import { ScoreLens } from "@/design/v2/screens/ScoreLens";
+import { ScoreLens } from "./ScoreLens";
 import { Insights } from "@/design/v2/screens/Insights";
 import { Forecast } from "./Forecast";
 import { Value } from "./Value";
