@@ -8,7 +8,7 @@ import { useV2Session } from "@/lib/v2/hooks";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
 import { useLandscape } from "@/lib/v2/queries";
 import { useWaves } from "@/lib/v2/admin-queries";
-import { NextStep } from "@/design/v2/screens/Landscape";
+import { NextStep } from "./NextStep";
 import { V2Link } from "@/design/v2/parts";
 import { errorSentence } from "@/lib/api/v2/client";
 import { analyseRun } from "@/lib/api/v2/runs";
