@@ -11476,6 +11476,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   // nx-admin: admin, shell, flows and feed native ports
   "OAuth client credentials": "OAuth-Client-Anmeldedaten",
   "{type} signs in with an SAP user and password. Meridian does not send passwords from this screen, so an administrator connects it on the server. You can connect a cloud system here.": "{type} meldet sich mit einem SAP-Benutzer und Passwort an. Meridian sendet von dieser Seite keine Passwörter, daher verbindet ein Administrator das System auf dem Server. Hier können Sie ein Cloud-System verbinden.",
+  "The JSON file the export writes.": "Die JSON-Datei, die der Export schreibt.",
   "Save the connection first.": "Speichern Sie zuerst die Verbindung.",
   "Meridian logs on with these details. The next step opens only if the logon works.": "Meridian meldet sich mit diesen Angaben an. Der nächste Schritt öffnet sich nur, wenn die Anmeldung funktioniert.",
+  "Fields: {count}": "Felder: {count}",
 };

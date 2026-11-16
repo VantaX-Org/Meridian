@@ -11476,6 +11476,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   // nx-admin: admin, shell, flows and feed native ports
   "OAuth client credentials": "OAuth クライアント資格情報",
   "{type} signs in with an SAP user and password. Meridian does not send passwords from this screen, so an administrator connects it on the server. You can connect a cloud system here.": "{type} は SAP ユーザーとパスワードでサインインします。Meridian はこの画面からパスワードを送信しないため、管理者がサーバー上で接続します。ここではクラウドシステムを接続できます。",
+  "The JSON file the export writes.": "エクスポートで書き出される JSON ファイル。",
   "Save the connection first.": "先に接続を保存してください。",
   "Meridian logs on with these details. The next step opens only if the logon works.": "Meridian はこの情報でログオンします。ログオンが成功した場合にのみ次のステップが開きます。",
+  "Fields: {count}": "フィールド: {count}",
 };
