@@ -11475,4 +11475,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Score of {label}": "Bewertung von {label}",
   "The score is the weighted sum of four shares, so the points below add up to it.": "Der Wert ist die gewichtete Summe von vier Anteilen, daher ergeben die Punkte unten zusammen den Wert.",
   "Based on {n} daily snapshots, the latest on {date}.": "Basierend auf {n} täglichen Momentaufnahmen, die neueste vom {date}.",
+  "Record {n}": "Datensatz {n}",
 };

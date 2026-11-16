@@ -11474,6 +11474,7 @@ export const en = {
   "Score of {label}": "Score of {label}",
   "The score is the weighted sum of four shares, so the points below add up to it.": "The score is the weighted sum of four shares, so the points below add up to it.",
   "Based on {n} daily snapshots, the latest on {date}.": "Based on {n} daily snapshots, the latest on {date}.",
+  "Record {n}": "Record {n}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -11475,4 +11475,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Score of {label}": "{label}のスコア",
   "The score is the weighted sum of four shares, so the points below add up to it.": "スコアは4つの割合の加重合計です。そのため、下のポイントを合計するとスコアになります。",
   "Based on {n} daily snapshots, the latest on {date}.": "{n} 件の日次スナップショットに基づきます。最新は {date} です。",
+  "Record {n}": "レコード {n}",
 };
