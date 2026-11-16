@@ -6,7 +6,7 @@ import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { testSystemConnection } from "@/lib/api/v2/runs";
 import { runKeys, useSystemsExtended } from "@/lib/v2/runs-queries";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
-import { Button, EmptyState, ErrorState, PageHeader, Skeleton, Tabs, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, EmptyState, ErrorState, PageHeader, Skeleton, Tabs, useAletheia, useAletheiaScope, useTab, useToast } from "@/ui/kit";
 import { ConfigTab } from "./ConfigTab";
 import { CustomTab } from "./CustomTab";
 import { DesignTab } from "./DesignTab";
@@ -14,7 +14,6 @@ import { ExtractionsTab } from "./ExtractionsTab";
 import { PilotTab } from "./PilotTab";
 import { ReferenceTab } from "./ReferenceTab";
 import { Health, envLabel, errMsg, typeLabel, when } from "./shared";
-import { useTab } from "./useTab";
 
 const TABS = ["extractions", "design", "config", "pilot", "reference", "custom"] as const;
 

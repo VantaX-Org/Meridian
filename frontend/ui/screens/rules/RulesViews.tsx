@@ -11,11 +11,10 @@ import { deleteDraft, dryRunDraftBody, publishDraftById } from "@/lib/api/v2/rul
 import { approveProposedRule, rejectProposedRule } from "@/lib/api/v2/match-rules";
 import { approveFix, rejectFix } from "@/lib/api/v2/fix-drafts";
 import { applyPolicyPack, unapplyPolicyPack } from "@/lib/api/v2/step10";
-import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, SeverityPill, Skeleton, StatTile, type Column } from "@/ui/kit";
+import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, SeverityPill, Skeleton, StatTile, YamlView, type Column } from "@/ui/kit";
 import type { Severity } from "@/ui/kit/SeverityStrip";
 import { compactCount, pct, sevLabel } from "./format";
 import { useAccuracy, useAct, useAllDrafts, useCoverage, useFixCoverage, useFixDrafts, useLearnedAll, usePacks, useProposed, useScenarios } from "./queries";
-import { YamlView } from "./YamlView";
 
 const mod = (m: string) => formatModuleName(m);
 const sev = (s: string | null | undefined) => <SeverityPill sev={(s ?? "info") as Severity} label={sevLabel(s)} />;
@@ -61,7 +60,7 @@ export function DraftsView() {
       {rows.length ? (
         <>
           <DataTable columns={cols} rows={rows} rowKey={(d) => d.id} label={t("Draft rules")} />
-          {open ? <Card title={open.proposed_rule.id ?? open.id} sub={open.rationale ?? undefined}><YamlView text={JSON.stringify(open.proposed_rule, null, 2)} /></Card> : null}
+          {open ? <Card title={open.proposed_rule.id ?? open.id} sub={open.rationale ?? undefined}><YamlView label={t("Rule definition")} text={JSON.stringify(open.proposed_rule, null, 2)} /></Card> : null}
         </>
       ) : <EmptyState heading={t("No draft rules")} body={t("Write a rule or let Aletheia propose one; it waits here for review.")} action={<Button variant="primary" href={withFixture("/rules/dry-run", fx)}>{t("Write a rule")}</Button>} />}
     </Load>

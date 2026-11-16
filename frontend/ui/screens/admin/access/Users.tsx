@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, Code, Confirm, DataTable, EmptyState, Field, Input, Select, SeverityPill, Sheet, StatTile, type Column } from "@/ui/kit";
+import { Button, Card, Code, Confirm, DataTable, EmptyState, Field, Input, Select, SeverityPill, Sheet, StatTile, Textarea, type Column } from "@/ui/kit";
 import { Facts, Frame, day, removeBlock, useAct, useCan, useSectionChat } from "../common";
 import { useAccessRequests, useEffective, useGrantPreview, useGrants, useLicence, useRoles, useUsers } from "@/lib/v2/admin-queries";
 import {
@@ -206,7 +206,7 @@ function ImportSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
     <Sheet open={open} onClose={onClose} label={t("Import users")} closeLabel={t("Close")}>
       <div className="mx-col">
         <Field label={t("CSV with email, name and role")} hint={t("One person per line, with a header row.")}>
-          <textarea className="mx-input" rows={6} value={csv} onChange={(e) => { setCsv(e.target.value); setPrev(null); }} />
+          <Textarea rows={6} value={csv} onChange={(e) => { setCsv(e.target.value); setPrev(null); }} />
         </Field>
         <div className="mx-links">
           <Button variant="secondary" type="button" disabled={busy || !csv.trim()} onClick={() => void check()}>{t("Check file")}</Button>

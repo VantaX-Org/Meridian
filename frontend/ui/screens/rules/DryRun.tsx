@@ -8,9 +8,8 @@ import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { runImpactDryRun, type ImpactResult } from "@/lib/api/v2/rule-impact";
 import { createDraft, dryRunDraftBody, generateDraft, publishDraftById } from "@/lib/api/v2/rulelib";
-import { BarList, Button, Card, Field, Input, PageHeader, Select, StatTile, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
+import { BarList, Button, Card, Field, Input, PageHeader, Select, StatTile, Textarea, YamlView, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
 import { compactCount, pct, SEVERITIES, sevLabel } from "./format";
-import { YamlView } from "./YamlView";
 
 const NO_CHANGE = "keep";
 
@@ -109,7 +108,7 @@ export function DryRun() {
               <Field label={t("What should the rule check?")}><Input value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
               <div className="mx-rules-row"><Button variant="secondary" disabled={!description.trim() || gen.isPending} onClick={() => gen.mutate()}>{t("Draft the rule")}</Button></div>
               <Field label={t("Rule definition")}>
-                <textarea className="mx-input mx-rules-yaml" value={yaml} onChange={(e) => setYaml(e.target.value)} rows={8} spellCheck={false} />
+                <Textarea mono value={yaml} onChange={(e) => setYaml(e.target.value)} rows={8} spellCheck={false} aria-label={t("Rule definition")} />
               </Field>
               <div className="mx-rules-row">
                 <Button variant="secondary" disabled={!yaml.trim() || dry.isPending} onClick={() => dry.mutate()}>{t("Try it on the data")}</Button>
@@ -117,7 +116,7 @@ export function DryRun() {
                 <Button variant="primary" disabled={!saved || publish.isPending} onClick={() => publish.mutate()}>{t("Publish")}</Button>
               </div>
             </div>
-            {yaml ? <YamlView text={yaml} /> : null}
+            {yaml ? <YamlView label={t("Rule definition")} text={yaml} /> : null}
             {d ? (
               d.evaluated ? (
                 <dl className="mx-tiles">

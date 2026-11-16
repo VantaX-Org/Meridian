@@ -3,13 +3,12 @@
 import "./rules.css";
 import { useState } from "react";
 import { t } from "@/lib/v2/i18n";
-import { Button, Field, Input, Select, StatTile, Toggle, EmptyState } from "@/ui/kit";
+import { Button, Field, Input, Select, StatTile, Toggle, EmptyState, DiffView } from "@/ui/kit";
 import { RULE_VERSION_TRANSITIONS } from "@/lib/api/rule-authoring";
 import { endSuppression, setRuleEnabled, transitionRuleVersion, type RuleVersionState } from "@/lib/api/v2/rulelib";
 import { draftTunedVersion } from "@/lib/api/v2/pilot";
 import { handOffRule, suppressRule, type RuleScope } from "@/lib/api/v2/object";
 import { useStewards } from "@/lib/v2/object-queries";
-import { DiffView } from "./DiffView";
 import { pct } from "./format";
 import { useAct, useFeedback, useSuppressions, useTuning, useVersionDiff } from "./queries";
 
@@ -103,7 +102,7 @@ export function RuleFix({ id, scope }: { id: string; scope: RuleScope }) {
           ))}
         </ul>
       ) : <EmptyState heading={t("No versions yet")} />}
-      {diff ? <DiffView diff={diff.diff} /> : null}
+      {diff ? <DiffView label={t("Changes between versions")} diff={diff.diff} /> : null}
     </div>
   );
 }

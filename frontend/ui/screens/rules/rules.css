@@ -1,9 +1,5 @@
-.mx-root .mx-diff-line[data-kind="add"] { color: var(--mx-good-ink); background: var(--mx-surface-2); }
-.mx-root .mx-diff-line[data-kind="del"] { color: var(--mx-bad-ink); background: var(--mx-surface-2); }
-.mx-root .mx-diff-line { display: block; }
 .mx-root .mx-rules-form { display: grid; gap: var(--mx-s3); }
 .mx-root .mx-rules-row { display: flex; flex-wrap: wrap; gap: var(--mx-s2); align-items: center; }
 .mx-root .mx-rules-list { display: grid; gap: var(--mx-s3); margin: 0; padding: 0; list-style: none; }
 .mx-root .mx-rules-item { display: grid; gap: var(--mx-s2); padding: var(--mx-s3); border: 1px solid var(--mx-border); border-radius: var(--mx-r-card); background: var(--mx-surface); }
 
-.mx-root .mx-input.mx-rules-yaml { display: block; inline-size: 100%; block-size: auto; min-block-size: calc(var(--mx-s6) * 4); padding: var(--mx-s3); border-radius: var(--mx-r-card); font-family: var(--mx-font-mono, monospace); resize: vertical; }

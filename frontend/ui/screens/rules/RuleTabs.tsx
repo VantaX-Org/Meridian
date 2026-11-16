@@ -4,11 +4,10 @@ import "./rules.css";
 import { useState } from "react";
 import { t } from "@/lib/v2/i18n";
 import { describeField } from "@/lib/v2/sap-fields";
-import { BarList, Button, Card, DataTable, EmptyState, FieldChip, Skeleton, StatTile, type Column } from "@/ui/kit";
+import { BarList, Button, Card, DataTable, EmptyState, FieldChip, Skeleton, StatTile, YamlView, type Column } from "@/ui/kit";
 import type { RuleScope } from "@/lib/api/v2/object";
 import { RECORDS_PAGE, useFailingRecords, type FailingRecord } from "@/lib/api/next/failing";
 import { useRuleFailuresBy, useRuleHistory } from "@/lib/v2/object-queries";
-import { YamlView } from "./YamlView";
 import { compactCount, pct, sevLabel } from "./format";
 import { useRuleReads } from "./queries";
 
@@ -28,7 +27,7 @@ export function OverviewTab({ id, scope }: { id: string; scope: RuleScope }) {
       </dl>
       <p>{d.message}</p>
       {a.rule_authority ? <p className="mx-muted">{t("Authority: {a}", { a: a.rule_authority })}</p> : null}
-      <YamlView text={d.expression || JSON.stringify(d.params, null, 2)} />
+      <YamlView label={t("Rule definition")} text={d.expression || JSON.stringify(d.params, null, 2)} />
       {scope.objects.length ? (
         <BarList label={t("Where the rule fails")} items={scope.objects.map((o) => ({ id: `${o.system_id}/${o.module}`, label: `${o.label}${o.system_name ? `, ${o.system_name}` : ""}`, value: o.failing, display: compactCount(o.failing) }))} />
       ) : <EmptyState heading={t("This rule fails nowhere")} />}
