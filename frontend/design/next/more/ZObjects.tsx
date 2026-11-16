@@ -1,16 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { formatDate, labelOf } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 import { useV2Session } from "@/lib/v2/hooks";
 import { useRefreshV2, useZDormant, useZDrift, useZGhost, useZRegistry, useZReport } from "@/lib/v2/sys-queries";
-import { detectZ } from "@/lib/api/v2/sys";
+import { detectZ, getZEntry } from "@/lib/api/v2/sys";
+import { useFixture } from "@/lib/api/v2/fixture";
 import { errorSentence } from "@/lib/api/v2/client";
 import type { ZDormant, ZDrift, ZGhost, ZRegistryEntry } from "@/lib/api/z-objects";
-import { Button, Chip, DataTable, SegmentedControl, StatCard, useToast, type Column } from "../kit";
+import { Button, Chip, Code, DataTable, SegmentedControl, SidePanel, StatCard, useToast, type Column } from "../kit";
 import { ListSearch, QueryView } from "./states";
 
 const day = (v: string | null | undefined): string => (v ? formatDate(v, "date") : t("Never"));
@@ -20,6 +21,39 @@ const realError = (err: unknown): unknown => (statusOf(err) === 404 ? null : err
 const STATUS_TONE: Record<string, "good" | "warn" | "bad" | "neutral"> = { active: "good", dormant: "warn", ghost: "bad" };
 
 type Side = "ghost" | "dormant" | "drift";
+
+/** One registry entry in full (GET /z-objects/registry/{z_id}): the notes, created date and every rule on it. */
+function ZEntrySheet({ id, onClose }: { id: string | null; onClose: () => void }) {
+  const fx = useFixture();
+  const q = useQuery({ queryKey: ["config", fx, "z-entry", id], queryFn: () => getZEntry(id as string), enabled: !!id, retry: false });
+  const e = q.data;
+  return (
+    <SidePanel open={!!id} onClose={onClose} title={e?.object_name ?? t("Custom object")}>
+      <QueryView loading={q.isLoading} error={q.error} onRetry={() => void q.refetch()} empty={false} emptyHeading="" label={t("Loading the custom object")}>
+        {e ? (
+          <div className="nx-cell-stack" data-testid="zobject-sheet">
+            <p>{e.description || t("No description in SAP")}</p>
+            <dl className="nx-notes">
+              <dt>{t("Area")}</dt><dd>{labelOf(e.module)}</dd>
+              <dt>{t("Kind")}</dt><dd>{labelOf(e.category)}</dd>
+              <dt>{t("Status")}</dt><dd><Chip tone={STATUS_TONE[e.status] ?? "neutral"}>{labelOf(e.status)}</Chip></dd>
+              <dt>{t("Standard equivalent")}</dt><dd>{e.standard_equivalent ?? t("None mapped")}</dd>
+              <dt>{t("Owner")}</dt><dd>{e.owner ?? t("Nobody")}</dd>
+              <dt>{t("Created")}</dt><dd>{day(e.created_date)}</dd>
+              <dt>{t("Last active")}</dt><dd>{day(e.last_active_date)}</dd>
+              <dt>{t("Transactions")}</dt><dd>{int(e.transaction_count_total)}</dd>
+              <dt>{t("Notes")}</dt><dd>{e.notes ?? t("None")}</dd>
+            </dl>
+            <h3 className="nx-rn-h3">{t("Rules on this object")}</h3>
+            {e.rules_applied.length ? (
+              <ul className="nx-pick">{e.rules_applied.map((r) => <li key={r} className="nx-row"><Code code={r} /></li>)}</ul>
+            ) : <Chip tone="warn">{t("No rule")}</Chip>}
+          </div>
+        ) : null}
+      </QueryView>
+    </SidePanel>
+  );
+}
 
 /**
  * Custom Z and Y objects found in the connected SAP system (api/routes/z_object_intelligence.py): how many there are, how
@@ -37,6 +71,7 @@ export function ZObjects() {
   const drift = useZDrift();
   const [find, setFind] = useState("");
   const [side, setSide] = useState<Side>("ghost");
+  const [open, setOpen] = useState<string | null>(null);
   const live = !session.shared && !session.viewAs;
 
   const detect = useMutation({
@@ -122,7 +157,7 @@ export function ZObjects() {
         </div>
         <p className="nx-sub">{t("{covered} of {total} custom objects have at least one data quality rule.", { covered: int(covered), total: int(entries.length) })}</p>
         <ListSearch value={find} onChange={setFind} label={t("Search custom objects")} />
-        <DataTable rows={shown} columns={columns} rowKey={(e) => e.id} rowLabel={(e) => e.object_name} caption={t("Custom objects")} total={entries.length} empty={{ heading: t("No custom object matches this search.") }} />
+        <DataTable rows={shown} columns={columns} rowKey={(e) => e.id} rowLabel={(e) => e.object_name} caption={t("Custom objects")} total={entries.length} onOpenRow={(e) => setOpen(e.id)} empty={{ heading: t("No custom object matches this search.") }} />
         <SegmentedControl<Side>
           label={t("Objects that need a look")}
           items={[{ value: "ghost", label: t("Ghost") }, { value: "dormant", label: t("Dormant") }, { value: "drift", label: t("Drift") }]}
@@ -146,6 +181,7 @@ export function ZObjects() {
           </>
         )}
       </QueryView>
+      <ZEntrySheet id={open} onClose={() => setOpen(null)} />
     </div>
   );
 }

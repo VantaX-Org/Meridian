@@ -6,9 +6,12 @@ import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 import { moduleText } from "@/lib/v2/labels";
 import { useFixture } from "@/lib/api/v2/fixture";
+import { errorSentence } from "@/lib/api/v2/client";
 import { useConfigImpact } from "@/lib/v2/object-queries";
-import { getConfigAlignment, getConfigGhost, getConfigRootCauseV2, getConfigShadow, type AlignmentFinding, type RootCauseType } from "@/lib/api/v2/config";
+import { getConfigAlignment, getConfigProcess, getConfigProcesses, getConfigGhost, getConfigRootCauseV2, getConfigShadow, type AlignmentFinding, type RootCauseType } from "@/lib/api/v2/config";
 import type { ImpactResult } from "@/lib/api/v2/object";
+import type { ProcessHealth, ProcessStep } from "@/lib/api/config-intelligence";
+import { describeTable } from "@/lib/v2/sap-fields";
 import { V2Link } from "@/design/v2/parts";
 import { Chip, Code, DataTable, PartBar, SegmentedControl, SidePanel, type ChipTone, type Column } from "../kit";
 import { ChartCard, cardState, compact } from "./ChartCard";
@@ -27,6 +30,40 @@ const CAUSE_LABEL: Record<RootCauseType, () => string> = {
 const RANK = { blocked: 0, degraded: 1, ok: 2 } as const;
 
 type Kind = "ghost" | "shadow";
+
+const PROC_LABEL: Record<ProcessHealth["status"], () => string> = { active: () => t("Running"), partial: () => t("Partly running"), inactive: () => t("Not running") };
+const PROC_TONE: Record<ProcessHealth["status"], ChipTone> = { active: "good", partial: "warn", inactive: "bad" };
+const days = (n: number | null) => (n == null ? t("Not measured") : t("{n} days", { n: n.toFixed(1) }));
+
+/** One business process step by step (GET /config/processes/{id}): which steps the data shows, their volume and delays. */
+function ProcessPanel({ id, onClose }: { id: string | null; onClose: () => void }) {
+  const fx = useFixture();
+  const q = useQuery({ queryKey: ["config", fx, "process", id], queryFn: () => getConfigProcess(id as string), enabled: !!id, retry: false });
+  const p = q.data;
+  const cols: Column<ProcessStep>[] = [
+    { id: "n", label: t("Step"), align: "end", cell: (r) => int(r.step_number) },
+    { id: "name", label: t("Name"), cell: (r) => r.step_name },
+    { id: "table", label: t("Table"), cell: (r) => <Code code={r.sap_table} text={describeTable(r.sap_table) ?? undefined} /> },
+    { id: "seen", label: t("Seen in the data"), cell: (r) => (r.detected ? <Chip tone="good">{t("Observed")}</Chip> : <Chip tone="warn">{t("Not observed")}</Chip>) },
+    { id: "volume", label: t("Volume"), align: "end", cell: (r) => int(r.volume) },
+    { id: "exceptions", label: t("Exceptions"), align: "end", cell: (r) => int(r.exception_count) },
+    { id: "next", label: t("Days to next step"), align: "end", cell: (r) => days(r.avg_days_to_next_step) },
+  ];
+  return (
+    <SidePanel open={!!id} onClose={onClose} title={p?.process_name ?? t("Business process")}>
+      <QueryView loading={q.isLoading} error={q.error} onRetry={() => void q.refetch()} empty={false} emptyHeading="" label={t("Loading the process")}>
+        {p ? (
+          <div className="nx-cell-stack" data-testid="config-process">
+            <div className="nx-row nx-wrap"><Code code={p.process_id} text={p.process_name} /><Chip tone={PROC_TONE[p.status]}>{PROC_LABEL[p.status]()}</Chip></div>
+            <p className="nx-sub">{t("{pct} complete, {rate} exceptions, cycle time {days}.", { pct: `${Math.round(p.completeness_score)}%`, rate: `${Math.round(p.exception_rate)}%`, days: days(p.avg_cycle_days) })}</p>
+            {p.bottleneck_step ? <p>{t("Slowest step: {step}", { step: p.bottleneck_step })}</p> : null}
+            <DataTable rows={p.steps} columns={cols} rowKey={(r) => String(r.step_number)} rowLabel={(r) => r.step_name} caption={t("Process steps")} />
+          </div>
+        ) : null}
+      </QueryView>
+    </SidePanel>
+  );
+}
 
 function RootCausePanel({ finding, onClose }: { finding: AlignmentFinding | null; onClose: () => void }) {
   const fx = useFixture();
@@ -64,13 +101,15 @@ function RootCausePanel({ finding, onClose }: { finding: AlignmentFinding | null
 
 /**
  * Config impact: which SAP features a configuration finding blocks or degrades, then the ghost settings (configured,
- * never used) and shadow processes (used, never configured), each with its root cause on open. The inventory, process,
- * alignment, health and drift views stay on the Configuration screen this links to.
+ * never used) and shadow processes (used, never configured), each with its root cause on open, then the business
+ * processes step by step. The inventory, alignment, health and drift views stay on the Configuration screen this links to.
  */
 export function ConfigImpact() {
   const fx = useFixture();
   const [kind, setKind] = useState<Kind>("ghost");
   const [open, setOpen] = useState<AlignmentFinding | null>(null);
+  const [proc, setProc] = useState<string | null>(null);
+  const procs = useQuery({ queryKey: ["config", fx, "processes"], queryFn: getConfigProcesses, staleTime: 60_000, retry: false });
   const alignment = useQuery({ queryKey: ["config", fx, "alignment"], queryFn: getConfigAlignment, staleTime: 60_000, retry: false });
   const impact = useConfigImpact(alignment.data?.run_id);
   const list = useQuery({ queryKey: ["config", fx, kind], queryFn: kind === "ghost" ? getConfigGhost : getConfigShadow, staleTime: 60_000, retry: false });
@@ -102,6 +141,15 @@ export function ConfigImpact() {
     { id: "module", label: t("Module"), cell: (f) => moduleText(f.module) },
     { id: "sev", label: t("Severity"), compare: (a, b) => a.severity.localeCompare(b.severity), cell: (f) => <Chip tone={SEV_TONE[f.severity] ?? "neutral"}>{(SEV_LABEL[f.severity] ?? (() => f.severity))()}</Chip> },
     { id: "elements", label: t("Affected"), cell: (f) => f.affected_elements.slice(0, 3).join(", ") + (f.affected_elements.length > 3 ? t(" and {n} more", { n: int(f.affected_elements.length - 3) }) : "") },
+  ];
+
+  const procCols: Column<ProcessHealth>[] = [
+    { id: "process", label: t("Process"), cell: (r) => <Code code={r.process_id} text={r.process_name} /> },
+    { id: "status", label: t("Status"), cell: (r) => <Chip tone={PROC_TONE[r.status]}>{PROC_LABEL[r.status]()}</Chip> },
+    { id: "complete", label: t("Complete"), align: "end", compare: (a, b) => a.completeness_score - b.completeness_score, cell: (r) => `${Math.round(r.completeness_score)}%` },
+    { id: "exceptions", label: t("Exception rate"), align: "end", compare: (a, b) => a.exception_rate - b.exception_rate, cell: (r) => `${Math.round(r.exception_rate)}%` },
+    { id: "volume", label: t("Volume"), align: "end", compare: (a, b) => a.total_volume - b.total_volume, cell: (r) => int(r.total_volume) },
+    { id: "cycle", label: t("Cycle time"), align: "end", cell: (r) => days(r.avg_cycle_days) },
   ];
 
   return (
@@ -140,7 +188,15 @@ export function ConfigImpact() {
           empty={{ heading: kind === "ghost" ? t("No ghost setting found.") : t("No shadow process found.") }}
         />
       </QueryView>
+      <h3 className="nx-rn-h3">{t("Business processes")}</h3>
+      <p className="nx-sub">{t("How completely each business process runs in the data. Open one to see it step by step.")}</p>
+      <DataTable
+        rows={procs.data?.processes ?? []} columns={procCols} rowKey={(r) => r.process_id} rowLabel={(r) => r.process_name} caption={t("Business processes")}
+        loading={procs.isLoading} error={procs.error ? { sentence: errorSentence(procs.error, t("The processes could not be loaded.")), onRetry: () => void procs.refetch() } : undefined} onOpenRow={(r) => setProc(r.process_id)}
+        empty={{ heading: t("No business process found for this run.") }}
+      />
       <RootCausePanel finding={open} onClose={() => setOpen(null)} />
+      <ProcessPanel id={proc} onClose={() => setProc(null)} />
     </div>
   );
 }

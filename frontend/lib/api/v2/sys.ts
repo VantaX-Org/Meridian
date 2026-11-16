@@ -146,6 +146,7 @@ export const proposeConfigMatches = (systemId: string): Promise<ProposeResult> =
 /* ---- custom Z objects ---- */
 
 export const getZRegistry = (): Promise<{ total: number; entries: ZRegistryEntry[] }> => v2Get("/z-objects/registry");
+export const getZEntry = (id: string): Promise<ZRegistryEntry> => v2Get(`/z-objects/registry/${encodeURIComponent(id)}`);
 export const getZProfile = (id: string): Promise<ZProfile> => v2Get(`/z-objects/profile/${encodeURIComponent(id)}`);
 export const getZAnomalies = (): Promise<{ run_id: string; total: number; anomalies: ZAnomaly[] }> => v2Get("/z-objects/anomalies");
 export const getZGhost = (): Promise<ZGhost[]> => v2Get("/z-objects/ghost");
