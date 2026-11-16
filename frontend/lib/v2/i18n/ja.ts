@@ -11473,4 +11473,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.": "不合格レコード数の多い順に並べたルールです。割合は、そのルールの対象母集団のうち不合格となる部分で、各オブジェクトの最新の実行から算出しています。",
   "How the score is made": "スコアの算出方法",
   "Score of {label}": "{label}のスコア",
+  "This object has no form fields.": "このオブジェクトにはフォーム項目がありません。",
 };

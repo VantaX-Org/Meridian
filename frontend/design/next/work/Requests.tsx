@@ -355,7 +355,7 @@ function NewRequest({ onDone, initialKeys }: { onDone: (id: string) => void; ini
 }
 
 /** The rule pre-checks and duplicate candidates of a request: what the validate step answered. */
-function PrecheckView({ p }: { p: Precheck }) {
+export function PrecheckView({ p }: { p: Precheck }) {
   const { hrefFor } = useOpenItem();
   const clean = p.problems.length === 0 && p.failures.length === 0 && p.duplicates.length === 0;
   return (

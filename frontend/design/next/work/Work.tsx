@@ -11,9 +11,6 @@ import { CHIPS, DEFAULT_STATE, STATUS_LABEL, filtersOf, ownerLabel, viewFilters,
 import { allWorkRows, useWorkRows, useWorkSummary } from "@/lib/v2/work-queries";
 import { hiddenColumns } from "@/lib/v2/grid-export";
 import type { Landscape, WorkRow } from "@/lib/api/v2/types";
-import { ProcessAnalytics } from "@/design/v2/screens/ProcessAnalytics";
-import { RequestFormCanvas } from "@/design/v2/screens/RequestForm";
-import { LegacyMount } from "../shell/LegacyMount";
 import { MonitorBody } from "../screens/Monitor";
 import { Button, Chip, Code, DataTable, EmptyState, SegmentedControl, Tabs, type Column, type TabItem } from "../kit";
 import { StackedBar, type Seg } from "../viz";
@@ -28,6 +25,8 @@ import { WorkExceptions } from "./Exceptions";
 import { WorkTriage } from "./Triage";
 import { WorkQueue } from "./Queue";
 import { WorkRequests } from "./Requests";
+import { WorkRequestForm } from "./RequestForm";
+import { WorkProcessAnalytics } from "./ProcessAnalytics";
 import "../shell/shell.css";
 import "./work.css";
 
@@ -53,10 +52,8 @@ const SCREENS: Record<string, ComponentType> = {
 // The request screens, keyed by segment or deep path.
 const NATIVE: Record<string, ComponentType> = {
   requests: WorkRequests,
-};
-const LEGACY: Record<string, ComponentType> = {
-  "requests/new": RequestFormCanvas,
-  "requests/analytics": ProcessAnalytics,
+  "requests/new": WorkRequestForm,
+  "requests/analytics": WorkProcessAnalytics,
 };
 
 /** The ledger: every open record, one row each, with the state pills and the actions for a selection. */
@@ -184,7 +181,6 @@ export function Work({ slug }: { slug?: string[] }) {
   const key = (slug ?? []).join("/");
   const Screen = hit && !hit.deep ? SCREENS[hit.id] : undefined;
   const Native = hit ? NATIVE[hit.deep ?? hit.id] : undefined;
-  const Legacy = hit ? LEGACY[hit.deep ?? hit.id] : undefined;
   const go = (id: string) => {
     const s = WORK_SEGMENTS.find((x) => x.id === id);
     if (s) router.push(segmentHref(s));
@@ -212,8 +208,6 @@ export function Work({ slug }: { slug?: string[] }) {
           <Screen />
         ) : Native ? (
           <Native />
-        ) : Legacy ? (
-          <LegacyMount><Legacy /></LegacyMount>
         ) : null}
       </div>
     </div>
