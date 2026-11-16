@@ -32,7 +32,7 @@ const Q = vi.hoisted(() => {
   return { rules: st(), drafts: st(), reports: st(), schedules: st(), systems: st(), people: st(), opts: st({ modules: ["material_master"], systems: [], types: [] }), update: st(), can: (): boolean => true, st };
 });
 vi.mock("@/lib/v2/hooks", async (orig) => ({ ...(await orig<object>()), useV2Session: () => ({ can: Q.can, id: "me", name: "Me", email: "me@example.com", persona: "admin", label: "Admin", fixture: true, viewAs: null, shared: false }) }));
-vi.mock("@/lib/v2/sys-queries", () => ({ useRuleList: () => Q.rules, useAllDrafts: () => Q.drafts, useRefreshV2: () => () => undefined }));
+vi.mock("@/lib/v2/sys-queries", () => ({ useRuleList: () => Q.rules, useAllDrafts: () => Q.drafts, useSuppressions: () => Q.st(undefined), useRefreshV2: () => () => undefined }));
 vi.mock("@/lib/v2/admin-queries", () => ({
   useReportHistory: () => Q.reports,
   useSchedules: () => Q.schedules,

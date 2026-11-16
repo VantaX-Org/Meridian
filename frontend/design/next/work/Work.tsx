@@ -186,6 +186,7 @@ export function Work({ slug }: { slug?: string[] }) {
         <h1>{t("Work")}</h1>
         <Tabs items={items} value={active} onChange={go} label={t("Work")} idBase="nx-work" />
       </header>
+      <p className="nx-wk-lede">{t("Accepting or editing a value only proposes it. Nothing reaches SAP until it is approved and applied.")}</p>
       <div id={`nx-work-panel-${active}`} role="tabpanel" data-segment={key}>
         {!hit ? (
           <EmptyState heading={t("Nothing at this address")} />
