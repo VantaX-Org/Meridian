@@ -276,5 +276,18 @@ export const pauseRunSchedule = (id: string): Promise<RunSchedule> => v2Send("PO
 export const resumeRunSchedule = (id: string): Promise<RunSchedule> => v2Send("POST", `/schedules/${enc(id)}/resume`);
 export const deleteRunSchedule = (id: string): Promise<{ id: string; status: string }> => v2Send("DELETE", `/schedules/${enc(id)}`);
 
+/** PATCH /settings/tenant body (TenantPatch in api/routes/settings.py): only the keys sent change, none may be null. */
+export interface TenantPatch {
+  name?: string;
+  cost_model?: CostModel;
+  currency?: string;
+  /** Six fractions 0..1 that sum to 1.0. */
+  scoring_weights?: { completeness: number; accuracy: number; consistency: number; timeliness: number; uniqueness: number; validity: number };
+  /** DQS ceilings 0..100, two_plus at most one_critical. */
+  cap_rule?: { one_critical: number; two_plus: number };
+  tolerance?: { pct: number; rows: number };
+  /** Days an archived run is kept, 1..3650. */
+  retention_days?: number;
+}
 /** PATCH /settings/tenant: only the keys sent change. */
-export const patchTenant = (body: { name?: string; currency?: string }): Promise<TenantSettings> => v2Send("PATCH", "/settings/tenant", body);
+export const patchTenant = (body: TenantPatch): Promise<TenantSettings> => v2Send("PATCH", "/settings/tenant", body);

@@ -11,7 +11,7 @@ import { refreshAdmin, useDoctor, useHealth, useUpdateStatus } from "@/lib/v2/ad
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL, jobDoing, jobSeconds } from "@/lib/v2/jobs";
 import { useV2Jobs } from "@/lib/v2/runs-queries";
 import { type GridColumn } from "./Grid";
-import { EmptyFrame, ErrorFrame, Mono } from "./parts";
+import { EmptyFrame, ErrorFrame, Mono, V2Link } from "./parts";
 import { ResultFrame, useOutcome } from "./shared";
 import { AdminPage, Block, Confirm, Fld, Kv, Loaded, Note, StatusWord, useCan } from "./kit";
 import { ToolGrid } from "./GridTools";
@@ -207,6 +207,11 @@ export function SystemSection() {
       </Block>
       <Update />
       <Doctor />
+      <Block title={t("Service status")} hint={t("The public status page: whether each part of the platform is working, and its uptime over the last 30 days. It opens without signing in, so anyone who uses Meridian can check it.")}>
+        <div className="nx-adm-acts">
+          <V2Link href="/status" className="nx-btn">{t("Open the status page")}</V2Link>
+        </div>
+      </Block>
       <DiagnosticsBlock />
     </AdminPage>
   );

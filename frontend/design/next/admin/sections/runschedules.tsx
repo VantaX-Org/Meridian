@@ -180,6 +180,12 @@ export function RunSchedulesSection() {
       });
       return { tone: "ok", title: s.active ? t("Schedule paused") : t("Schedule resumed") };
     });
+  /** Edit from the saved schedule, not the list row, so a change made elsewhere since the list was read is not lost. */
+  const edit = (s: RunSchedule) =>
+    void run(`edit-${s.id}`, async () => {
+      setEditing(await api.getRunSchedule(s.id));
+      return null;
+    });
   const columns: GridColumn<RunSchedule>[] = [
     { id: "name", header: t("Schedule"), width: 240, pin: true, locked: true, cell: (s) => nameOf(s) },
     { id: "system", header: t("System"), width: 180, cell: (s) => s.system_name },
@@ -198,8 +204,8 @@ export function RunSchedulesSection() {
           <Button size={32} disabled={!can || pending !== null} aria-label={`${s.active ? t("Pause") : t("Resume")} ${nameOf(s)}`} onClick={() => toggle(s)}>
             {s.active ? t("Pause") : t("Resume")}
           </Button>
-          <Button size={32} disabled={!can} aria-label={t("Edit {name}", { name: nameOf(s) })} onClick={() => setEditing(s)}>
-            {t("Edit")}
+          <Button size={32} disabled={!can || pending !== null} aria-label={t("Edit {name}", { name: nameOf(s) })} onClick={() => edit(s)}>
+            {pending === `edit-${s.id}` ? t("Opening…") : t("Edit")}
           </Button>
           <Button variant="danger" size={32} disabled={!can} aria-label={t("Delete {name}", { name: nameOf(s) })} onClick={() => setRemoving(s)}>
             {t("Delete")}

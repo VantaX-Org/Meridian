@@ -642,7 +642,7 @@ function TenantProfileForm({ name: savedName, currency: savedCurrency }: { name:
   const { outcome, pending, run } = useOutcome("set-tenant");
   const nameOk = name.trim().length >= 1 && name.trim().length <= 200;
   const currencyOk = currency === "" || /^[A-Z]{3}$/.test(currency);
-  const body: { name?: string; currency?: string } = {};
+  const body: api.TenantPatch = {};
   if (name.trim() !== savedName) body.name = name.trim();
   if (currency !== "" && currency !== savedCurrency) body.currency = currency;
   const changed = Object.keys(body).length > 0;

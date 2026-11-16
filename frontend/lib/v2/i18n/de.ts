@@ -11372,4 +11372,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   // J9 people and admin, native sections
   "Needs action": "Handlungsbedarf",
   "No logo yet": "Noch kein Logo",
+  "Opening…": "Wird geöffnet…",
+  "Service status": "Dienststatus",
+  "The public status page: whether each part of the platform is working, and its uptime over the last 30 days. It opens without signing in, so anyone who uses Meridian can check it.": "Die öffentliche Statusseite: ob jeder Teil der Plattform funktioniert und seine Verfügbarkeit in den letzten 30 Tagen. Sie öffnet sich ohne Anmeldung, sodass jeder, der Meridian nutzt, sie prüfen kann.",
+  "Open the status page": "Statusseite öffnen",
 };

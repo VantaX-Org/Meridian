@@ -11372,4 +11372,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   // J9 people and admin, native sections
   "Needs action": "対応が必要",
   "No logo yet": "ロゴはまだありません",
+  "Opening…": "開いています…",
+  "Service status": "サービスの状態",
+  "The public status page: whether each part of the platform is working, and its uptime over the last 30 days. It opens without signing in, so anyone who uses Meridian can check it.": "公開ステータスページです。プラットフォームの各部分が動作しているか、過去 30 日間の稼働率を示します。サインインなしで開けるため、Meridian を使う誰もが確認できます。",
+  "Open the status page": "ステータスページを開く",
 };

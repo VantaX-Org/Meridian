@@ -70,7 +70,7 @@ export function resetKeptOutcomes(): void {
  * which is the API's own sentence) as the outcome to show. With a `scope`, the outcome is kept by that name, so a form
  * that remounts when the data it saved arrives still shows what the save answered.
  */
-export function useOutcome(scope?: string): { outcome: Outcome | null; pending: string | null; run: (key: string, fn: () => Promise<Outcome>) => Promise<void>; clear: () => void } {
+export function useOutcome(scope?: string): { outcome: Outcome | null; pending: string | null; run: (key: string, fn: () => Promise<Outcome | null>) => Promise<void>; clear: () => void } {
   const [local, setLocal] = useState<Outcome | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const shared = useSyncExternalStore(subscribeKept, () => (scope ? (kept.get(scope) ?? null) : null), () => null);
@@ -89,7 +89,7 @@ export function useOutcome(scope?: string): { outcome: Outcome | null; pending: 
     [scope],
   );
   const run = useCallback(
-    async (key: string, fn: () => Promise<Outcome>) => {
+    async (key: string, fn: () => Promise<Outcome | null>) => {
       setPending(key);
       put(null, false);
       try {

@@ -11371,6 +11371,10 @@ export const en = {
   // J9 people and admin, native sections
   "Needs action": "Needs action",
   "No logo yet": "No logo yet",
+  "Opening…": "Opening…",
+  "Service status": "Service status",
+  "The public status page: whether each part of the platform is working, and its uptime over the last 30 days. It opens without signing in, so anyone who uses Meridian can check it.": "The public status page: whether each part of the platform is working, and its uptime over the last 30 days. It opens without signing in, so anyone who uses Meridian can check it.",
+  "Open the status page": "Open the status page",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
