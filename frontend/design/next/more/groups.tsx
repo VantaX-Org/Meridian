@@ -13,7 +13,7 @@ import { Links } from "./Links";
 import { Catalogue } from "./Catalogue";
 import { Issues } from "./Issues";
 import { RecordMining } from "./RecordMining";
-import { ProcessDiscovery } from "@/design/v2/screens/ProcessDiscovery";
+import { ProcessDiscovery } from "./ProcessDiscovery";
 import { ScoreLens } from "./ScoreLens";
 import { Insights } from "./Insights";
 import { Forecast } from "./Forecast";
