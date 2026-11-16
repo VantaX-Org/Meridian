@@ -13,24 +13,14 @@ import { describeTable } from "@/lib/v2/sap-fields";
 import { DASH } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
 import { V2Link } from "@/design/v2/parts";
-import { useOutcome, type Outcome } from "@/design/v2/inspector/shared";
+import { useOutcome } from "@/design/v2/inspector/shared";
+import { Result } from "./Result";
 import { Button, Code, DataTable, EmptyState, ErrorState, SegmentedControl, Skeleton, type Column } from "../../kit";
 import { ExportTable } from "../ExportTable";
 import { Figs, Panel } from "../cfg-parts";
 
 type Part = "areas" | "source" | "drift" | "compare";
 const PARTS: Part[] = ["areas", "source", "drift", "compare"];
-
-/** The answer to an action: its title, its sentence and, for a started job, the link to it. */
-function Result({ outcome }: { outcome: Outcome }) {
-  const { hrefFor } = useOpenItem();
-  return (
-    <p className="nx-note" role="status" data-tone={outcome.tone} data-testid="action-result">
-      <strong>{outcome.title}</strong> {outcome.detail ?? ""}
-      {outcome.job ? <> <V2Link className="nx-link" href={hrefFor({ kind: "job", id: outcome.job })}>{t("Open the job")}</V2Link></> : null}
-    </p>
-  );
-}
 
 function Areas({ id }: { id: string }) {
   const q = useSystemConfigLoad(id);

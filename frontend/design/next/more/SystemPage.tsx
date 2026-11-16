@@ -12,7 +12,7 @@ import { f1, int, moduleSlug, systemSlug, VERDICT_LABEL } from "@/lib/v2/score";
 import { useOpenItem, useV2Href } from "@/lib/v2/hooks";
 import { V2Link } from "@/design/v2/parts";
 import { Configuration } from "./system/Configuration";
-import { CustomObjects } from "@/design/v2/screens/system/CustomObjects";
+import { CustomObjects } from "./system/CustomObjects";
 import { SourceDesign } from "@/design/v2/screens/system/SourceDesign";
 import { Schedules } from "./system/Schedules";
 import { ChangeLog } from "./system/ChangeLog";
