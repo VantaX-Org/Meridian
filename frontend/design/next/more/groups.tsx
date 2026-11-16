@@ -6,14 +6,14 @@ import { AletheiaEvidence } from "@/design/v2/screens/AletheiaEvidence";
 import { AletheiaForesight } from "@/design/v2/screens/AletheiaForesight";
 import { AletheiaReason } from "@/design/v2/screens/AletheiaReason";
 import { AletheiaSurvivorship } from "@/design/v2/screens/AletheiaSurvivorship";
-import { MdmHealth } from "@/design/v2/screens/MdmHealth";
-import { EntryGate } from "@/design/v2/screens/EntryGate";
-import { ReferenceData } from "@/design/v2/screens/ReferenceData";
-import { Links } from "@/design/v2/screens/Links";
-import { Catalogue } from "@/design/v2/screens/Catalogue";
-import { Issues } from "@/design/v2/screens/Issues";
-import { Mining } from "@/design/v2/screens/Mining";
-import { ProcessDiscovery } from "@/design/v2/screens/ProcessDiscovery";
+import { GoldenHealth } from "./masterdata/Golden";
+import { EntryGateNative } from "./masterdata/EntryGate";
+import { ReferenceDataNative } from "./masterdata/ReferenceData";
+import { RecordLinks } from "./masterdata/Links";
+import { DataCatalogue } from "./masterdata/Catalogue";
+import { RecordIssues } from "./masterdata/Issues";
+import { DataMining } from "./masterdata/Mining";
+import { Processes } from "./masterdata/Processes";
 import { ScoreLens } from "@/design/v2/screens/ScoreLens";
 import { Insights } from "@/design/v2/screens/Insights";
 import { Forecast } from "@/design/v2/screens/Forecast";
@@ -44,14 +44,14 @@ export const GROUPS: Group[] = [
     { id: "survivorship", label: () => t("Survivorship"), Screen: AletheiaSurvivorship },
   ] },
   { id: "master-data", title: () => t("Master data"), blurb: () => t("Golden records, gates, links and reference data."), tabs: [
-    { id: "golden", label: () => t("Golden records"), Screen: MdmHealth },
-    { id: "entry-gate", label: () => t("Entry gate"), Screen: EntryGate },
-    { id: "reference", label: () => t("Reference data"), Screen: ReferenceData },
-    { id: "links", label: () => t("Links"), Screen: Links },
-    { id: "catalogue", label: () => t("Catalogue"), Screen: Catalogue },
-    { id: "issues", label: () => t("Issues"), Screen: Issues },
-    { id: "mining", label: () => t("Mining"), Screen: Mining },
-    { id: "processes", label: () => t("Processes"), Screen: ProcessDiscovery },
+    { id: "golden", label: () => t("Golden records"), Screen: GoldenHealth },
+    { id: "entry-gate", label: () => t("Entry gate"), Screen: EntryGateNative },
+    { id: "reference", label: () => t("Reference data"), Screen: ReferenceDataNative },
+    { id: "links", label: () => t("Links"), Screen: RecordLinks },
+    { id: "catalogue", label: () => t("Catalogue"), Screen: DataCatalogue },
+    { id: "issues", label: () => t("Issues"), Screen: RecordIssues },
+    { id: "mining", label: () => t("Mining"), Screen: DataMining },
+    { id: "processes", label: () => t("Processes"), Screen: Processes },
   ] },
   { id: "insights", title: () => t("Insights"), blurb: () => t("Score, forecast and value."), tabs: [
     { id: "score", label: () => t("Score"), Screen: ScoreLens },

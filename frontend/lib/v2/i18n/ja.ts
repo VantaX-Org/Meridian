@@ -11375,4 +11375,20 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "What you follow": "フォロー中の項目",
   "Following": "フォロー中",
   "The share links could not be read.": "共有リンクを読み込めませんでした。",
+  // journey-masterdata strings start
+  "Tables with rules": "ルールのあるテーブル",
+  "Tables by object": "オブジェクト別のテーブル",
+  "Checking records at the gate needs the {permission} permission.": "ゲートでレコードをチェックするには {permission} 権限が必要です。",
+  "Code list": "コードリスト",
+  "Held requests": "保留中の申請",
+  "Hold state of each record": "各レコードの保留状態",
+  "Mapping coverage": "マッピングのカバー率",
+  "Proposing a mapping needs the {permission} permission.": "マッピングを提案するには {permission} 権限が必要です。",
+  "Requests opened for flagged records": "フラグ付きレコードについて作成された申請",
+  "Source codes by mapping result, every list": "マッピング結果別のソースコード（全リスト）",
+  "Target codes": "ターゲットコード",
+  "Your role cannot read the firewall traffic.": "あなたのロールではファイアウォールの通信を読めません。",
+  "Your role cannot read the reference data.": "あなたのロールでは参照データを読めません。",
+  "Your role cannot read the process discovery data.": "あなたのロールではプロセス検出データを読み取れません。",
+  // journey-masterdata strings end
 };

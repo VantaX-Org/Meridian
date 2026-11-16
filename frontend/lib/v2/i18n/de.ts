@@ -11375,4 +11375,20 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "What you follow": "Was Sie verfolgen",
   "Following": "Verfolgt",
   "The share links could not be read.": "Die Freigabelinks konnten nicht gelesen werden.",
+  // journey-masterdata strings start
+  "Tables with rules": "Tabellen mit Regeln",
+  "Tables by object": "Tabellen nach Objekt",
+  "Checking records at the gate needs the {permission} permission.": "Für die Prüfung von Datensätzen am Eingang ist die Berechtigung {permission} nötig.",
+  "Code list": "Codeliste",
+  "Held requests": "Zurückgehaltene Anträge",
+  "Hold state of each record": "Haltestatus je Datensatz",
+  "Mapping coverage": "Abdeckung der Zuordnung",
+  "Proposing a mapping needs the {permission} permission.": "Für einen Zuordnungsvorschlag ist die Berechtigung {permission} nötig.",
+  "Requests opened for flagged records": "Anträge für markierte Datensätze",
+  "Source codes by mapping result, every list": "Quellcodes nach Zuordnungsergebnis, alle Listen",
+  "Target codes": "Zielcodes",
+  "Your role cannot read the firewall traffic.": "Ihre Rolle kann den Firewall-Verkehr nicht lesen.",
+  "Your role cannot read the reference data.": "Ihre Rolle kann die Referenzdaten nicht lesen.",
+  "Your role cannot read the process discovery data.": "Ihre Rolle kann die Daten der Prozesserkennung nicht lesen.",
+  // journey-masterdata strings end
 };
