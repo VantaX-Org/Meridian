@@ -6,15 +6,19 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, DropZone, StatCard } from "@/design/next/kit";
+import Link from "next/link";
+import { Button, Code, DropZone, ErrorState, Skeleton, StatCard } from "@/design/next/kit";
+import { DIMENSIONS } from "@/lib/api/v2/types";
 import { fixtureActive } from "@/lib/api/v2/fixture";
 import { fixtureUpload } from "@/lib/api/next/runs-fixture";
 import { checksOf, needsParent, rejectedCsv, uploadCleaned, uploadFix, uploadRows, uploadSentence, type RejectedRow, type RoundTripResult } from "@/lib/api/v2/roundtrip";
-import { checkSentence, checkWorkbook, holdReason, staleRun, STATUS_SENTENCE, worstOf, type UploadCheck, type UploadChecks } from "@/lib/api/v2/upload-checks";
+import { checkSentence, checkWorkbook, flagReason, holdReason, staleRun, STATUS_SENTENCE, worstOf, type UploadCheck, type UploadChecks } from "@/lib/api/v2/upload-checks";
 import { downloadCsv } from "@/lib/v2/grid-export";
-import { useV2Session } from "@/lib/v2/hooks";
+import { useV2Href, useV2Session } from "@/lib/v2/hooks";
+import { useObjectRules } from "@/lib/v2/queries";
+import { useCompareRecords, useScoreDelta } from "@/lib/v2/runs-queries";
 import { t } from "@/lib/v2/i18n";
-import { int } from "@/lib/v2/score";
+import { f1, int } from "@/lib/v2/score";
 import type { ObjectRun } from "../useObjectRun";
 
 export const MAX_BYTES = 25 * 1024 * 1024;
@@ -26,6 +30,9 @@ interface Item {
   state: "checking" | "ready" | "too-big" | "wrong-type" | "uploading" | "done" | "failed" | "parent";
   result?: RoundTripResult;
   checks?: UploadCheck[];
+  /** Cells the checks flagged, and how many there are in all (the list can be cut). */
+  flagged?: UploadChecks["flagged"];
+  flaggedTotal?: number;
   error?: string;
   /** What to do about the error, when the API says. */
   fix?: string;
@@ -73,6 +80,82 @@ function RejectedRows({ rows, name }: { rows: RejectedRow[]; name: string }) {
   );
 }
 
+/** Cells the checks flagged: the table, the record key, the field with its description, and why. */
+function FlaggedCells({ cells, total }: { cells: NonNullable<UploadChecks["flagged"]>; total: number }) {
+  if (cells.length === 0) return null;
+  return (
+    <div className="nx-stack" data-testid="flagged-cells">
+      <div className="nx-table-scroll">
+        <table className="nx-table">
+          <caption>{t("Flagged cells ({n})", { n: int(total) })}</caption>
+          <thead>
+            <tr><th scope="col">{t("Table")}</th><th scope="col">{t("Record key")}</th><th scope="col">{t("Field")}</th><th scope="col">{t("Why")}</th></tr>
+          </thead>
+          <tbody>
+            {cells.map((f) => (
+              <tr key={`${f.table}|${f.key}|${f.field}`}>
+                <td className="nx-mono">{f.table || "-"}</td>
+                <td className="nx-mono">{f.key}</td>
+                <td><Code code={f.field} text={f.description || undefined} /></td>
+                <td>{flagReason(f.reason)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {total > cells.length ? <p className="nx-muted">{t("Showing {n} of {total}.", { n: int(cells.length), total: int(total) })}</p> : null}
+    </div>
+  );
+}
+
+const signed = (n: number) => `${n > 0 ? "+" : ""}${f1(n)}`;
+
+/** The new score against the run it came from: per dimension, findings fixed, still open and new, and required fields still empty. */
+export function BeforeAfter({ after, before, module }: { after: string; before: string; module: string }) {
+  const delta = useScoreDelta(before, after, module);
+  const records = useCompareRecords(after, before);
+  const rules = useObjectRules(module, after);
+  const d = delta.data;
+  const totals = records.data?.totals;
+  const notReady = t("The comparison is not ready");
+  const empty = (rules.data ?? []).filter((r) => r.dimension === "completeness" && r.affected_count > 0 && r.field);
+  return (
+    <section className="nx-stack" aria-label={t("Before and after")} data-testid="before-after">
+      {delta.isPending || records.isPending ? <Skeleton lines={4} label={t("Reading the change against the earlier run")} /> : null}
+      {delta.isError && records.isError ? (
+        <ErrorState sentence={t("The change against the earlier run could not be read.")} error={delta.error} onRetry={() => { void delta.refetch(); void records.refetch(); }} />
+      ) : (
+        <table className="nx-table">
+          <caption>{t("Before and after")}</caption>
+          <tbody>
+            <tr><th scope="row">{t("Score before")}</th><td className="nx-num">{d ? f1(d.before) : <span className="nx-muted">{notReady}</span>}</td></tr>
+            <tr><th scope="row">{t("Score now")}</th><td className="nx-num">{d ? `${f1(d.after)} (${signed(d.delta)})` : <span className="nx-muted">{notReady}</span>}</td></tr>
+            {DIMENSIONS.map((dim) => {
+              const p = d?.by_dimension.find((x) => x.dimension === dim.key)?.points;
+              return <tr key={dim.key} data-testid={`delta-${dim.key}`}><th scope="row">{dim.label}</th><td className="nx-num">{p == null ? <span className="nx-muted">{t("No change recorded")}</span> : signed(p)}</td></tr>;
+            })}
+            <tr><th scope="row">{t("Findings fixed")}</th><td className="nx-num">{totals ? int(totals.resolved) : <span className="nx-muted">{notReady}</span>}</td></tr>
+            <tr><th scope="row">{t("Still open")}</th><td className="nx-num">{totals ? int(totals.persisting) : <span className="nx-muted">{notReady}</span>}</td></tr>
+            <tr><th scope="row">{t("New")}</th><td className="nx-num">{totals ? int(totals.new) : <span className="nx-muted">{notReady}</span>}</td></tr>
+          </tbody>
+        </table>
+      )}
+      <h3 className="nx-rn-h3">{t("Required fields still empty")}</h3>
+      {rules.isPending ? <Skeleton lines={2} label={t("Reading the rules of the new run")} /> : rules.isError ? (
+        <ErrorState sentence={t("The rules of this run could not be read.")} error={rules.error} onRetry={() => void rules.refetch()} />
+      ) : empty.length === 0 ? (
+        <p className="nx-muted" data-testid="no-empty-required">{t("No required field is empty.")}</p>
+      ) : (
+        <ul data-testid="empty-required">
+          {empty.map((r) => (
+            <li key={r.check_id}><Code code={r.field as string} text={r.field_description} /> {t("{n} records", { n: int(r.affected_count) })}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /** Per-check pass, warn or fail list for one file. */
 export function CheckList({ checks }: { checks: UploadCheck[] }) {
   return (
@@ -97,13 +180,15 @@ const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
  */
 export interface UploadGate { hold: string | null; scored: boolean; submit: () => Promise<void> }
 
-export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; upload?: (file: File, parent?: string, confirmWarnings?: boolean) => Promise<RoundTripResult>; onScored: () => void; onGate?: (g: UploadGate) => void }) {
+export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; upload?: (file: File, parent?: string, confirmWarnings?: boolean, skipFlagged?: boolean) => Promise<RoundTripResult>; onScored: () => void; onGate?: (g: UploadGate) => void }) {
   const can = useV2Session().can("analyse");
   const qc = useQueryClient();
   const [items, setItems] = useState<Item[]>([]);
   const [parent, setParent] = useState<string>("");
   const [confirm, setConfirm] = useState(false);
-  const send = upload ?? ((f: File, p?: string, w?: boolean) => (fixtureActive() ? Promise.resolve(fixtureUpload(f.name)) : uploadCleaned(f, p, o.module, w)));
+  const [skip, setSkip] = useState(false);
+  const v2href = useV2Href();
+  const send = upload ?? ((f: File, p?: string, w?: boolean, s?: boolean) => (fixtureActive() ? Promise.resolve(fixtureUpload(f.name)) : uploadCleaned(f, p, o.module, w, s)));
   const busy = items.some((i) => i.state === "uploading");
   const ready = items.filter((i) => i.state === "ready" || i.state === "parent");
   const failed = items.some((i) => worstOf(i.checks) === "fail");
@@ -112,11 +197,11 @@ export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; uplo
   const askParent = items.some((i) => i.state === "parent");
 
   const patch = (file: File, p: Partial<Item>) => setItems((cur) => cur.map((c) => (c.file === file ? { ...c, ...p } : c)));
-  const verify = async (file: File, p?: string) => {
+  const verify = async (file: File, p?: string, s = skip) => {
     patch(file, { state: "checking", error: undefined, fix: undefined, rows: undefined });
     try {
-      const r: UploadChecks = await checkWorkbook(file, p, o.module);
-      patch(file, { state: "ready", checks: r.checks });
+      const r: UploadChecks = await checkWorkbook(file, p, o.module, s);
+      patch(file, { state: "ready", checks: r.checks, flagged: r.flagged, flaggedTotal: r.flagged_total });
     } catch (e) {
       const c = checksOf(e);
       const need = needsParent(e);
@@ -135,7 +220,7 @@ export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; uplo
     for (const it of ready) {
       setItems((cur) => cur.map((c) => (c === it ? { ...c, state: "uploading", error: undefined, fix: undefined, rows: undefined } : c)));
       try {
-        const result = await send(it.file, it.state === "parent" ? parent || undefined : undefined, warned && confirm);
+        const result = await send(it.file, it.state === "parent" ? parent || undefined : undefined, warned && confirm, skip);
         setItems((cur) => cur.map((c) => (c.file === it.file ? { ...c, state: "done", result } : c)));
       } catch (e) {
         const p = needsParent(e);
@@ -147,6 +232,13 @@ export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; uplo
     }
     void qc.invalidateQueries({ queryKey: ["next"] });
     return refusal;
+  };
+
+  const canSkip = items.some((i) => i.state !== "done" && (i.flagged ?? []).some((f) => f.table));
+  const toggleSkip = (v: boolean) => {
+    setSkip(v);
+    setConfirm(false);
+    items.filter((i) => i.state === "ready").forEach((i) => void verify(i.file, undefined, v));
   };
 
   const hold = items.length === 0 ? t("Add a workbook first.") : checking ? t("Wait for the checks to finish.") : askParent && !parent ? t("Choose the run the workbook was made from.") : holdReason(items.flatMap((i) => (i.state === "done" ? [] : i.checks ?? [])), confirm);
@@ -186,6 +278,7 @@ export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; uplo
                 {it.state === "done" ? t("Read") : null}
               </span>
               {it.checks ? <CheckList checks={it.checks} /> : null}
+              {it.flagged && it.state !== "done" ? <FlaggedCells cells={it.flagged} total={it.flaggedTotal ?? it.flagged.length} /> : null}
               {it.error ? <p role="alert" className="nx-error-line">{it.error}</p> : null}
               {it.fix ? <p className="nx-note" data-testid="upload-fix">{it.fix}</p> : null}
               {it.rows ? <RejectedRows rows={it.rows} name={it.file.name} /> : null}
@@ -205,6 +298,11 @@ export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; uplo
               <option key={h.id} value={h.id}>{t("Run {n}", { n: h.run_number ?? "" })}</option>
             ))}
           </select>
+        </label>
+      ) : null}
+      {canSkip ? (
+        <label className="nx-field-label" data-testid="skip-flagged">
+          <input type="checkbox" checked={skip} onChange={(e) => toggleSkip(e.target.checked)} /> {t("Leave the flagged cells out and apply the rest")}
         </label>
       ) : null}
       {warned ? (
@@ -240,6 +338,13 @@ export function UploadStep({ o, upload, onScored, onGate }: { o: ObjectRun; uplo
               {done.flatMap((i) => (i.result?.no_field ?? []).map((x) => <li key={`f-${x}`}>{t("No field called {name} in the run", { name: x })}</li>))}
             </ul>
           </details>
+          <BeforeAfter after={last.version_id} before={last.parent_version_id} module={o.module} />
+          {o.systemId ? (
+            <Link className="nx-link" href={v2href(`/migration?start=1&system=${encodeURIComponent(o.systemId)}&source_version=${encodeURIComponent(last.version_id)}`)} data-testid="upload-to-migration">
+              {t("Start a migration from this cleaned version")}
+            </Link>
+          ) : null}
+          <Link className="nx-link" href={`/next/run/${encodeURIComponent(last.version_id)}/agreement`} data-testid="upload-to-agreement">{t("Check the clean file agreement")}</Link>
           {done.map((i) => (i.result?.unmatched_rows?.length ? <RejectedRows key={`r-${i.file.name}`} rows={i.result.unmatched_rows} name={i.file.name} /> : null))}
           {onGate ? null : <Button variant="secondary" onClick={onScored}>{t("See what changed")}</Button>}
         </div>

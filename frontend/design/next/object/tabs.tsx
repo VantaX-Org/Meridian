@@ -26,6 +26,7 @@ import { GlossaryTab } from "./tabs/GlossaryTab";
 import { LineageTab } from "./tabs/LineageTab";
 import { ProfileTab } from "./tabs/ProfileTab";
 import { TrendTab } from "./tabs/TrendTab";
+import { DecisionLayer } from "./Decision";
 
 export const TAB_IDS = ["overview", "why", "fix", "records", "rules", "fixes", "runs", "readiness", "processes", "failing", "report", "golden", "glossary", "lineage", "profile", "cycle", "trend"] as const;
 export type TabId = (typeof TAB_IDS)[number];
@@ -62,7 +63,7 @@ export function renderTab(id: TabId, o: ObjectRun, go: (tab: TabId) => void): Re
   switch (id) {
     case "overview":
     case "cycle":
-      return <><WhySection o={o} limit={5} /><ReasonPanel versionId={o.runId ?? undefined} systemId={o.systemId} /><FixSection o={o} /><OverviewExtras o={o} /></>;
+      return <><DecisionLayer o={o} /><WhySection o={o} limit={5} /><ReasonPanel versionId={o.runId ?? undefined} systemId={o.systemId} /><FixSection o={o} /><OverviewExtras o={o} /></>;
     case "why": return <WhySection o={o} />;
     case "fix": return <FixSection o={o} />;
     case "runs": return <RunsTab o={o} onOpen={(run) => { o.setRun(run); go("overview"); }} />;

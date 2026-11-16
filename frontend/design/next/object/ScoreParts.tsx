@@ -1,7 +1,7 @@
 "use client";
 
 /** Two small parts of the object's score: the sentence that names the rules capping it, and the six dimensions as bars. */
-import { Chip, Code, NxLink, type ChipTone } from "@/design/next/kit";
+import { Chip, Code, EmptyState, ErrorState, NxLink, Skeleton, type ChipTone } from "@/design/next/kit";
 import type { LandscapeCell } from "@/lib/api/v2/types";
 import { DIMENSIONS } from "@/lib/api/v2/types";
 import { useQualityThresholds } from "@/lib/v2/admin-queries";
@@ -31,7 +31,13 @@ const BAND_TONE: Record<Band, ChipTone> = { pass: "good", warn: "warn", fail: "b
 
 /** The six dimensions with their full names, the share of the total each carries, the score, and the tenant's band. */
 export function DimensionBars({ cell }: { cell: LandscapeCell }) {
-  const thresholds = useQualityThresholds().data;
+  const tq = useQualityThresholds();
+  const thresholds = tq.data;
+  if (tq.isPending) return <Skeleton lines={6} label={t("Reading the score by dimension")} />;
+  if (tq.isError) return <ErrorState sentence={t("The quality targets could not be read.")} error={tq.error} onRetry={() => void tq.refetch()} />;
+  if (DIMENSIONS.every((d) => cell.dimensions[d.key] == null)) {
+    return <EmptyState heading={t("No dimension is measured yet")}>{t("Run analysis on this object and its six dimensions show here.")}</EmptyState>;
+  }
   return (
     <section aria-label={t("Score by dimension")} data-testid="dimension-bars">
       <h3 className="nx-rn-h3">{t("Score by dimension")}</h3>

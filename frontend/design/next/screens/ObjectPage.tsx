@@ -22,6 +22,7 @@ import { useObjectRun as useRunSpine } from "@/lib/v2/scope";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { withSheets } from "@/lib/next/sheet";
 import { ANY_SYSTEM, moduleFromSlug, systemForModule, systemSlug } from "@/lib/v2/score";
+import { MODULE_LABELS } from "@/lib/format";
 import "../object/object.css";
 
 const ID = "nx-object";
@@ -90,6 +91,16 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
     router.replace(`${pathname.replace(`/o/${ANY_SYSTEM}/`, `/o/${systemSlug(holder.name)}/`)}${qs ? `?${qs}` : ""}`, { scroll: false });
   }, [holder, params, router, pathname]);
 
+  // `?as_of=<run>` is the old way to look at a past run; the run is now `?run=`.
+  const asOf = params.get("as_of");
+  useEffect(() => {
+    if (!asOf) return;
+    const next = new URLSearchParams(params.toString());
+    next.delete("as_of");
+    next.set("run", asOf);
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+  }, [asOf, params, pathname, router]);
+
   if (o.landscape.isLoading || holder) return <div className="nx-object"><Skeleton lines={6} label={t("Loading the object")} /></div>;
   if (o.landscape.isError && isDenied(o.landscape.error)) return <div className="nx-object"><Denied what={t("this object")} /></div>;
   if (o.landscape.isError) return <div className="nx-object"><ErrorState sentence={t("The object could not be loaded.")} error={o.landscape.error} onRetry={() => void o.landscape.refetch()} /></div>;
@@ -102,6 +113,20 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
       </div>
     );
   }
+
+  // An address that names no object Meridian knows is not found, never a page that looks real.
+  const known = !!L && (L.objects.some((x) => x.module === o.module) || Object.hasOwn(MODULE_LABELS, o.module));
+  if (!known) {
+    return (
+      <div className="nx-object" data-testid="object-not-found">
+        <EmptyState heading={t("Object not found")} action={<Link className="nx-btn nx-btn-secondary" href={v2href("/")}>{t("Open the landscape")}</Link>}>
+          {t("{system} has no object called {segment}. Open the landscape and choose an object from the map.", { system: o.systemName, segment: decodeURIComponent(module) })}
+        </EmptyState>
+      </div>
+    );
+  }
+  const sys = L?.systems.find((s) => s.id === o.systemId);
+  const cell = L?.cells.find((c) => c.system_id === o.systemId && c.module === o.module);
 
   return (
     <div className="nx-object" data-testid="object-page">
@@ -130,6 +155,16 @@ export function ObjectPage({ system, module, tab }: { system: string; module: st
           <OldRun systemId={o.systemId} module={o.module} system={o.systemName} />
           {/* Overview keeps the related objects, watch toggle, data contracts and owner apply of the v2 object page. */}
           {tab === "overview" && o.systemId ? <RelatedObjects module={o.module} system={o.systemSeg} systemId={o.systemId} label={o.label} /> : null}
+          {!cell && sys ? (
+            <div data-testid="object-no-run">
+              <EmptyState
+                heading={sys.state === "analysed" ? t("This object has no run on this system.") : sys.state === "extracted" ? t("Extracted, not analysed.") : t("Not extracted yet.")}
+                action={<Link className="nx-btn nx-btn-secondary" href={v2href(`/?open=system:${sys.id}`)}>{sys.state === "not_extracted" ? t("Extract {name}", { name: sys.name }) : t("Run analysis on {name}", { name: sys.name })}</Link>}
+              >
+                {t("No run yet. The ruler fills when an analysis scores this object.")}
+              </EmptyState>
+            </div>
+          ) : null}
           {renderTab(tab, o, go)}
       </section>
     </div>

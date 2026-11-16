@@ -4,6 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getPairs } from "@/lib/api/v2/compare";
 import { useFixture } from "@/lib/api/v2/fixture";
+import { Code, EmptyState, ErrorState, Skeleton } from "@/design/next/kit";
 import { t } from "@/lib/v2/i18n";
 import { score, signed } from "./model";
 import type { ObjectRun } from "./useObjectRun";
@@ -13,9 +14,19 @@ const val = (n: number | null | undefined) => (n === null || n === undefined ? "
 export function PairedScores({ o }: { o: ObjectRun }) {
   const fx = useFixture();
   const q = useQuery({ queryKey: ["system-compare", "pairs", fx], queryFn: getPairs, staleTime: 60_000 });
-  const pair = q.data?.pairs.find((p) => p.module === o.module && (p.source.id === o.systemId || p.target.id === o.systemId) && p.last?.scores);
-  const s = pair?.last?.scores;
-  if (!pair || !s) return null;
+  if (q.isPending) return <Skeleton lines={2} label={t("Reading the source and target scores")} />;
+  if (q.isError) return <ErrorState sentence={t("The source and target scores could not be read.")} error={q.error} onRetry={() => void q.refetch()} />;
+  const pair = q.data.pairs.find((p) => p.module === o.module && (p.source.id === o.systemId || p.target.id === o.systemId));
+  // A system without a pair has no source and target to show, so nothing is drawn.
+  if (!pair) return null;
+  const s = pair.last?.scores;
+  if (!s) {
+    return (
+      <EmptyState heading={t("{source} to {target}", { source: pair.source.name, target: pair.target.name })}>
+        {t("The pair is not scored yet. Run analysis on both systems and the source, projected and actual target scores show here.")}
+      </EmptyState>
+    );
+  }
   return (
     <section className="nx-card nx-paired" aria-label={t("Source and target scores")} data-testid="paired-scores">
       <h3 className="nx-cycle-h">{t("{source} to {target}", { source: pair.source.name, target: pair.target.name })}</h3>
@@ -28,7 +39,7 @@ export function PairedScores({ o }: { o: ObjectRun }) {
         <ul className="nx-paired-reasons">
           {s.reasons.slice(0, 5).map((r) => (
             <li key={r.check_id}>
-              <span className="nx-mono">{r.check_id}</span> {r.description ?? ""} <span className="nx-num">({signed(r.change)})</span>
+              <Code code={r.check_id} text={r.description ?? undefined} /> <span className="nx-num">({signed(r.change)})</span>
             </li>
           ))}
         </ul>

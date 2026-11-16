@@ -4,6 +4,7 @@
 import { useQueries } from "@tanstack/react-query";
 import { getCompareSummary, nextRunKeys } from "@/lib/api/next/runs";
 import { useFixture } from "@/lib/api/v2/fixture";
+import { EmptyState, ErrorState, Skeleton } from "@/design/next/kit";
 import { t } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
 import type { ObjectRun } from "./useObjectRun";
@@ -12,7 +13,14 @@ export function TrendStack({ o }: { o: ObjectRun }) {
   const fx = useFixture();
   const pairs = o.heads.slice(0, 13).map((h, i, all) => ({ b: h, a: h.parent_version_id ? (all.find((x) => x.id === h.parent_version_id) ?? all[i + 1]) : all[i + 1] })).filter((p) => p.a).slice(0, 12).reverse();
   const qs = useQueries({ queries: pairs.map((p) => ({ queryKey: nextRunKeys.summary(fx, p.a!.id, p.b.id), queryFn: () => getCompareSummary(p.a!.id, p.b.id), staleTime: Infinity })) });
-  if (pairs.length === 0) return null;
+  if (o.runs.isLoading) return <Skeleton lines={3} label={t("Reading the runs")} />;
+  if (o.runs.isError) return <ErrorState sentence={t("The runs could not be read.")} error={o.runs.error} onRetry={() => void o.runs.refetch()} />;
+  if (pairs.length === 0) {
+    return <EmptyState heading={t("New and resolved by run")}>{t("One run so far. Clean it and upload the workbook, and the change per run shows here.")}</EmptyState>;
+  }
+  if (qs.every((q) => q.isPending)) return <Skeleton lines={3} label={t("Reading the change per run")} />;
+  const failed = qs.filter((q) => q.isError);
+  if (failed.length === qs.length) return <ErrorState sentence={t("The change per run could not be read.")} error={failed[0].error} onRetry={() => failed.forEach((q) => void q.refetch())} />;
   const max = Math.max(1, ...qs.map((q) => (q.data ? q.data.totals.new + q.data.totals.resolved : 0)));
   return (
     <section className="nx-card nx-trend" aria-label={t("New and resolved by run")} data-testid="trend-stack">

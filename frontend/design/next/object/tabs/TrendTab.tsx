@@ -245,7 +245,7 @@ export function TrendTab({ o }: { o: ObjectRun }) {
       <div className="nx-tg-stats">
         <StatCard label={t("Shown")} value={cur.score ?? 0} />
         <StatCard label={t("Measured")} value={cur.raw_score ?? 0} />
-        {base ? <StatCard label={t("Measured score")} value={Math.round(((cur.raw_score ?? 0) - (base.raw_score ?? 0)) * 10) / 10} /> : null}
+        {base ? <StatCard label={t("Change in measured score")} value={Math.round(((cur.raw_score ?? 0) - (base.raw_score ?? 0)) * 10) / 10} /> : null}
         <StatCard label={t("Records checked")} value={current.records_checked ?? 0} />
       </div>
       <section className="nx-card nx-tg-sec" aria-label={t("Score, last {pointsCount} runs", { pointsCount: series.length })}>

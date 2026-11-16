@@ -7,7 +7,7 @@
  */
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Code, LargeTitle, NxLink, PointSpark, Popover, Ring } from "@/design/next/kit";
+import { Button, Code, EmptyState, ErrorState, LargeTitle, NxLink, PointSpark, Popover, Ring, Skeleton } from "@/design/next/kit";
 import { writeClipboard } from "@/lib/browser";
 import { CapSentence } from "./ScoreParts";
 import { useSheets } from "@/design/next/shell/SheetHost";
@@ -15,7 +15,7 @@ import { getPairs } from "@/lib/api/v2/compare";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { t } from "@/lib/v2/i18n";
 import { useReceipt } from "@/lib/v2/queries";
-import { downloadCleaningWorkbook, type ObjectCycle } from "@/lib/api/next/runs";
+import type { ObjectCycle } from "@/lib/api/next/runs";
 import { dqsOf, score, signed, statusOf } from "./model";
 import { Trunc } from "./edge";
 import { ObjectRunSwitcher } from "./RunSwitcher";
@@ -35,8 +35,11 @@ const val = (n: number | null | undefined) => (n === null || n === undefined ? "
 function Paired({ o }: { o: ObjectRun }) {
   const fx = useFixture();
   const q = useQuery({ queryKey: ["system-compare", "pairs", fx], queryFn: getPairs, staleTime: 60_000 });
-  const pair = q.data?.pairs.find((p) => p.module === o.module && (p.source.id === o.systemId || p.target.id === o.systemId));
+  if (q.isPending) return <Skeleton lines={2} label={t("Reading the source and target scores")} />;
+  if (q.isError) return <ErrorState sentence={t("The source and target scores could not be read.")} error={q.error} onRetry={() => void q.refetch()} />;
+  const pair = q.data.pairs.find((p) => p.module === o.module && (p.source.id === o.systemId || p.target.id === o.systemId));
   const s = pair?.last?.scores;
+  // A system without a pair has no source and target to show, so nothing is drawn.
   if (!pair) return null;
   return (
     <section className="nx-hero-pair" aria-label={t("Source and target scores")} data-testid="paired-scores">
@@ -64,22 +67,16 @@ export function ObjectBar({ o, cycle, downloads }: { o: ObjectRun; cycle: Object
   const { open } = useSheets();
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const [menu, setMenu] = useState(false);
-  const receipt = useReceipt(o.module, o.runId).data;
+  const rq = useReceipt(o.module, o.runId);
+  const receipt = rq.data;
   const now = dqsOf(o.run, o.module);
   const before = dqsOf(o.previous, o.module);
   const delta = now !== null && before !== null ? now - before : null;
   const step = cycle?.step ?? "clean";
-  const [busy, setBusy] = useState(false);
   const failed = o.run ? statusOf(o.run) === "failed" : false;
   const newest = o.heads[0];
   const series = o.heads.slice(0, 12).reverse().flatMap((h) => { const v = dqsOf(h, o.module); return v === null ? [] : [{ label: t("Run {n}", { n: h.run_number ?? "" }), value: v }]; });
   const stale = Boolean(newest && o.runId && newest.id !== o.runId);
-  const download = () => {
-    if (busy || !o.runId) return;
-    setBusy(true);
-    setMenu(false);
-    downloadCleaningWorkbook(o.runId, o.module).catch(() => undefined).finally(() => setBusy(false));
-  };
   const share = () => { setMenu(false); void writeClipboard(window.location.href); };
 
   return (
@@ -112,7 +109,6 @@ export function ObjectBar({ o, cycle, downloads }: { o: ObjectRun; cycle: Object
         <Button variant="secondary" size={32} onClick={() => open({ kind: "compare", id: "" })}>{t("Compare")}</Button>
         <Button ref={setAnchor} variant="quiet" size={32} aria-label={t("More actions")} aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((v) => !v)}>{"…"}</Button>
         <Popover anchor={anchor} open={menu} onClose={() => setMenu(false)} label={t("More actions")} placement="bottom">
-          <button type="button" role="menuitem" className="nx-menuitem" disabled={busy} aria-busy={busy} onClick={download}>{t("Download workbook")}</button>
           <button type="button" role="menuitem" className="nx-menuitem" onClick={share}>{t("Share")}</button>
         </Popover>
         {downloads}
@@ -131,6 +127,9 @@ export function ObjectBar({ o, cycle, downloads }: { o: ObjectRun; cycle: Object
         </Ring>
         <PointSpark points={series} label={t("DQS over the last {n} runs", { n: series.length })} empty={t("Not enough runs for a trend yet")} />
       </div>
+      {rq.isLoading ? <Skeleton lines={1} label={t("Reading what holds the score")} /> : null}
+      {rq.isError ? <ErrorState sentence={t("The score receipt could not be read.")} error={rq.error} onRetry={() => void rq.refetch()} /> : null}
+      {!o.runId ? <EmptyState heading={t("No run to show yet")}>{t("Extract this object and its score shows here.")}</EmptyState> : null}
       {receipt ? (
         <p className="nx-hero-cap">
           <span data-testid="cap-sentence">
