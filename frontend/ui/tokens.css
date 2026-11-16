@@ -18,7 +18,8 @@
   --mx-accent-ink: #FFFFFF;
   --mx-accent-soft: #E8EEFF;
   --mx-aletheia: #6D4FD6;
-  --mx-aletheia-ink: #FFFFFF;
+  --mx-aletheia-ink: #3B2A8F;
+  --mx-aletheia-on: #FFFFFF;
   --mx-aletheia-soft: #EFEAFF;
   --mx-aletheia-edge: #CBBDF5;
   --mx-good: #1A7F4B;
@@ -92,7 +93,8 @@ html[data-theme="dark"] .mx-root {
   --mx-accent-ink: #0E0F18;
   --mx-accent-soft: #1F2A55;
   --mx-aletheia: #A28BFF;
-  --mx-aletheia-ink: #0E0F18;
+  --mx-aletheia-ink: #E2DAFF;
+  --mx-aletheia-on: #0E0F18;
   --mx-aletheia-soft: #2A2350;
   --mx-aletheia-edge: #54468F;
   --mx-good: #4CC38A;
@@ -130,7 +132,8 @@ html[data-theme="dark"] .mx-root {
     --mx-accent-ink: #0E0F18;
     --mx-accent-soft: #1F2A55;
     --mx-aletheia: #A28BFF;
-    --mx-aletheia-ink: #0E0F18;
+    --mx-aletheia-ink: #E2DAFF;
+  --mx-aletheia-on: #0E0F18;
     --mx-aletheia-soft: #2A2350;
     --mx-aletheia-edge: #54468F;
     --mx-good: #4CC38A;

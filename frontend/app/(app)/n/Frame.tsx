@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useState, type ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AuthGuard } from "@/design/v2/auth/Guard";
 import { RequestAccessHost } from "@/design/v2/RequestAccess";
@@ -10,9 +10,9 @@ import { PermissionsProvider } from "@/lib/permissions";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { PATHS } from "@/lib/next/nav-defaults";
-import { AppShell } from "@/ui/kit";
+import { AletheiaProvider, AppShell, useAletheia } from "@/ui/kit";
 
-// Lazy slot: batch 8 fills AletheiaPanel with the real chat tools.
+// Lazy slot: the one chat instance, scoped by whichever screen is open.
 const AletheiaPanel = lazy(() => import("@/ui/kit/AletheiaPanel"));
 
 function PreferencesSync() {
@@ -21,12 +21,16 @@ function PreferencesSync() {
   return null;
 }
 
+function ChatHost({ children }: { children: ReactNode }) {
+  return <AletheiaProvider initialOpen={useSearchParams().get("aletheia") === "1"}>{children}</AletheiaProvider>;
+}
+
 function Shell({ children }: { children: ReactNode }) {
   useInterfaceLang();
   const fx = useFixture();
   const path = usePathname() ?? "";
   const { user, logout } = useAuth();
-  const [chat, setChat] = useState(useSearchParams().get("aletheia") === "1");
+  const chat = useAletheia();
   const link = (p: string) => withFixture(p, fx);
   const sections = [
     { id: "home", label: t("Home"), href: PATHS.home },
@@ -43,14 +47,11 @@ function Shell({ children }: { children: ReactNode }) {
       user={{ name: user?.name ?? user?.email ?? t("Demo user"), email: user?.email }}
       userMenuLabel={t("Account menu")}
       menu={fx ? [] : [{ id: "out", label: t("Sign out"), onClick: logout }]}
-      launcher={{ label: t("Ask Aletheia"), onOpen: () => setChat(true) }}
-      aside={chat ? (
+      launcher={{ label: t("Ask Aletheia"), onOpen: () => chat.setOpen(true) }}
+      aside={chat.open ? (
         <Suspense fallback={null}>
           <AletheiaPanel
-            open
-            onClose={() => setChat(false)}
             labels={{ title: t("Aletheia"), scope: t("Asking about the whole landscape"), close: t("Close"), inputLabel: t("Ask a question"), send: t("Send"), evidence: t("Evidence"), suggestionsLabel: t("Suggested questions"), threadLabel: t("Conversation") }}
-            suggestions={[]}
           />
         </Suspense>
       ) : null}
@@ -63,7 +64,7 @@ function Shell({ children }: { children: ReactNode }) {
 /** Same sign-in and permissions chain as the current app; fixture mode skips sign-in. */
 export function Frame({ children }: { children: ReactNode }) {
   const fx = useFixture();
-  const inner = <Suspense fallback={null}><Shell>{children}</Shell></Suspense>;
+  const inner = <Suspense fallback={null}><ChatHost><Shell>{children}</Shell></ChatHost></Suspense>;
   if (fx) return <div className="mx-root">{inner}</div>;
   return (
     <AuthGuard>

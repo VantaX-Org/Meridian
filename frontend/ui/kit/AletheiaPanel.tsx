@@ -1,8 +1,19 @@
 "use client";
 
 import { AletheiaSheet, type AletheiaLabels } from "./AletheiaSheet";
+import { useAletheia } from "./aletheia";
 
-/** Shell-level slot for the whole-landscape chat. Batch 8 replaces the empty thread with the real tools. */
-export default function AletheiaPanel({ open, onClose, labels, suggestions }: { open: boolean; onClose: () => void; labels: AletheiaLabels; suggestions: string[] }) {
-  return <AletheiaSheet open={open} onClose={onClose} labels={labels} thread={[]} suggestions={suggestions} onAsk={() => {}} />;
+/** The one chat instance, mounted by the shell. It reads its open state, thread and scope from AletheiaProvider. */
+export default function AletheiaPanel({ labels }: { labels: AletheiaLabels }) {
+  const { open, setOpen, scope, thread, ask } = useAletheia();
+  return (
+    <AletheiaSheet
+      open={open}
+      onClose={() => setOpen(false)}
+      labels={scope ? { ...labels, scope: scope.label } : labels}
+      thread={thread}
+      suggestions={scope?.suggestions ?? []}
+      onAsk={ask}
+    />
+  );
 }

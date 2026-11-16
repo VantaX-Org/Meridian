@@ -1,6 +1,9 @@
 import "./kit.css";
 
 export { AletheiaSheet, type AletheiaLabels, type ChatAction, type ChatMessage } from "./AletheiaSheet";
+export { AletheiaProvider, useAletheia, useAletheiaScope, type AletheiaAnswer, type AletheiaScope } from "./aletheia";
+export { Sheet } from "./Sheet";
+export { useStacked } from "./useStacked";
 export { AppShell, type ShellMenuItem, type ShellSection } from "./AppShell";
 export { Button, type ButtonVariant } from "./Button";
 export { Card } from "./Card";

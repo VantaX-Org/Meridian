@@ -33,7 +33,7 @@
 .mx-root .mx-btn[data-variant="primary"] { background: var(--mx-accent); border-color: var(--mx-accent); color: var(--mx-accent-ink); }
 .mx-root .mx-btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--mx-ink-2); }
 .mx-root .mx-btn[data-tone="aletheia"] { color: var(--mx-aletheia-ink); background: var(--mx-aletheia-soft); border-color: var(--mx-aletheia-edge); }
-.mx-root .mx-btn[data-variant="primary"][data-tone="aletheia"] { background: var(--mx-aletheia); border-color: var(--mx-aletheia); color: var(--mx-surface); }
+.mx-root .mx-btn[data-variant="primary"][data-tone="aletheia"] { background: var(--mx-aletheia); border-color: var(--mx-aletheia); color: var(--mx-aletheia-on); }
 .mx-root .mx-btn:disabled { opacity: 0.5; cursor: default; }
 
 /* Cards and the split */
@@ -119,6 +119,8 @@
 .mx-root .mx-input { flex: 1; min-block-size: var(--mx-h-control); padding: 0 var(--mx-s3); border-radius: var(--mx-r-pill); border: 1px solid var(--mx-border-strong); background: var(--mx-bg); color: var(--mx-ink); font: inherit; }
 
 @media (max-width: 900px) {
+  .mx-root .mx-scrim[data-place="bottom"] { align-items: flex-end; justify-content: center; }
+  .mx-root .mx-sheet[data-place="bottom"] { display: block; block-size: auto; max-block-size: 85vh; overflow-y: auto; inline-size: 100%; border-inline-start: 0; border-block-start: 1px solid var(--mx-border-strong); border-start-start-radius: var(--mx-r-card); border-start-end-radius: var(--mx-r-card); }
   .mx-root .mx-split { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
