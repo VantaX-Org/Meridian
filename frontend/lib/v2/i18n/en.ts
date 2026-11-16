@@ -11478,6 +11478,8 @@ export const en = {
   "The JSON file the export writes.": "The JSON file the export writes.",
   "Save the connection first.": "Save the connection first.",
   "Meridian logs on with these details. The next step opens only if the logon works.": "Meridian logs on with these details. The next step opens only if the logon works.",
+  "running": "running",
+  "The password is set on the server by an administrator. Meridian does not send passwords from this screen.": "The password is set on the server by an administrator. Meridian does not send passwords from this screen.",
   "Mentioned: {names}": "Mentioned: {names}",
   "No severity": "No severity",
   "expired": "expired",
@@ -11485,6 +11487,9 @@ export const en = {
   "expires": "expires",
   "Fields: {count}": "Fields: {count}",
   " first.": " first.",
+  "factor": "factor",
+  "mitigation": "mitigation",
+  " freed.": " freed.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

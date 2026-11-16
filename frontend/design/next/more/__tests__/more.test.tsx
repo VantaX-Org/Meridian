@@ -26,8 +26,9 @@ vi.mock("@/design/v2/screens/system/ConnectionForm", () => ({ ConnectionForm: ()
 vi.mock("@/design/v2/admin/tenant", () => ({ LicenceSection: () => <div data-testid="licence-section" /> }));
 vi.mock("@/design/v2/admin/notify", () => ({ NotificationsSection: () => <div data-testid="notify-section" /> }));
 vi.mock("@/design/v2/admin/Admin", () => ({ AdminCanvas: () => <div /> }));
-vi.mock("@/design/next/admin/notify", () => ({ NotificationsSectionNative: () => <div data-testid="notify-section" /> }));
-vi.mock("@/design/next/admin/people-capabilities", () => ({ ShareLinksSection: () => <div data-testid="sharelinks-section" /> }));
+vi.mock("@/design/next/admin/tenant", async (orig) => ({ ...(await orig<object>()), LicenceSectionNative: () => <div data-testid="licence-section" /> }));
+vi.mock("@/design/next/admin/notify", async (orig) => ({ ...(await orig<object>()), NotificationsSectionNative: () => <div data-testid="notify-section" /> }));
+vi.mock("@/design/next/admin/people-capabilities", async (orig) => ({ ...(await orig<object>()), ShareLinksSection: () => <div data-testid="sharelinks-section" /> }));
 
 const Q = vi.hoisted(() => {
   const st = (data: unknown = undefined, over: object = {}) => ({ data, isLoading: false, error: null, refetch: () => Promise.resolve(), ...over });
