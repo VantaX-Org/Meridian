@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import { Button, DataTable, EmptyState, SegmentedControl, type Column } from "@/design/next/kit";
 import { V2Link } from "@/design/v2/parts";
-import { DimensionBars } from "@/design/v2/screens/object/Banner";
+import { DimensionBars } from "../ScoreParts";
 import { downloadCleaningWorkbook, useCompareSets, useCompareSummary, type Change, type CompareRecord } from "@/lib/api/next/runs";
 import type { RuleRow } from "@/lib/api/v2/types";
 import { useUrlParam } from "@/lib/v2/hooks";
