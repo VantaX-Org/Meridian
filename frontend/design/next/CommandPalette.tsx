@@ -10,7 +10,7 @@ import { useV2Href, useRunParam, useV2Session } from "@/lib/v2/hooks";
 import { useLandscape } from "@/lib/v2/queries";
 import { useVersionsPage } from "@/lib/v2/runs-queries";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
-import { NlPanel, placeIndex } from "@/design/v2/CommandLine";
+import { NlPanel, placeIndex } from "./shell/commands";
 import { nlQuestion, nlTarget } from "@/lib/v2/step10";
 import { useNl } from "@/lib/v2/step10-queries";
 import { PATHS, redirectFor } from "@/lib/next/nav-defaults";

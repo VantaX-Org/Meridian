@@ -1,0 +1,16 @@
+/* Session gate, forced password change and the access request: layout only, tokens only. */
+.nx-auth-wait { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--nx-s6) var(--nx-s4); background: var(--nx-bg, var(--nx-surface)); color: var(--nx-ink); }
+.nx-auth-col { width: 100%; max-width: 28rem; display: flex; flex-direction: column; gap: var(--nx-s4); }
+.nx-auth-title { margin: 0; font-size: var(--nx-fs-title); font-weight: var(--nx-w-heading); }
+.nx-auth-lead { margin: 0; color: var(--nx-ink-2); }
+.nx-auth-pw { display: flex; align-items: center; gap: var(--nx-s2); }
+.nx-auth-hint { color: var(--nx-ink-3); font-size: var(--nx-fs-small); }
+.nx-auth-note { margin: 0; padding: var(--nx-s2) var(--nx-s3); border-radius: var(--nx-r-control); background: var(--nx-bad-soft); color: var(--nx-bad-ink); }
+.nx-auth-row { display: flex; flex-wrap: wrap; gap: var(--nx-s3); }
+.nx-ra-facts { display: grid; grid-template-columns: auto 1fr; gap: var(--nx-s2) var(--nx-s4); margin: 0; }
+.nx-ra-facts dt { color: var(--nx-ink-2); }
+.nx-ra-facts dd { margin: 0; }
+.nx-ra-out { margin: 0; padding: var(--nx-s3); border-radius: var(--nx-r-control); border: 1px solid var(--nx-border); }
+.nx-ra-out[data-tone="fail"] { background: var(--nx-bad-soft); color: var(--nx-bad-ink); }
+.nx-ra-out-title { margin: 0; font-weight: var(--nx-w-label); }
+.nx-ra-out-detail { margin: var(--nx-s1) 0 0; color: var(--nx-ink-2); }

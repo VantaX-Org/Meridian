@@ -26,6 +26,9 @@ vi.mock("@/design/v2/screens/system/ConnectionForm", () => ({ ConnectionForm: ()
 vi.mock("@/design/v2/admin/tenant", () => ({ LicenceSection: () => <div data-testid="licence-section" /> }));
 vi.mock("@/design/v2/admin/notify", () => ({ NotificationsSection: () => <div data-testid="notify-section" /> }));
 vi.mock("@/design/v2/admin/Admin", () => ({ AdminCanvas: () => <div /> }));
+vi.mock("@/design/next/admin/tenant", async (orig) => ({ ...(await orig<object>()), LicenceSectionNative: () => <div data-testid="licence-section" /> }));
+vi.mock("@/design/next/admin/notify", async (orig) => ({ ...(await orig<object>()), NotificationsSectionNative: () => <div data-testid="notify-section" /> }));
+vi.mock("@/design/next/admin/people-capabilities", async (orig) => ({ ...(await orig<object>()), ShareLinksSection: () => <div data-testid="sharelinks-section" /> }));
 
 const Q = vi.hoisted(() => {
   const st = (data: unknown = undefined, over: object = {}) => ({ data, isLoading: false, error: null, refetch: () => Promise.resolve(), ...over });
@@ -223,6 +226,12 @@ describe("More screens: loading, error, empty", () => {
     Q.reports = Q.st({ items: [] });
     wrap(<Reports />);
     expect(screen.getByText("No reports yet")).toBeInTheDocument();
+  });
+  it("reports: the shared links segment draws the native section", () => {
+    Q.reports = Q.st({ items: [] });
+    wrap(<Reports />);
+    fireEvent.click(screen.getByRole("radio", { name: "Shared links" }));
+    expect(screen.getByTestId("sharelinks-section")).toBeInTheDocument();
   });
   it("systems: loading, error, empty with a Connect action", () => {
     Q.systems = Q.st(undefined, { isLoading: true });

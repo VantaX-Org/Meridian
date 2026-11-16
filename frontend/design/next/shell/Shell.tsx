@@ -2,12 +2,12 @@
 
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { AuthGuard } from "@/design/v2/auth/Guard";
+import { AuthGuard } from "./AuthGuard";
 import { useAuth } from "@/context/auth-context";
 import { usePreferences, usePreferencesSync } from "@/hooks/use-preferences";
 import { PermissionsProvider } from "@/lib/permissions";
-import { RequestAccessHost } from "@/design/v2/RequestAccess";
-import { Inspector } from "@/design/v2/Inspector";
+import { RequestAccessHost } from "./RequestAccess";
+import { Inspector } from "./inspector/Inspector";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { isTyping } from "@/lib/v2/keys";
 import { useOpenItem, useV2Href, useV2Session } from "@/lib/v2/hooks";
@@ -15,7 +15,6 @@ import { resolveDensity } from "@/lib/v2/density";
 import { t } from "@/lib/v2/i18n";
 import { PATHS, redirectFor } from "@/lib/next/nav-defaults";
 import { Button } from "../kit";
-import { LegacyScope } from "./LegacyMount";
 import { StoryHeader } from "./StoryHeader";
 import { StoryTabs } from "./StoryTabs";
 import { JobHairline } from "./JobHairline";
@@ -163,7 +162,7 @@ function Frame({ children }: { children: ReactNode }) {
       <main id="nx-main" className="nx-main" tabIndex={-1}>{children}</main>
       {open ? (
         <div className="nx-insp-host">
-          <LegacyScope><Inspector /></LegacyScope>
+          <Inspector />
         </div>
       ) : null}
       {sheet ? <KeysDialog onClose={() => setSheet(false)} /> : null}

@@ -2,15 +2,21 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { AdminCanvas } from "@/design/v2/admin/Admin";
 import { ADMIN_SECTIONS, canAdminister, isAdminSlug, visibleSections } from "@/lib/v2/admin-sections";
 import { useV2Href, useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
-import { LegacyMount } from "../shell/LegacyMount";
 import { Denied } from "../more/states";
 import { EmptyState } from "../kit";
 import { ChartCard } from "../more/ChartCard";
 import { SeatsCard, UsersCard } from "../more/cards";
+import { OPS_SECTIONS } from "./ops";
+import { TENANT_SECTIONS } from "./tenant";
+import { DATA_SECTIONS } from "./data";
+import { PEOPLE_SECTIONS } from "./people";
+import { NOTIFY_SECTIONS } from "./notify";
+
+/** Every admin section, drawn natively. Each registry owns its own group. */
+const SECTIONS = { ...OPS_SECTIONS, ...TENANT_SECTIONS, ...DATA_SECTIONS, ...PEOPLE_SECTIONS, ...NOTIFY_SECTIONS };
 
 /** Administration: five chart-led cards, one per group, each listing the sections this person may open. The one entry to admin. */
 export function AdminHome() {
@@ -41,19 +47,20 @@ export function AdminHome() {
   );
 }
 
-/** One section in the new frame. Each mounts the existing section behind the same permission check; roles keeps its requests and change log. */
+/** One section in the new frame. Each draws natively behind the same permission check; roles keeps its requests and change log. */
 export function AdminSectionView({ slug }: { slug: string }) {
   const { can } = useV2Session();
   const href = useV2Href();
   if (!isAdminSlug(slug)) return <EmptyState heading={t("Nothing at this address")} />;
   const section = ADMIN_SECTIONS.find((s) => s.slug === slug)!;
   if (!section.needs.some((n) => can(n))) return <Denied what={section.label} />;
-  // Users keeps the full screen: filters, import, bulk suspend and reactivate, password resets and SCIM provisioning.
+  const Body = SECTIONS[slug];
+  if (!Body) return <EmptyState heading={t("Nothing at this address")} />;
   if (slug === "users") return (
     <>
       <div className="nx-row"><Link className="nx-link" href={href("/more/admin/roles")}>{t("Roles and permissions")}</Link></div>
-      <LegacyMount><AdminCanvas section="users" /></LegacyMount>
+      <Body />
     </>
   );
-  return <LegacyMount><AdminCanvas section={slug} /></LegacyMount>;
+  return <Body />;
 }
