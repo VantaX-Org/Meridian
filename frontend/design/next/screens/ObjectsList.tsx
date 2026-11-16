@@ -4,7 +4,7 @@ import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { f1 } from "@/lib/v2/score";
 import { useSystemsExtended } from "@/lib/v2/runs-queries";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { Chip, EmptyState, ErrorState, Skeleton } from "../kit";
 import { objectHref } from "../portfolio/BulkBar";
@@ -25,7 +25,7 @@ export function ObjectsList() {
   }
 
   return (
-    <main className="nx-pf" data-testid="objects-list">
+    <div className="nx-pf" data-testid="objects-list">
       <header className="nx-pf-head">
         <div>
           <h1>{t("Objects")}</h1>
@@ -43,11 +43,11 @@ export function ObjectsList() {
               <Chip tone="new">{t("{n} new issues", { n: formatInt(list.reduce((a, r) => a + r.new_issues, 0)) })}</Chip>
             </summary>
             <div>
-              {list.length === 0 ? <p>{t("{system} is connected but nothing has been pulled yet.", { system: sysName(id || null) })} {id ? <V2Link className="nx-btn nx-btn-primary" href={`/s/${id}`}>{t("Pull from {system}", { system: sysName(id) })}</V2Link> : null}</p> : (
+              {list.length === 0 ? <p>{t("{system} is connected but nothing has been pulled yet.", { system: sysName(id || null) })} {id ? <NxLink className="nx-btn nx-btn-primary" href={`/s/${id}`}>{t("Pull from {system}", { system: sysName(id) })}</NxLink> : null}</p> : (
                 <ul className="nx-ol-list">
                   {list.map((r) => (
                     <li key={r.version_id}>
-                      <V2Link href={objectHref(r, sysName, `?run=${r.version_id}`)}><strong>{r.label}</strong> <span className="nx-mono nx-pf-code">{r.module}</span></V2Link>
+                      <NxLink href={objectHref(r, sysName, `?run=${r.version_id}`)}><strong>{r.label}</strong> <span className="nx-mono nx-pf-code">{r.module}</span></NxLink>
                       <span className="nx-pf-meta">{t("DQS {v}", { v: f1(r.composite_score) })}</span>
                       <Chip>{stepLabel(r.step)}</Chip>
                       {r.owner ? <span className="nx-pf-meta">{r.owner}</span> : <span className="nx-pf-meta">{t("No owner")}</span>}
@@ -58,6 +58,6 @@ export function ObjectsList() {
             </div>
           </details>
         ))}
-    </main>
+    </div>
   );
 }

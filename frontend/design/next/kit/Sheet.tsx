@@ -23,7 +23,9 @@ export interface SheetStep {
 /** The step to show: the asked one, but never past the first step not done (so a link cannot skip a step). */
 export function clampStep(step: number, steps: Pick<SheetStep, "done">[] | undefined): number {
   const total = steps?.length ?? 0;
-  const open = steps ? steps.findIndex((s) => !s.done) : -1;
+  // A flow that never sets done drives its own steps, so it is not gated.
+  const gated = !!steps?.some((s) => s.done !== undefined);
+  const open = steps && gated ? steps.findIndex((s) => !s.done) : -1;
   const reach = open < 0 ? Math.max(total, 1) : open + 1;
   return Math.min(Math.max(step, 1), reach);
 }

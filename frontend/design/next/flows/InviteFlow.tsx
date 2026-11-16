@@ -6,12 +6,14 @@ import { isAxiosError } from "axios";
 import { t } from "@/lib/v2/i18n";
 import { inviteUser } from "@/lib/api/v2/admin";
 import { refreshAdmin, useRoles, useScheduleOptions, useUsers } from "@/lib/v2/admin-queries";
-import { Button, Sheet, useToast } from "../kit";
+import { useSystemsExtended } from "@/lib/v2/runs-queries";
+import { moduleText } from "@/lib/v2/labels";
+import { Button, Code, Sheet, useToast } from "../kit";
 import { DraftNote, isSessionError, LongText, useDraft, useSubmitGuard } from "../more/states";
 import type { SheetCtx } from "../shell/SheetHost";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const INIT = { email: "", name: "", role: "", picked: [] as string[] };
+const INIT = { email: "", name: "", role: "", system: "", picked: [] as string[] };
 
 /** Invite a person in three steps: email, role, objects. The draft survives the session ending; a second click is dropped. */
 export function InviteFlow({ ctx }: { ctx: SheetCtx }) {
@@ -21,8 +23,9 @@ export function InviteFlow({ ctx }: { ctx: SheetCtx }) {
   const roles = useRoles().data ?? [];
   const mods = useScheduleOptions().data?.modules ?? [];
   const existing = useUsers().data?.users ?? [];
+  const systems = useSystemsExtended().data ?? [];
   const draft = useDraft("invite", INIT);
-  const { email, name, role, picked } = draft.value;
+  const { email, name, role, system, picked } = draft.value;
   const guard = useSubmitGuard();
   const [expired, setExpired] = useState(false);
   const [problem, setProblem] = useState("");
@@ -34,7 +37,8 @@ export function InviteFlow({ ctx }: { ctx: SheetCtx }) {
     guard.run(async () => {
       setProblem("");
       try {
-        const grants = picked.length ? picked.map((module) => ({ role_key: role, module })) : [{ role_key: role }];
+        const system_id = system || null;
+        const grants = picked.length ? picked.map((module) => ({ role_key: role, system_id, module })) : [{ role_key: role, system_id }];
         await inviteUser({ email: email.trim(), name: name.trim() || undefined, grants });
         await refreshAdmin(qc, "users");
         draft.clear();
@@ -71,10 +75,16 @@ export function InviteFlow({ ctx }: { ctx: SheetCtx }) {
         </div>
       ) : (
         <div>
+          <label className="nx-field">{t("System")}
+            <select className="nx-input" value={system} onChange={(e) => draft.set({ system: e.target.value })}>
+              <option value="">{t("All systems")}</option>
+              {systems.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+            </select>
+          </label>
           <p>{t("Leave all unticked to give the role on every object.")}</p>
           <ul className="nx-pick" aria-label={t("Objects")}>
             {mods.map((m) => (
-              <li key={m}><label className="nx-check"><input type="checkbox" checked={picked.includes(m)} onChange={(e) => draft.set({ picked: e.target.checked ? [...picked, m] : picked.filter((x) => x !== m) })} />{m}</label></li>
+              <li key={m}><label className="nx-check"><input type="checkbox" checked={picked.includes(m)} onChange={(e) => draft.set({ picked: e.target.checked ? [...picked, m] : picked.filter((x) => x !== m) })} /><Code code={m} text={moduleText(m)} /></label></li>
             ))}
           </ul>
         </div>

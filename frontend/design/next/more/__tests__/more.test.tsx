@@ -26,13 +26,16 @@ vi.mock("@/design/v2/screens/system/ConnectionForm", () => ({ ConnectionForm: ()
 vi.mock("@/design/v2/admin/tenant", () => ({ LicenceSection: () => <div data-testid="licence-section" /> }));
 vi.mock("@/design/v2/admin/notify", () => ({ NotificationsSection: () => <div data-testid="notify-section" /> }));
 vi.mock("@/design/v2/admin/Admin", () => ({ AdminCanvas: () => <div /> }));
+vi.mock("@/design/next/admin/tenant", async (orig) => ({ ...(await orig<object>()), LicenceSectionNative: () => <div data-testid="licence-section" /> }));
+vi.mock("@/design/next/admin/notify", async (orig) => ({ ...(await orig<object>()), NotificationsSectionNative: () => <div data-testid="notify-section" /> }));
+vi.mock("@/design/next/admin/people-capabilities", async (orig) => ({ ...(await orig<object>()), ShareLinksSection: () => <div data-testid="sharelinks-section" /> }));
 
 const Q = vi.hoisted(() => {
   const st = (data: unknown = undefined, over: object = {}) => ({ data, isLoading: false, error: null, refetch: () => Promise.resolve(), ...over });
   return { rules: st(), drafts: st(), reports: st(), schedules: st(), systems: st(), people: st(), opts: st({ modules: ["material_master"], systems: [], types: [] }), update: st(), can: (): boolean => true, st };
 });
 vi.mock("@/lib/v2/hooks", async (orig) => ({ ...(await orig<object>()), useV2Session: () => ({ can: Q.can, id: "me", name: "Me", email: "me@example.com", persona: "admin", label: "Admin", fixture: true, viewAs: null, shared: false }) }));
-vi.mock("@/lib/v2/sys-queries", () => ({ useRuleList: () => Q.rules, useAllDrafts: () => Q.drafts, useRefreshV2: () => () => undefined }));
+vi.mock("@/lib/v2/sys-queries", () => ({ useRuleList: () => Q.rules, useAllDrafts: () => Q.drafts, useSuppressions: () => Q.st({ suppressions: [] }), useMigrationScenarios: () => Q.st(undefined), sysKeys: { suppressions: () => ["s"], drafts: () => ["d"] }, useRefreshV2: () => () => undefined }));
 vi.mock("@/lib/v2/admin-queries", () => ({
   useReportHistory: () => Q.reports,
   useSchedules: () => Q.schedules,
@@ -44,7 +47,7 @@ vi.mock("@/lib/v2/admin-queries", () => ({
   useGrants: () => ({ data: [] }),
   useLicence: () => Q.st(undefined),
 }));
-vi.mock("@/lib/v2/runs-queries", () => ({ useSystemsExtended: () => Q.systems, useSystemObjectList: () => Q.st([]), useSystemProfiles: () => Q.st([]), useSystemExtractions: () => Q.st([]), useSystemConfigLoad: () => Q.st(undefined) }));
+vi.mock("@/lib/v2/runs-queries", () => ({ useSystemsExtended: () => Q.systems, useSystemObjectList: () => Q.st([]), useSystemProfiles: () => Q.st([]), useSystemExtractions: () => Q.st([]), useSystemConfigLoad: () => Q.st(undefined), useRuleTrend: () => Q.st(undefined) }));
 vi.mock("@/lib/v2/approvals-queries", () => ({ usePeople: () => Q.people }));
 vi.mock("@/lib/api/v2/reports", () => ({ createSchedule: vi.fn(), runScheduleNow: vi.fn(), downloadReportFile: vi.fn() }));
 vi.mock("@/lib/api/v2/admin", () => ({ getUpdateProgress: vi.fn(() => Promise.resolve({})), triggerUpdate: vi.fn() }));
@@ -198,6 +201,7 @@ describe("shared states", () => {
 
 describe("More screens: loading, error, empty", () => {
   it("rules: loading, error, empty", () => {
+    setUrl("/more/rules?tab=active");
     Q.rules = Q.st(undefined, { isLoading: true });
     const a = wrap(<Rules />);
     expect(screen.getByText("Loading rules")).toBeInTheDocument();
@@ -222,6 +226,12 @@ describe("More screens: loading, error, empty", () => {
     Q.reports = Q.st({ items: [] });
     wrap(<Reports />);
     expect(screen.getByText("No reports yet")).toBeInTheDocument();
+  });
+  it("reports: the shared links segment draws the native section", () => {
+    Q.reports = Q.st({ items: [] });
+    wrap(<Reports />);
+    fireEvent.click(screen.getByRole("radio", { name: "Shared links" }));
+    expect(screen.getByTestId("sharelinks-section")).toBeInTheDocument();
   });
   it("systems: loading, error, empty with a Connect action", () => {
     Q.systems = Q.st(undefined, { isLoading: true });

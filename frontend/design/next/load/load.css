@@ -78,7 +78,7 @@
 .nx-stale p { margin: 0; }
 .nx-ld-partial { color: var(--nx-ink-2); margin: 0; }
 .nx-ld-trio-visual > div { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "ring dt" "ring dd"; align-items: center; column-gap: var(--nx-s3); }
-.nx-ld-trio-visual > div > .nx-vring { grid-area: ring; }
+.nx-ld-trio-visual > div > dd.nx-ld-ring { grid-area: ring; margin: 0; }
 .nx-ld-trio-visual dt { grid-area: dt; align-self: end; }
 .nx-ld-trio-visual dd { grid-area: dd; align-self: start; }
 .nx-hero-visual { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--nx-s3) var(--nx-s4); }
@@ -96,3 +96,54 @@
 .nx-load-check { display: inline-flex; align-items: center; gap: var(--nx-s2); font-size: var(--nx-fs-body); color: var(--nx-ink); }
 .nx-load-files { display: flex; flex-direction: column; gap: var(--nx-s3); padding: var(--nx-s4); }
 .nx-load-actions { display: flex; flex-wrap: wrap; gap: var(--nx-s2); }
+
+/* Native Load tabs: banner, solid panels, disclosure, horizontal bars and the guide (parts.tsx). Tokens only. */
+.nx-ld-banner { display: flex; flex-direction: column; gap: var(--nx-s4); min-inline-size: 0; }
+.nx-ld-banner-head { display: flex; flex-direction: column; gap: var(--nx-s2); }
+.nx-ld-banner h2 { margin: 0; display: flex; flex-wrap: wrap; gap: var(--nx-s2); align-items: center; font-size: var(--nx-fs-h2); line-height: var(--nx-lh-h2); font-weight: var(--nx-w-heading); }
+.nx-ld-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--nx-s3); margin: 0; }
+.nx-ld-figs dd { margin: 0; }
+.nx-ld-panel { display: flex; flex-direction: column; gap: var(--nx-s3); min-inline-size: 0; }
+.nx-ld-panel-head { display: flex; flex-wrap: wrap; gap: var(--nx-s2) var(--nx-s4); align-items: flex-start; justify-content: space-between; }
+.nx-ld-panel-head h3 { margin: 0; font-size: var(--nx-fs-body); font-weight: var(--nx-w-heading); }
+.nx-ld-disclose { padding: 0; }
+.nx-ld-disclose > summary { cursor: pointer; padding: var(--nx-s3) var(--nx-s4); font-weight: var(--nx-w-label); }
+.nx-ld-disclose-body { display: flex; flex-direction: column; gap: var(--nx-s3); padding: 0 var(--nx-s4) var(--nx-s4); }
+.nx-ld-hbars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--nx-s2); }
+.nx-ld-hbars li { display: grid; grid-template-columns: minmax(8rem, 14rem) 1fr auto; gap: var(--nx-s3); align-items: center; }
+.nx-ld-hbar-label { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nx-ld-hbar-track { position: relative; block-size: var(--nx-s2); border-radius: var(--nx-r-pill); background: var(--nx-surface-2); overflow: hidden; }
+.nx-ld-hbar-fill { display: block; block-size: 100%; border-radius: var(--nx-r-pill); background: var(--nx-data); }
+.nx-ld-hbar-fill[data-tone="bad"] { background: var(--nx-bad); }
+.nx-ld-hbar-fill[data-tone="warn"] { background: var(--nx-warn); }
+.nx-ld-hbar-fill[data-tone="good"] { background: var(--nx-good); }
+.nx-ld-hbar-text { color: var(--nx-ink-2); font-size: var(--nx-fs-small); font-variant-numeric: tabular-nums; }
+.nx-ld-about-steps { margin: 0; padding-inline-start: var(--nx-s5); display: flex; flex-direction: column; gap: var(--nx-s1); }
+.nx-ld-about-steps li[aria-current="step"] { font-weight: var(--nx-w-label); color: var(--nx-accent); }
+.nx-ld-means { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--nx-s3); }
+.nx-ld-means dt { font-weight: var(--nx-w-label); }
+.nx-ld-means dd { margin: 0; color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-ld-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--nx-s2); }
+.nx-ld-list > li { display: flex; flex-direction: column; gap: var(--nx-s1); padding-block: var(--nx-s2); border-block-end: 1px solid var(--nx-border); }
+.nx-ld-list-row { display: flex; flex-wrap: wrap; gap: var(--nx-s2); align-items: center; }
+.nx-ld-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--nx-s3); }
+.nx-ld-steps > li { display: flex; flex-direction: column; gap: var(--nx-s2); }
+.nx-ld-filters { display: flex; flex-wrap: wrap; gap: var(--nx-s3); align-items: flex-end; }
+.nx-ld-filters > label { display: flex; flex-direction: column; gap: var(--nx-s1); font-size: var(--nx-fs-small); color: var(--nx-ink-2); }
+.nx-ld-sparks { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--nx-s3); }
+.nx-ld-sparks > figure { margin: 0; display: flex; flex-direction: column; gap: var(--nx-s1); }
+/* Go-live runway (GoLive.tsx): an SVG chart, layout and token strokes only. */
+.nx-ld-fd { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--nx-s4); }
+.nx-ld-fd-runway { inline-size: 100%; overflow: hidden; }
+.nx-ld-fd-runway svg { display: block; }
+.nx-ld-fd-axis { font-size: var(--nx-fs-small); fill: var(--nx-ink-3); }
+.nx-ld-fd-today { stroke: var(--nx-border-strong); stroke-width: 1; }
+.nx-ld-fd-golive { stroke: var(--nx-ink); stroke-width: 1; stroke-dasharray: 2 3; }
+.nx-ld-fd-target { stroke: var(--nx-bad); stroke-width: 1; stroke-dasharray: 4 3; }
+.nx-ld-fd-cone { fill: var(--nx-data); fill-opacity: 0.15; stroke: none; }
+.nx-ld-fd-hist { fill: none; stroke: var(--nx-ink-3); stroke-width: 1.5; }
+.nx-ld-fd-dot { fill: var(--nx-ink-3); }
+.nx-ld-fd-fc { stroke: var(--nx-data); stroke-width: 2; }
+.nx-ld-fd-hit { fill: var(--nx-surface); stroke: var(--nx-data); stroke-width: 2; }
+.nx-ld-fd-row[data-short="true"] .nx-ld-fd-hit { stroke: var(--nx-bad); }
+.nx-ld-fd-name { display: flex; flex-direction: column; align-items: flex-start; gap: var(--nx-s1); }

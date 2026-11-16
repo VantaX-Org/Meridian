@@ -441,6 +441,12 @@ export function sys6bRead(path: string, params: Params): unknown {
   if (cmp) return compare(decodeURIComponent(cmp[1]), params.object ? String(params.object) : undefined);
 
   if (path === "/z-objects/registry") return { total: Z_ENTRIES.length, entries: zEntries() };
+  const zr = /^\/z-objects\/registry\/([^/]+)$/.exec(path);
+  if (zr) {
+    const e = zEntries().find((x) => x.id === decodeURIComponent(zr[1]));
+    if (!e) throw detail(404, "Z object not found");
+    return e;
+  }
   const zp = /^\/z-objects\/profile\/([^/]+)$/.exec(path);
   if (zp) {
     const e = Z_ENTRIES.find((x) => x.id === decodeURIComponent(zp[1]));

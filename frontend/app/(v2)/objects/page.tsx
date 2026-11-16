@@ -1,5 +1,4 @@
-import { ObjectsCanvas } from "@/design/v2/screens/Objects";
-
-export default function ObjectsPage() {
-  return <ObjectsCanvas />;
+// This address moved; NextRedirect in the layout sends the browser to its new screen (lib/next/nav-defaults.ts).
+export default function MovedPage() {
+  return null;
 }

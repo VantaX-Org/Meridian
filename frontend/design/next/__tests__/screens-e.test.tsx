@@ -13,17 +13,13 @@ vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
 // The v2 screens are mounted unchanged; here each is a stub that proves which one was mounted.
-vi.mock("@/design/v2/screens/Attention", async () => (await import("./stub")).stub("Attention"));
 vi.mock("@/design/v2/screens/Work", async () => (await import("./stub")).stub("WorkCanvas"));
 vi.mock("@/design/v2/screens/WorkAnalytics", async () => (await import("./stub")).stub("WorkAnalytics"));
 vi.mock("@/design/v2/screens/FixDrafts", async () => (await import("./stub")).stub("FixDrafts"));
 vi.mock("@/design/v2/screens/DataRequests", async () => (await import("./stub")).stub("DataRequests"));
 vi.mock("@/design/v2/screens/Cleansing", async () => (await import("./stub")).stub("Cleansing"));
-vi.mock("@/design/v2/screens/Requests", async () => (await import("./stub")).stub("RequestsCanvas"));
-vi.mock("@/design/v2/screens/RequestForm", async () => (await import("./stub")).stub("RequestFormCanvas"));
-vi.mock("@/design/v2/screens/ProcessAnalytics", async () => (await import("./stub")).stub("ProcessAnalytics"));
 vi.mock("@/design/v2/screens/People", async () => (await import("./stub")).stub("PeopleCanvas"));
-vi.mock("@/design/v2/screens/LearnedMonitors", async () => (await import("./stub")).stub("LearnedMonitors"));
+vi.mock("../monitor/LearnedMonitors", async () => (await import("./stub")).stub("LearnedMonitors"));
 vi.mock("@/design/v2/screens/RulesLibrary", async () => (await import("./stub")).stub("RulesLibrary"));
 vi.mock("@/design/v2/screens/RulePromotion", async () => (await import("./stub")).stub("RulePromotion"));
 vi.mock("@/design/v2/screens/RuleDryRun", async () => (await import("./stub")).stub("RuleDryRun"));
@@ -37,14 +33,14 @@ vi.mock("@/design/v2/screens/EntryGate", async () => (await import("./stub")).st
 vi.mock("@/design/v2/screens/ReferenceData", async () => (await import("./stub")).stub("ReferenceData"));
 vi.mock("@/design/v2/screens/Links", async () => (await import("./stub")).stub("Links"));
 vi.mock("@/design/v2/screens/Catalogue", async () => (await import("./stub")).stub("Catalogue"));
-vi.mock("@/design/v2/screens/Issues", async () => (await import("./stub")).stub("Issues"));
-vi.mock("@/design/v2/screens/Mining", async () => (await import("./stub")).stub("Mining"));
-vi.mock("@/design/v2/screens/ProcessDiscovery", async () => (await import("./stub")).stub("ProcessDiscovery"));
-vi.mock("@/design/v2/screens/ScoreLens", async () => (await import("./stub")).stub("ScoreLens"));
-vi.mock("@/design/v2/screens/Insights", async () => (await import("./stub")).stub("Insights"));
-vi.mock("@/design/v2/screens/Forecast", async () => (await import("./stub")).stub("Forecast"));
-vi.mock("@/design/v2/screens/Value", async () => (await import("./stub")).stub("Value"));
-vi.mock("@/design/v2/screens/Config", async () => (await import("./stub")).stub("Config"));
+vi.mock("../more/Issues", async () => (await import("./stub")).stub("Issues"));
+vi.mock("../more/RecordMining", async () => (await import("./stub")).stub("RecordMining"));
+vi.mock("../more/ProcessDiscovery", async () => (await import("./stub")).stub("ProcessDiscovery"));
+vi.mock("../more/ScoreLens", async () => (await import("./stub")).stub("ScoreLens"));
+vi.mock("../more/Insights", async () => (await import("./stub")).stub("Insights"));
+vi.mock("../more/Forecast", async () => (await import("./stub")).stub("Forecast"));
+vi.mock("../more/Value", async () => (await import("./stub")).stub("Value"));
+vi.mock("../more/Config", async () => (await import("./stub")).stub("ConfigScreen"));
 vi.mock("@/design/v2/screens/Runs", async () => (await import("./stub")).stub("RunsCanvas"));
 vi.mock("@/design/v2/screens/system/SystemsCanvas", async () => (await import("./stub")).stub("SystemsCanvas"));
 vi.mock("@/design/v2/screens/Reports", async () => (await import("./stub")).stub("ReportsCanvas"));
@@ -138,7 +134,7 @@ describe("More", () => {
     a.unmount();
     setUrl("/more/systems/config?fixture=1");
     renderWithQuery(<More slug={["systems", "config"]} />);
-    expect(screen.getByTestId("mounted")).toHaveTextContent("Config");
+    expect(screen.getByTestId("mounted")).toHaveTextContent("ConfigScreen");
   });
 });
 
@@ -150,12 +146,7 @@ describe("NextRedirect", () => {
     expect(replace.mock.calls[0][0]).toContain("run=r1");
   });
 
-  it("does nothing with the flag off or on a screen that stays", () => {
-    prefs.value = { ui_next: false };
-    setUrl("/cleansing");
-    render(<NextRedirect />);
-    expect(replace).not.toHaveBeenCalled();
-    prefs.value = { ui_next: true };
+  it("does nothing on a screen that stays", () => {
     setUrl("/run/abc");
     render(<NextRedirect />);
     expect(replace).not.toHaveBeenCalled();

@@ -1,5 +1,6 @@
 """GET /versions?status=failed filters failed runs on the server, inside the tenant, before paging and the total."""
 import asyncio
+import re
 import uuid
 from typing import Any
 
@@ -73,3 +74,22 @@ def test_status_param_accepts_only_the_screen_groups():
     p = next(p for p in op["parameters"] if p["name"] == "status")
     allowed = p["schema"]["anyOf"][0]
     assert sorted(allowed.get("enum", [allowed.get("const")])) == ["active", "complete", "failed"]
+
+
+def test_module_filter_uses_jsonb_containment():
+    """metadata->>'modules' is text; @> on text errors in Postgres, so the filter must compare jsonb to jsonb."""
+    stmts: list[Any] = []
+
+    class _Capture(_Session):
+        async def execute(self, stmt: Any, params: Any = None) -> _Result:
+            stmts.append(stmt)
+            return _Result(0)
+
+    tenant = Tenant(uuid.UUID("00000000-0000-0000-0000-0000000000aa"), "t", [])
+    asyncio.run(versions.list_versions(limit=10, offset=0, module="material_master", system_id=None,
+                                       include_archived=False, status=None, sort="-run_at", db=_Capture(), tenant=tenant))
+    compiled = stmts[2].compile(dialect=postgresql.dialect())
+    m = re.search(r"analysis_versions\.metadata\[%\((\w+)\)s\] @> %\((\w+)\)s::JSONB", str(compiled))
+    assert m, str(compiled)
+    assert compiled.params[m.group(1)] == "modules"
+    assert compiled.params[m.group(2)] == ["material_master"]

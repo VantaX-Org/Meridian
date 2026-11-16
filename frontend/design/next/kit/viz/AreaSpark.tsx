@@ -4,7 +4,19 @@
 import { t } from "@/lib/v2/i18n";
 import "./charts.css";
 
-export function AreaSpark({ values, label, width = 240, height = 64, testid }: { values: readonly (number | null)[]; label: string; width?: number; height?: number; testid?: string }) {
+/**
+ * `cap` draws a dashed level line named in the caption (a score cap); `points` names each point: `axis` is the short
+ * date under it, `title` the full reading on hover. Both are optional, so a bare sparkline stays a bare sparkline.
+ */
+export function AreaSpark({ values, label, width = 240, height = 64, testid, cap, points }: {
+  values: readonly (number | null)[];
+  label: string;
+  width?: number;
+  height?: number;
+  testid?: string;
+  cap?: { value: number; label: string } | null;
+  points?: readonly { axis: string; title: string }[];
+}) {
   const pts = values.map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v !== null);
   const text = pts.length < 2 ? t("{label}: not enough runs for a trend", { label }) : t("{label}: from {a} to {b} over {n} runs", { label, a: String(Math.round(pts[0].v)), b: String(Math.round(pts[pts.length - 1].v)), n: String(pts.length) });
   const n = Math.max(values.length - 1, 1);
@@ -21,12 +33,20 @@ export function AreaSpark({ values, label, width = 240, height = 64, testid }: {
             <polygon points={`${x(pts[0].i)},${height - 1} ${line} ${x(pts[pts.length - 1].i)},${height - 1}`} className="nx-varea-fill" />
             <polyline points={line} className="nx-varea-line" />
             {pts.map((p) => (
-              <circle key={p.i} cx={x(p.i)} cy={y(p.v)} r="3" className="nx-varea-dot"><title>{String(Math.round(p.v * 10) / 10)}</title></circle>
+              <circle key={p.i} cx={x(p.i)} cy={y(p.v)} r="3" className="nx-varea-dot"><title>{points?.[p.i]?.title ?? String(Math.round(p.v * 10) / 10)}</title></circle>
             ))}
           </>
         ) : null}
+        {cap ? <line x1="0" x2={width} y1={y(cap.value)} y2={y(cap.value)} className="nx-varea-cap" data-testid="cap-line"><title>{cap.label}</title></line> : null}
       </svg>
-      <figcaption className="nx-chart-cap">{text}</figcaption>
+      {points?.length ? (
+        <div className="nx-varea-axis" aria-hidden="true">
+          {points.map((p, i) => (i % Math.max(1, Math.ceil(points.length / 8)) === 0 || i === points.length - 1) ? (
+            <span key={i} style={{ insetInlineStart: `${(x(i) / width) * 100}%` }} data-edge={i === 0 ? "start" : i === points.length - 1 ? "end" : undefined}>{p.axis}</span>
+          ) : null)}
+        </div>
+      ) : null}
+      <figcaption className="nx-chart-cap">{text}{cap ? <span className="nx-varea-caplab"> {cap.label}</span> : null}</figcaption>
     </figure>
   );
 }

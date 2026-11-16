@@ -4,7 +4,7 @@ import { useState } from "react";
 import { formatInt } from "@/lib/format";
 import { MODULE_LABELS } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
-import { V2Link } from "@/design/v2/parts";
+import Link from "next/link";
 import type { SimGroup, SimObject } from "@/lib/api/v2/load-simulation";
 import { useFieldCoverage, useLoadSimulation } from "@/lib/api/next/load";
 import { SegBar } from "../kit/viz";
@@ -42,7 +42,7 @@ export function Validate({ runId, objects, release, onBack, onBuild }: { runId: 
     { id: "rows", label: t("Rows"), align: "end", cell: (g) => formatInt(g.records), compare: (a, b) => a.records - b.records },
     { id: "effect", label: t("Effect"), cell: (g) => { const e = effectOf(g); return <Chip tone={e === "rejects" ? "bad" : "warn"}>{effectText(e)}</Chip>; } },
     { id: "fields", label: t("Fields"), cell: (g) => <span><code>{g.dest_table}-{g.field}</code>{g.field_text ? <><br />{g.field_text}</> : null}</span> },
-    { id: "action", label: t("Action"), cell: (g) => <V2Link href="/load/analysis">{VALUE_GAPS.has(g.gap_type) ? t("Map the value") : t("Review in Analysis")}</V2Link> },
+    { id: "action", label: t("Action"), cell: (g) => <Link href="/load/analysis">{VALUE_GAPS.has(g.gap_type) ? t("Map the value") : t("Review in Analysis")}</Link> },
   ];
 
   return (
@@ -74,7 +74,7 @@ export function Validate({ runId, objects, release, onBack, onBuild }: { runId: 
       {cover.data ? (
         <p className="nx-ld-meta" data-testid="field-coverage">
           {t("{done} of {all} fields mapped", { done: formatInt(cover.data.confirmed), all: formatInt(cover.data.total) })}{" "}
-          <V2Link href="/load/analysis">{t("Map fields")}</V2Link>
+          <Link href="/load/analysis">{t("Map fields")}</Link>
         </p>
       ) : null}
 

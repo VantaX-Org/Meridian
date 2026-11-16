@@ -5,14 +5,15 @@ import { useQuery } from "@tanstack/react-query";
 import { t } from "@/lib/v2/i18n";
 import { getUpdateProgress, triggerUpdate } from "@/lib/api/v2/admin";
 import { useUpdateStatus } from "@/lib/v2/admin-queries";
-import { Button, Chip, Confirm, EmptyState, Sheet } from "../kit";
+import { Button, Chip, Confirm, EmptyState, ErrorState, Sheet, Skeleton } from "../kit";
 import type { SheetCtx } from "../shell/SheetHost";
 
 const END = ["done", "failed", "rolled_back"];
 
 /** Update the stack: version, release notes, a confirm, then the live progress. Offered only when an updater exists and a newer version is out. */
 export function UpdateFlow({ ctx }: { ctx: SheetCtx }) {
-  const status = useUpdateStatus().data;
+  const q = useUpdateStatus();
+  const status = q.data;
   const [ask, setAsk] = useState(false);
   const [started, setStarted] = useState(false);
   const [err, setErr] = useState(false);
@@ -35,7 +36,7 @@ export function UpdateFlow({ ctx }: { ctx: SheetCtx }) {
   const p = progress.data;
   return (
     <Sheet open onClose={ctx.close} title={t("Update")} size="small" under={ctx.under} primary={canUpdate && !started ? <Button variant="primary" onClick={() => setAsk(true)}>{t("Update now")}</Button> : undefined}>
-      {!status ? <p>{t("Loading")}</p> : (
+      {q.isError ? <ErrorState error={q.error} fallback={t("The update status could not be read.")} onRetry={() => q.refetch()} /> : !status ? <Skeleton lines={3} /> : (
         <div>
           <p>{t("Installed")} <Chip tone="neutral">{status.current_version}</Chip> {t("Latest")} <Chip tone={status.update_available ? "accent" : "good"}>{status.latest_version}</Chip></p>
           {!status.updater_configured ? <EmptyState heading={t("Updates are not set up")}>{t("This deployment has no update service yet.")}</EmptyState> : null}

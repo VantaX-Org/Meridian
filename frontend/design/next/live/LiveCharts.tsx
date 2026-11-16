@@ -1,6 +1,6 @@
 "use client";
 
-import { sparkGeometry } from "@/design/v2/charts";
+import { sparkGeometry } from "../kit";
 import { formatCompact, formatPct } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import type { LiveState } from "@/lib/api/next/live-runs";

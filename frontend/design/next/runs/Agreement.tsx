@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { shortDate } from "@/design/v2/RunTimeline";
+import { shortDate } from "./format";
 import { getAgreement, noLaterRun, type AgreementStatus } from "@/lib/api/v2/roundtrip";
 import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";

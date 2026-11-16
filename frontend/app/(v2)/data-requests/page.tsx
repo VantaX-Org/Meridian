@@ -1,5 +1,6 @@
-import { DataRequests } from "@/design/v2/screens/DataRequests";
+import { redirect } from "next/navigation";
 
+/** The old address; the data requests screen now lives under More. */
 export default function DataRequestsPage() {
-  return <DataRequests />;
+  redirect("/more/data-requests");
 }

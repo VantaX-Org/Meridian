@@ -1,0 +1,9 @@
+.nx-rd { display: flex; flex-direction: column; gap: var(--nx-s4); }
+.nx-rd-head { display: flex; flex-direction: column; gap: var(--nx-s2); }
+.nx-rd-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--nx-s3); }
+.nx-rd-line { display: flex; flex-wrap: wrap; gap: var(--nx-s2) var(--nx-s4); margin: 0; }
+.nx-rd-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: var(--nx-s4); }
+.nx-rd-col { display: flex; flex-direction: column; gap: var(--nx-s4); min-width: 0; }
+.nx-rd-blast { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: var(--nx-s3); }
+.nx-rd-blast ul { display: flex; flex-direction: column; gap: var(--nx-s3); margin: 0; padding: 0; list-style: none; }
+.nx-rd-blast li { display: flex; flex-direction: column; align-items: flex-start; gap: var(--nx-s1); }

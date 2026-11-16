@@ -155,5 +155,5 @@ export function useDesignerHref(module: string): string {
   const L = useLandscape(null).data;
   const cell = L?.cells.find((c) => c.module === module);
   const sys = L?.systems.find((x) => x.id === cell?.system_id) ?? L?.systems[0];
-  return `/o/${systemSlug(sys?.name ?? "")}/${moduleSlug(module)}/processes/design`;
+  return `/next/o/${systemSlug(sys?.name ?? "")}/${moduleSlug(module)}/processes/design`;
 }

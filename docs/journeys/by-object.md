@@ -39,11 +39,11 @@ Glossary, Golden records.
 | Approve a learned rule | approve (`approve`) or review AI rules (`review_ai_rules`) | `/o/{system}/{object}/rules` | segment **Learned**, then **Approve** | The rule goes live |
 | Verified fix drafts | manage rules (`manage_rules`) | `/fix-drafts` | **Draft and verify**, **Approve**, **Reject** | A verified fix rule |
 | Compare runs | view (`view`) | `/o/{system}/{object}/trend` or `/runs` | "Compare two runs", or **Compare with previous** | `/run/{a}/vs/{b}` |
-| Migration analysis | analyse (`analyse`) | `/migration` | **Start an analysis** | Verdict "Ready to load", "Ready with conditions" or "Not ready to load" |
-| Field map | analyse (`analyse`) | `/migration` | **Propose from the source**, **Confirm** | The source to target field map |
-| Value map | view (`view`) to read, analyse (`analyse`) to propose, approve (`approve`) to decide | `/migration` | "Value map for {field}", **Propose these values**, **Approve**, **Reject** | Proposed values wait for a second person; the load uses approved values only |
-| Migration workbook | export (`export`), at least one system | `/migration` | "Workbook from the new system", **Check the workbook**, **Export in the same format** | A file in the new system's format; audited |
-| Reconcile after load | analyse (`analyse`) | `/migration` | **Run reconciliation**, **Extract the target system** | Post-load reconciliation |
+| Migration analysis | analyse (`analyse`) | `/load/analysis` | **Start an analysis** | Verdict "Ready to load", "Ready with conditions" or "Not ready to load" |
+| Field map | analyse (`analyse`) | `/load/analysis` | **Propose from the source**, **Confirm** | The source to target field map |
+| Value map | view (`view`) to read, analyse (`analyse`) to propose, approve (`approve`) to decide | `/load/analysis` | "Value map for {field}", **Propose these values**, **Approve**, **Reject** | Proposed values wait for a second person; the load uses approved values only |
+| Migration workbook | export (`export`), at least one system | `/load/analysis` | "Workbook from the new system", **Check the workbook**, **Export in the same format** | A file in the new system's format; audited |
+| Reconcile after load | analyse (`analyse`) | `/load/analysis` | **Run reconciliation**, **Extract the target system** | Post-load reconciliation |
 | New master data request | master data write (`mdm.write`) | `/requests` | **New request** | A request waits for approval |
 | Approve a request | approve (`approve`) | `/requests?open=request:{id}` | **Approve**, **Reject** | The request is decided |
 | Watch the object | view (`view`) | `/o/{system}/{object}` | **Watch** | Shows **Watching** |
@@ -140,7 +140,7 @@ Sample critical rules:
 
 **Journey: fix a critical material rule**
 
-1. `/o/_/material-master` (Overview). The lede shows the score out of 100.
+1. `/o/_/material-master` (Overview). The score ring shows the DQS of 100; **How this is scored** explains it.
 2. Tab **Rules**. Segment **Top fixes**. Find the rule.
 3. Click **Accept all** (steward). The values go into a draft batch.
 4. Data owner: `/work?filter=approvals`, open the batch, click **Approve**.
@@ -148,7 +148,7 @@ Sample critical rules:
 6. After the load in SAP: **Loaded in SAP**. The next run shows the rule's count drop.
 7. `/work/monitor` shows any records that fail again.
 
-**Migration.** The workbook panel on `/migration` accepts Migration Cockpit templates with `TABLE.FIELD` columns, for
+**Migration.** The workbook panel on `/load/analysis` accepts Migration Cockpit templates with `TABLE.FIELD` columns, for
 example `S_MARA`. Other views: `/materials` ("Material 360"), `/s4` ("S/4HANA readiness").
 
 ---
@@ -235,7 +235,7 @@ Rules EC654 to EC693 check data against the migration workbook.
 
 **Journey: migrate to a new HR system with its workbook**
 
-1. `/migration`. Open "Workbook from the new system".
+1. `/load/analysis`. Open "Workbook from the new system".
 2. Step "Choose the run and workbook": pick the run and upload the new system's workbook.
 3. Step "Check what fits": click **Check the workbook**. Nothing is stored. Rows show "Required for this country and
    empty" where a country rule fails. "Country rules not checked" lists countries without rules.

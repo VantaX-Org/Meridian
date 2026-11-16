@@ -27,7 +27,10 @@
 
 .nx-enter { animation: nx-fade-up var(--nx-dur-base) var(--nx-ease) both; }
 .nx-panel { animation: nx-slide-in var(--nx-dur-base) var(--nx-ease) both; }
-.nx-scrim, .nx-sheet-scrim { animation: nx-fade var(--nx-dur-base) var(--nx-ease) both; }
+.nx-scrim { animation: nx-fade var(--nx-dur-base) var(--nx-ease) both; }
+/* The sheet sits inside its scrim, so the scrim fades its tint only: fading its opacity would fade the sheet's text too. */
+@keyframes nx-tint-in { from { background-color: transparent; } }
+.nx-sheet-scrim { animation: nx-tint-in var(--nx-dur-base) var(--nx-ease) both; }
 .nx-toast { animation: nx-slide-up var(--nx-dur-fast) var(--nx-ease) both; }
 .nx-dialog { animation: nx-fade-up var(--nx-dur-base) var(--nx-ease) both; }
 .nx-menu { animation: nx-fade var(--nx-dur-fast) var(--nx-ease) both; }

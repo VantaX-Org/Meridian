@@ -4,7 +4,7 @@ import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { moduleSlug, systemSlug } from "@/lib/v2/score";
 import type { PortfolioRow } from "@/lib/api/next/portfolio";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { Icon } from "../Icon";
 import { Button } from "../kit";
 
@@ -49,7 +49,7 @@ export function BulkActions({ rows, act }: { rows: PortfolioRow[]; act: Portfoli
       <Button size={32} icon="upload" onClick={() => act.upload(rows)} disabled={!!no("upload")} reason={no("upload")}>{t("Upload cleaned workbooks")}</Button>
       <Button size={32} icon="refresh" onClick={() => act.score(rows)} disabled={!!no("analyse")} reason={no("analyse")}>{t("Score again")}</Button>
       <Button size={32} icon="columns" onClick={() => act.compare(rows)} disabled={rows.length < 2} reason={rows.length < 2 ? t("Pick two or more objects to compare them side by side.") : undefined}>{t("Compare")}</Button>
-      <V2Link className="nx-btn nx-btn-secondary nx-btn-sm" href={loadHref(rows)}><Icon name="arrow-up-right" />{t("Add to load")}</V2Link>
+      <NxLink className="nx-btn nx-btn-secondary nx-btn-sm" href={loadHref(rows)}><Icon name="arrow-up-right" />{t("Add to load")}</NxLink>
     </>
   );
 }

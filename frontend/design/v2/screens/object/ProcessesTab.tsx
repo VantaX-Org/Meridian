@@ -44,7 +44,7 @@ function StepBlock({ step, module, openId }: { step: StepView; module: string; o
               <p className="m2-rp m2-meta">{t("No field is mapped to this activity.")}</p>
             ) : (
               <ScrollFrame label={t("Fields of {l5_name}, scrollable", { l5_name: a.l5_name })}>
-                <TableExport><table className="m2-tbl m2-ftbl" aria-label={t("Fields of {l5_name}", { l5_name: a.l5_name })}>
+                <TableExport><table className="m2-tbl m2-ftbl" tabIndex={0} aria-label={t("Fields of {l5_name}", { l5_name: a.l5_name })}>
                   <thead>
                     <tr>
                       <th scope="col">{t("Field")}</th>

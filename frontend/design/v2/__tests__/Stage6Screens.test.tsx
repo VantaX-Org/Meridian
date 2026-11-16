@@ -22,7 +22,7 @@ import { ReferenceData } from "../screens/ReferenceData";
 import { ScoreLens } from "../screens/ScoreLens";
 import { Value } from "../screens/Value";
 import * as roles from "@/lib/api/v2/roles";
-import { ShareLanding } from "../shell/RoleBanners";
+import { ShareLanding } from "@/design/next/shell/ShareLanding";
 import { stubLayout } from "./layout-stub";
 import { setUrl } from "./nav-store";
 

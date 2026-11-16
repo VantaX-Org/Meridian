@@ -1,11 +1,7 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { CompareCanvas } from "@/design/v2/screens/Compare";
 import { ComparePage } from "@/design/next/runs/CompareSheet";
-import { useUiNext } from "@/design/next/useUiNext";
 
-export default function ComparePageRoute() {
-  const { id, b } = useParams<{ id: string; b: string }>();
-  return useUiNext() ? <ComparePage a={String(id)} b={String(b)} /> : <CompareCanvas a={String(id)} b={String(b)} />;
+export default async function CompareRoute({ params, searchParams }: { params: Promise<{ id: string; b: string }>; searchParams: Promise<{ runs?: string; objects?: string }> }) {
+  const { id, b } = await params;
+  const q = await searchParams;
+  return <ComparePage a={id} b={b} runs={q.runs ?? null} objects={q.objects ?? null} />;
 }

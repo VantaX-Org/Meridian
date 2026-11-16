@@ -5,7 +5,7 @@
  * and need a person. Sums of the work groups of the shown run. A count the work groups do not carry is not shown.
  */
 import { EmptyState, ErrorState, PartBar, Skeleton } from "@/design/next/kit";
-import { V2Link } from "@/design/v2/parts";
+import { NxLink } from "@/design/next/kit";
 import { useWorkGroups } from "@/lib/v2/object-queries";
 import { t } from "@/lib/v2/i18n";
 import { compactCount, Count, Denied, isDenied } from "./edge";
@@ -32,11 +32,11 @@ export function FixSection({ o }: { o: ObjectRun }) {
           <ul className="nx-fix-rows">
             <li>
               <span><strong><Count n={proposed} /></strong> {t("have a proposed fix")}</span>
-              <V2Link className="nx-btn nx-btn-secondary" href={href("proposed")}>{t("Review proposals")}</V2Link>
+              <NxLink className="nx-btn nx-btn-secondary" href={href("proposed")}>{t("Review proposals")}</NxLink>
             </li>
             <li>
               <span><strong><Count n={person} /></strong> {t("need a person")}</span>
-              <V2Link className="nx-btn nx-btn-secondary" href={href("manual")}>{t("Assign")}</V2Link>
+              <NxLink className="nx-btn nx-btn-secondary" href={href("manual")}>{t("Assign")}</NxLink>
             </li>
           </ul>
         </div>

@@ -48,7 +48,7 @@ const TABS: { key: TabKey; label: string; segment: string }[] = [
 ];
 
 /** Names the capping rules as links that open them in the inspector. Reads the cell, so it never waits for the receipt. */
-function CapSentence({ capped, cap, ids }: { capped: boolean; cap: number | null; ids: readonly string[] }) {
+export function CapSentence({ capped, cap, ids }: { capped: boolean; cap: number | null; ids: readonly string[] }) {
   const { hrefFor } = useOpenItem();
   const link = (id: string) => (
     <V2Link key={id} href={hrefFor({ kind: "rule", id })} className="m2-mono">
