@@ -13,7 +13,7 @@ import { useOpenItem, useV2Href } from "@/lib/v2/hooks";
 import { V2Link } from "@/design/v2/parts";
 import { Configuration } from "./system/Configuration";
 import { CustomObjects } from "./system/CustomObjects";
-import { SourceDesign } from "@/design/v2/screens/system/SourceDesign";
+import { SourceDesign } from "./system/SourceDesign";
 import { Schedules } from "./system/Schedules";
 import { ChangeLog } from "./system/ChangeLog";
 import { ConfigChanges } from "./system/ConfigChanges";
