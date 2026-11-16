@@ -11369,4 +11369,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "No rule or dimension stands out as a driver.": "Keine Regel und keine Dimension sticht als Treiber hervor.",
   "Runs that broke from the trend": "Läufe, die vom Trend abweichen",
   "Every run sits inside its normal range.": "Jeder Lauf liegt in seinem normalen Bereich.",
+  // journey-masterdata strings start
+  "Tables with rules": "Tabellen mit Regeln",
+  "Tables by object": "Tabellen nach Objekt",
+  // journey-masterdata strings end
 };

@@ -25,7 +25,7 @@ const status = (e: unknown) => (e as { response?: { status?: number }; status?: 
 const retry = (n: number, e: unknown) => { const s = status(e); return s !== 403 && s !== 404 && n < 2; };
 
 /** What each link type the discovery writes means (api/services/relationship_discovery.py). */
-const TYPE_TEXT: Record<string, () => string> = {
+export const TYPE_TEXT: Record<string, () => string> = {
   bp_is_customer: () => t("Business partner is a customer"),
   bp_is_vendor: () => t("Business partner is a vendor"),
   material_at_plant: () => t("Material exists at a plant"),
@@ -48,7 +48,7 @@ const TYPE_TEXT: Record<string, () => string> = {
   fi_posting_references_bp: () => t("FI posting names a business partner"),
 };
 
-const typeText = (type: string) => TYPE_TEXT[type]?.() ?? null;
+export const typeText = (type: string) => TYPE_TEXT[type]?.() ?? null;
 
 export function Links() {
   const fixture = useFixture();

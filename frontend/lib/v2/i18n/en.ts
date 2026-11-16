@@ -11368,6 +11368,10 @@ export const en = {
   "No rule or dimension stands out as a driver.": "No rule or dimension stands out as a driver.",
   "Runs that broke from the trend": "Runs that broke from the trend",
   "Every run sits inside its normal range.": "Every run sits inside its normal range.",
+  // journey-masterdata strings start
+  "Tables with rules": "Tables with rules",
+  "Tables by object": "Tables by object",
+  // journey-masterdata strings end
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

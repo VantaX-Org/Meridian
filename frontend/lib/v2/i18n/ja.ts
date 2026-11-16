@@ -11369,4 +11369,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "No rule or dimension stands out as a driver.": "目立った要因となるルールやディメンションはありません。",
   "Runs that broke from the trend": "傾向から外れた実行",
   "Every run sits inside its normal range.": "すべての実行が通常の範囲内にあります。",
+  // journey-masterdata strings start
+  "Tables with rules": "ルールのあるテーブル",
+  "Tables by object": "オブジェクト別のテーブル",
+  // journey-masterdata strings end
 };
