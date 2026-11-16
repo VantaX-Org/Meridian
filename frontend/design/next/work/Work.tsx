@@ -13,7 +13,6 @@ import { hiddenColumns } from "@/lib/v2/grid-export";
 import type { Landscape, WorkRow } from "@/lib/api/v2/types";
 import { ProcessAnalytics } from "@/design/v2/screens/ProcessAnalytics";
 import { RequestFormCanvas } from "@/design/v2/screens/RequestForm";
-import { RequestsCanvas } from "@/design/v2/screens/Requests";
 import { LegacyMount } from "../shell/LegacyMount";
 import { MonitorBody } from "../screens/Monitor";
 import { Button, Chip, Code, DataTable, EmptyState, SegmentedControl, Tabs, type Column, type TabItem } from "../kit";
@@ -28,6 +27,7 @@ import { WorkDrafts } from "./Drafts";
 import { WorkExceptions } from "./Exceptions";
 import { WorkTriage } from "./Triage";
 import { WorkQueue } from "./Queue";
+import { WorkRequests } from "./Requests";
 import "../shell/shell.css";
 import "./work.css";
 
@@ -50,8 +50,11 @@ const SCREENS: Record<string, ComponentType> = {
   analytics: WorkAnalytics,
   approvals: WorkApprovals,
 };
+// The request screens, keyed by segment or deep path.
+const NATIVE: Record<string, ComponentType> = {
+  requests: WorkRequests,
+};
 const LEGACY: Record<string, ComponentType> = {
-  requests: RequestsCanvas,
   "requests/new": RequestFormCanvas,
   "requests/analytics": ProcessAnalytics,
 };
@@ -180,6 +183,7 @@ export function Work({ slug }: { slug?: string[] }) {
   const items: TabItem[] = WORK_SEGMENTS.map((s) => ({ id: s.id, label: s.label() }));
   const key = (slug ?? []).join("/");
   const Screen = hit && !hit.deep ? SCREENS[hit.id] : undefined;
+  const Native = hit ? NATIVE[hit.deep ?? hit.id] : undefined;
   const Legacy = hit ? LEGACY[hit.deep ?? hit.id] : undefined;
   const go = (id: string) => {
     const s = WORK_SEGMENTS.find((x) => x.id === id);
@@ -206,6 +210,8 @@ export function Work({ slug }: { slug?: string[] }) {
           <MonitorBody />
         ) : Screen ? (
           <Screen />
+        ) : Native ? (
+          <Native />
         ) : Legacy ? (
           <LegacyMount><Legacy /></LegacyMount>
         ) : null}
