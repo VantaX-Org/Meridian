@@ -1,0 +1,45 @@
+/* Work > Approvals segment: layout only, kit tokens only. */
+.nx-aps-root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-s5);
+  padding-inline: var(--nx-gutter);
+}
+.nx-aps-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-s4);
+  padding: var(--nx-s5);
+  background: var(--nx-surface);
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-r-card);
+  color: var(--nx-ink);
+  min-width: 0;
+}
+.nx-aps-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--nx-s2);
+}
+.nx-aps-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--nx-s4);
+}
+.nx-aps-acts,
+.nx-aps-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--nx-s2);
+}
+.nx-aps-changes,
+.nx-aps-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nx-s2);
+  margin: 0;
+  padding-inline-start: var(--nx-s4);
+}

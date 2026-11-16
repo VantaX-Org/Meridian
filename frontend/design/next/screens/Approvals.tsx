@@ -15,12 +15,12 @@ type Filter = "all" | RequestState;
 const TONE = { pending: "warn", approved: "good", rejected: "bad", dry_run: "neutral" } as const;
 
 /** Write-back requests: the list with a state filter, and one request with its before and after and its decision. */
-export function Approvals() {
+export function Approvals({ base = "/next/approvals", back = "/approvals" }: { base?: string; back?: string } = {}) {
   const id = useSearchParams().get("id");
-  return id ? <Detail id={id} /> : <List />;
+  return id ? <Detail id={id} back={back} /> : <List base={base} />;
 }
 
-function List() {
+function List({ base }: { base: string }) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("pending");
   const q = useRequests(filter === "all" ? undefined : filter);
@@ -50,7 +50,7 @@ function List() {
         loading={q.isLoading}
         error={q.isError ? { sentence: t("The requests could not be read. Check that the API is reachable, then retry."), onRetry: () => void q.refetch() } : undefined}
         empty={{ heading: t("No requests here."), text: t("A write-back request appears when someone sends a fix for approval.") }}
-        onOpenRow={(r) => router.push(`/next/approvals?id=${encodeURIComponent(r.id)}`)}
+        onOpenRow={(r) => router.push(`${base}?id=${encodeURIComponent(r.id)}`)}
         columns={[
           { id: "rule", label: t("Rule"), cell: (r) => <><span className="nx-mono">{r.check_id ?? "-"}</span> <span className="nx-ap-text">{r.rule_message}</span></> },
           { id: "state", label: t("State"), cell: (r) => <Chip tone={TONE[r.state]}>{stateLabel(r.state)}</Chip> },
@@ -63,12 +63,12 @@ function List() {
   );
 }
 
-function Detail({ id }: { id: string }) {
+function Detail({ id, back }: { id: string; back: string }) {
   const q = useRequest(id);
   const r = q.data;
   return (
     <div className="nx-ap" data-testid="approvals-detail">
-      <V2Link className="nx-btn nx-btn-quiet" href="/approvals">{t("All requests")}</V2Link>
+      <V2Link className="nx-btn nx-btn-quiet" href={back}>{t("All requests")}</V2Link>
       {q.isError ? <ErrorState error={q.error} fallback={t("The request could not be read.")} onRetry={() => void q.refetch()} />
         : q.isLoading || !r ? <Skeleton lines={6} label={t("Loading the request")} />
         : (
