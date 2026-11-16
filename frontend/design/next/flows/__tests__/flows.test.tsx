@@ -7,6 +7,13 @@ import { FixApproveFlow } from "../FixApproveFlow";
 import { AnalysisFlow } from "../AnalysisFlow";
 import { NotifySteps } from "../NotifySteps";
 
+const target = vi.hoisted(() => ({
+  systems: [] as unknown[],
+  templates: {} as Record<string, { id: string; name: string; version: number; created_at: string }[]>,
+}));
+vi.mock("@/lib/v2/runs-queries", async (orig) => ({ ...(await orig<object>()), useSystemsExtended: () => ({ data: target.systems, isLoading: false, isError: false }) }));
+vi.mock("@/lib/api/v2/migration", async (orig) => ({ ...(await orig<object>()), getTemplates: async (m: string) => ({ module: m, templates: target.templates[m] ?? [] }) }));
+
 const type = (label: RegExp, v: string) => fireEvent.change(screen.getByLabelText(label), { target: { value: v } });
 const next = (name = "Next") => fireEvent.click(screen.getByRole("button", { name }));
 
@@ -87,9 +94,42 @@ describe("analysis flow", () => {
     await screen.findByTestId("flow-step-objects");
     fireEvent.click(screen.getByRole("checkbox"));
     next();
+    await screen.findByTestId("flow-step-target");
+    expect(screen.getByTestId("extract-target-nopair")).toBeTruthy();
+    expect(await screen.findByTestId("extract-target-none-customer")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Upload a template" })).toBeTruthy();
+    next();
     await screen.findByTestId("flow-step-start");
+    expect(screen.getByTestId("extract-target-preview").textContent).toBe("No template will be filled automatically.");
     next("Start analysis");
-    await waitFor(() => expect(start).toHaveBeenCalledWith("s1", ["customer"]));
+    await waitFor(() => expect(start).toHaveBeenCalledWith("s1", ["customer"], undefined));
+  });
+  it("sends a changed target system and a picked template", async () => {
+    target.systems = [
+      { id: "src", name: "Source one", role: "source", target_system_id: "tgt" },
+      { id: "tgt", name: "Target one", role: "target", target_system_id: null },
+      { id: "tgt2", name: "Target two", role: "target", target_system_id: null },
+    ];
+    target.templates = { customer: [{ id: "old", name: "Customer load", version: 1, created_at: "2026-01-01" }, { id: "new", name: "Customer load v2", version: 2, created_at: "2026-02-01" }] };
+    const start = vi.fn().mockResolvedValue({});
+    renderWithQuery(<AnalysisFlow systems={[{ id: "src", name: "Source one" }]} objects={["customer"]} start={start} />);
+    fireEvent.click(screen.getByRole("radio"));
+    next();
+    await screen.findByTestId("flow-step-objects");
+    fireEvent.click(screen.getByRole("checkbox"));
+    next();
+    await screen.findByTestId("flow-step-target");
+    const sys = screen.getByTestId("extract-target-system") as HTMLSelectElement;
+    expect(sys.value).toBe("tgt");
+    const tpl = (await screen.findByTestId("extract-target-tpl-customer")) as HTMLSelectElement;
+    expect(tpl.value).toBe("new");
+    fireEvent.change(sys, { target: { value: "tgt2" } });
+    fireEvent.change(tpl, { target: { value: "old" } });
+    next();
+    await screen.findByTestId("flow-step-start");
+    expect(screen.getByTestId("extract-target-preview").textContent).toMatch(/^Will fill: Customer load for /);
+    next("Start analysis");
+    await waitFor(() => expect(start).toHaveBeenCalledWith("src", ["customer"], { target_system_id: "tgt2", target_template_ids: { customer: "old" } }));
   });
 });
 
