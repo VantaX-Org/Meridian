@@ -199,7 +199,7 @@ def _definition(name: str, rows: list[tuple], at: int, id_col: int) -> Sheet:
         i = head.get(key)
         return row[i] if i is not None and i < len(row) else None
 
-    sheet, seen = Sheet(name, "definition"), {}
+    sheet, seen = Sheet(name, "definition"), dict[str, Column]()
     for row in rows[at + 1:]:
         fid = _text(row[id_col]) if id_col < len(row) else ""
         kind = _text(cell(row, "type"))
@@ -1017,9 +1017,10 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
             if col.picklist:
                 value = snap_to_picklist(value, workbook.picklists.get(col.picklist.casefold(), set()))
             elif by_country:  # each row checks against its own country's picklist
+                assert countries is not None
                 for token, name in col.country_picklists.items():
                     allowed = workbook.picklists.get(name.casefold()) if name else None
-                    rows = (countries == token).to_numpy()
+                    rows = countries.eq(token).to_numpy()
                     if allowed and rows.any():
                         value = value.astype(object).copy()
                         value[rows] = snap_to_picklist(value[rows], allowed)
