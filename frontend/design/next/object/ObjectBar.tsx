@@ -9,7 +9,7 @@ import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Code, LargeTitle, NxLink, PointSpark, Popover, Ring } from "@/design/next/kit";
 import { writeClipboard } from "@/lib/browser";
-import { CapSentence } from "@/design/v2/screens/Object";
+import { CapSentence } from "./ScoreParts";
 import { useSheets } from "@/design/next/shell/SheetHost";
 import { getPairs } from "@/lib/api/v2/compare";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -134,7 +134,7 @@ export function ObjectBar({ o, cycle, downloads }: { o: ObjectRun; cycle: Object
       {receipt ? (
         <p className="nx-hero-cap">
           <span data-testid="cap-sentence">
-            <CapSentence capped={receipt.capped} cap={receipt.cap_level} ids={receipt.breaches.map((b) => b.check_id)} />
+            <CapSentence capped={receipt.capped} cap={receipt.cap_level} ids={receipt.breaches.map((b) => b.check_id)} names={Object.fromEntries(receipt.breaches.map((b) => [b.check_id, b.name]))} />
           </span>{" "}
           <Button variant="quiet" size={32} onClick={() => open({ kind: "score", id: o.module })}>{t("How this is scored")}</Button>
           <span className="nx-aletheia-by">{t("Scored by Aletheia")}</span>

@@ -11473,4 +11473,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.": "Regeln nach fehlerhaften Datensätzen geordnet; der Anteil ist der Teil der Grundgesamtheit dieser Regel, der fehlschlägt, ermittelt aus dem neuesten Lauf jedes Objekts.",
   "How the score is made": "So entsteht die Bewertung",
   "Score of {label}": "Bewertung von {label}",
+  "Every field of this record": "Alle Felder dieses Datensatzes",
+  "Loading the history": "Verlauf wird geladen",
+  "No rule fails on this record in this run.": "In diesem Lauf schlägt keine Regel bei diesem Datensatz fehl.",
 };

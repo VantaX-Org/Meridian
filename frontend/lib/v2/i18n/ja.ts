@@ -11473,4 +11473,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Rules ordered by records failing; the share is the part of that rule's population that fails, worked out from the newest run of each object.": "不合格レコード数の多い順に並べたルールです。割合は、そのルールの対象母集団のうち不合格となる部分で、各オブジェクトの最新の実行から算出しています。",
   "How the score is made": "スコアの算出方法",
   "Score of {label}": "{label}のスコア",
+  "Every field of this record": "このレコードのすべての項目",
+  "Loading the history": "履歴を読み込んでいます",
+  "No rule fails on this record in this run.": "この実行では、このレコードで不合格となるルールはありません。",
 };

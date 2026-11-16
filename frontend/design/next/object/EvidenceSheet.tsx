@@ -3,10 +3,9 @@
 /** The object page's sheets: Aletheia's evidence, how the score is made, one rule, one record. */
 import { useSearchParams } from "next/navigation";
 import { Code, EmptyState, ErrorState, NxLink, Sheet, Skeleton } from "@/design/next/kit";
-import { LegacyScope } from "@/design/next/shell/LegacyMount";
-import { RuleInspectorBody } from "@/design/v2/inspector/rule";
-import { RecordInspector, parseRecordId } from "@/design/v2/screens/RecordInspector";
-import { useLandscape, useReceipt } from "@/lib/v2/queries";
+import { RuleEvidence } from "./RuleEvidence";
+import { RecordEvidence, parseRecordId } from "./RecordEvidence";
+import { useReceipt } from "@/lib/v2/queries";
 import { describeField } from "@/lib/v2/sap-fields";
 import { int } from "@/lib/v2/score";
 import { t } from "@/lib/v2/i18n";
@@ -104,16 +103,18 @@ export function ScoreSheet({ id, close, under }: SheetProps) {
 }
 
 export function RuleSheet({ id, close, under }: SheetProps) {
-  const landscape = useLandscape(null).data;
   return (
     <Sheet open onClose={close} title={t("Rule")} meta={<Code code={id} />} size="large" under={under} secondary={<NxLink className="nx-btn nx-btn-secondary" href={`/r/${encodeURIComponent(id)}`}>{t("Open as page")}</NxLink>}>
-      <LegacyScope><RuleInspectorBody id={id} landscape={landscape} /></LegacyScope>
+      <RuleEvidence id={id} />
     </Sheet>
   );
 }
 
-export function RecordSheet({ id, close }: SheetProps) {
-  const { module, key } = parseRecordId(id);
-  void module; void key;
-  return <LegacyScope><RecordInspector id={id} onClose={close} /></LegacyScope>;
+export function RecordSheet({ id, close, under }: SheetProps) {
+  const { key } = parseRecordId(id);
+  return (
+    <Sheet open onClose={close} title={t("Record")} meta={<Code code={key} />} size="large" under={under}>
+      <RecordEvidence id={id} />
+    </Sheet>
+  );
 }
