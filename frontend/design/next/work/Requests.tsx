@@ -38,7 +38,7 @@ import { describeField } from "@/lib/v2/sap-fields";
 import { int, pct1 } from "@/lib/v2/score";
 import { ageWord, kindWord, objectWord, statusWord } from "@/design/v2/inspector/request";
 import { parseFields, parseKeys } from "@/design/v2/screens/Requests";
-import { Button, Code, Confirm, DataTable, EmptyState, ErrorState, PartBar, SegmentedControl, Skeleton, StatCard, useToast, type Column } from "../kit";
+import { Button, Code, Confirm, DataTable, EmptyState, ErrorState, PartBar, SegmentedControl, Skeleton, useToast, type Column } from "../kit";
 import { Banner, Consequence, FixHead, FlowSteps } from "./parts";
 import "./queue.css";
 

@@ -16,7 +16,7 @@ const { pendingQ, ok, never } = vi.hoisted(() => ({
 }));
 
 const S = vi.hoisted(() => ({
-  can: (_p: string): boolean => true,
+  can: (() => true) as (p: string) => boolean,
   licence: undefined as unknown,
   billing: vi.fn(),
   tenant: undefined as unknown,

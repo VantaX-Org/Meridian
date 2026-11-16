@@ -7,7 +7,7 @@ import { AletheiaSurvivorship } from "../AletheiaSurvivorship";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 
-const Q = vi.hoisted(() => ({ data: null as unknown, fail: false, can: ((_: string) => true) as (a: string) => boolean, decision: vi.fn(), bulk: vi.fn() }));
+const Q = vi.hoisted(() => ({ data: null as unknown, fail: false, can: (() => true) as (a: string) => boolean, decision: vi.fn(), bulk: vi.fn() }));
 vi.mock("@/lib/api/v2/aletheia-survivorship", async (orig) => ({
   ...(await orig<object>()),
   getSurvivorship: () => (Q.fail ? Promise.reject(new Error("down")) : Promise.resolve(Q.data)),

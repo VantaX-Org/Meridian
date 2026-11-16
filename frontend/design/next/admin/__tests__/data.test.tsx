@@ -20,7 +20,7 @@ const ok = <T,>(data: T) => ({ data, isPending: false, isLoading: false, isError
 const waiting = () => ({ data: undefined, isPending: true, isLoading: true, isError: false, isSuccess: false, error: null, refetch: () => Promise.resolve() });
 
 const S = vi.hoisted(() => ({
-  can: (_p: string): boolean => true,
+  can: (() => true) as (p: string) => boolean,
   resetFieldMappings: vi.fn(),
   uploadReference: vi.fn(),
   deleteReference: vi.fn(),

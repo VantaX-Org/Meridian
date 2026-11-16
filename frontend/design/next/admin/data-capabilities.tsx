@@ -10,7 +10,7 @@ import { useAssignable } from "@/lib/v2/approvals-queries";
 import { refreshRoles, useStewardAssignments, useTemplate, useTemplateGaps } from "@/lib/v2/roles-queries";
 import { t, lc } from "@/lib/v2/i18n";
 import { Button, Chip, Code, DataTable, DropZone, EmptyState } from "../kit";
-import { DataBlock, DataLoaded, DataPage, Field, NeedsPermission, useAct, useCan } from "./data-parts";
+import { DataBlock, DataLoaded, DataPage, NeedsPermission, useAct, useCan } from "./data-parts";
 
 const SLICE_WORD: Record<SliceKind, () => string> = {
   company_code: () => t("Company code"),

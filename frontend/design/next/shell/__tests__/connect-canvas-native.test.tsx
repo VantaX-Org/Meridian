@@ -8,7 +8,7 @@ import { ConnectCanvasNative } from "../ConnectCanvasNative";
 
 vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
 const S = vi.hoisted(() => ({
-  can: (_p: string): boolean => true,
+  can: (() => true) as (p: string) => boolean,
   register: vi.fn(),
   profile: vi.fn(),
   apply: vi.fn(),

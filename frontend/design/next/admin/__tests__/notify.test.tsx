@@ -19,7 +19,7 @@ vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-
 const ok = (data: unknown) => ({ data, isLoading: false, isPending: false, isSuccess: true, isError: false, error: null, refetch: () => Promise.resolve() });
 
 const S = vi.hoisted(() => ({
-  can: (_p?: string): boolean => true,
+  can: (() => true) as (p?: string) => boolean,
   api: {
     saveAlertThresholds: vi.fn(),
     saveDefaultDigest: vi.fn(),
