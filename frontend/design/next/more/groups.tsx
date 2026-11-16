@@ -12,7 +12,7 @@ import { ReferenceData } from "./ReferenceData";
 import { Links } from "./Links";
 import { Catalogue } from "./Catalogue";
 import { Issues } from "@/design/v2/screens/Issues";
-import { Mining } from "@/design/v2/screens/Mining";
+import { RecordMining } from "./RecordMining";
 import { ProcessDiscovery } from "@/design/v2/screens/ProcessDiscovery";
 import { ScoreLens } from "./ScoreLens";
 import { Insights } from "./Insights";
@@ -47,7 +47,7 @@ export const GROUPS: Group[] = [
     { id: "links", label: () => t("Links"), Screen: Links },
     { id: "catalogue", label: () => t("Catalogue"), Screen: Catalogue },
     { id: "issues", label: () => t("Issues"), Screen: Issues },
-    { id: "mining", label: () => t("Mining"), Screen: Mining },
+    { id: "mining", label: () => t("Mining"), Screen: RecordMining },
     { id: "processes", label: () => t("Processes"), Screen: ProcessDiscovery },
   ] },
   { id: "insights", title: () => t("Insights"), blurb: () => t("Score, forecast and value."), tabs: [
