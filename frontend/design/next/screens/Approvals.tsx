@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { formatInt } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
+import { useV2Session } from "@/lib/v2/hooks";
 import { NxLink } from "@/design/next/kit";
 import { useRequest, useRequests, type RequestRow, type RequestState } from "@/lib/api/next/approvals";
 import { Chip, DataTable, EmptyState, ErrorState, SegmentedControl, Skeleton } from "../kit";
@@ -12,6 +13,11 @@ import { DecisionPanel, stateLabel } from "../approvals/DecisionPanel";
 import "../approvals/approvals.css";
 
 type Filter = "all" | RequestState;
+
+/** Approving writes nothing to SAP when live write-back is off; the fixes then go out with the export. */
+function LiveOff() {
+  return <p role="note" className="nx-ap-note" data-testid="live-off">{t("Live write-back is off on this deployment, so approving writes nothing. Deliver the fixes with the export.")}</p>;
+}
 const TONE = { pending: "warn", approved: "good", rejected: "bad", dry_run: "neutral" } as const;
 
 /** Write-back requests: the list with a state filter, and one request with its before and after and its decision. */
@@ -25,12 +31,15 @@ function List({ base }: { base: string }) {
   const [filter, setFilter] = useState<Filter>("pending");
   const q = useRequests(filter === "all" ? undefined : filter);
   const rows = q.data?.items ?? [];
+  const { can } = useV2Session();
   return (
     <div className="nx-ap" data-testid="approvals-list">
       <header className="nx-ap-head">
         <h1>{t("Approvals")}</h1>
         <p>{t("Every write-back needs a second person. Requests you made wait for someone else.")}</p>
       </header>
+      {q.data && !q.data.live_enabled ? <LiveOff /> : null}
+      {can("approve") ? null : <p role="note" className="nx-ap-note" data-testid="no-approve">{t("You can read these requests. Deciding one needs the approve permission.")}</p>}
       <SegmentedControl<Filter>
         label={t("Show requests")}
         value={filter}
@@ -77,6 +86,7 @@ function Detail({ id, back }: { id: string; back: string }) {
               <h1>{r.rule_message ?? r.check_id ?? t("Write-back request")}</h1>
               <p><span className="nx-mono">{r.check_id}</span> {r.module ? <span className="nx-mono">{r.module}</span> : null}</p>
             </header>
+            {r.live_enabled ? null : <LiveOff />}
             <DecisionPanel req={r} />
             {r.errors.length ? <ul className="nx-ap-errors">{r.errors.map((e, i) => <li key={i}>{e}</li>)}</ul> : null}
             {r.changes.length === 0

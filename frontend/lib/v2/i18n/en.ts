@@ -11542,6 +11542,10 @@ export const en = {
   "The column types could not be loaded.": "The column types could not be loaded.",
   "The type could not be saved.": "The type could not be saved.",
   "After cleaning": "After cleaning",
+  "Extraction mode": "Extraction mode",
+  "The objects could not be read.": "The objects could not be read.",
+  "The update status could not be read.": "The update status could not be read.",
+  "You can read these requests. Deciding one needs the approve permission.": "You can read these requests. Deciding one needs the approve permission.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

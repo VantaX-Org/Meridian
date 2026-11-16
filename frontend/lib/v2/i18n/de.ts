@@ -11543,4 +11543,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The column types could not be loaded.": "Die Spaltentypen konnten nicht geladen werden.",
   "The type could not be saved.": "Der Typ konnte nicht gespeichert werden.",
   "After cleaning": "Nach der Bereinigung",
+  "Extraction mode": "Extraktionsmodus",
+  "The objects could not be read.": "Die Objekte konnten nicht gelesen werden.",
+  "The update status could not be read.": "Der Update-Status konnte nicht gelesen werden.",
+  "You can read these requests. Deciding one needs the approve permission.": "Sie können diese Anfragen lesen. Für eine Entscheidung brauchen Sie die Genehmigungsberechtigung.",
 };

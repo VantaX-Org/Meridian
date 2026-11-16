@@ -54,7 +54,7 @@ describe("connect flow", () => {
 
 describe("invite flow", () => {
   it("needs a valid email, then sends with the role", async () => {
-    const api = { invite: vi.fn().mockResolvedValue({ id: "u1" }), link: vi.fn().mockResolvedValue("https://x/invite") };
+    const api = { invite: vi.fn().mockResolvedValue({ id: "u1" }), link: vi.fn().mockResolvedValue({ url: "https://x/invite" }) };
     renderWithQuery(<InviteSteps roles={[{ key: "viewer", label: "Viewer" }]} api={api} />);
     expect(screen.getAllByText("Enter a valid email address.")[0]).toBeTruthy();
     type(/^Email/, "a@b.co");

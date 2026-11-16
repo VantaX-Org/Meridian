@@ -11543,4 +11543,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The column types could not be loaded.": "列の型を読み込めませんでした。",
   "The type could not be saved.": "型を保存できませんでした。",
   "After cleaning": "クレンジング後",
+  "Extraction mode": "抽出モード",
+  "The objects could not be read.": "オブジェクトを読み込めませんでした。",
+  "The update status could not be read.": "更新ステータスを読み込めませんでした。",
+  "You can read these requests. Deciding one needs the approve permission.": "これらの依頼は閲覧できます。判断するには承認権限が必要です。",
 };
