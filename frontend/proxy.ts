@@ -8,7 +8,7 @@ import { buildCsp } from "./lib/csp";
  * call still carries and verifies the real session.
  */
 const PUBLIC = ["/sign-in", "/sign-up", "/login", "/accept-invite", "/forgot-password", "/reset-password",
-  "/licence-error", "/api", "/health", "/status"];
+  "/licence-error", "/api", "/health", "/status", "/n/share"];
 
 /** Continue to the page with a fresh nonce: the request header lets the layout and Next read it, the response header enforces it. */
 function withCsp(req: NextRequest, extra?: (res: NextResponse) => void) {
