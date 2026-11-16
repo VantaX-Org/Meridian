@@ -10,7 +10,7 @@ import { MdmHealth } from "./MdmHealth";
 import { EntryGate } from "./EntryGate";
 import { ReferenceData } from "./ReferenceData";
 import { Links } from "./Links";
-import { Catalogue } from "@/design/v2/screens/Catalogue";
+import { Catalogue } from "./Catalogue";
 import { Issues } from "@/design/v2/screens/Issues";
 import { Mining } from "@/design/v2/screens/Mining";
 import { ProcessDiscovery } from "@/design/v2/screens/ProcessDiscovery";
