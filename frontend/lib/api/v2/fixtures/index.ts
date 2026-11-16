@@ -19,6 +19,7 @@ import { NOT_MINE, resetSys6b, sys6bRead, sys6bWrite, withSystems } from "./sys6
 import { NONE_ROLES, resetRolesFixture, rolesFixtureResponse, rolesFixtureWrite } from "./roles";
 import { adminFixtureResponse, adminFixtureWrite, fixtureDownload as adminFixtureDownload, NONE_ADMIN } from "./admin";
 import { subjectRead, subjectWrite, NONE_SUBJECT } from "./subject-requests";
+import { b8Read, NONE_B8 } from "./b8";
 import { dqFirewallRead, dqFirewallWrite, NONE_DQ_FIREWALL } from "./dq-firewall";
 import { enterpriseFixtureDownload, enterpriseFixtureResponse, enterpriseFixtureWrite, NONE_ENTERPRISE } from "./enterprise";
 import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, step9Read, step9Write, withContractMarks } from "./step9";
@@ -522,6 +523,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (rolesStep !== NONE_ROLES) return rolesStep as T;
   const ent = enterpriseFixtureResponse(path);
   if (ent !== NONE_ENTERPRISE) return ent as T;
+  const b8 = b8Read(path, params);
+  if (b8 !== NONE_B8) return b8 as T;
   const dqr = dqFirewallRead(path);
   if (dqr !== NONE_DQ_FIREWALL) return dqr as T;
   const sbr = subjectRead(path);

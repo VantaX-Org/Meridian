@@ -3,10 +3,13 @@
 Answers are assembled from the figures the Insights, Fix work and Progress services compute, and carry those figures
 as their proof (api/services/assistant.py). The model, when configured, only rewords facts it is given. Any signed-in user with view permission may ask; every read is scoped to the tenant.
 """
+import json
 import uuid
+from collections.abc import AsyncIterator
 from typing import Annotated, Literal, Optional, Union
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +28,9 @@ class AskBody(BaseModel):
     #: "current": score questions read the current state (every object at its latest run), as Home and Insights
     #: show it; ignored when ``version_id`` names a run
     scope: Optional[Literal["current"]] = None
+    #: narrow the question to one rule check or one failing record (the key is never sent to the model)
+    check_id: Optional[str] = Field(None, max_length=64, pattern=r"^[A-Za-z0-9_]+$")
+    record_key: Optional[str] = Field(None, max_length=200)
 
 
 class DataPoint(BaseModel):
@@ -78,7 +84,48 @@ class AskAnswer(BaseModel):
 
 @router.post("/ask", response_model=AskAnswer, dependencies=[Depends(require_permission("view"))])
 async def ask(body: AskBody, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> AskAnswer:
-    out = await assistant.ask(body.question, str(body.version_id) if body.version_id else None, body.module,
-                              assistant.DbSources(db, tenant), str(tenant.id),
-                              current=body.scope == "current" and body.version_id is None)
-    return AskAnswer(**out)
+    return AskAnswer(**await _answer(body, db, tenant))
+
+
+async def _answer(body: AskBody, db: AsyncSession, tenant: Tenant) -> dict:
+    return await assistant.ask(body.question, str(body.version_id) if body.version_id else None, body.module,
+                               assistant.DbSources(db, tenant), str(tenant.id),
+                               current=body.scope == "current" and body.version_id is None,
+                               check_id=body.check_id, record_key=body.record_key)
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+@router.post("/ask/stream", response_class=StreamingResponse, dependencies=[Depends(require_permission("view"))])
+async def ask_stream(body: AskBody, db: AsyncSession = Depends(get_db),
+                     tenant: Tenant = Depends(get_tenant)) -> StreamingResponse:
+    """SSE: ``evidence`` (facts, citations, figures, links), then ``token`` events of the answer text, then ``done``
+    with the full AskAnswer. # ponytail: the model's reword is checked for grounding as a whole, so the checked
+    text is chunked rather than streamed token by token; stream tokens if grounding moves to a per-chunk check."""
+    out = AskAnswer(**await _answer(body, db, tenant)).model_dump()
+    await db.close()  # the answer is built; the stream holds no pooled connection
+
+    async def gen() -> AsyncIterator[str]:
+        yield _sse("evidence", {k: out[k] for k in ("intent", "version_id", "facts", "citations", "data", "chart",
+                                                    "links", "coverage", "grounded")})
+        for piece in assistant._chunks(out["answer"]):
+            yield _sse("token", {"text": piece})
+        yield _sse("done", out)
+
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "Connection": "keep-alive",
+                                      "X-Accel-Buffering": "no"})
+
+
+class Suggestions(BaseModel):
+    suggestions: list[str]
+
+
+@router.get("/suggestions", response_model=Suggestions, dependencies=[Depends(require_permission("view"))])
+async def get_suggestions(module: Optional[str] = Query(None, max_length=64), version_id: Optional[uuid.UUID] = None,
+                          check_id: Optional[str] = Query(None, max_length=64, pattern=r"^[A-Za-z0-9_]+$"),
+                          db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> Suggestions:
+    return Suggestions(suggestions=await assistant.suggestions(
+        assistant.DbSources(db, tenant), str(version_id) if version_id else None, module, check_id))
