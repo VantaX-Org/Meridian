@@ -89,8 +89,8 @@ def _run(app, tid, sid, results, vendors):
                       {"v": vid, "t": tid, "m": r.module, "c": r.check_id, "sev": r.severity, "d": r.dimension,
                        "a": r.affected_count, "n": r.total_count,
                        "det": json.dumps({**r.details, **({"error": r.error} if r.error else {})})})
-        with s.begin_nested():
-            stats = track(s, tid, vid, sid, results, _frames(vendors))
+        s.commit()
+        stats = track(s, tid, vid, sid, results, _frames(vendors))  # commits per batch: never in a savepoint
         s.commit()
     return vid, stats
 
@@ -894,3 +894,30 @@ def test_run_checks_lifecycle_session_resets_tenant_per_transaction(app_engine):
     src = inspect.getsource(run_checks)
     step9 = src[src.index("# Step 9: findings of the post-passes"):src.index("# Step 9b")]
     assert "with tenant_session(engine, tenant_id) as session:" in step9
+
+
+def test_multi_batch_lifecycle_tracks_every_batch(app_engine, monkeypatch):
+    """track commits after each lifecycle batch. Run inside begin_nested, that commit closed the
+    savepoint's transaction and batch 2 raised "Can't operate on closed transaction inside context
+    manager", so only the first batch of a large run was tracked and the monitor never ran."""
+    import inspect
+
+    from sqlalchemy import text
+
+    from workers.tasks import run_checks
+
+    owner, app = app_engine
+    tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'TB')"), {"a": tid})
+    monkeypatch.setenv("MERIDIAN_LIFECYCLE_RECORDS", "1000")  # the floor: one check per batch here
+    vendors = [str(i) for i in range(1000)]
+    _run(app, tid, sid, [_result("CHK-B1", vendors, total=1000), _result("CHK-B2", vendors, total=1000)], vendors)
+    iss = _issues(app, tid)
+    assert sum(1 for k in iss if k[0] == "CHK-B1") == 1000
+    assert sum(1 for k in iss if k[0] == "CHK-B2") == 1000
+
+    src = inspect.getsource(run_checks)
+    step9b = src[src.index("# Step 9b"):src.index("# Step 9c")]
+    call = step9b.index("stats = track(")
+    assert "with session.begin_nested():" not in step9b[:call]
