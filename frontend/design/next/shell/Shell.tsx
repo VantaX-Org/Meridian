@@ -18,7 +18,7 @@ import { Button } from "../kit";
 import { StoryHeader } from "./StoryHeader";
 import { StoryTabs } from "./StoryTabs";
 import { JobHairline } from "./JobHairline";
-import { Banners } from "./Banners";
+import { Banners, RoleChangeNotice } from "./Banners";
 import { SheetHost, useSheets } from "./SheetHost";
 import { SessionExpired } from "./SessionExpired";
 import "./shell.css";
@@ -159,6 +159,7 @@ function Frame({ children }: { children: ReactNode }) {
       <StoryTabs />
       <JobHairline />
       <Banners />
+      <RoleChangeNotice />
       <main id="nx-main" className="nx-main" tabIndex={-1}>{children}</main>
       {open ? (
         <div className="nx-insp-host">
