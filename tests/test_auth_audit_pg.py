@@ -69,7 +69,7 @@ def test_unknown_email_is_audited_with_what_was_typed(owner: Engine, client: Tes
     rows = _rows(owner, email=email)
     assert len(rows) == 1
     assert rows[0]["action"] == "auth.login_failed" and rows[0]["actor_user_id"] is None
-    assert rows[0]["after_json"] == {"email": email, "reason": "unknown_or_inactive"}
+    assert rows[0]["after_json"] == {"email": email, "reason": "unknown_user"}
     assert WRONG_PW not in json.dumps(rows[0], default=str)
 
 

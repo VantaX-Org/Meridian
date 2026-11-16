@@ -212,6 +212,99 @@ async def list_audit_entries(
     return {"entries": entries, "total": total, "limit": limit, "offset": offset}
 
 
+SignInOutcome = Literal["success", "bad_password", "unknown_user", "disabled", "unknown_or_disabled", "no_password",
+                        "locked", "sso_required", "sso_refused", "sso_error"]
+
+# One sign-in attempt per audit_log row (written by api/routes/auth.py and auth_oidc.py). auth.lockout and
+# auth.sso_user_created ride along with an attempt that already has its own row, so they are left out.
+_SIGNIN_SQL = """
+    SELECT a.id, a.actor_user_id, NULLIF(btrim(u.name), '') AS user_name, a.actor_email AS email,
+           a.after_json->>'reason' AS reason, a.ip, a.user_agent, a.created_at,
+           CASE WHEN a.action LIKE 'auth.sso%' THEN 'oidc' ELSE 'password' END AS method,
+           CASE
+             WHEN a.action IN ('auth.login', 'auth.sso_login') THEN 'success'
+             WHEN a.action = 'auth.sso_failed' THEN 'sso_error'
+             WHEN a.action = 'auth.sso_refused' THEN
+               CASE WHEN a.after_json->>'reason' = 'suspended' THEN 'disabled' ELSE 'sso_refused' END
+             ELSE CASE a.after_json->>'reason'
+                    WHEN 'wrong_password' THEN 'bad_password'
+                    WHEN 'unknown_or_inactive' THEN 'unknown_or_disabled'
+                    ELSE COALESCE(a.after_json->>'reason', 'bad_password') END
+           END AS outcome
+      FROM audit_log a
+      LEFT JOIN users u ON u.id = a.actor_user_id AND u.tenant_id = a.tenant_id
+     WHERE a.tenant_id = :tid
+       AND a.action IN ('auth.login', 'auth.login_failed', 'auth.sso_login', 'auth.sso_refused', 'auth.sso_failed')
+"""
+
+
+class SignInEntry(BaseModel):
+    id: str
+    user_id: Optional[str] = None  # null when the typed email matched nobody
+    user_name: Optional[str] = None
+    email: Optional[str] = None  # as typed, or as the identity provider asserted it
+    outcome: str
+    reason: Optional[str] = None  # the raw refusal code behind the outcome
+    method: Literal["password", "oidc"]
+    ip: Optional[str] = None
+    user_agent: Optional[str] = None
+    created_at: str
+
+
+class SignInPage(BaseModel):
+    entries: list[SignInEntry]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.get("/audit/sign-ins", response_model=SignInPage)
+async def list_sign_ins(
+    user_id: Optional[uuid.UUID] = Query(None),
+    outcome: Optional[SignInOutcome | Literal["failed"]] = Query(None, description="One outcome, or failed for every refusal"),
+    method: Optional[Literal["password", "oidc"]] = Query(None),
+    since: Optional[str] = Query(None, description="ISO-8601 timestamp, inclusive"),
+    until: Optional[str] = Query(None, description="ISO-8601 timestamp, inclusive"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_any_permission("view_audit", "manage_users")),
+) -> SignInPage:
+    """Every sign-in attempt to this tenant, newest first: who (or the email typed), outcome, method, client address
+    and browser. Read from audit_log, so the record is the same tamper-evident chain as the rest of the log."""
+    await _set_rls(db, tenant.id)
+    conds: list[str] = []
+    params: dict = {"tid": str(tenant.id)}
+    if user_id:
+        conds.append("actor_user_id = CAST(:uid AS uuid)")
+        params["uid"] = str(user_id)
+    if outcome == "failed":
+        conds.append("outcome <> 'success'")
+    elif outcome:
+        conds.append("outcome = :outcome")
+        params["outcome"] = outcome
+    if method:
+        conds.append("method = :method")
+        params["method"] = method
+    for value, clause, key in ((_instant(since, "since"), "created_at >= :since", "since"),
+                               (_instant(until, "until"), "created_at <= :until", "until")):
+        if value:
+            conds.append(clause)
+            params[key] = value
+    where = f"WHERE {' AND '.join(conds)}" if conds else ""
+    base = f"SELECT * FROM ({_SIGNIN_SQL}) s {where}"
+    total = (await db.execute(text(f"SELECT COUNT(*) FROM ({base}) c"), params)).scalar() or 0
+    rows = (await db.execute(text(f"{base} ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset"),
+                             {**params, "limit": limit, "offset": offset})).fetchall()
+    entries = []
+    for r in rows:
+        d = _entry(r)
+        d["user_id"] = d.pop("actor_user_id", None)
+        entries.append(SignInEntry(**d))
+    return SignInPage(entries=entries, total=total, limit=limit, offset=offset)
+
+
 def _csv_cell(value) -> str:
     if value is None:
         return ""

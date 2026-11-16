@@ -230,6 +230,9 @@ def test_code_pkce_happy_path_maps_by_email_then_subject(world: dict[str, Any], 
     assert _fragment_token(r)
     assert _rows(owner, "SELECT COUNT(*) FROM users WHERE tenant_id = :t AND email LIKE :e", t=DEV, e=f"renamed-{w['tag']}%")[0][0] == 0
     assert "auth.sso_login" in _audit_actions(owner)
+    ip, ua = _rows(owner, "SELECT ip, user_agent FROM audit_log WHERE tenant_id = :t AND action = 'auth.sso_login' "
+                          "ORDER BY created_at DESC LIMIT 1", t=DEV)[0]
+    assert ip and ua  # sign-in history shows where an SSO login came from
 
 
 @pytest.mark.parametrize("case", ["bad_signature", "wrong_aud", "wrong_issuer", "nonce_mismatch", "expired", "hs256", "bad_code"])
@@ -270,6 +273,7 @@ def test_state_must_match_and_be_bound_to_the_browser(world: dict[str, Any], idp
     assert _error(_callback(w, state)) == "expired"
     assert _error(w["client"].get("/api/v1/auth/oidc/callback", follow_redirects=False)) == "expired"
     assert _error(w["client"].get("/api/v1/auth/oidc/callback", params={"error": "access_denied", "state": "x"}, follow_redirects=False)) == "denied"
+    assert "auth.sso_failed" in _audit_actions(w["owner"])  # an IdP refusal is in the sign-in history
 
 
 def test_state_cookie_expires_after_ten_minutes(world: dict[str, Any], idp: MockIdp) -> None:

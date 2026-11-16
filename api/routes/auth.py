@@ -57,6 +57,19 @@ LOCKOUT_MINUTES = 15
 from api.deps import deployment_tenant_id as _deployment_tenant_id  # noqa: E402
 
 DEV_TENANT_ID = str(_deployment_tenant_id())
+
+
+def record_signin_sync(conn, request: Request, action: str, entity_id, after: dict, *, actor_user_id=None,
+                       actor_email=None, status_code: int = 200, tenant_id: str | None = None) -> None:
+    """Write one sign-in attempt to audit_log inside a savepoint. A failed write is logged and dropped: a broken
+    audit row must never stop someone signing in or change the answer they get. Never pass a password or token."""
+    try:
+        with conn.begin_nested():
+            write_audit_sync(conn, tenant_id or DEV_TENANT_ID, request, action, "user", entity_id, None, after,
+                             actor_user_id=actor_user_id, actor_email=actor_email, status_code=status_code)
+    except Exception:  # noqa: BLE001 - recording is best effort by design
+        import logging
+        logging.getLogger("meridian.auth").exception("could not record sign-in event %s", action)
 _column_exists_cache: dict[tuple[str, str], bool] = {}
 
 
@@ -215,10 +228,10 @@ def login(body: LoginRequest, request: Request, response: Response):
 
         def refuse(status: int, detail: str, reason: str) -> HTTPException:
             """Audit the refused sign-in (email as typed and the address, never the password) and commit it."""
-            write_audit_sync(conn, DEV_TENANT_ID, request, "auth.login_failed", "user",
-                             str(row[0]) if row else None, None, {"email": typed_email, "reason": reason},
-                             actor_user_id=str(row[0]) if row else None, actor_email=typed_email,
-                             status_code=status)
+            record_signin_sync(conn, request, "auth.login_failed", str(row[0]) if row else None,
+                               {"email": typed_email, "reason": reason},
+                               actor_user_id=str(row[0]) if row else None, actor_email=typed_email,
+                               status_code=status)
             conn.commit()
             return HTTPException(status_code=status, detail=detail)
 
@@ -227,8 +240,10 @@ def login(body: LoginRequest, request: Request, response: Response):
             raise refuse(403, "Your organisation requires single sign-on. Use Continue with single sign-on.",
                          "sso_required")
 
-        if not row or not row[5]:  # not found or inactive
-            raise refuse(401, "Invalid credentials", "unknown_or_inactive")
+        if not row:  # the same answer either way, so the reason is for the audit trail only
+            raise refuse(401, "Invalid credentials", "unknown_user")
+        if not row[5]:
+            raise refuse(401, "Invalid credentials", "disabled")
 
         if not row[4]:  # no password_hash set
             raise refuse(401, "Invalid credentials", "no_password")
@@ -252,10 +267,10 @@ def login(body: LoginRequest, request: Request, response: Response):
                      "RETURNING failed_login_count, COALESCE(locked_until > now(), false)"),
                 {"n": LOCKOUT_THRESHOLD, "m": LOCKOUT_MINUTES, "uid": str(row[0])}).fetchone()
             if counted and counted[1]:
-                write_audit_sync(conn, DEV_TENANT_ID, request, "auth.lockout", "user", str(row[0]), None,
-                                 {"email": row[1], "failed_login_count": int(counted[0]),
-                                  "locked_minutes": LOCKOUT_MINUTES},
-                                 actor_user_id=str(row[0]), actor_email=row[1], status_code=401)
+                record_signin_sync(conn, request, "auth.lockout", str(row[0]),
+                                   {"email": row[1], "failed_login_count": int(counted[0]),
+                                    "locked_minutes": LOCKOUT_MINUTES},
+                                   actor_user_id=str(row[0]), actor_email=row[1], status_code=401)
             raise refuse(401, "Invalid credentials", "wrong_password")
 
         must_change = bool(row[6])
@@ -291,8 +306,8 @@ def login(body: LoginRequest, request: Request, response: Response):
             text("UPDATE users SET last_login = :now, failed_login_count = 0, locked_until = NULL WHERE id = :uid"),
             {"now": datetime.now(timezone.utc), "uid": user_id},
         )
-        write_audit_sync(conn, DEV_TENANT_ID, request, "auth.login", "user", user_id, None,
-                         {"email": row[1], "method": "password"}, actor_user_id=user_id, actor_email=row[1])
+        record_signin_sync(conn, request, "auth.login", user_id, {"email": row[1], "method": "password"},
+                           actor_user_id=user_id, actor_email=row[1])
         conn.commit()
 
         return LoginResponse(

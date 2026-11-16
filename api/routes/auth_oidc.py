@@ -36,7 +36,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.deps import Tenant, get_db, get_sync_engine_or_create, get_tenant
 from api.middleware.licence import get_cached_manifest
-from api.routes.auth import DEV_TENANT_ID, _set_auth_cookie, cookie_secure
+from api.routes.auth import DEV_TENANT_ID, _set_auth_cookie, cookie_secure, record_signin_sync
 from api.services import oidc
 from api.services.crypto import decrypt_api_key, encrypt_api_key
 from api.services.local_auth import create_access_token, generate_jwt_secret
@@ -90,15 +90,23 @@ def _client_secret(cfg: dict[str, Any], jwt_secret: str) -> str:
     return decrypt_api_key(str(cfg.get("client_secret_encrypted") or ""), jwt_secret)
 
 
-def _audit(conn: Any, tenant_id: str, action: str, user_id: str | None, email: str | None, after: dict[str, Any],
-           status: int = 200) -> None:
-    conn.execute(
-        text("INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, "
-             "method, path, status_code, after_json) "
-             "VALUES (:t, :u, :e, :a, 'user', :ei, 'GET', :p, :s, CAST(:af AS jsonb))"),
-        {"t": tenant_id, "u": user_id, "e": email or "unknown", "a": action, "ei": user_id or "",
-         "p": CALLBACK_PATH, "s": status, "af": json.dumps(after)},
-    )
+def _audit(conn: Any, request: Request, action: str, user_id: str | None, email: str | None,
+           after: dict[str, Any], status: int = 200) -> None:
+    """A sign-in event with the client address and user agent; best effort (record_signin_sync never raises)."""
+    record_signin_sync(conn, request, action, user_id or "", after, actor_user_id=user_id,
+                       actor_email=email or "unknown", status_code=status)
+
+
+def _record_failure(request: Request, code: str, email: str | None = None) -> None:
+    """auth.sso_failed for a callback that ended before (or outside) the sign-in connection: the IdP said no, or
+    the exchange or token check failed. On its own connection so the failure is kept; never raises."""
+    try:
+        with get_sync_engine_or_create().connect() as conn:
+            conn.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": DEV_TENANT_ID})
+            _audit(conn, request, "auth.sso_failed", None, email, {"reason": code}, status=400)
+            conn.commit()
+    except Exception:  # noqa: BLE001 - recording must never change the redirect
+        log.exception("could not record failed SSO sign-in")
 
 
 # ── Public: config, start, callback ──────────────────────────────────────────
@@ -213,7 +221,8 @@ def _resolve_user(conn: Any, cfg: dict[str, Any], ident: dict[str, Any]) -> tupl
 def oidc_callback(request: Request, code: str | None = None, state: str | None = None,
                   error: str | None = None) -> RedirectResponse:
     """Finish sign-in: validate, map or provision the user, issue the session, land on /sign-in."""
-    if error:  # the IdP's text is not echoed anywhere
+    if error:  # the IdP's text is not echoed or stored anywhere
+        _record_failure(request, "denied")
         return _error_redirect("denied")
     raw_cookie = request.cookies.get(STATE_COOKIE)
     if not raw_cookie or not code or not state or len(code) > 4096 or len(state) > 512:
@@ -255,12 +264,13 @@ def oidc_callback(request: Request, code: str | None = None, state: str | None =
             try:
                 row, created = _resolve_user(conn, cfg, ident)
             except _Refused as refused:  # nothing was written before a refusal
-                _audit(conn, DEV_TENANT_ID, "auth.sso_refused", None, audit_email,
+                _audit(conn, request, "auth.sso_refused", None, audit_email,
                        {"reason": refused.code, "issuer": cfg["issuer"]}, status=403)
                 conn.commit()
                 return _error_redirect(refused.code)
             except IntegrityError:  # a concurrent first sign-in created the same identity
                 conn.rollback()
+                _record_failure(request, "failed", audit_email)
                 return _error_redirect("failed")
 
             user_id = str(row[0])
@@ -268,18 +278,21 @@ def oidc_callback(request: Request, code: str | None = None, state: str | None =
                 text("UPDATE users SET last_login = :now, failed_login_count = 0, locked_until = NULL WHERE id = :u"),
                 {"now": datetime.now(timezone.utc), "u": user_id})
             if created:
-                _audit(conn, DEV_TENANT_ID, "auth.sso_user_created", user_id, row[1],
+                _audit(conn, request, "auth.sso_user_created", user_id, row[1],
                        {"role": row[3], "issuer": cfg["issuer"], "grants": 0})
-            _audit(conn, DEV_TENANT_ID, "auth.sso_login", user_id, row[1], {"issuer": cfg["issuer"], "created": created})
+            _audit(conn, request, "auth.sso_login", user_id, row[1], {"issuer": cfg["issuer"], "created": created})
             conn.commit()
 
             token = create_access_token(user_id=user_id, tenant_id=DEV_TENANT_ID, email=row[1], role=row[3],
                                         secret=jwt_secret, token_version=int(row[5]))
     except oidc.OidcError as e:
         log.info("OIDC sign-in refused: %s", e.code)
-        return _error_redirect(e.code if e.code in ERROR_SENTENCES else "failed")
+        code = e.code if e.code in ERROR_SENTENCES else "failed"
+        _record_failure(request, code, audit_email)
+        return _error_redirect(code)
     except Exception:  # noqa: BLE001 - never a stack trace to the browser
         log.exception("OIDC callback failed")
+        _record_failure(request, "failed", audit_email)
         return _error_redirect("failed")
 
     fragment = urlencode({"sso": "1", "next": saved.get("nxt") or "/"})
