@@ -7,6 +7,7 @@ import { TermSheet } from "./screens/mdm/catalogue/TermSheet";
 import { ADMIN_SHEETS } from "./screens/admin/sheets";
 import { RUN_SHEETS } from "./screens/runs/sheets";
 import { LibraryRuleSheet, RuleSheet } from "./screens/rules/RuleSheet";
+import { workSheets } from "./screens/work/sheets";
 
 /** The sheets any screen can open with useSheet().open(id, arg). Add one entry per sheet; keep its body in the screen's own folder. */
 export const SHEETS: Record<string, SheetDef> = {
@@ -26,4 +27,6 @@ export const SHEETS: Record<string, SheetDef> = {
   // batch 6
   rule: { get label() { return t("Rule"); }, render: (arg) => createElement(RuleSheet, { arg: arg as { id: string } }) },
   "library-rule": { get label() { return t("Rule"); }, render: (arg) => createElement(LibraryRuleSheet, { arg: arg as { id: string } }) },
+  // batch 4
+  ...workSheets,
 };
