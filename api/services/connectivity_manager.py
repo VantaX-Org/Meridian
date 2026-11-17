@@ -1254,8 +1254,56 @@ class ConnectivityManager:
             coverage.append({"table": table, "status": "live", "rows": len(merged),
                              "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable), **extra})
         if full:
+            self._sf_raw_sets(connector, modules, frames, coverage)
             self._sf_picklists(connector, dictionary, wanted, frames, coverage)
         return frames, coverage
+
+    def _sf_raw_sets(self, connector, modules, frames, coverage) -> None:
+        """History mode: every move-sequence entity set (instance_move.SF_MOVE_STAGES) of ``modules`` that no
+        canonical table read, copied whole as SFRAW_<set>: every property, every effective-dated record, oldest
+        first, with its $metadata key in ``__raw_key__``. One set failing never stops the others."""
+        from api.services.migration import instance_move as im
+        from sap.successfactors import FULL_HISTORY, entity_keys, history_props
+
+        covered = {e for c in coverage for e in c.get("entities") or ()}
+        names: list[str] = []
+        for _, mods, sets in im.SF_MOVE_STAGES:
+            if not set(modules) & set(mods):
+                continue
+            for pattern in sets:
+                names += self._sf_family(connector, pattern[:-1]) if pattern.endswith("*") else [pattern]
+        every = self._sf_family(connector, "")  # also reads $metadata when no family pattern did
+        known = set(every) if self._sf_edmx else None
+        for ent in dict.fromkeys(names):
+            table = im.RAW_PREFIX + ent
+            if ent in covered or im.not_reachable(ent):
+                continue
+            if known is not None and ent not in known:
+                coverage.append({"table": table, "status": "not_in_system", "entities": [ent], "raw": True})
+                continue
+            keys = entity_keys(self._sf_edmx, ent) if self._sf_edmx else None
+            try:
+                # ponytail: one frame per set in memory; Attachment fileContent (base64) is the big one, page
+                # to disk per set if a tenant's attachments outgrow the worker
+                df = connector.read_entity_set(ent, **(FULL_HISTORY if history_props(keys, set()) else {}))
+            except Exception as e:
+                coverage.append({"table": table, "status": "not_in_system" if _not_found(e) else "failed",
+                                 "entities": [ent], "detail": str(e)[:300], "raw": True})
+                continue
+            df = df.drop(columns=[c for c in df.columns if c.startswith("__")
+                                  or df[c].map(lambda v: isinstance(v, (dict, list))).any()])
+            eff = next((c for c in im._EFFECTIVE_PROPS if c in df.columns), None)
+            if eff:
+                df = df.iloc[pd.to_datetime(df[eff], errors="coerce", utc=True).argsort(kind="stable")]
+            kcols = [k for k in keys or () if k in df.columns]
+            df = df.rename(columns=lambda c: f"{table}.{c}")
+            if kcols:
+                df["__raw_key__"] = ["|".join(f"{k}={v}" for k, v in zip(kcols, row))
+                                     for row in df[[f"{table}.{k}" for k in kcols]].itertuples(index=False)]
+            frames[table] = df.reset_index(drop=True)
+            coverage.append({"table": table, "status": "live", "rows": len(df), "entities": [ent], "raw": True,
+                             "history": "full", "keys": kcols,
+                             "duplicate_keys": int(df["__raw_key__"].duplicated().sum()) if kcols else 0})
 
     @staticmethod
     def _sf_picklists(connector, dictionary, tables, frames, coverage) -> None:
