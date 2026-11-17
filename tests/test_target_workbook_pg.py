@@ -69,7 +69,8 @@ async def test_check_reports_ready_and_held_rows(owner, monkeypatch, tmp_path):
     assert r.status_code == 200, r.text
     b = r.json()
     row = next(x for x in b["sheets"] if x["name"] == "Personal Info")
-    assert (row["rows"], row["ready"], row["held"]) == (3, 1, 2)  # Bartholomew too long, X not on the picklist
+    # every row is written; Bartholomew too long and X not on the picklist are flagged only
+    assert (row["rows"], row["ready"], row["held"], row["flagged"]) == (3, 1, 0, 2)
     assert b["held_total"] == len(b["held"]) == 2 and {h["field"] for h in b["held"]} == {"first-name", "gender"}
 
 

@@ -7,9 +7,9 @@
    "rules": 267
   },
   "employee_central": {
-   "benchmarked": 412,
-   "perfect": 412,
-   "rules": 798
+   "benchmarked": 411,
+   "perfect": 411,
+   "rules": 797
   },
   "material_master": {
    "benchmarked": 260,
@@ -16836,20 +16836,6 @@
    "recall": 1.0,
    "records": 40,
    "rule_id": "EC767",
-   "true_positives": 10
-  },
-  {
-   "benchmarkable": true,
-   "check_class": "cross_field_check",
-   "f1": 1.0,
-   "false_negatives": 0,
-   "false_positives": 0,
-   "injected": 10,
-   "module": "employee_central",
-   "precision": 1.0,
-   "recall": 1.0,
-   "records": 40,
-   "rule_id": "EC768",
    "true_positives": 10
   },
   {

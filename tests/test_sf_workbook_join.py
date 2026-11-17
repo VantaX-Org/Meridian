@@ -70,3 +70,17 @@ def test_job_info_sheet_takes_every_history_record():
     tabs, report = wb.fill(book("Job Info", ["user-id", "start-date", "seq-number"]), f)
     assert next(s for s in report["sheets"])["table"] == "EMPJOBHIST"
     assert len(tabs["Job Info"]) == 3
+
+
+def test_termination_sheet_keeps_only_people_who_left():
+    data = TableFrames({"EMPEMPLOYMENT": pd.DataFrame({
+        "EMPEMPLOYMENT.USERID": ["U1", "U2", "U3"], "EMPEMPLOYMENT.PERSON_ID": ["P1", "P2", "P3"],
+        "EMPEMPLOYMENT.START_DATE": ["2024-01-01"] * 3,
+        "EMPEMPLOYMENT.END_DATE": ["2025-03-31", None, "00000000"],
+    })}, D)
+    book_ = wb.Workbook(sheets=[wb.Sheet("Employment Info - At Term", "grid", [
+        wb.Column(header="user-id", id="user-id"), wb.Column(header="end-date", id="end-date", mandatory=True)])],
+        picklists={})
+    tabs, report = wb.fill(book_, data)
+    assert tabs["Employment Info - At Term"]["user-id"].tolist() == ["U1"]
+    assert report["summary"]["held"] == 0

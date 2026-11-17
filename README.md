@@ -7,7 +7,7 @@ SAP data, findings, and reports **never leave the customer boundary**.
 ## Key Features
 
 ### Data Quality Engine
-- **9,846 validation rules** — 7,038 hand-authored plus 2,808 derived from the SAP DDIC, the SuccessFactors canonical schemas, and the ordering/sign invariants declared in the Ariba and Concur dictionaries (see [`scripts/generate_ddic_rules.py`](scripts/generate_ddic_rules.py)); derived rules ship disabled until a tenant enables them
+- **9,846 validation rules** — 7,037 hand-authored plus 2,809 derived from the SAP DDIC, the SuccessFactors canonical schemas, and the ordering/sign invariants declared in the Ariba and Concur dictionaries (see [`scripts/generate_ddic_rules.py`](scripts/generate_ddic_rules.py)); derived rules ship disabled until a tenant enables them
 - **Record-level DQS scoring** — DAMA DMBOK composite with 6 dimensions (completeness, accuracy, consistency, timeliness, uniqueness, validity)
 - **Grain-correct check engine** — every rule evaluated at its SAP record grain (DDIC keys + join graph), exact counts, full failing-record keys
 - **LangGraph AI agents** — 6-node pipeline: analyst, config matching, config impact, remediation, readiness, report

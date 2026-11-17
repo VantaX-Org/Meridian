@@ -221,6 +221,7 @@ tables:
       DATE_OF_DEATH:  {source: PerPerson.dateOfDeath, type: DATE, verify: true, description: Date of death}
       SECOND_NATIONALITY: {source: PerPersonal.secondNationality, type: STRING, length: 128, verify: true, check_table: Country, description: Second nationality}
       PLACE_OF_BIRTH: {source: PerPerson.placeOfBirth, type: STRING, length: 128, verify: true, description: Place of birth}
+      USER_ID:        {source: PerPerson.userId, type: STRING, length: 100, verify: true, description: User ID of the person's employment}
       PERSON_UUID:    {source: PerPerson.perPersonUuid, type: STRING, length: 128, verify: true, description: Person UUID (stable surrogate key)}
       REGION_OF_BIRTH:             {source: PerPerson.regionOfBirth, type: STRING, length: 100, verify: true, description: Region of birth}
       SECOND_LAST_NAME:            {source: PerPersonal.secondLastName, type: STRING, length: 128, verify: true, description: Second last name}
@@ -326,7 +327,7 @@ tables:
 
   COMPINFO:
     description: Compensation (EmpCompensation ⋈ recurring pay component ⋈ pay range)
-    source: EmpCompensation, EmpPayCompRecurring, FOPayRange
+    source: EmpCompensation, EmpPayCompRecurring, EmpCompensationCalculated, FOPayRange
     keys: [USERID, EFFECTIVE_DATE]
     fields:
       USERID:              {source: EmpCompensation.userId, type: STRING, length: 100}
@@ -341,7 +342,7 @@ tables:
       PAY_RANGE_MIN:       {source: FOPayRange.minimumPay, type: DECIMAL}
       PAY_RANGE_MID:       {source: FOPayRange.midPoint, type: DECIMAL}
       PAY_RANGE_MAX:       {source: FOPayRange.maximumPay, type: DECIMAL}
-      COMPA_RATIO:         {source: EmpCompensationCalculatedNavigation.compaRatio, type: DECIMAL, verify: true}
+      COMPA_RATIO:         {source: EmpCompensationCalculated.compaRatio, type: DECIMAL, verify: true}
       EVENT_REASON:        {source: EmpCompensation.eventReason, type: STRING, length: 128, check_table: FOEventReason, verify: true, description: Compensation change reason}
       PAY_SCALE_TYPE:      {source: EmpJob.payScaleType, type: STRING, length: 32, verify: true, description: SAP pay scale type (PA0008.TRFAR)}
       PAY_SCALE_AREA:      {source: EmpJob.payScaleArea, type: STRING, length: 32, verify: true, description: SAP pay scale area (PA0008.TRFGB)}
@@ -363,8 +364,8 @@ tables:
       PAY_COMPONENT_CAN_OVERRIDE: {source: FOPayComponent.canOverride, type: BOOLEAN, verify: true, description: Default value of the pay component may be overridden}
       PAY_COMPONENT_DEFAULT:   {source: FOPayComponent.payComponentValue, type: DECIMAL, verify: true, description: Default value of the pay component}
       ANNUALIZATION_FACTOR:    {source: FOFrequency.annualizationFactor, type: DECIMAL, verify: true, description: Periods per year of the pay component frequency}
-      ANNUAL_SALARY:       {source: EmpCompensationCalculatedNavigation.yearlyBaseSalary, type: DECIMAL, verify: true, description: Calculated annual base salary}
-      RANGE_PENETRATION:   {source: EmpCompensationCalculatedNavigation.rangePenetration, type: DECIMAL, verify: true, description: 'Calculated position in the pay range (0 at minimum, 1 at maximum)'}
+      ANNUAL_SALARY:       {source: EmpCompensationCalculated.yearlyBaseSalary, type: DECIMAL, verify: true, description: Calculated annual base salary}
+      RANGE_PENETRATION:   {source: EmpCompensationCalculated.rangePenetration, type: DECIMAL, verify: true, description: 'Calculated position in the pay range (0 at minimum, 1 at maximum)'}
       SEQ_NUMBER:                  {source: EmpCompensation.seqNumber, type: INTEGER, verify: true, description: Seq number}
       IS_ELIGIBLE_FOR_BENEFITS:    {source: EmpCompensation.isEligibleForBenefits, type: BOOLEAN, verify: true, description: Is eligible for benefits}
       IS_ELIGIBLE_FOR_CAR:         {source: EmpCompensation.isEligibleForCar, type: BOOLEAN, verify: true, description: Is eligible for car}
@@ -420,9 +421,9 @@ tables:
       APPROVAL_STATUS:   {source: EmployeeTimeSheet.approvalStatus, type: STRING, length: 32}
       ABSENCE_TYPE:      {source: EmployeeTime.timeType, type: STRING, length: 128, check_table: TimeType}
       TIME_ACCOUNT_TYPE: {source: TimeAccount.accountType, type: STRING, length: 128, check_table: TimeAccountType}
-      BALANCE:           {source: TimeAccountBalance.balance, type: DECIMAL, verify: true}
-      APPROVER_ID:        {source: EmployeeTimeSheet.approverId, type: STRING, length: 100, verify: true, description: Approver user ID; not a documented standard EmployeeTimeSheet property}
-      SUBMITTED_DATE:     {source: EmployeeTimeSheet.submittedDate, type: DATE, verify: true, description: Date timesheet was submitted for approval}
+      BALANCE:           {source: EmpTimeAccountBalance.balance, type: DECIMAL, verify: true}
+      APPROVER_ID:        {source: EmployeeTimeSheet.approvedBy, type: STRING, length: 100, verify: true, description: Approver user ID}
+      SUBMITTED_DATE:     {source: EmployeeTimeSheet.submissionDate, type: DATE, verify: true, description: Date timesheet was submitted for approval}
       LAST_MODIFIED_DATE: {source: EmployeeTime.lastModifiedDateTime, type: DATETIME, verify: true, description: Last modified timestamp of the time record}
       QUANTITY_IN_DAYS:   {source: EmployeeTime.quantityInDays, type: DECIMAL, verify: true, description: Absence quantity expressed in days (full/half day)}
       ENTRY_TIME_TYPE:     {source: EmployeeTimeSheetEntry.timeType, type: STRING, length: 128, verify: true, description: Attendance time type of the entry}
@@ -506,7 +507,7 @@ tables:
       PLAN_END_DATE:       {source: GoalPlanTemplate.dueDate, type: DATE, verify: true, description: Goal plan period end (plan due date)}
       LAST_MODIFIED:       {source: Goal_1.lastModified, type: DATETIME, verify: true, description: Goal last modified}
       VISIBILITY_FLAG:     {source: Goal_1.flag, type: INTEGER, verify: true, description: 0 public / 1 private goal}
-      ACTUAL_ACHIEVEMENT:  {source: Goal.actualAchievement, type: DECIMAL, verify: true, description: Actual achievement recorded against the metric}
+      ACTUAL_ACHIEVEMENT:  {source: Goal_1.bizxActual, type: DECIMAL, verify: true, description: Actual achievement recorded against the metric}
       CURRENT_OWNER:       {source: Goal_1.currentOwner, type: STRING, length: 100, verify: true, description: User currently owning the goal}
       MODIFIER:            {source: Goal_1.modifier, type: STRING, length: 100, verify: true, description: User who last modified the goal}
 
@@ -579,15 +580,15 @@ tables:
       RECRUITER:      {source: JobRequisition.recruiter.userId, type: STRING, verify: true, description: Recruiter user ID (navigation property)}
       OPEN_DATE:      {source: JobRequisition.createdDateTime, type: DATETIME}
       CLOSE_DATE:     {source: JobRequisition.closedDateTime, type: DATETIME, verify: true}
-      NUM_OPENINGS:   {source: JobRequisition.numberOfOpenings, type: INTEGER, verify: true}
-      DEPARTMENT:     {source: JobRequisition.department, type: STRING, length: 128, verify: true}
+      NUM_OPENINGS:   {source: JobRequisition.numberOpenings, type: INTEGER, verify: true}
+      DEPARTMENT:     {source: JobRequisition.department_obj.externalCode, type: STRING, length: 128, verify: true}
       POSITION_NUMBER: {source: JobRequisition.positionNumber, type: STRING, length: 128, verify: true, description: Position the requisition fills}
       SALARY_MIN:      {source: JobRequisition.salaryMin, type: DECIMAL, verify: true, description: Pay range minimum}
       SALARY_MAX:      {source: JobRequisition.salaryMax, type: DECIMAL, verify: true, description: Pay range maximum}
       CURRENCY:        {source: JobRequisition.currency, type: STRING, length: 20, verify: true, description: Pay range currency}
       JOB_CODE:        {source: JobRequisition.jobCode, type: STRING, length: 128, verify: true, description: Job classification}
       COUNTRY:         {source: JobRequisition.country, type: STRING, length: 128, verify: true, description: Country of the job}
-      LOCATION:        {source: JobRequisition.location, type: STRING, length: 128, verify: true, description: Location of the job}
+      LOCATION:        {source: JobRequisition.location_obj.externalCode, type: STRING, length: 128, verify: true, description: Location of the job}
       OPENINGS_FILLED: {source: JobRequisition.openingsFilled, type: INTEGER, verify: true, description: Openings already filled}
       DELETED:         {source: JobRequisition.deleted, type: STRING, length: 16, verify: true, description: Requisition deleted flag}
       INTERNAL_STATUS: {source: JobRequisition.internalStatus, type: STRING, length: 32, verify: true, description: Approval state such as Pre-Approved or Approved}
@@ -616,14 +617,14 @@ tables:
     keys: [USERID, PROCESS_ID]
     fields:
       USERID:                  {source: ONB2Process.user, type: STRING, length: 100, verify: true}
-      HIRE_DATE:               {source: ONB2Process.hireDate, type: DATE, verify: true}
+      HIRE_DATE:               {source: ONB2Process.onboardingHiredDate, type: DATE, verify: true}
       STATUS:                  {source: ONB2Process.processStatus, type: STRING, verify: true}
       DEPARTMENT:              {source: EmpJob.department, type: STRING, length: 128}
       MANAGER_ID:              {source: EmpJob.managerId, type: STRING, length: 100}
       TASK_COMPLETION:         {source: ONB2Process.processTrigger, type: STRING, verify: true}
       BACKGROUND_CHECK_STATUS: {source: ONB2Process.backgroundCheckStatus, type: STRING, verify: true}
       PROCESS_ID:              {source: ONB2Process.processId, type: STRING, length: 128, verify: true, description: Onboarding process ID}
-      CANCELLED_ON:            {source: ONB2Process.cancelledOn, type: DATETIME, verify: true, description: Process cancelled on}
+      CANCELLED_ON:            {source: ONB2Process.cancellationDate, type: DATETIME, verify: true, description: Process cancelled on}
       CANCEL_REASON:           {source: ONB2Process.cancelEventReason, type: STRING, length: 128, verify: true, description: Cancellation event reason}
       HIRE_STATUS:             {source: ONB2Process.onboardingHireStatus, type: STRING, length: 32, verify: true, description: Hire status of the onboardee}
       INTERNAL_HIRE:           {source: ONB2Process.onboardingInternalHire, type: BOOLEAN, verify: true, description: Internal hire / rehire flag}
@@ -634,15 +635,15 @@ tables:
     keys: [OFFER_ID]
     fields:
       OFFER_ID:      {source: JobOffer.offerId, type: INTEGER}
-      CANDIDATE_ID:  {source: JobOffer.candidateId, type: INTEGER}
-      JOB_REQ_ID:    {source: JobOffer.jobReqId, type: INTEGER}
-      OFFER_STATUS:  {source: JobOffer.status, type: STRING, verify: true}
+      CANDIDATE_ID:  {source: JobOffer.jobApplication.candidateId, type: INTEGER}
+      JOB_REQ_ID:    {source: JobOffer.jobApplication.jobReqId, type: INTEGER}
+      OFFER_STATUS:  {source: JobOffer.internalStatus, type: STRING, verify: true}
       OFFER_DATE:    {source: JobOffer.offerDate, type: DATETIME, verify: true}
-      START_DATE:    {source: JobOffer.startDate, type: DATE, verify: true}
+      START_DATE:    {source: JobOffer.jobStartDate, type: DATE, verify: true}
       APPLICATION_ID: {source: JobOffer.applicationId, type: INTEGER, verify: true, description: Application the offer belongs to}
       SALARY:         {source: JobOffer.salaryBase, type: DECIMAL, verify: true, description: Offered base salary}
       CURRENCY:       {source: JobOffer.currency, type: STRING, length: 20, verify: true, description: Offer currency}
-      LAST_MODIFIED:  {source: JobOffer.lastModifiedDateTime, type: DATETIME, verify: true, description: Last modified}
+      LAST_MODIFIED:  {source: JobOffer.lastModifiedDate, type: DATETIME, verify: true, description: Last modified}
 
   LEARNINGASSIGNMENT:
     description: Learning assignments (SAP SuccessFactors Learning OData)
@@ -961,9 +962,7 @@ tables:
       CURRENCY:       {source: PaymentInformationDetailV3.currency, type: STRING, length: 20, verify: true}
       PERCENT:        {source: PaymentInformationDetailV3.percent, type: DECIMAL, verify: true}
       AMOUNT:         {source: PaymentInformationDetailV3.amount, type: DECIMAL, verify: true}
-      WORKER:                      {source: PaymentInformationDetailV3.worker, type: STRING, length: 100, verify: true, description: Worker}
       JOB_COUNTRY:                 {source: PaymentInformationDetailV3.jobCountry, type: STRING, length: 38, verify: true, description: Job country}
-      EFFECTIVE_START_DATE:        {source: PaymentInformationDetailV3.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
       EFFECTIVE_END_DATE:          {source: PaymentInformationDetailV3.effectiveEndDate, type: DATE, verify: true, description: Effective end date}
       PURPOSE:                     {source: PaymentInformationDetailV3.purpose, type: STRING, length: 40, verify: true, description: Purpose}
 
@@ -988,6 +987,17 @@ tables:
       EC_NAME_ALT1:                {source: PerEmergencyContacts.ecNameAlt1, type: STRING, length: 256, verify: true, description: Ec name alt1}
       EC_NAME_ALT2:                {source: PerEmergencyContacts.ecNameAlt2, type: STRING, length: 256, verify: true, description: Ec name alt2}
       DATE_OF_BIRTH:               {source: PerEmergencyContacts.dateOfBirth, type: DATE, verify: true, description: Date of birth}
+      USER_ID:                     {source: PerEmergencyContacts.userId, type: STRING, length: 100, verify: true, description: User ID}
+      ADDRESS_ADDRESS1:            {source: PerEmergencyContacts.addressAddress1, type: STRING, length: 256, verify: true, description: Address line 1}
+      ADDRESS_ADDRESS2:            {source: PerEmergencyContacts.addressAddress2, type: STRING, length: 256, verify: true, description: Address line 2}
+      ADDRESS_ADDRESS3:            {source: PerEmergencyContacts.addressAddress3, type: STRING, length: 256, verify: true, description: Address line 3}
+      ADDRESS_ADDRESS4:            {source: PerEmergencyContacts.addressAddress4, type: STRING, length: 256, verify: true, description: Address line 4}
+      ADDRESS_ADDRESS5:            {source: PerEmergencyContacts.addressAddress5, type: STRING, length: 256, verify: true, description: Address line 5}
+      ADDRESS_CITY:                {source: PerEmergencyContacts.addressCity, type: STRING, length: 256, verify: true, description: City}
+      ADDRESS_COUNTY:              {source: PerEmergencyContacts.addressCounty, type: STRING, length: 256, verify: true, description: County}
+      ADDRESS_PROVINCE:            {source: PerEmergencyContacts.addressProvince, type: STRING, length: 256, verify: true, description: Province}
+      ADDRESS_STATE:               {source: PerEmergencyContacts.addressState, type: STRING, length: 256, verify: true, description: State}
+      ADDRESS_COUNTRY:             {source: PerEmergencyContacts.addressCountry, type: STRING, length: 128, verify: true, check_table: Country, description: Country}
       ADDRESS:                     {source: PerEmergencyContacts.address, type: STRING, length: 1000, verify: true, description: Address}
 
   EMPGLOBALASSIGNMENT:
@@ -1021,8 +1031,8 @@ tables:
       TIMEZONE:       {source: FOLocation.timezone, type: STRING, length: 128, verify: true}
       STANDARD_HOURS: {source: FOLocation.standardHours, type: DECIMAL, verify: true}
       LOCATION_GROUP:              {source: FOLocation.locationGroup, type: STRING, verify: true, check_table: FOLocationGroup, description: Location group}
-      GEOZONE:                     {source: FOLocation.geozone, type: STRING, verify: true, check_table: FOGeozone, description: Geozone}
-      CITY:                        {source: FOLocation.city, type: STRING, verify: true, description: City}
+      GEOZONE:                     {source: FOLocation.geozoneFlx, type: STRING, verify: true, check_table: FOGeozone, description: Geozone}
+      CITY:                        {source: FOLocation.addressCity, type: STRING, verify: true, description: City}
       NAME:                        {source: FOLocation.name, type: STRING, verify: true, length: 128, description: Location name}
       DESCRIPTION:                 {source: FOLocation.description, type: STRING, verify: true, length: 255, description: Location description}
       LEGAL_ENTITY:                {source: FOLocation.companyFlx, type: STRING, verify: true, length: 128, check_table: FOCompany, description: Parent legal entity}
@@ -1084,7 +1094,7 @@ tables:
     fields:
       EXTERNAL_CODE: {source: FOCostCenter.externalCode, type: STRING, length: 128, verify: true}
       STATUS:        {source: FOCostCenter.status, type: STRING, length: 2, verify: true}
-      LEGAL_ENTITY:  {source: FOCostCenter.cust_LegalEntity.externalCode, type: STRING, length: 128, verify: true}
+      LEGAL_ENTITY:  {source: FOCostCenter.cust_toLegalEntity.externalCode, type: STRING, length: 128, verify: true}
       NAME:          {source: FOCostCenter.name, type: STRING, verify: true, length: 128, description: Cost centre name}
       DESCRIPTION:   {source: FOCostCenter.description, type: STRING, verify: true, length: 255, description: Cost centre description}
       PARENT:        {source: FOCostCenter.parent, type: STRING, verify: true, length: 128, check_table: FOCostCenter, description: Parent cost centre}
@@ -1147,7 +1157,7 @@ tables:
     source: FOCorporateAddressDEFLT
     keys: [EXTERNAL_CODE]
     fields:
-      EXTERNAL_CODE:               {source: FOCorporateAddressDEFLT.externalCode, type: STRING, length: 32, verify: true, description: External code}
+      EXTERNAL_CODE:               {source: FOCorporateAddressDEFLT.addressId, type: STRING, length: 32, verify: true, description: External code}
       ADDRESS1:                    {source: FOCorporateAddressDEFLT.address1, type: STRING, length: 256, verify: true, description: Address1 (country-specific)}
       ADDRESS2:                    {source: FOCorporateAddressDEFLT.address2, type: STRING, length: 256, verify: true, description: Address2 (country-specific)}
       ADDRESS3:                    {source: FOCorporateAddressDEFLT.address3, type: STRING, length: 256, verify: true, description: Address3 (country-specific)}
@@ -1259,7 +1269,7 @@ tables:
       USED_FOR_COMP_PLANNING:      {source: FOPayComponent.usedForCompPlanning, type: STRING, length: 32, verify: true, description: Used for comp planning}
       TARGET:                      {source: FOPayComponent.target, type: BOOLEAN, verify: true, description: Target}
       MAX_FRACTION_DIGITS:         {source: FOPayComponent.maxFractionDigits, type: INTEGER, verify: true, description: Max fraction digits}
-      LEGAL_ENTITY:                {source: FOPayComponent.legalEntity, type: STRING, verify: true, description: Legal entity}
+      LEGAL_ENTITY:                {source: FOPayComponent.companyFlx, type: STRING, verify: true, description: Legal entity}
       IS_END_DATED_PAYMENT:        {source: FOPayComponent.isEndDatedPayment, type: STRING, verify: true, description: Is end dated payment}
       STATUS:                      {source: FOPayComponent.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
       PAY_COMPONENT_TYPE:          {source: FOPayComponent.payComponentType, type: STRING, length: 32, verify: true, description: Pay component type (AMOUNT / PERCENTAGE / NUMBER)}
@@ -1287,27 +1297,27 @@ tables:
       USE_FOR_RANGE_PENETRATION:   {source: FOPayComponentGroup.useForRangePenetration, type: BOOLEAN, verify: true, description: Use for range penetration}
       SORT_ORDER:                  {source: FOPayComponentGroup.sortOrder, type: STRING, verify: true, description: Sort order}
       MAX_FRACTION_DIGITS:         {source: FOPayComponentGroup.maxFractionDigits, type: STRING, verify: true, description: Max fraction digits}
-      PAY_COMPONENT:               {source: FOPayComponentGroup.payComponent, type: STRING, verify: true, check_table: FOPayComponent, description: Pay component}
+      PAY_COMPONENT:               {source: FOPayComponentGroup.payComponentFlx, type: STRING, verify: true, check_table: FOPayComponent, description: Pay component}
 
   FOPAYSCALETYPE:
     description: Pay scale types (Foundation Object)
-    source: FOPayScaleType
+    source: PayScaleType
     keys: [CODE]
     fields:
-      CODE:                        {source: FOPayScaleType.code, type: STRING, length: 128, verify: true, description: Code}
-      PAY_SCALE_TYPE:              {source: FOPayScaleType.payScaleType, type: STRING, length: 128, verify: true, description: Pay scale type}
-      EXTERNAL_NAME:               {source: FOPayScaleType.externalName, type: STRING, verify: true, description: External name}
-      COUNTRY:                     {source: FOPayScaleType.country, type: STRING, verify: true, description: Country}
+      CODE:                        {source: PayScaleType.code, type: STRING, length: 128, verify: true, description: Code}
+      PAY_SCALE_TYPE:              {source: PayScaleType.payScaleType, type: STRING, length: 128, verify: true, description: Pay scale type}
+      EXTERNAL_NAME:               {source: PayScaleType.externalName_defaultValue, type: STRING, verify: true, description: External name}
+      COUNTRY:                     {source: PayScaleType.country, type: STRING, verify: true, description: Country}
 
   FOPAYSCALEAREA:
     description: Pay scale areas (Foundation Object)
-    source: FOPayScaleArea
+    source: PayScaleArea
     keys: [CODE]
     fields:
-      CODE:                        {source: FOPayScaleArea.code, type: STRING, length: 128, verify: true, description: Code}
-      PAY_SCALE_AREA:              {source: FOPayScaleArea.payScaleArea, type: STRING, length: 128, verify: true, description: Pay scale area}
-      EXTERNAL_NAME:               {source: FOPayScaleArea.externalName, type: STRING, verify: true, description: External name}
-      COUNTRY:                     {source: FOPayScaleArea.country, type: STRING, verify: true, description: Country}
+      CODE:                        {source: PayScaleArea.code, type: STRING, length: 128, verify: true, description: Code}
+      PAY_SCALE_AREA:              {source: PayScaleArea.payScaleArea, type: STRING, length: 128, verify: true, description: Pay scale area}
+      EXTERNAL_NAME:               {source: PayScaleArea.externalName_defaultValue, type: STRING, verify: true, description: External name}
+      COUNTRY:                     {source: PayScaleArea.country, type: STRING, verify: true, description: Country}
 
   FOPAYRANGE:
     description: Pay ranges (Foundation Object)

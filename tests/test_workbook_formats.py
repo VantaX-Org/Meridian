@@ -254,7 +254,7 @@ def test_a_sheet_with_no_table_is_refused_and_never_takes_the_next_sheets_rows()
         wf._splice_xml(source, {"Empty": ([], [["x"]])})
 
 
-def test_held_rows_travel_beside_the_load_file_never_inside_it():
+def test_flagged_rows_are_written_and_listed_beside_the_load_file():
     book = wb.parse_workbook(cockpit(), "materials.xml")
     long = TableFrames({"MARA": pd.DataFrame({"MARA.MATNR": ["M1", "M2"], "MARA.MTART": ["ROH", "TOOLONG"]})},
                        get_dictionary("s4hana"))
@@ -264,7 +264,8 @@ def test_held_rows_travel_beside_the_load_file_never_inside_it():
     assert ext == "zip"
     with zipfile.ZipFile(io.BytesIO(out)) as z:
         assert set(z.namelist()) == {"materials.xml", wf.HELD_BACK_FILE}
-        assert b"TOOLONG" not in z.read("materials.xml")
+        assert b"TOOLONG" in z.read("materials.xml")  # every row is written; the problem is flagged only
+    assert report["summary"]["flagged"] == 1 and report["summary"]["held"] == 0
 
 
 # Same format, for the other layouts
@@ -317,9 +318,9 @@ def test_value_map_translates_and_counts():
     assert report["summary"]["mapped_values"] == 1 and report["summary"]["held"] == 0
 
 
-def test_strict_map_holds_what_it_does_not_cover():
+def test_strict_map_flags_what_it_does_not_cover():
     tabs, report = wb.fill(load_file(), materials(), {"MTART": {"ROH": "RAW"}}, {"MTART"})
-    assert tabs["m"]["MTART"].tolist() == ["RAW"]
+    assert tabs["m"]["MTART"].tolist() == ["RAW", "FERT"]  # the unmapped value is written as it is and flagged
     assert report["reasons"] == {"value_map": 1} and report["held"][0]["record"] == "MATNR=M2"
 
 
