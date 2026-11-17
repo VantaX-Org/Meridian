@@ -223,3 +223,33 @@ def test_defaults_d3_flags_only_and_d5_payscale():
     assert d5 == [("ZAF/09", 1)] and s["D5"]["checked"]["PayScaleType"] == {"codes": 2, "missing": 1}
     assert s["D5"]["not_validated"] == ["PayScaleLevel: object not found in the extract"]  # "No Level" kept, not checked
     assert s["needs_review"]["D5"] == 1
+
+
+def test_source_wins_for_foundation_create_only_for_picklists():
+    src = [{"externalCode": "W0", "name": "HR-ZA: Monthly"}, {"externalCode": "W1", "name": "Same"}, {"externalCode": "W9", "name": "New"}]
+    tgt = [{"externalCode": "W0", "name": "ZA - Monthly"}, {"externalCode": "W1", "name": "Same"}]
+    pl_src = [{"PickListV2_id": "toy", "externalCode": "X", "label": "Source"}]
+    pl_tgt = [{"PickListV2_id": "toy", "externalCode": "X", "label": "Target"}]
+    cfg = im.config_diff({"FOPayGroup": src, "PickListValueV2": pl_src}, {"FOPayGroup": tgt, "PickListValueV2": pl_tgt})
+    assert im.source_wins("FOPayGroup") and not im.source_wins("PickListValueV2")
+    kept = im.config_filter({"entity": "FOPayGroup"}, [(r["externalCode"], r) for r in src], cfg)
+    assert [k for k, _ in kept] == ["W0", "W9"]  # conflict upserts, identical drops
+    assert im.config_filter({"entity": "PickListValueV2"}, [("X", pl_src[0])], cfg) == []
+    assert im.overwrites(cfg) == [{"entity": "FOPayGroup", "key": {"externalCode": "W0"},
+                                   "fields": {"name": {"target_before": "ZA - Monthly", "source": "HR-ZA: Monthly"}}}]
+    ko = im.key_overwrites({"entity": "FOPayGroup"}, [(r["externalCode"], r) for r in src], tgt, ["externalCode"])
+    assert [(o["record_key"], o["fields"]) for o in ko] == [
+        ("W0", {"name": {"target_before": "ZA - Monthly", "source": "HR-ZA: Monthly"}})]
+
+
+def test_default_cap_closes_full_manager_chain_and_relationships():
+    rows = [(f"P{i}", "2020-01-01", 1, "A", "ZAF", "A", f"P{i + 1}" if i < 6 else None) for i in range(7)]
+    f = _frames(rows, rel_rows=[("P0", "R1"), ("P3", "R1")])
+    f.frames["EMPJOBHIST"] = pd.concat([f.frames["EMPJOBHIST"], _job([("R1", "2020-01-01", 1, "H", "NAM", "A", "P6")])])
+    s = im.move_scope(f, D, {"per_cell": 1})
+    assert s["closure_cap"] == im.PILOT_CLOSURE_CAP >= 1000
+    assert set(s["keep"]) == {f"P{i}" for i in range(7)} | {"R1"}
+    assert s["cut_by_cap"] == [] and s["refs_not_found"] == []
+    out, rep = im.apply_scope(f, D, s)
+    assert rep["blanked"] == 0
+    assert out.frames["EMPJOBHIST"]["EMPJOBHIST.MANAGER_ID"].notna().sum() == 7

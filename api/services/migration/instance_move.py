@@ -340,7 +340,7 @@ def build_move_plan(modules: Iterable[str], dictionary, frames=None, columns_of=
                               "rows": rows, "history_rows": hist, "purge_type": None, "pass": 1, "fields": None})
     loaded = {s["entity"] for s in steps}
     for name, v in sorted((config_lists or {}).items()):
-        if name not in loaded and v["create_values"]:  # lists with a data step are narrowed by config_filter
+        if name not in loaded and (v["create_values"] or (source_wins(name) and v["conflicts"])):  # lists with a data step are narrowed by config_filter
             steps.insert(0, {"module": "config", "table": None, "entity": name, "wave": 0, "method": "config_create",
                              "rows": len(v["create_values"]), "history_rows": 0, "purge_type": None, "pass": 1,
                              "fields": None})
@@ -483,7 +483,7 @@ def person_batches(step: dict, records: list[tuple[str, dict]], size: int = BATC
 # ── pilot sample and country scope ───────────────────────────────────────────
 
 PILOT_PER_CELL = 10
-PILOT_CLOSURE_CAP = 200
+PILOT_CLOSURE_CAP = 1000  # D8: full manager chain; the Komatsu pilot needs 283 (cap 200 cut it)
 EXCLUDED_COUNTRIES = ("ZMB",)  # out of scope: no country rules in the target tenant
 ACTIVE_STATUS = ("A", "U", "P", "S")  # EmpJob.emplStatus codes the EC rule pack treats as active
 _MANAGER_REFS = ("EmpJob.managerId", "EmpJobRelationships.relUserId")
@@ -952,8 +952,9 @@ def _list_keys(name: str, dictionary=None) -> list[str]:
 def config_diff(source_lists: dict[str, list[dict]], target_lists: dict[str, list[dict]],
                 dictionary=None) -> dict[str, dict]:
     """Per list: values already in the target, matched by external code (present, listed in mapped), values to
-    create (create) and values whose label or status differ in the target (conflict, skipped). Only values the target lacks are planned; nothing in the
-    target is overwritten."""
+    create (create) and values whose label or status differ in the target (conflict). Conflicts are skipped,
+    except in source-wins stages (D8: Foundation, Job architecture, Position), where the source replaces them.
+    Nothing in the target is deleted."""
     out = {}
     for name, rows in source_lists.items():
         keys = _list_keys(name, dictionary)
@@ -967,7 +968,10 @@ def config_diff(source_lists: dict[str, list[dict]], target_lists: dict[str, lis
                 continue
             diff = {c: (r.get(c), t.get(c)) for c in set(r) & set(t) - set(keys) - {"__metadata"}
                     if str(r.get(c) or "") != str(t.get(c) or "")}
-            (conflict.append({"key": dict(zip(keys, k)), "differs": diff}) if diff else present.append(r))
+            if not diff:
+                present.append(r)
+            else:  # source-wins lists (D8) keep the source row so a config-only step can upsert it
+                conflict.append({"key": dict(zip(keys, k)), "differs": diff, **({"row": r} if source_wins(name) else {})})
         out[name] = {"present": len(present), "create": len(create), "conflict": len(conflict),
                      "mapped": [{c: r.get(c) for c in keys} for r in present], "create_values": create,
                      "conflicts": conflict, "keys": keys,
@@ -976,21 +980,45 @@ def config_diff(source_lists: dict[str, list[dict]], target_lists: dict[str, lis
     return out
 
 
+SOURCE_WINS_STAGES = ("Foundation", "Job architecture", "Position")  # D8: base data comes from the source
+
+
+def source_wins(entity: str) -> bool:
+    """True when the source record replaces a differing target record with the same key (D8). Picklists
+    and everything else keep create-only: a value the target already holds is never changed."""
+    w = stage_of(entity)
+    return w < len(SF_MOVE_STAGES) and SF_MOVE_STAGES[w][0] in SOURCE_WINS_STAGES
+
+
 def config_filter(step: dict, records: list[tuple[str, dict]], config: dict) -> list[tuple[str, dict]]:
-    """The step's records minus the values the target already holds (present or conflicting); nothing in the
-    target is overwritten. Steps whose entity the diff does not know pass through unchanged."""
+    """The step's records minus the values the target already holds. For source-wins stages (D8) only
+    identical target values drop; a conflicting key passes through as an upsert and the source wins
+    (listed by ``overwrites``). Elsewhere present and conflicting keys both drop. Steps whose entity the
+    diff does not know pass through unchanged. Nothing in the target is deleted."""
     c = config.get(step["entity"])
     if not c:
         return records
     have = {tuple(k) for k in c["target_keys"]}
+    if source_wins(step["entity"]):
+        have -= {tuple(str(x["key"].get(k)) for k in c["keys"]) for x in c.get("conflicts") or ()}
     return [(k, r) for k, r in records if tuple(str(r.get(x)) for x in c["keys"]) not in have]
 
 
+def overwrites(config: dict) -> list[dict]:
+    """Every target record a source-wins stage replaces: entity, key and, per differing field, the target
+    value before the change and the source value after it."""
+    return [{"entity": name, "key": x["key"],
+             "fields": {f: {"target_before": t, "source": s} for f, (s, t) in sorted(x["differs"].items())}}
+            for name, c in sorted(config.items()) if source_wins(name) for x in c.get("conflicts") or ()]
+
+
 def config_records(name: str, config: dict) -> list[tuple[str, dict]]:
-    """(key, payload) for the values of one list the target lacks."""
+    """(key, payload) for the values of one list the target lacks, plus, in a source-wins stage (D8), the
+    source rows that replace differing target values."""
     c = config[name]
+    rows = list(c["create_values"]) + [x["row"] for x in c.get("conflicts") or () if source_wins(name) and "row" in x]
     return [("|".join(f"{k}={r.get(k)}" for k in c["keys"]), {p: v for p, v in r.items() if p != "__metadata"})
-            for r in c["create_values"]]
+            for r in rows]
 
 
 def reference_issues(step: dict, records: list[tuple[str, dict]], dictionary, config: dict) -> list[dict]:
@@ -1079,16 +1107,27 @@ def metadata_issues(step: dict, records: list[tuple[str, dict]], meta: dict) -> 
     return out
 
 
-def key_conflicts(step: dict, records: list[tuple[str, dict]], target_rows: list[dict], key_props: list[str]) -> list[dict]:
-    """Warn when a source key already exists in the target with different data."""
+def key_overwrites(step: dict, records: list[tuple[str, dict]], target_rows: list[dict],
+                   key_props: list[str]) -> list[dict]:
+    """Each source record whose key the target already holds with different data: entity, record key, target
+    key and, per differing field, the target value before the upsert and the source value after it."""
     if not key_props:
         return []
     tgt = {tuple(str(r.get(k)) for k in key_props): r for r in target_rows}
-    bad = []
+    out = []
     for key, r in records:
         t = tgt.get(tuple(str(r.get(k)) for k in key_props))
-        if t is not None and any(str(t.get(p)) != str(v) for p, v in r.items() if p in t):
-            bad.append(key)
+        d = {} if t is None else {p: {"target_before": t.get(p), "source": v} for p, v in sorted(r.items())
+                                  if p in t and p != "__metadata" and str(t.get(p)) != str(v)}
+        if d:
+            out.append({"entity": step["entity"], "record_key": key, "key": {k: r.get(k) for k in key_props},
+                        "fields": d})
+    return out
+
+
+def key_conflicts(step: dict, records: list[tuple[str, dict]], target_rows: list[dict], key_props: list[str]) -> list[dict]:
+    """Warn when a source key already exists in the target with different data."""
+    bad = [x["record_key"] for x in key_overwrites(step, records, target_rows, key_props)]
     return [{"entity": step["entity"], "field": None, "records": bad[:SAMPLE_CAP], "severity": "warning",
              "reason": f"{len(bad)} record(s) already exist in the target with different data; the upsert replaces it"}] if bad else []
 

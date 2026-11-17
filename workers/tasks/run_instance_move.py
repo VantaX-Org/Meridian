@@ -204,6 +204,7 @@ def preflight_move(self, tenant_id: str, plan_id: str) -> str:
         plan = _plan_row(session, plan_id)
         issues: list[dict] = []
         result: dict = {"status": "completed", "issues": issues}
+        overwritten: list[dict] = []
         conn = None
         try:
             ctx = _prepare(session, engine, tenant_id, plan)
@@ -234,7 +235,10 @@ def preflight_move(self, tenant_id: str, plan_id: str) -> str:
                     issues += im.reference_issues(s, recs, ctx["dictionary"], config)
                     keys = im._key_props(ctx["dictionary"].table(s["table"]), s["entity"]) if s.get("table") and not s.get("raw") else []
                     if keys and s.get("pass", 1) == 1:
-                        issues += im.key_conflicts(s, recs, conn.read_entity_set(s["entity"]).to_dict("records"), keys)
+                        trows = conn.read_entity_set(s["entity"]).to_dict("records")
+                        issues += im.key_conflicts(s, recs, trows, keys)
+                        if im.source_wins(s["entity"]):  # D8: list each target value the source replaces
+                            overwritten += im.key_overwrites(s, recs, trows, keys)
                 result["config"] = built["config"]
                 built["scope"] = ctx["scope"]
                 built["target_config"] = result["target_config"] = {"status": "verified"}
@@ -243,6 +247,7 @@ def preflight_move(self, tenant_id: str, plan_id: str) -> str:
             if ctx["cleansing"]:
                 result["cleansing"] = ctx["cleansing"]["summary"]
             result["config_lists"] = locals().get("config") or {}
+            result["overwritten_in_target"] = im.overwrites(result["config_lists"]) + overwritten
         except Exception as exc:  # noqa: BLE001
             log.exception("instance move preflight %s failed", plan_id)
             result.update(status="failed", issues=issues + [{"entity": None, "field": None, "records": [],
@@ -328,7 +333,8 @@ def run_move(self, tenant_id: str, run_id: str) -> str:
                 cleansing = {"summary": c["summary"], "unfixable": c["unfixable"], "passes": c["passes"]}
             status = "stopped" if res["status"] == "stopped" else \
                 ("failed" if res["status"] in ("failed", "stopped_error_rate") else "completed")
-            _finish(session, tenant_id, run_id, status, res["reason"], {**report_extra, **res, "scope": ctx["scope"]}, cleansing)
+            _finish(session, tenant_id, run_id, status, res["reason"], {**report_extra, **res, "scope": ctx["scope"],
+                                                                  "overwritten_in_target": (plan.get("preflight") or {}).get("overwritten_in_target", [])}, cleansing)
             return status
         except Exception as exc:  # noqa: BLE001
             log.exception("instance move run %s failed", run_id)
