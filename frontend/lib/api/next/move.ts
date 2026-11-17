@@ -74,7 +74,18 @@ export interface Reconciliation {
   reason?: string | null;
 }
 export interface PreflightStart { issues: MoveIssue[]; status: string; previous?: string | null }
-export interface CreatePlanBody { source_system_id: string; target_system_id: string; modules: string[]; mode: MoveMode }
+/** Pilot: person data for ``per_cell`` users per (country, Paterson band, status) cell plus their managers. Server defaults the rest. */
+export interface SampleBody { per_cell?: number; closure_cap?: number; active_status?: string[] }
+export interface CreatePlanBody {
+  source_system_id: string;
+  target_system_id: string;
+  modules: string[];
+  mode: MoveMode;
+  /** Omitted: full move. */
+  sample?: SampleBody;
+  /** Countries whose person records never load. Server default ["ZMB"]. */
+  exclude_countries?: string[];
+}
 
 export const moveKeys = {
   systems: ["next", "move", "systems"] as const,

@@ -14531,6 +14531,9 @@ export const en = {
   "Value loaded": "Value loaded",
   "Values the data needs in the target: already there, to create, or in conflict.": "Values the data needs in the target: already there, to create, or in conflict.",
   "Writes a load file in the target format.": "Writes a load file in the target format.",
+  "Pilot sample": "Pilot sample",
+  "Moves 10 people per country, pay band and status, plus their managers, instead of everyone.": "Moves 10 people per country, pay band and status, plus their managers, instead of everyone.",
+  "Excluded countries: people here are never loaded.": "Excluded countries: people here are never loaded.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

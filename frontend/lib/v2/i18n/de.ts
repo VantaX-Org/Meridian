@@ -14532,4 +14532,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Value loaded": "Geladener Wert",
   "Values the data needs in the target: already there, to create, or in conflict.": "Werte, die die Daten im Ziel brauchen: vorhanden, anzulegen oder im Konflikt.",
   "Writes a load file in the target format.": "Schreibt eine Ladedatei im Zielformat.",
+  "Pilot sample": "Pilotstichprobe",
+  "Moves 10 people per country, pay band and status, plus their managers, instead of everyone.": "Verschiebt 10 Personen je Land, Gehaltsband und Status sowie ihre Vorgesetzten statt aller.",
+  "Excluded countries: people here are never loaded.": "Ausgeschlossene Länder: Personen hier werden nie geladen.",
 };
