@@ -6,6 +6,9 @@ GET /api/v1/runs/timeline?system_id=&module=&limit=8  the last N finished runs o
                                                records checked, duration, baseline flag and job kind
 GET /api/v1/runs/rule-trend?system_id=&limit=8  failing records of every rule across the last N finished runs of one
                                                system, oldest first; null where the rule did not run in that run
+GET /api/v1/runs/compare?runs=a,b,c&module=   two to six runs of one object side by side, from any systems (a source
+                                               ECC run against a target S/4 run): score, dimensions, records checked,
+                                               every rule's failing records per run and the rule changes per step
 GET /api/v1/runs/{a}/vs/{b}/summary            per object before and after, and the rules that started failing,
                                                were fixed, got worse or better (api/routes/versions.py rules)
 GET /api/v1/runs/{a}/vs/{b}/score-delta        one object's score change split into points per rule and dimension
@@ -37,7 +40,7 @@ from starlette.concurrency import run_in_threadpool
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.objects import _label
 from api.routes.record_issues import _rls
-from api.routes.versions import CHANGE_MIN_PERCENT, CHANGE_MIN_RECORDS, _CHECK_CHANGES_SQL, _resolve_pair, change_kind
+from api.routes.versions import CHANGE_MIN_PERCENT, CHANGE_MIN_RECORDS, _CHECK_CHANGES_SQL, _resolve_pair, change_kind, system_names
 from api.services.rbac import require_permission
 from api.services.receipt_math import records_checked_of, rule_names
 from api.services.version_status import finished_sql
@@ -288,6 +291,111 @@ async def rule_trend(system_id: uuid.UUID = Query(...), limit: int = Query(8, ge
     found = (await db.execute(text(_FINDINGS_SQL), {"t": t, "ids": ids})).fetchall() if ids else []
     return {"system_id": str(system_id), "rules": rule_series(ids, found),
             "runs": [{"id": r["id"], "run_at": r["run_at"], "run_number": r["run_number"]} for r in runs]}
+
+
+class MultiRunOut(BaseModel):
+    id: str
+    run_at: Optional[datetime] = None
+    label: Optional[str] = None
+    run_number: Optional[int] = None
+    system_id: Optional[str] = None
+    system_name: Optional[str] = None
+    score: Optional[float] = None          # the composite score after the cap; null: the run did not score the object
+    raw_score: Optional[float] = None
+    capped: bool = False
+    coverage: Optional[float] = None
+    dimension_scores: dict[str, float] = {}
+    records_checked: Optional[int] = None
+
+
+class MultiRuleOut(BaseModel):
+    check_id: str
+    title: Optional[str] = None            # the rule's description
+    severity: Optional[str] = None
+    dimension: Optional[str] = None
+    failing: list[Optional[int]]           # per run, in the order of ``runs``; null: the rule did not run cleanly
+    change: list[Optional[str]]            # per step (run i to i+1): newly_failing | fixed | worse | better | null
+
+
+class MultiStepOut(BaseModel):
+    a: str
+    b: str
+    newly_failing: int = 0
+    fixed: int = 0
+    worse: int = 0                         # regressed: fails materially more records
+    better: int = 0
+
+
+class MultiCompareOut(BaseModel):
+    module: str
+    label: str
+    runs: list[MultiRunOut]                # oldest first
+    rules: list[MultiRuleOut]
+    steps: list[MultiStepOut]              # one per consecutive pair of runs
+
+
+def multi_rules(ids: list[str], found: list[tuple]) -> tuple[list[dict], list[dict]]:
+    """(rules, steps) from (run, rule, failing, severity, dimension) rows. A rule changes on a step only when it ran
+    cleanly in both runs; the kinds are versions.change_kind's."""
+    at = {vid: i for i, vid in enumerate(ids)}
+    rules: dict[str, dict] = {}
+    for vid, check, n, sev, dim in found:
+        r = rules.setdefault(check, {"check_id": check, "severity": sev, "dimension": dim, "failing": [None] * len(ids)})
+        r["failing"][at[vid]] = int(n or 0)
+    steps: list[dict] = [{"a": ids[i], "b": ids[i + 1], "newly_failing": 0, "fixed": 0, "worse": 0, "better": 0} for i in range(len(ids) - 1)]
+    for r in rules.values():
+        f = r["failing"]
+        r["change"] = [change_kind(f[i], f[i + 1]) if f[i] is not None and f[i + 1] is not None else None for i in range(len(ids) - 1)]
+        for i, kind in enumerate(r["change"]):
+            if kind:
+                steps[i][kind] += 1
+    return sorted(rules.values(), key=lambda r: r["check_id"]), steps
+
+
+@router.get("/compare", response_model=MultiCompareOut)
+async def multi_compare(runs: str = Query(..., max_length=400), module: str = Query(..., min_length=1, max_length=64),
+                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Two to six runs of one object side by side, oldest first. Unlike the pair comparisons the runs may come from
+    different systems: a source run against its target run is the point. 404 for a run that is not this tenant's."""
+    try:
+        ids = list(dict.fromkeys(str(uuid.UUID(x.strip())) for x in runs.split(",") if x.strip()))
+    except ValueError:
+        raise HTTPException(status_code=422, detail="runs must be run ids separated by commas")
+    if not 2 <= len(ids) <= 6:
+        raise HTTPException(status_code=422, detail="Compare two to six runs")
+    await _rls(db, tenant)
+    t = str(tenant.id)
+    heads = (await db.execute(text(
+        "SELECT id::text AS id, run_at, label, run_number, metadata->>'system_id' AS system_id, dqs_summary "
+        "FROM analysis_versions WHERE tenant_id = CAST(:t AS uuid) AND id = ANY(CAST(:ids AS uuid[])) "
+        "ORDER BY run_at, id"), {"t": t, "ids": ids})).mappings().all()
+    if len(heads) != len(ids):
+        raise HTTPException(status_code=404, detail="One or more runs not found")
+    ids = [h["id"] for h in heads]
+    names = await system_names(db, t, [h["system_id"] for h in heads])
+    widest = await _widest(db, t, ids)
+    out_runs = []
+    for h in heads:
+        m = (h["dqs_summary"] or {}).get(module) if isinstance(h["dqs_summary"], dict) else None
+        m = m if isinstance(m, dict) else {}
+        dims = m.get("dimension_scores") or {}
+        dims = dims if isinstance(dims, dict) else {}
+        cov = m.get("coverage")
+        out_runs.append({"id": h["id"], "run_at": h["run_at"], "label": h["label"], "run_number": h["run_number"],
+                         "system_id": h["system_id"], "system_name": names.get(str(h["system_id"])),
+                         "score": m.get("composite_score"), "raw_score": m.get("raw_score"), "capped": bool(m.get("capped")),
+                         "coverage": cov if isinstance(cov, (int, float)) else None,
+                         "dimension_scores": {k: float(v) for k, v in dims.items() if isinstance(v, (int, float))},
+                         "records_checked": records_checked_of(m, widest.get((h["id"], module))) if m else None})
+    found = (await db.execute(text(
+        "SELECT version_id::text, check_id, affected_count, severity, dimension FROM findings "
+        "WHERE tenant_id = CAST(:t AS uuid) AND version_id = ANY(CAST(:ids AS uuid[])) AND module = :m "
+        "AND details->>'error' IS NULL"), {"t": t, "ids": ids, "m": module})).fetchall()
+    rules, steps = multi_rules(ids, [tuple(r) for r in found])
+    titles = await rule_names(db, tenant, [r["check_id"] for r in rules]) if rules else {}
+    for r in rules:
+        r["title"] = titles.get(r["check_id"])
+    return {"module": module, "label": _label(module), "runs": out_runs, "rules": rules, "steps": steps}
 
 
 @router.get("/{a}/vs/{b}/summary", response_model=CompareOut)

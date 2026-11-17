@@ -15,7 +15,7 @@ import { getConfigMatches } from "@/lib/api/v2/config";
 import { exportVersionProfile, getProfile } from "@/lib/api/v2/profile";
 import { baselineRefusalOf, getSemanticTypes, putSemanticType, type SemanticColumn, type SemanticType } from "@/lib/api/v2/step9";
 import { getRunPrediction } from "@/lib/api/v2/step10";
-import { useObjectCycle, useRun } from "@/lib/api/next/runs";
+import { useObjectCycle, useRun, useRunsPage } from "@/lib/api/next/runs";
 import {
   Button, Card, Confirm, DataTable, EmptyState, ErrorState, FieldChip, Field, Input, PageHeader, Select, Skeleton, StatTile, CycleStepper, Tabs, TrendArea,
   useAletheiaScope, useSheet, useToast, type Column,
@@ -191,6 +191,9 @@ export function Run({ id }: { id: string }) {
   const modules = h ? modulesOf(h) : [];
   const systemId = h?.metadata?.system_id ?? "";
   const focus = modules[0] ?? "";
+  // The last five other runs of this system, oldest first, then this run: the multi-run compare link.
+  const recent = useRunsPage({ system_id: systemId, limit: 6 }, !!systemId);
+  const cmp = [...(recent.data?.versions ?? []).map((v) => v.id).filter((x) => x !== id).slice(0, 5).reverse(), id];
   const opened = params.get("open") === "extract-target";
   useEffect(() => { if (opened && h) sheet.open("extract-target", { run: id }); }, [opened, h, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -228,6 +231,7 @@ export function Run({ id }: { id: string }) {
         actions={
           <span className="rn-row-actions">
             <Button variant="secondary" onClick={() => sheet.open("compare", { run: id })}>{t("Compare")}</Button>
+            {cmp.length > 2 ? <span data-testid="run-compare"><Button variant="secondary" href={href(`/run/${cmp[0]}/vs/${id}?runs=${cmp.join(",")}`)}>{t("Compare with the last {n} runs", { n: cmp.length - 1 })}</Button></span> : null}
             <Button variant="secondary" onClick={() => router.push(href(`${runPath(id)}/agreement`))}>{t("Agreement")}</Button>
             <Button onClick={() => sheet.open("upload", { run: id, module: focus })}>{t("Upload cleaned file")}</Button>
           </span>

@@ -1,19 +1,77 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { approveAnomalyRule, proposeAnomalyRule, type AnomalyRuleProposal } from "@/lib/api/v2/anomaly-rules";
 import { getAnomalies, getDuplicates, getMiningOverview, getPatterns, getRelationships, runMining, LIMITS, type AnomalyItem, type DuplicatePair, type MiningPattern, type RelationshipItem } from "@/lib/api/v2/mining";
 import { getVersionsPage } from "@/lib/api/v2/runs";
 import { t } from "@/lib/v2/i18n";
-import { Button, Code, DataTable, StatTile, Tabs, useToast } from "@/ui/kit";
+import { AletheiaMark, Button, Code, CodeView, DataTable, Sheet, StatTile, Tabs, useToast } from "@/ui/kit";
 import { Async, Empty, Head, num, Sev, useRead, useScreenScope, when } from "./shared";
 
 const more = (n: number, limit: number) => (n >= limit ? `${num(n)}+` : num(n));
+
+const KIND: Record<AnomalyRuleProposal["grounding"]["kind"], () => string> = {
+  outlier: () => t("Values outside the usual range"),
+  null_spike: () => t("A jump in blank values"),
+  unexpected_code: () => t("A code not seen before"),
+};
+const LEVEL: Record<"high" | "medium" | "low", () => string> = { high: () => t("High"), medium: () => t("Medium"), low: () => t("Low") };
+
+/** Propose a rule from one anomaly, show its dry run and grounding, and approve it as a draft. */
+function ProposeSheet({ anomaly, onClose }: { anomaly: AnomalyItem | null; onClose: () => void }) {
+  const toast = useToast();
+  const id = anomaly?.id ?? "";
+  const q = useRead(["mining", "propose", id], () => proposeAnomalyRule(id), !!anomaly);
+  const approve = useMutation({
+    mutationFn: (p: AnomalyRuleProposal) => approveAnomalyRule(p.grounding.module, p.rule_yaml ?? "",
+      t("Proposed by Aletheia from an anomaly on {field}", { field: p.grounding.field })),
+    onSuccess: () => { toast(t("Saved as a draft rule. Review it in the rule workbench."), "good"); onClose(); },
+    onError: () => toast(t("The draft could not be saved"), "bad"),
+  });
+  return (
+    <Sheet open={!!anomaly} onClose={onClose} label={t("Propose a rule")} closeLabel={t("Close")}>
+      <h2 className="mx-card-t">{t("Propose a rule")} <AletheiaMark /></h2>
+      <Async q={q} lines={4}>
+        {(p) => {
+          const g = p.grounding;
+          return (
+            <div className="mx-col" data-testid="anomaly-proposal">
+              <p><Code code={g.field} description={g.field_description ?? undefined} /> {KIND[g.kind]()}</p>
+              {p.rule_yaml ? <CodeView label={t("Proposed rule")} text={p.rule_yaml} /> : null}
+              {p.errors.length ? <ul>{p.errors.map((e) => <li key={e}>{e}</li>)}</ul> : null}
+              <dl className="mx-evidence">
+                <dt>{t("Dry run")}</dt>
+                <dd>{p.dry_run.evaluated
+                  ? t("{hits} of {pop} records would fail, a pass rate of {rate}%", { hits: num(p.dry_run.hits), pop: num(p.dry_run.population), rate: num(p.dry_run.pass_rate) })
+                  : t("Not run: {reason}", { reason: p.dry_run.reason ?? t("n/a") })}</dd>
+                <dt>{t("Statistic")}</dt>
+                <dd>{`${g.statistic.method ?? t("n/a")}, ${t("deviation")} ${num(g.statistic.z_score)}, ${t("usual range")} ${num(g.statistic.lower)} ${t("to")} ${num(g.statistic.upper)}`}</dd>
+                <dt>{t("Anomalies on this field")}</dt>
+                <dd>{num(g.anomaly_count)}</dd>
+                <dt>{t("Drafted by")}</dt>
+                <dd>{p.source === "template" ? t("A rule template") : t("The AI, from the field, the statistic and counts only")}</dd>
+                {g.ai_sent.length ? <><dt>{t("Sent to the AI")}</dt><dd>{g.ai_sent.join("; ")}</dd></> : null}
+                <dt>{t("Confidence")}</dt>
+                <dd>{p.confidence ? LEVEL[p.confidence.level]() : t("n/a")}</dd>
+              </dl>
+              <div className="mx-head-actions">
+                <Button variant="primary" tone="aletheia" disabled={!p.valid || !p.rule_yaml || approve.isPending} onClick={() => approve.mutate(p)}>{t("Approve as a draft")}</Button>
+                <Button variant="ghost" onClick={onClose}>{t("Cancel")}</Button>
+              </div>
+            </div>
+          );
+        }}
+      </Async>
+    </Sheet>
+  );
+}
 
 export function MiningScreen() {
   const toast = useToast();
   const qc = useQueryClient();
   const [tab, setTab] = useState("duplicates");
+  const [proposing, setProposing] = useState<AnomalyItem | null>(null);
   const sum = useRead(["mining", "summary"], getMiningOverview);
   const dup = useRead(["mining", "dup"], getDuplicates);
   const ano = useRead(["mining", "ano"], getAnomalies);
@@ -70,6 +128,7 @@ export function MiningScreen() {
             { key: "v", label: t("Value"), align: "end", render: (x) => num(x.field_value) },
             { key: "z", label: t("Usual range"), render: (x) => `${num(x.lower_bound)} ${t("to")} ${num(x.upper_bound)}` },
             { key: "sv", label: t("Severity"), sort: (x) => x.severity, render: (x) => <Sev s={x.severity} /> },
+            { key: "p", label: t("Rule"), render: (x) => <Button variant="ghost" tone="aletheia" onClick={() => setProposing(x)}>{t("Propose a rule")}</Button> },
           ]} />
       ) : <Empty heading={t("No anomalies found")} />}</Async> : null}
       {tab === "relationships" ? <Async q={rel}>{() => r.length ? (
@@ -92,6 +151,7 @@ export function MiningScreen() {
             { key: "sv", label: t("Severity"), render: (x) => <Sev s={x.severity} /> },
           ]} />
       ) : <Empty heading={t("No patterns yet")} />}</Async> : null}
+      <ProposeSheet anomaly={proposing} onClose={() => setProposing(null)} />
     </>
   );
 }
