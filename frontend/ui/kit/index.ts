@@ -32,6 +32,8 @@ export { EmptyState, ErrorState, Skeleton } from "./states";
 export { StatTile } from "./StatTile";
 export { Tabs, type TabItem } from "./Tabs";
 export { TrendArea, type TrendPoint } from "./TrendArea";
+export { BandChart, type BandDatum } from "./BandChart";
+export { AletheiaMark, AletheiaMarkImg, EvidenceNote } from "./Evidence";
 
 // Spec names (section 3) for the pieces that already match one to one.
 export { PageHeader as Page } from "./PageHeader";

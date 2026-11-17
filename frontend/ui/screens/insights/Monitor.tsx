@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { groupByRun, useFeed } from "@/lib/api/next/monitor";
-import { getBackAfterClean } from "@/lib/api/remediation";
+import { getBackAfterClean, getMonitor, type MonitorItem } from "@/lib/api/remediation";
 import { proposeShiftRule, getFieldShifts } from "@/lib/api/v2/anomaly-rules";
 import { listRunSchedules } from "@/lib/api/v2/admin";
 import { getFirewallSummary } from "@/lib/api/v2/dq-firewall";
@@ -73,7 +73,45 @@ function Objects() {
   );
 }
 
+/** Each system since its last clean: what came in new, what regressed, what the clean resolved. */
+function SinceClean() {
+  const q = useQ("remediation-monitor", getMonitor);
+  const items = q.data?.items ?? [];
+  const label = (i: MonitorItem) => i.system_name ?? (i.scope === "upload" ? t("Uploaded file") : i.scope);
+  return (
+    <Card title={t("Since the last clean")} sub={t("Latest run against the run before the clean")}>
+      <Gate q={q} empty={items.length === 0} emptyHeading={t("No clean to watch yet")} emptyBody={t("Once a clean is applied, the next run is compared with the run before it.")}>
+        <div className="b8-stack" data-testid="since-clean">
+          {items.map((i) => (
+            <div key={i.lineage ?? i.scope} className="b8-stack">
+              <h3>{label(i)}</h3>
+              <dl className="mx-tiles">
+                <StatTile label={t("Score before")} value={n1(i.baseline.dqs)} note={day(i.baseline.run_at)} />
+                <StatTile label={t("Score now")} value={n1(i.latest.dqs)} note={day(i.latest.run_at)} />
+                <StatTile label={t("Resolved")} value={i.monitor ? n0(i.monitor.resolved_records) : "-"} note={i.monitor?.batch_id ? t("Clean {id}", { id: i.monitor.batch_id }) : undefined} />
+                <StatTile label={t("New failing records")} value={i.monitor ? n0(i.monitor.new_records) : "-"} />
+              </dl>
+              {i.monitor && i.monitor.regressed_checks.length > 0 ? (
+                <Tbl label={t("Rules that got worse")} rows={i.monitor.regressed_checks} rowKey={(r) => r.check_id} cols={[
+                  { key: "r", label: t("Rule"), render: (r) => <FieldChip code={r.check_id} description={r.name ?? t("Rule")} /> },
+                  { key: "o", label: t("Object"), render: (r) => <Mod code={r.module} /> },
+                  { key: "s", label: t("Severity"), render: (r) => <SeverityPill sev={sevOf(r.severity)} label={sevLabel(r.severity)} /> },
+                  { key: "n", label: t("New failures"), end: true, render: (r) => n0(r.new) },
+                ]} />
+              ) : i.monitor ? <p className="mx-muted">{t("No rule got worse since the clean.")}</p> : <p className="mx-muted">{t("No run since the clean yet.")}</p>}
+            </div>
+          ))}
+        </div>
+      </Gate>
+    </Card>
+  );
+}
+
 function AfterClean() {
+  return <div className="b8-stack"><SinceClean /><CameBack /></div>;
+}
+
+function CameBack() {
   const q = useQ("back-after-clean", () => getBackAfterClean(12));
   const d = q.data;
   return (
