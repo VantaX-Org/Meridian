@@ -117,7 +117,11 @@ def _steps(plan: dict, ctx: dict, config: dict) -> list[dict]:
     for w in plan["plan"].get("waves", []):
         for s in w["steps"]:
             s = dict(s)
-            if s["method"] == "upsert":
+            if s.get("raw"):
+                recs = im.raw_records(s, ctx["frames"], _id_map(plan))
+                s["batches"] = (im.person_batches(s, recs) if s["method"] == "upsert"
+                                else [recs[i:i + 1000] for i in range(0, len(recs), 1000)])
+            elif s["method"] == "upsert":
                 recs = im.config_filter(s, im.step_records(s, ctx["frames"], ctx["dictionary"], _id_map(plan)), config)
                 s["batches"] = im.person_batches(s, recs)
             elif s["method"] == "config_create":
@@ -217,7 +221,7 @@ def preflight_move(self, tenant_id: str, plan_id: str) -> str:
                     recs = [kr for b in s["batches"] for kr in b]
                     issues += im.metadata_issues(s, recs, meta)
                     issues += im.reference_issues(s, recs, ctx["dictionary"], config)
-                    keys = im._key_props(ctx["dictionary"].table(s["table"]), s["entity"]) if s.get("table") else []
+                    keys = im._key_props(ctx["dictionary"].table(s["table"]), s["entity"]) if s.get("table") and not s.get("raw") else []
                     if keys and s.get("pass", 1) == 1:
                         issues += im.key_conflicts(s, recs, conn.read_entity_set(s["entity"]).to_dict("records"), keys)
                 result["config"] = built["config"]
