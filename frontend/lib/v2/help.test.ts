@@ -95,6 +95,7 @@ describe("every v2 route has a chapter", () => {
     expect(chapterFor("/work", "open=batch:B-241")).toBe("v2:approvals");
     expect(chapterFor("/o/ecc-production/material-master/golden", "open=survivorship:material_master")).toBe("v2:golden-records");
     expect(chapterFor("/work", "open=help")).toBe("v2:work");
+    expect(chapterFor("/runs", "view=full")).toBe("v2:runs");
     expect(chapterFor("/inbox")).toBeNull();
   });
 });

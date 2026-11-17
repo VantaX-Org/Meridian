@@ -7,6 +7,8 @@ import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { useUrlParam } from "@/lib/v2/hooks";
+import { useTimeline } from "@/lib/v2/runs-queries";
+import type { TimelineRun } from "@/lib/api/v2/runs";
 import { archiveRuns, getJobsList, getSystemsExtended, restoreRuns, retryJobById } from "@/lib/api/v2/runs";
 import { cancelJob, exportRuns } from "@/lib/api/v2/run-ops";
 import { streamJobs } from "@/lib/api/jobs";
@@ -22,7 +24,7 @@ import { JobHairline } from "./JobHairline";
 import { isLive, modulesOf, runPath, runScore, runTitle, scoreText, sourceLabel, statusLabel, statusTone, when } from "./util";
 import "./runs.css";
 
-const VIEWS = ["runs", "jobs", "sets"] as const;
+const VIEWS = ["runs", "jobs", "sets", "full"] as const;
 const PAGE = 50;
 const FILTERS: { id: RunStatusFilter | "all"; label: () => string }[] = [
   { id: "all", label: () => t("All runs") },
@@ -147,6 +149,27 @@ function JobsView() {
   return <Card title={t("Jobs")} sub={t("{n, plural, one {# job} other {# jobs}}", { n: list.length })}><DataTable columns={columns} rows={list} rowKey={(j) => j.id} label={t("Jobs")} height={440} /></Card>;
 }
 
+/** Every finished run of the tenant, newest first, with each object's score in that run. */
+function TimelineView() {
+  const fx = useFixture();
+  const q = useTimeline(null, 50);
+  const list = [...(q.data?.runs ?? [])].reverse();
+  const columns: Column<TimelineRun>[] = useMemo(() => [
+    { key: "when", label: t("When"), render: (r) => when(r.run_at), sort: (r) => r.run_at ?? "" },
+    { key: "run", label: t("Run"), render: (r) => <a href={withFixture(runPath(r.id), fx)}>{r.label ?? (r.run_number != null ? `#${r.run_number}` : r.id)}</a> },
+    { key: "objects", label: t("Objects"), render: (r) => (
+      <span className="mx-links">
+        {Object.entries(r.objects).map(([code, o]) => <FieldChip key={code} code={code} description={`${moduleText(code)}: ${scoreText(o.score)}${o.capped ? ` ${t("(capped)")}` : ""}`} />)}
+      </span>
+    ) },
+    { key: "records", label: t("Records checked"), render: (r) => (r.records_checked ?? "—"), sort: (r) => r.records_checked ?? 0, align: "end" },
+  ], [fx]);
+  if (q.isLoading) return <Skeleton lines={6} label={t("Loading the timeline")} />;
+  if (q.isError) return <ErrorState heading={t("The timeline could not be loaded")} onRetry={() => void q.refetch()} retryLabel={t("Try again")} />;
+  if (!list.length) return <EmptyState heading={t("No finished run yet")} />;
+  return <Card title={t("Timeline")} sub={t("Every finished run, newest first.")}><DataTable label={t("Timeline")} rows={list} rowKey={(r) => r.id} columns={columns} /></Card>;
+}
+
 function SetsView() {
   const page = useRunsPage({ limit: 30, offset: 0 });
   const runs = page.data?.versions ?? [];
@@ -212,9 +235,9 @@ export function Runs() {
       <JobHairline />
       <PageHeader title={t("Runs")} context={t("{n, plural, one {# run} other {# runs}}", { n: facts.total })} actions={<Button onClick={() => sheet.open("cycle")}>{t("Start a run")}</Button>} />
       <Tabs idBase="runs-view" label={t("Runs views")} value={view} onChange={(v) => setView(v as (typeof VIEWS)[number])}
-        items={[{ id: "runs", label: t("Runs") }, { id: "jobs", label: t("Jobs") }, { id: "sets", label: t("Compare sets") }]} />
+        items={[{ id: "runs", label: t("Runs") }, { id: "jobs", label: t("Jobs") }, { id: "sets", label: t("Compare sets") }, { id: "full", label: t("Timeline") }]} />
       <div role="tabpanel" id={`runs-view-panel-${view}`} aria-labelledby={`runs-view-tab-${view}`} className="mx-col">
-        {view === "runs" ? <RunsView onAsk={onAsk} /> : view === "jobs" ? <JobsView /> : <SetsView />}
+        {view === "runs" ? <RunsView onAsk={onAsk} /> : view === "jobs" ? <JobsView /> : view === "full" ? <TimelineView /> : <SetsView />}
       </div>
     </div>
   );

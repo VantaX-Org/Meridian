@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { renderWithQuery } from "@/__tests__/render";
 import { stubLayout } from "@/ui/testing/layout-stub";
@@ -33,6 +33,18 @@ describe("work screens in fixture mode", () => {
     renderWithQuery(<AletheiaProvider><SheetHost sheets={SHEETS} closeLabel="Close">{el()}</SheetHost></AletheiaProvider>);
     expect(await screen.findByRole("heading", { level: 1, name: title })).toBeTruthy();
     expect((await screen.findAllByRole("row", {}, { timeout: 5000 })).length).toBeGreaterThan(1);
+  });
+});
+
+describe("Simulate fixing", () => {
+  it("rescores the loaded records' object and says nothing changes", async () => {
+    window.history.replaceState(null, "", "/work?fixture=1");
+    renderWithQuery(<AletheiaProvider><SheetHost sheets={SHEETS} closeLabel="Close"><Work /></SheetHost></AletheiaProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "Simulate fixing" }, { timeout: 5000 }));
+    const dialog = await screen.findByRole("dialog", { name: "Simulate fixing" });
+    expect(within(dialog).getByText("Simulation: nothing is changed in SAP or in Meridian.")).toBeTruthy();
+    expect(await within(dialog).findByTestId("sim-result", {}, { timeout: 5000 })).toBeTruthy();
+    expect(within(dialog).getByText("Score after, simulated")).toBeTruthy();
   });
 });
 
