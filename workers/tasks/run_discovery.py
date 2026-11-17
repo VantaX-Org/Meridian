@@ -157,7 +157,7 @@ def _discover_successfactors(session, tenant_id, system_id, snapshot_id, conn) -
     entities = sorted({f.source.split(".")[0] for t in canon.values() for f in t.fields.values()
                        if f.source and "." in f.source and f.source[0].isupper()})
     meta: dict[str, dict] = {}
-    coverage = []
+    coverage: list[dict] = []
     for ent in entities:
         try:
             meta.update(parse_odata_metadata(conn.metadata(ent)))
