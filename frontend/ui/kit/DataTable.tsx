@@ -61,7 +61,7 @@ export function DataTable<T>({ columns, rows, rowKey, label, selected, onSelect,
   const flip = (c: Column<T>) => setSort((s) => (s?.key === c.key ? (s.dir === 1 ? { key: c.key, dir: -1 } : null) : { key: c.key, dir: 1 }));
 
   return (
-    <div ref={box} className="mx-table" style={{ blockSize: height }} onScroll={(e) => setTop(e.currentTarget.scrollTop)} onKeyDown={key} tabIndex={0} role="group" aria-activedescendant={sorted[cur] ? `mx-row-${rowKey(sorted[cur])}` : undefined} aria-label={label}>
+    <div ref={box} className="mx-table" style={{ maxBlockSize: height }} onScroll={(e) => setTop(e.currentTarget.scrollTop)} onKeyDown={key} tabIndex={0} role="group" aria-activedescendant={sorted[cur] ? `mx-row-${rowKey(sorted[cur])}` : undefined} aria-label={label}>
       <table role="grid" aria-rowcount={sorted.length + 1}>
         <thead>
           <tr>
