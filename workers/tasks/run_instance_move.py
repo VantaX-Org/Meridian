@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -86,7 +86,7 @@ def _prepare(session: Session, engine, tid: str, plan: dict) -> dict:
     return ctx
 
 
-def _connect(session: Session, tid: str, system_id) -> tuple[Optional[object], Optional[str]]:
+def _connect(session: Session, tid: str, system_id) -> tuple[Any, Optional[str]]:
     """(connector, None) or (None, reason). A connect failure is never retried."""
     from api.services.connectivity_manager import ConnectivityManager, connect_sap_system
 
@@ -201,7 +201,7 @@ def preflight_move(self, tenant_id: str, plan_id: str) -> str:
                 issues.append({"entity": None, "field": None, "records": [], "severity": "error", "reason": why})
                 result["status"] = "failed"
             else:
-                src = {}
+                src: dict[str, list] = {}
                 for name, data in session.execute(text(
                         "SELECT config_table, config_data FROM config_snapshots WHERE system_id = :s "
                         "AND config_table <> 'ODATA_ENTITY'"), {"s": str(plan["source_system_id"])}).fetchall():
@@ -261,7 +261,7 @@ def run_move(self, tenant_id: str, run_id: str) -> str:
             return "skipped"
         session.commit()
         _rls(session, tenant_id)
-        run = dict(session.execute(text("SELECT * FROM move_runs WHERE id = :r"), {"r": run_id}).mappings().first())
+        run = dict(session.execute(text("SELECT * FROM move_runs WHERE id = :r"), {"r": run_id}).mappings().one())
         plan = _plan_row(session, str(run["plan_id"]))
         why = im.check_safety(_system(session, plan["source_system_id"]), _system(session, plan["target_system_id"]),
                               run["dry_run"])
@@ -281,11 +281,11 @@ def run_move(self, tenant_id: str, run_id: str) -> str:
                     "SELECT entity, record_key FROM move_record_status WHERE run_id = :r AND status = 'failed'"),
                     {"r": report_extra.get("retry_of")}).fetchall()}
             elif run["kind"] == "delta":
-                prev = dict(session.execute(text("""
+                prev: dict[str, str] = dict(session.execute(text("""
                     SELECT DISTINCT ON (s.record_key) s.record_key, s.row_hash FROM move_record_status s
                       JOIN move_runs r ON r.id = s.run_id
                      WHERE r.plan_id = :p AND r.id <> :r AND s.status = 'ok'
-                     ORDER BY s.record_key, s.updated_at DESC"""), {"p": str(plan["id"]), "r": run_id}).fetchall())
+                     ORDER BY s.record_key, s.updated_at DESC"""), {"p": str(plan["id"]), "r": run_id}).tuples().all())
                 for s in steps:
                     mods = [p for p in {p for b in s["batches"] for _, r in b for p in r} if p.lower().startswith("lastmodified")]
                     recs = im.delta_records([kr for b in s["batches"] for kr in b], run["since"], prev, mods)
@@ -330,7 +330,8 @@ def reconcile_move(self, tenant_id: str, recon_id: str) -> str:
         _rls(session, tenant_id)
         plan_id = session.execute(text("SELECT plan_id FROM move_reconciliations WHERE id = :i"), {"i": recon_id}).scalar()
         plan = _plan_row(session, str(plan_id))
-        conn, result = None, {"entities": [], "dqs": None}
+        conn = None
+        result: dict[str, Any] = {"entities": [], "dqs": None}
         status = "completed"
         try:
             ctx = _prepare(session, engine, tenant_id, plan)

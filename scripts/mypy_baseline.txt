@@ -352,8 +352,6 @@ workers/tasks/run_discovery.py:error: "str" has no attribute "keys"  [attr-defin
 workers/tasks/run_discovery.py:error: Dict entry 2 has incompatible type "str": "int"; expected "str": "str"  [dict-item]
 workers/tasks/run_discovery.py:error: Dict entry 2 has incompatible type "str": "int"; expected "str": "str"  [dict-item]
 workers/tasks/run_discovery.py:error: Incompatible types in assignment (expression has type "Table | None", variable has type "str")  [assignment]
-workers/tasks/run_extraction.py:error: Item "None" of "dict[str, object] | None" has no attribute "get"  [union-attr]
-workers/tasks/run_extraction.py:error: Item "object" of "object | Any" has no attribute "get"  [union-attr]
 workers/tasks/run_process_discovery.py:error: Argument 1 to "coverage_of" has incompatible type "MiningResult | None"; expected "MiningResult"  [arg-type]
 workers/tasks/run_process_discovery.py:error: Argument 2 to "generate" has incompatible type "MiningResult | None"; expected "MiningResult"  [arg-type]
 workers/tasks/run_process_discovery.py:error: Item "None" of "MiningResult | None" has no attribute "stats"  [union-attr]

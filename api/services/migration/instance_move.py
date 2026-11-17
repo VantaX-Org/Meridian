@@ -16,7 +16,7 @@ import json
 import xml.etree.ElementTree as ET
 from collections import Counter
 from datetime import datetime, timezone
-from typing import Callable, Iterable, Optional, Protocol
+from typing import Any, Callable, Iterable, Optional, Protocol
 
 import pandas as pd
 
@@ -86,7 +86,7 @@ def table_entity(table) -> tuple[Optional[str], str]:
     return ent, ""
 
 
-def entity_fields(table, entity: str) -> dict[str, object]:
+def entity_fields(table, entity: str) -> dict[str, Any]:
     """property -> dictionary Field for the fields of ``table`` that belong to ``entity``."""
     return {ep[1]: f for f in table.fields.values() if (ep := _entity_prop(f.source)) and ep[0] == entity}
 
@@ -168,7 +168,8 @@ def build_move_plan(modules: Iterable[str], dictionary, frames=None, columns_of=
     waves: dict[int, list[dict]] = {}
     for s in steps:
         waves.setdefault(s["wave"], []).append(s)
-    out, prev = [], []
+    out: list[dict] = []
+    prev: list[str] = []
     for w in sorted(waves):
         for s in waves[w]:
             s["depends_on"] = prev
@@ -219,7 +220,7 @@ def step_records(step: dict, frames, dictionary, id_map: Optional[dict] = None) 
             v = row.get(f.name)
             if v is None or (isinstance(v, float) and pd.isna(v)) or str(v).strip() == "":
                 continue
-            v = id_map.get(str(v), v) if f.name in mapped else v
+            v = (id_map or {}).get(str(v), v) if f.name in mapped else v
             rec[p] = _odata_date(v) if str(f.type).upper() in ("DATE", "DATETIME", "DATS") else v
         out.append((row["__key__"], rec))
     return out
@@ -337,7 +338,8 @@ def _attr(el, suffix: str) -> Optional[str]:
 def parse_metadata(xml: str) -> dict[str, dict]:
     """entity -> {properties: {name: {required}}, upsertable, creatable, updatable} from a $metadata document."""
     root = ET.fromstring(xml)
-    types, sets = {}, {}
+    types: dict[str, dict] = {}
+    sets: dict[str, dict] = {}
     for el in root.iter():
         tag = el.tag.split("}")[-1]
         if tag == "EntityType":
@@ -345,12 +347,12 @@ def parse_metadata(xml: str) -> dict[str, dict]:
             for p in el:
                 if p.tag.split("}")[-1] == "Property":
                     req = (_attr(p, "required") or "").lower() == "true" or (_attr(p, "Nullable") or "") == "false"
-                    props[p.get("Name")] = {"required": req}
-            types[el.get("Name")] = {"properties": props,
+                    props[p.get("Name", "")] = {"required": req}
+            types[el.get("Name", "")] = {"properties": props,
                                      **{a: (_attr(el, a) or "true").lower() != "false"
                                         for a in ("upsertable", "creatable", "updatable")}}
         elif tag == "EntitySet":
-            sets[el.get("Name")] = {a: (_attr(el, a) or "true").lower() != "false"
+            sets[el.get("Name", "")] = {a: (_attr(el, a) or "true").lower() != "false"
                                     for a in ("upsertable", "creatable", "updatable")}
     for name, flags in sets.items():
         if name in types:
@@ -477,7 +479,9 @@ def cleanse(frames, rules: dict[str, dict], check_fn: Callable, steward_fixes: I
     before_results = check_fn(frames)
     results, cur, log, passes = before_results, frames, [], 0
     for _ in range(max_passes):
-        fixes, rule_of, source_of = {}, {}, {}
+        fixes: dict[tuple, dict] = {}
+        rule_of: dict[tuple, Any] = {}
+        source_of: dict[tuple, Any] = {}
         for r in results:
             rule = rules.get(r.check_id)
             if rule is None or r.passed or r.error:
@@ -566,7 +570,7 @@ def load(plan_steps: list[dict], connector, store: Store, dry_run: bool = True, 
     stops the whole move on any auth failure, sending nothing. A wave whose error rate passes ``threshold``
     stops the run. Checkpointed batches are skipped (resume); ``only`` = {(entity, key)} resends just those
     records (retry failed). Steps that are not upserts are marked exported: their rows go out as files."""
-    report = {"status": "completed", "reason": None, "waves": []}
+    report: dict[str, Any] = {"status": "completed", "reason": None, "waves": []}
     if not dry_run:
         why = auth_preflight(connector)
         if why:
@@ -576,10 +580,10 @@ def load(plan_steps: list[dict], connector, store: Store, dry_run: bool = True, 
         if waves is None or s["wave"] in waves:
             by_wave.setdefault(s["wave"], []).append(s)
     for w in sorted(by_wave):
-        wrep = {"wave": w, "status": "completed", "steps": []}
+        wrep: dict[str, Any] = {"wave": w, "status": "completed", "steps": []}
         report["waves"].append(wrep)
         for s in by_wave[w]:
-            srep = {"entity": s["entity"], "pass": s.get("pass", 1), "sent": 0, "ok": 0, "failed": 0, "error_rate": 0.0}
+            srep: dict[str, Any] = {"entity": s["entity"], "pass": s.get("pass", 1), "sent": 0, "ok": 0, "failed": 0, "error_rate": 0.0}
             wrep["steps"].append(srep)
             for b, batch in enumerate(s.get("batches") or []):
                 if store.stopped():
@@ -623,7 +627,7 @@ def reconcile_entity(entity: str, source: list[dict], target: list[dict], key_pr
     s, t = {kf(r): r for r in source}, {kf(r): r for r in target}
     missing, extra = sorted(set(s) - set(t)), sorted(set(t) - set(s))
     diffs: Counter = Counter()
-    sample = []
+    sample: list[dict] = []
     for k in set(s) & set(t):
         for p, v in s[k].items():
             if p in t[k] and str(t[k][p]) != str(v):

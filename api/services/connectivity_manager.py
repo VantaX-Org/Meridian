@@ -1043,7 +1043,7 @@ class ConnectivityManager:
                     return []
                 model = models[ent]
                 keys = entity_keys(self._sf_edmx, ent) if self._sf_edmx else None
-                return history_props(keys, model[0] if model else set(props))
+                return history_props(keys, model[0] if isinstance(model, tuple) else set(props))
 
             def read_one(ent: str, props: dict[str, list[str]], related: bool):
                 """One entity set as table columns: (frame or None, names it cannot give, status)."""

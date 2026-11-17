@@ -81,9 +81,10 @@ def delta_plan(baseline: Optional[dict[str, object]], now: datetime, full_days: 
     from sap.change_documents import since_date
 
     started = baseline.get("started_at") if baseline else None
-    if not isinstance(started, str):
+    if not baseline or not isinstance(started, str):
         return None
-    prior = baseline.get("delta") if isinstance(baseline.get("delta"), dict) else {}
+    d = baseline.get("delta")
+    prior = d if isinstance(d, dict) else {}
     full_at = str(prior.get("full_at") or started)
     if now - datetime.fromisoformat(full_at) > timedelta(days=full_days):
         return None
