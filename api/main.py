@@ -24,6 +24,7 @@ from api.routes.writeback import router as writeback_router
 from api.routes.external_db import router as external_db_router
 from api.routes.cleaning import router as cleaning_router
 from api.routes.migration import router as migration_router
+from api.routes.instance_move import router as instance_move_router
 from api.routes.load_plan import router as load_plan_router
 from api.routes.exceptions import router as exceptions_router
 from api.routes.source_design import router as source_design_router
@@ -453,6 +454,7 @@ app.include_router(external_db_router)
 app.include_router(cleaning_router)
 app.include_router(load_plan_router)
 app.include_router(migration_router)
+app.include_router(instance_move_router)
 app.include_router(exceptions_router)
 app.include_router(source_design_router)
 app.include_router(record_issues_router)

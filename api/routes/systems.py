@@ -610,6 +610,36 @@ async def update_system(
     )
 
 
+class MigrationTargetBody(BaseModel):
+    enabled: bool
+
+
+@router.patch("/systems/{system_id}/migration-target")
+async def set_migration_target(
+    system_id: str,
+    body: MigrationTargetBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
+):
+    """Flag or unflag a system as a migration target. A move writes only to a flagged system."""
+    from api.services.rbac import write_audit
+
+    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
+    p = {"sid": system_id, "tid": str(tenant.id)}
+    found = (await db.execute(text("SELECT id, name, migration_target FROM sap_systems WHERE id = :sid AND tenant_id = :tid"),
+                              p)).fetchone()
+    if not found:
+        raise HTTPException(status_code=404, detail="System not found")
+    await db.execute(text("UPDATE sap_systems SET migration_target = :on WHERE id = :sid AND tenant_id = :tid"),
+                     {**p, "on": body.enabled})
+    await write_audit(db, tenant.id, request, "migration_target", "sap_system", system_id,
+                      {"migration_target": bool(found[2])}, {"migration_target": body.enabled})
+    await db.commit()
+    return {"id": system_id, "migration_target": body.enabled}
+
+
 @router.delete("/systems/{system_id}")
 async def delete_system(
     system_id: str,
