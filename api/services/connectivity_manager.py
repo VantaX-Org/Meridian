@@ -1290,7 +1290,7 @@ class ConnectivityManager:
                 coverage.append({"table": table, "status": "not_in_system", "entities": [ent], "raw": True})
                 continue
             keys = entity_keys(self._sf_edmx, ent) if self._sf_edmx else None
-            kw = dict(FULL_HISTORY) if history_props(keys, set()) else {}
+            kw: dict[str, Any] = dict(FULL_HISTORY) if history_props(keys, set()) else {}
             if ent in im.SF_BLOB_PROPS:  # file content goes to storage page by page; the frame keeps refs only
                 kw["on_page"] = im.spool_blobs(f"move-blobs/{self.tenant_id}/{ent}/", im.SF_BLOB_PROPS[ent],
                                                put or _put_blob)

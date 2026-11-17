@@ -6,6 +6,7 @@ import { t } from "@/lib/v2/i18n";
 import type { MasterRecordSummary } from "@/types/api";
 import { Button, Card, DataTable, EmptyState, ErrorState, FieldChip, Skeleton, StatTile, type Column } from "@/ui/kit";
 import type { ObjectRun } from "@/ui/screens/object/useObjectRun";
+import { Lead } from "./Lead";
 import { useTabChat } from "./TabFrame";
 
 const GOLDEN_PER_PAGE = 25;
@@ -30,8 +31,13 @@ export function Golden({ o, system, module }: { o: ObjectRun; system: string; mo
   ];
   const last = Math.max(1, Math.ceil(g.data.total / GOLDEN_PER_PAGE));
   const cl = x.data;
+  const recs = g.data.records;
+  const conf = (c: number) => (c > 1 ? c / 100 : c);
+  const band = (lo: number, hi: number) => recs.filter((r) => conf(r.overall_confidence) >= lo && conf(r.overall_confidence) < hi).length;
   return (
     <div className="mx-col">
+      <Lead tab="golden" title={t("Match confidence")} sentence={t("Confidence of the {n} golden records on this page.", { n: g.data.records.length })}
+        bars={[{ id: "hi", label: t("90% or more"), value: band(0.9, 2), tone: "good" }, { id: "mid", label: t("70% to 90%"), value: band(0.7, 0.9), tone: "warn" }, { id: "lo", label: t("Under 70%"), value: band(-1, 0.7), tone: "bad" }]} />
       <dl className="mx-tiles">
         <StatTile label={t("Golden records")} value={String(g.data.total)} />
         <StatTile label={t("Duplicate pairs across systems")} value={String(cl?.pairs ?? 0)} />

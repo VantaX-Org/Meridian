@@ -61,6 +61,7 @@ export function useObjectData(o: ObjectRun) {
       person: open - proposed,
       pair,
       dims,
+      receipt: receipt.data,
       capped: receipt.data?.capped ?? cell?.capped ?? false,
       capLevel: receipt.data?.cap_level ?? cell?.cap_level ?? null,
       capIds: breaches.map((b) => b.check_id),

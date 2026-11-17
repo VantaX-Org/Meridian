@@ -8,6 +8,7 @@ import { DQ_WORD, stepsOf, type StepView } from "@/lib/v2/process-tree";
 import { t } from "@/lib/v2/i18n";
 import { Card, DataTable, EmptyState, ErrorState, FieldChip, Skeleton, StatTile, type Column } from "@/ui/kit";
 import type { ObjectRun } from "@/ui/screens/object/useObjectRun";
+import { Lead } from "./Lead";
 import { objectPath, useTabChat } from "./TabFrame";
 
 /** The as-is process steps this object feeds, with the rules that fail in each. */
@@ -31,6 +32,8 @@ export function Processes({ o, system, module }: { o: ObjectRun; system: string;
   ];
   return (
     <div className="mx-col">
+      <Lead tab="processes" title={t("Process steps by status")} sentence={t("{n} of {m} process steps are blocked.", { n: steps.filter((s) => s.status === "red").length, m: steps.length })}
+        bars={(["green", "amber", "red"] as const).map((k) => ({ id: k, label: DQ_WORD[k], value: steps.filter((s) => s.status === k).length, tone: ({ green: "good", amber: "warn", red: "bad" } as const)[k] }))} />
       <dl className="mx-tiles">
         <StatTile label={t("Steps")} value={String(steps.length)} />
         <StatTile label={t("Blocked")} value={String(steps.filter((s) => s.blocked).length)} />

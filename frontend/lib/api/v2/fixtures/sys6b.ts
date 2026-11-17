@@ -374,7 +374,7 @@ function modelSummary(m: { rec: ModelRecord }): ModelSummary {
 
 function seedModel(): void {
   if (st.models.size) return;
-  const rec: ModelRecord = { id: "pm-1", name: "Group process model", status: "draft", current_version: 1, updated_at: "2026-10-12T09:00:00Z", created_by: "A. Naidoo", created_at: "2026-10-01T09:00:00Z" };
+  const rec: ModelRecord = { id: "pm-group", name: "Group process model", status: "draft", current_version: 1, updated_at: "2026-10-12T09:00:00Z", created_by: "A. Naidoo", created_at: "2026-10-01T09:00:00Z" };
   st.models.set(rec.id, { rec, versions: [{ note: "Created from reference", doc: referenceDoc() }] });
 }
 

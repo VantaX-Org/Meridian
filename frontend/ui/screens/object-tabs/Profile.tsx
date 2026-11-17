@@ -7,6 +7,7 @@ import { Card, DataTable, EmptyState, ErrorState, FieldChip, Select, Skeleton, t
 import { compactCount, score } from "@/ui/screens/object/format";
 import type { ObjectRun } from "@/ui/screens/object/useObjectRun";
 import { useProfile } from "./hooks";
+import { Lead } from "./Lead";
 import { useTabChat } from "./TabFrame";
 
 type Row = { field: string; rows: number; blank_pct: number; distinct: number; type: string | null; desc: string | null; top: string };
@@ -36,7 +37,12 @@ export function Profile({ o, system, module }: { o: ObjectRun; system: string; m
     { key: "d", label: t("Distinct values"), align: "end", sort: (r) => r.distinct, render: (r) => <span className="mx-num">{compactCount(r.distinct)}</span> },
     { key: "v", label: t("Most common values"), render: (r) => r.top },
   ];
+  const full = rows.filter((r) => r.blank_pct <= 0).length;
+  const empty = rows.filter((r) => r.blank_pct >= 100).length;
   return (
+    <div className="mx-col">
+    <Lead tab="profile" title={t("Fill rate of {table}", { table: cur.table })} sentence={t("{n} of {m} fields are filled on every row.", { n: full, m: rows.length })}
+      bars={[{ id: "full", label: t("Filled on every row"), value: full, tone: "good" }, { id: "part", label: t("Partly blank"), value: rows.length - full - empty, tone: "warn" }, { id: "empty", label: t("Always blank"), value: empty, tone: "bad" }]} />
     <Card
       title={cur.table}
       sub={(describeTable(cur.table) ? `${describeTable(cur.table)}, ` : "") + (cur.sampled ? t("Sampled: {n} of {m} rows", { n: compactCount(cur.rows), m: compactCount(cur.table_rows) }) : t("{n} rows", { n: compactCount(cur.rows) }))}
@@ -44,5 +50,6 @@ export function Profile({ o, system, module }: { o: ObjectRun; system: string; m
     >
       <DataTable columns={cols} rows={rows} rowKey={(r) => r.field} label={t("Fields")} height={480} />
     </Card>
+    </div>
   );
 }
