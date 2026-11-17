@@ -213,3 +213,12 @@
 .mx-root .mx-undo { display: flex; align-items: center; justify-content: space-between; gap: var(--mx-s3); padding: var(--mx-s2) var(--mx-s4); border: 1px solid var(--mx-border); border-radius: var(--mx-r-control); background: var(--mx-surface); }
 .mx-root .mx-graph { max-inline-size: 100%; }
 .mx-root .mx-table tr.mx-expand > td { padding: var(--mx-s3); white-space: normal; overflow: auto; background: var(--mx-surface-2); }
+
+/* Stacked progress (ok, failed, pending) and the move journey's wave rows. */
+.mx-root .mx-seg { display: flex; block-size: var(--mx-s2); border-radius: var(--mx-r-pill); background: var(--mx-surface-2); overflow: hidden; }
+.mx-root .mx-seg > span[data-k="ok"] { background: var(--mx-good); }
+.mx-root .mx-seg > span[data-k="failed"] { background: var(--mx-bad); }
+.mx-root .mx-wavebar { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--mx-s3); }
+.mx-root .mx-wavebar li { display: grid; grid-template-columns: minmax(6rem, 10rem) 1fr auto; gap: var(--mx-s3); align-items: center; }
+.mx-root .mx-actions { display: flex; flex-wrap: wrap; gap: var(--mx-s3); align-items: center; }
+.mx-root .mx-issues { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--mx-s2); }

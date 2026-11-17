@@ -32,6 +32,7 @@ export function Load() {
 
   const areas: { to: string; title: string; note: string }[] = [
     { to: "/n/load/plan", title: t("Load order"), note: t("Which object loads first, and why.") },
+    { to: "/n/load/move", title: t("Move to new instance"), note: t("Move every object and its history to a new system, then check it arrived.") },
     { to: "/n/load/s4", title: t("S/4 readiness"), note: t("Rules that must pass before the move.") },
     { to: "/n/load/go-live", title: t("Go-live gates"), note: t("Gates, certificates and sign-off per wave.") },
     { to: "/n/load/waves", title: t("Waves"), note: t("Groups of objects that move together.") },
