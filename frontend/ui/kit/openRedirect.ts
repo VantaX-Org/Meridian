@@ -22,7 +22,6 @@ const LIST: Readonly<Record<string, string>> = {
   webhook: "/admin/webhooks",
   zobject: "/s",
   away: "/people",
-  batch: "/approvals",
 };
 /** Kinds whose id names the record: [detail route prefix, list route when no id]. */
 const DETAIL: Readonly<Record<string, readonly [string, string]>> = {
@@ -38,6 +37,7 @@ const DETAIL: Readonly<Record<string, readonly [string, string]>> = {
 export function openRoute(kind: string, id: string | undefined): string | null {
   const e = id ? encodeURIComponent(id) : "";
   if (kind === "config") return e ? `/s/${e}?tab=config` : "/s";
+  if (kind === "batch") return e ? `/approvals?batch=${e}` : "/approvals";
   const d = Object.prototype.hasOwnProperty.call(DETAIL, kind) ? DETAIL[kind] : null;
   if (d) return e ? d[0] + e : d[1];
   return Object.prototype.hasOwnProperty.call(LIST, kind) ? LIST[kind] : null;

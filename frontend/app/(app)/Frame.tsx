@@ -10,7 +10,7 @@ import { PermissionsProvider } from "@/lib/permissions";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { PATHS } from "@/lib/next/nav-defaults";
-import { DemoBar, Standalone } from "@/ui/kit";
+import { DemoBar, Standalone, useDocumentLang } from "@/ui/kit";
 import { AletheiaProvider, AppShell, CommandPalette, SheetHost, ToastHost, useAletheia } from "@/ui/kit";
 import { SHEETS } from "@/ui/sheets";
 
@@ -65,6 +65,8 @@ function Shell({ children }: { children: ReactNode }) {
       brand={t("Meridian")}
       sections={sections}
       navLabel={t("Main sections")}
+      skipLabel={t("Skip to content")}
+      skipNavLabel={t("Skip links")}
       user={{ name: user?.name ?? user?.email ?? t("Demo user"), email: user?.email }}
       userMenuLabel={t("Account menu")}
       menu={fx ? [] : [{ id: "out", label: t("Sign out"), onClick: logout }]}
@@ -93,6 +95,13 @@ function Shell({ children }: { children: ReactNode }) {
   );
 }
 
+/** The shell root: tokens, and the interface language on the root and on <html> (WCAG 3.1.1). */
+function Root({ children }: { children: ReactNode }) {
+  const { tag } = useInterfaceLang();
+  useDocumentLang(tag);
+  return <div className="mx-root" lang={tag}>{children}</div>;
+}
+
 /** Same sign-in and permissions chain as the current app; fixture mode skips sign-in. */
 export function Frame({ children }: { children: ReactNode }) {
   const fx = useFixture();
@@ -102,12 +111,12 @@ export function Frame({ children }: { children: ReactNode }) {
     return <Standalone><Suspense fallback={null}><ToastHost><SheetHost sheets={SHEETS} closeLabel={t("Close")}>{children}</SheetHost></ToastHost></Suspense></Standalone>;
   }
   const inner = <Suspense fallback={null}><ChatHost><ToastHost><SheetHost sheets={SHEETS} closeLabel={t("Close")}><Shell>{children}</Shell></SheetHost></ToastHost></ChatHost></Suspense>;
-  if (fx) return <div className="mx-root"><DemoBar />{inner}</div>;
+  if (fx) return <Root><DemoBar />{inner}</Root>;
   return (
     <AuthGuard>
       <PermissionsProvider>
         <PreferencesSync />
-        <div className="mx-root">{inner}</div>
+        <Root>{inner}</Root>
         <RequestAccessHost />
       </PermissionsProvider>
     </AuthGuard>

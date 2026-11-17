@@ -40,12 +40,12 @@ export function DesignTab({ id }: { id: string }) {
       <Card title={t("Source design")} sub={t("What this system holds beyond the SAP standard.")} action={me.can("trigger_sync") ? <Button variant="secondary" onClick={() => void discover()} disabled={busy}>{t("Read source design")}</Button> : undefined}>
         <Gate q={summary} empty={{ heading: t("No source design yet"), body: t("Read the source design to list tables, customer fields and configuration.") }}>
           {(d) => (
-            <div className="mx-tiles">
+            <dl className="mx-tiles">
               <StatTile label={t("Discovery")} value={d.discovery_status ?? t("Never")} note={when(d.discovered_at)} />
               <StatTile label={t("Release")} value={d.sap_release ?? "-"} note={d.sap_product ?? undefined} />
               <StatTile label={t("Configuration sync")} value={d.config_sync_status ?? t("Never")} note={when(d.config_synced_at)} />
               <StatTile label={t("Configuration tables")} value={whole(d.configuration?.length ?? 0)} />
-            </div>
+            </dl>
           )}
         </Gate>
       </Card>

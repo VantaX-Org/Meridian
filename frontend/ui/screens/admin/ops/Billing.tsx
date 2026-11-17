@@ -27,11 +27,11 @@ export function Billing() {
       </Row>
       {b ? (
         <>
-          <div className="mx-tiles">
+          <dl className="mx-tiles">
             <StatTile label={t("Base fee")} value={formatMoney(b.base_fee, cur)} />
             <StatTile label={t("Total")} value={formatMoney(b.total_amount, cur)} />
             <StatTile label={t("Invoice")} value={b.stripe_invoice_id ?? t("Not invoiced")} />
-          </div>
+          </dl>
           <Card title={t("Exceptions by tier")}>
             <DataTable label={t("Exceptions by tier")} rows={tiers} rowKey={(r) => String(r.tier)} height={200}
               columns={[

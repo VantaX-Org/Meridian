@@ -37,11 +37,11 @@ export function SubjectRequests() {
           <Button variant="secondary" disabled={busy || !found} onClick={async () => { try { setDry(await dryRunErasure(subject.trim())); } catch (e) { fail(e); } }}>{t("Preview erasure")}</Button>
         </Row>
         {found && (
-          <div className="mx-tiles">
+          <dl className="mx-tiles">
             <StatTile label={t("Matched rows")} value={String(found.total_rows)} note={found.full_key ? t("Full key") : t("Partial key")} />
             <StatTile label={t("Keys")} value={String(found.keys.length)} />
             <StatTile label={t("Extract files")} value={String(found.extracts.files)} note={found.extracts.complete ? t("Fully scanned") : t("Scan incomplete")} />
-          </div>
+          </dl>
         )}
         {found && (
           <DataTable label={t("Rows by table")} rows={Object.entries(found.rows_by_table)} rowKey={([k]) => k} height={200}

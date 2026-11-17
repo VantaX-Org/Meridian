@@ -135,7 +135,7 @@ export function People() {
         <Gate q={next} label={t("Loading next steps")}>
           {(d) => d.items.length === 0 ? <EmptyState heading={t("Nothing waits for you")} /> : (
             <ul className="mx-list" aria-label={t("Your next steps")}>
-              {d.items.map((s) => <li key={`${s.kind}-${s.id}`}><Button variant="ghost" href={withFixture(s.href, fx)}>{s.title}</Button> <span className="mx-muted">{s.count}</span></li>)}
+              {d.items.map((s) => <li key={`${s.kind}-${s.id}`}><Button variant="ghost" href={withFixture(s.href, fx)}>{s.title || t("Overdue")}</Button> <span className="mx-muted">{s.count}</span></li>)}
             </ul>
           )}
         </Gate>

@@ -17,11 +17,11 @@ export function Enterprise() {
   return (
     <Sec title={t("Enterprise")} scope="enterprise" q={[status, theme, comp, scim]} context={t("Status page, branding, compliance and provisioning.")}
       facts={[s ? t("Platform status is {s}.", { s: s.status }) : ""]}>
-      <div className="mx-tiles">
+      <dl className="mx-tiles">
         <StatTile label={t("Platform status")} value={s?.status ?? ""} />
         <StatTile label={t("Uptime")} value={s?.uptime.overall_pct != null ? `${s.uptime.overall_pct}%` : ""} note={t("Last {n} days", { n: s?.uptime.days ?? 0 })} />
         <StatTile label={t("Open incidents")} value={String(s?.incidents.length ?? 0)} />
-      </div>
+      </dl>
       <Card title={t("Components")}>
         <DataTable label={t("Components")} rows={s?.components ?? []} rowKey={(r) => r.id} height={280}
           columns={[

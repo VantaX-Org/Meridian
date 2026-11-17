@@ -32,11 +32,11 @@ export function Licence() {
     >
       {!l ? <EmptyState heading={t("No licence information")} body={t("The licence service returned nothing.")} /> : (
         <>
-          <div className="mx-tiles">
+          <dl className="mx-tiles">
             <StatTile label={t("Status")} value={tx(l.status)} note={l.company_name ?? ""} bar={l.valid ? 100 : 0} barTone="pass" />
             <StatTile label={t("Days remaining")} value={whole(l.days_remaining ?? 0)} note={day(l.expiry_date)} bar={Math.min(100, ((l.days_remaining ?? 0) / 365) * 100)} barTone="data" />
             <StatTile label={t("Seats used")} value={`${whole(l.seats_used ?? 0)} / ${whole(l.seats ?? 0)}`} note={t("Named users")} bar={l.seats ? Math.min(100, ((l.seats_used ?? 0) / l.seats) * 100) : 0} barTone="data" />
-          </div>
+          </dl>
           {l.offline_grace?.active && (
             <Card title={t("Offline grace")} sub={t("The licence service is unreachable. Meridian keeps working on the last signed licence.")}>
               <Facts items={[

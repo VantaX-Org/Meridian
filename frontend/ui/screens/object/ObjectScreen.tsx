@@ -143,7 +143,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
             </div>
             <DimensionBars items={d.dims} naLabel={na} />
           </Card>
-          <Card title={t("Score over runs")}>
+          <Card title={t("Score over runs")} action={<Button variant="ghost" href={href(`/o/${system}/${module}/trend`)}>{t("Trend")}</Button>}>
             <TrendArea points={d.trend} label={t("Score over runs")} emptyLabel={t("Not enough runs to draw a trend yet.")} />
           </Card>
           <Card title={t("Failing rules by severity")}>

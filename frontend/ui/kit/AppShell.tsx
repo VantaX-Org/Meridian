@@ -7,7 +7,7 @@ export interface ShellSection { id: string; label: string; href: string; active?
 export interface ShellMenuItem { id: string; label: string; href?: string; onClick?: () => void }
 
 /** Top bar with sections and a user menu. No left menu. */
-export function AppShell({ brand, sections, navLabel, user, userMenuLabel, menu, launcher, aside, children }: { brand: string; sections: ShellSection[]; navLabel: string; user: { name: string; email?: string }; userMenuLabel: string; menu: ShellMenuItem[]; /** Violet Aletheia launcher in the top bar. */ launcher?: { label: string; onOpen: () => void }; /** Slot for the lazy AletheiaPanel. */ aside?: ReactNode; children: ReactNode }) {
+export function AppShell({ brand, sections, navLabel, skipLabel, skipNavLabel, user, userMenuLabel, menu, launcher, aside, children }: { brand: string; sections: ShellSection[]; navLabel: string; skipLabel: string; skipNavLabel: string; user: { name: string; email?: string }; userMenuLabel: string; menu: ShellMenuItem[]; /** Violet Aletheia launcher in the top bar. */ launcher?: { label: string; onOpen: () => void }; /** Slot for the lazy AletheiaPanel. */ aside?: ReactNode; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -21,6 +21,7 @@ export function AppShell({ brand, sections, navLabel, user, userMenuLabel, menu,
   const initial = (user.name || user.email || "?").trim().charAt(0).toUpperCase();
   return (
     <div className="mx-shell">
+      <nav aria-label={skipNavLabel} className="mx-skip"><a href="#nx-main">{skipLabel}</a></nav>
       <header className="mx-topbar">
         <Link href="/" className="mx-brand">{brand}</Link>
         <nav aria-label={navLabel} className="mx-sections">
@@ -39,7 +40,7 @@ export function AppShell({ brand, sections, navLabel, user, userMenuLabel, menu,
           ) : null}
         </div>
       </header>
-      <main className="mx-main">{children}</main>
+      <main id="nx-main" tabIndex={-1} className="mx-main">{children}</main>
       {aside}
     </div>
   );

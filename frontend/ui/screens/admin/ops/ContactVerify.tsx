@@ -20,10 +20,10 @@ export function ContactVerify() {
   return (
     <Sec title={t("Contact verification")} scope="contact-verify" q={[q]} context={t("{n} rules", { n: rules.length })}
       facts={[t("{n} contact values fail a check.", { n: bad })]}>
-      <div className="mx-tiles">
+      <dl className="mx-tiles">
         <StatTile label={t("Rules")} value={String(rules.length)} />
         <StatTile label={t("Failing values")} value={String(bad)} />
-      </div>
+      </dl>
       <Card title={t("Mail server lookup")} sub={t("When on, an email domain is also checked for a mail server. Only the domain is looked up, never the address.")}>
         <Toggle label={t("Check the mail server of each email domain")} checked={mx} onChange={save} />
       </Card>

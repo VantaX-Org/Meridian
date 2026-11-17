@@ -23,12 +23,12 @@ export function Engine() {
   return (
     <Sec title={t("Aletheia engine")} scope="engine" q={[q]} context={s?.version ? t("Version {v}", { v: s.version }) : undefined}
       facts={[s?.live ? t("The engine is live.") : t("The engine is not live.")]}>
-      <div className="mx-tiles">
+      <dl className="mx-tiles">
         <StatTile label={t("State")} value={s?.live ? t("Connected") : s?.configured ? t("Not reachable") : t("Not set up")} />
         <StatTile label={t("Access token")} value={s?.token_set ? t("Set") : t("Missing")} />
         <StatTile label={t("Licence")} value={s?.licence?.valid ? t("Valid") : s?.licence?.licensed === false ? t("None") : t("Not valid")} note={s?.licence?.expires ? t("Expires {d}", { d: day(s.licence.expires) }) : s?.licence?.reason ?? undefined} />
         <StatTile label={t("Tenant")} value={s?.tenant ?? ""} />
-      </div>
+      </dl>
       {counters.length > 0 && (
         <Card title={t("Usage")}>
           <DataTable label={t("Engine usage")} rows={counters} rowKey={([k]) => k} height={200}

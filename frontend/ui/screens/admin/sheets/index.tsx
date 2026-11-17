@@ -15,12 +15,12 @@ function LicenceSheet() {
   if (!l) return <Skeleton lines={4} label={t("Loading licence")} />;
   return (
     <Stack>
-      <div className="mx-tiles">
+      <dl className="mx-tiles">
         <StatTile label={t("Status")} value={l.status} note={l.company_name} />
         <StatTile label={t("Tier")} value={l.tier ?? ""} />
         <StatTile label={t("Seats")} value={`${l.seats_used ?? 0} / ${l.seats ?? "-"}`} />
         <StatTile label={t("Expires")} value={day(l.expiry_date)} note={l.days_remaining !== undefined ? t("{n} days left", { n: l.days_remaining }) : undefined} />
-      </div>
+      </dl>
       <Card title={t("Licensed modules")}>
         <DataTable label={t("Licensed modules")} rows={l.enabled_modules.map((m) => ({ m }))} rowKey={(r) => r.m} height={240}
           columns={[{ key: "m", label: t("Module"), render: (r) => <Code code={r.m} /> }]} />
@@ -36,10 +36,10 @@ function UpdateSheet() {
   if (!u) return <Skeleton lines={4} label={t("Loading version")} />;
   return (
     <Stack>
-      <div className="mx-tiles">
+      <dl className="mx-tiles">
         <StatTile label={t("Installed")} value={u.current_version} />
         <StatTile label={t("Newest")} value={u.latest_version} note={u.update_available ? t("An update is available") : t("Up to date")} />
-      </div>
+      </dl>
       {u.release_notes ? <Card title={t("Release notes")}><p className="mx-muted">{u.release_notes}</p></Card> : null}
       <p className="mx-muted">{t("Updates are run by your Meridian operator, not from this screen.")}</p>
     </Stack>

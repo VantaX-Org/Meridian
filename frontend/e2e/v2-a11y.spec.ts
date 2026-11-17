@@ -109,7 +109,7 @@ for (const loc of LOCALES) {
         await prepare(page, scheme, loc.tag);
         for (const p of PAGES) {
           await open(page, p.url);
-          if (loc.tag) await expect(page.locator(".nx-root[lang], .m2-root[lang]").first()).toHaveAttribute("lang", loc.tag);
+          if (loc.tag) await expect(page.locator(".mx-root[lang]").first()).toHaveAttribute("lang", loc.tag);
           await axe(page, `${p.name} ${loc.lang} ${scheme}`);
         }
       });

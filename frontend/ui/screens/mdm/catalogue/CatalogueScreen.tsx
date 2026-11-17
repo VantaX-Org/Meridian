@@ -37,12 +37,12 @@ function TableDetail({ table, system }: { table: string; system?: string }) {
                 ]} />
             ) : <Empty heading={t("No rules on this table")} />)}
             {tab === "about" && (
-              <div className="mx-tiles">
+              <dl className="mx-tiles">
                 <StatTile label={t("Fields")} value={num(d.fields.length)} />
                 <StatTile label={t("Keys")} value={d.keys.join(", ") || t("n/a")} />
                 <StatTile label={t("Objects")} value={d.objects.join(", ") || t("n/a")} />
                 <StatTile label={t("Source")} value={d.source} note={d.note ?? undefined} />
-              </div>
+              </dl>
             )}
           </DetailPanel>
         );
