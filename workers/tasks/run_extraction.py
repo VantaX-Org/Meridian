@@ -256,7 +256,7 @@ def discard_extraction(tenant_id: str, system_id: Optional[str], version_id: str
 )
 def run_extraction(self, tenant_id, system_id, modules, include_config=True, sync_type="both",
                    scope=None, analyse=True, label=None, version_id=None, delta=False, purpose=None,
-                   extract_target=None):
+                   extract_target=None, history=None):
     """Download ``modules`` (business objects) from ``system_id`` into a new version.
 
     The version is stored as ``extracted`` with its objects, scope and per-object
@@ -269,7 +269,11 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
     the version and the DQ side effects (module map, table profiles) are skipped.
     ``extract_target`` (api/services/extract_target.py) names the target system and templates; each template is
     filled from the stored run, and a failed fill is recorded on the job and never fails the extraction.
+    ``history="full"`` downloads every record ever held, for loading into a new system
+    (ConnectivityManager.extract); such a version is not analysed, since history rows repeat a business key.
     """
+    if history:
+        analyse = False
     if version_id:
         prior = jobs.get_job(tenant_id, f"dl-{version_id}")
         if prior and prior.get("status") not in jobs.ACTIVE:
@@ -305,13 +309,13 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
 
     try:
         return _extract(self, tenant_id, system_id, modules, include_config, sync_type, scope, analyse, label,
-                        version_id, delta, purpose, extract_target)
+                        version_id, delta, purpose, extract_target, history)
     finally:
         _release_system_lock(str(system_id), str(version_id) if version_id else None)
 
 
 def _extract(self, tenant_id, system_id, modules, include_config, sync_type, scope, analyse, label, version_id, delta,
-             purpose, extract_target=None):
+             purpose, extract_target=None, history=None):
     """The extraction proper, run while the system lock is held."""
     from api.services.task_progress import publish_progress
 
@@ -434,7 +438,7 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
             request = DeltaRequest(dplan[0], baseline_loader(str(baseline["dataset_path"])), by_change_date=compare) \
                 if dplan and baseline else None
             frames, coverage = manager.extract(system_id, modules, scope=scope, progress=_progress, sink=store,
-                                               delta=request)
+                                               delta=request, **({"history": history} if history else {}))
             fell_back = request is None or any(c["table"] == "CDHDR:delta" and c["status"] == "delta_fallback"
                                                for c in coverage)
             delta_meta = {"full_at": started["started_at"]} if fell_back else \
@@ -503,6 +507,7 @@ def _extract(self, tenant_id, system_id, modules, include_config, sync_type, sco
                     "modules": modules, "source": "extraction", "trigger": "manual", "system_id": system_id,
                     "config_basis": config_basis,
                     "scope": scope or {}, **({"purpose": purpose} if purpose else {}),
+                    **({"history": history} if history else {}),
                     "started_at": started["started_at"],
                     "downloaded_at": datetime.now(timezone.utc).isoformat(),
                     "latest_activity": max(activity) if activity else None,
