@@ -594,8 +594,71 @@ def test_sf_succession_candidates_are_not_built_from_users_when_successor_is_ref
     assert cov["SUCCESSIONCANDIDATE"]["status"] == "failed"
     assert cov["SUCCESSIONCANDIDATE←Successor"]["status"] == "failed"
 
+    # an HTTP 403 is a permission gap: reported as not_permitted, so it does not block extraction_complete
+    import httpx
+    resp = httpx.Response(403, request=httpx.Request("GET", "https://sf.example.test/odata/v2/Successor"))
+
+    class _Forbidden(_Fake):
+        def read_entity_set(self, entity, **kw):
+            if entity == "Successor":
+                err = SAPConnectorError("SuccessFactors request failed: 403")
+                err.__cause__ = httpx.HTTPStatusError("403", request=resp.request, response=resp)
+                raise err
+            return super().read_entity_set(entity, **kw)
+
+    frames, cov = _sf(_Forbidden(conn.data if hasattr(conn, "data") else
+                                 {"User": [{"userId": "U1", "riskOfLoss": "HIGH"}]}), ["succession_planning"], monkeypatch)
+    assert "SUCCESSIONCANDIDATE" not in frames
+    assert cov["SUCCESSIONCANDIDATE"]["status"] == "not_permitted"
+    assert cov["SUCCESSIONCANDIDATE←Successor"]["status"] == "not_permitted"
+
     conn = _Fake({"Successor": [{"userId": "U1", "nomineeUserId": "U1", "readiness": "READY_NOW"}],
                   "User": [{"userId": "U1", "riskOfLoss": "HIGH"}, {"userId": "U2", "riskOfLoss": "LOW"}]})
     frames, cov = _sf(conn, ["succession_planning"], monkeypatch)
     assert frames["SUCCESSIONCANDIDATE"]["SUCCESSIONCANDIDATE.NOMINEE_ID"].tolist() == ["U1"]
     assert cov["SUCCESSIONCANDIDATE"]["status"] == "live"
+
+
+def test_sf_every_entity_set_is_read_raw_and_permission_gaps_do_not_fail(monkeypatch):
+    import httpx
+
+    def http(code):
+        resp = httpx.Response(code, request=httpx.Request("GET", "https://sf.example.test/odata/v2/x"))
+        err = SAPConnectorError(f"SuccessFactors request failed: {code}")
+        err.__cause__ = httpx.HTTPStatusError(str(code), request=resp.request, response=resp)
+        return err
+
+    class Whole(_Fake):
+        def metadata(self, entity=None):
+            sets = "".join(f'<EntitySet Name="{n}" EntityType="SFOData.{n}"/>'
+                           for n in ("EmailTrigger", "cust_exit", "Successor", "EmpJob", "GoalWeight", "Photo"))
+            photo = ('<EntityType Name="Photo"><Property Name="userId" Type="Edm.String"/>'
+                     '<Property Name="photo" Type="Edm.Binary"/></EntityType>')
+            return (f'<edmx:Edmx xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx">{photo}'
+                    f'<EntityContainer>{sets}</EntityContainer></edmx:Edmx>')
+
+        def read_entity_set(self, entity, select=None, **kw):
+            if entity == "Successor":
+                raise http(403)
+            if entity == "GoalWeight":
+                raise http(500)
+            if entity == "EmailTrigger" and "from_date" in kw:
+                raise http(400)  # not effective-dated
+            return super().read_entity_set(entity, select=select, **kw)
+
+    conn = Whole({"EmailTrigger": [{"code": "T1", "nav": {"__deferred": {"uri": "u"}}}],
+                  "cust_exit": [{"externalCode": "E1"}],
+                  "Photo": [{"userId": "U1", "photo": "aGVsbG8="}]})
+    cm = object.__new__(ConnectivityManager)
+    cm._sf_edmx = None
+    frames: dict = {}
+    stored: dict = {}
+    cov = {c["table"]: c for c in cm._sf_every_entity_set(
+        conn, {"EmpJob"}, frames, sink=lambda t, df, e: stored.__setitem__(t, df))}
+    assert "EmpJob" not in cov  # already read by its canonical table
+    assert cov["EmailTrigger"]["status"] == "live" and list(stored["EmailTrigger"].columns) == ["EmailTrigger.code"]
+    assert cov["cust_exit"]["rows"] == 1 and ("cust_exit", {"from_date": "1900-01-01"}) in conn.kwargs
+    assert cov["Successor"]["status"] == "not_permitted"
+    assert cov["GoalWeight"]["status"] == "source_error"  # a gap, not "failed": the run stays complete
+    assert list(stored["Photo"].columns) == ["Photo.userId"] and cov["Photo"]["rows"] == 1  # binary dropped
+    assert not frames

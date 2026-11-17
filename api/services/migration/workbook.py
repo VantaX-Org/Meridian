@@ -9,8 +9,9 @@ containers.
 
 The upload is never saved back: openpyxl would lose its shapes and comments, so a new file is written instead. Values
 stay byte for byte, as in every load file, with two exceptions: a confirmed value mapping replaces a value, and a date
-of all zeros, which is how SAP stores no date, is blank. Only the file's own rules and confirmed value mappings decide
-which rows are held back.
+of all zeros, which is how SAP stores no date, is blank. No row is held back and no value is blanked or shortened:
+every row is written, and a value that breaks the file's rules is flagged in the report for the customer to fix at
+source.
 """
 
 from __future__ import annotations
@@ -924,7 +925,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                           key=lambda c: not c.mandatory)
         row: dict[str, Any] = {"name": sheet.name, "kind": sheet.kind, "table": table, "columns": len(columns), "added_keys": added,
                "control": control, "map": {h: f.qualified for h, f in hits.items()}, "mapped": [],
-               "matched": len(hits), "rows": 0, "ready": 0, "held": 0,
+               "matched": len(hits), "rows": 0, "ready": 0, "held": 0, "flagged": 0,
                "known": bool(options) or sheet.base in SHEET_ENTITIES, "required": sheet.required,
                "unmapped": [{"id": c.id, "label": c.label, "mandatory": c.mandatory and not c.country}
                             for c in unmapped]}
@@ -998,24 +999,16 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         countries = _row_countries(df[country.qualified]) if country else None
         values: dict[str, pd.Series] = {}
 
-        blanked = 0
-        cells = pd.Series(False, index=df.index)
-
         def hold(mask: pd.Series, col: Column, reason: str) -> None:
-            """A broken value in a mandatory or key column, or an unmapped strict value, holds the whole row back.
-            Anywhere else only that cell is left empty, so one bad optional value never costs the row its other
-            fields; both are reported."""
-            nonlocal bad, cells, blanked
+            """Flag a broken value. The row is still written with the value as it is; scope says whether the
+            problem would fail the whole row on load (mandatory, key, unmapped strict value) or only that cell."""
+            nonlocal bad
             count = int(mask.sum())
             if not count:
                 return
             whole = (col.mandatory or col.country_mandatory or col.header in added
                      or reason in ("value_map", "mandatory_for_country"))
-            if whole:
-                bad |= mask
-            else:
-                cells |= mask
-                blanked += count
+            bad |= mask
             reasons[reason] += count
             why = explain(col, reason)
             held.extend({"sheet": sheet.name, "record": k, "field": col.id, "reason": reason, "detail": why,
@@ -1024,7 +1017,6 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         for col in columns:
             if col.header not in hits:
                 continue
-            cells = pd.Series(False, index=df.index)
             f = hits[col.header]
             value = df[f.qualified]
             text = value.astype("string")
@@ -1065,11 +1057,9 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                 else:
                     blank = value.astype("string").fillna("").str.strip() == ""
                     hold(blank & countries.isin(tokens), col, "mandatory_for_country")
-            if cells.any():  # optional column: drop only the broken cells
-                values[col.header] = value.astype(object).where(~cells, None)
 
-        out = pd.DataFrame({c.header: values[c.header][~bad].values if c.header in hits else None
-                            for c in columns}, index=range(int((~bad).sum())))
+        out = pd.DataFrame({c.header: values[c.header].values if c.header in hits else None
+                            for c in columns}, index=range(len(df)))
         if sheet.kind == "definition" or sheet.labels:  # the import layout: field ids on row one, labels on row two
             label = {c.header: sheet.labels.get(c.header, c.label) for c in columns}
             out = pd.concat([pd.DataFrame([label]), out], ignore_index=True)
@@ -1077,7 +1067,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         same = same and sheet.kind == "grid" and all(c.pos >= 0 for c in columns if c.header in hits)
         missing = {c.id: int((values[c.header].astype("string").fillna("").str.strip() == "").sum())
                    if c.header in values else len(df) for c in columns if c.mandatory and not c.country}
-        row.update(rows=len(df), ready=int((~bad).sum()), held=int(bad.sum()), blanked_cells=blanked,
+        row.update(rows=len(df), ready=int((~bad).sum()), held=0, flagged=int(bad.sum()), blanked_cells=0,
                    mandatory_missing={k: v for k, v in missing.items() if v},
                    people=int(df[key_cols[0]].nunique()) if key_cols else len(df))
 
@@ -1090,7 +1080,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
             "columns": sum(r["columns"] for r in report), "matched_columns": sum(r["matched"] for r in report),
             "mandatory_unmapped": sum(u["mandatory"] for r in known for u in r["unmapped"]),
             "rows": sum(r["rows"] for r in report), "ready": sum(r["ready"] for r in report),
-            "held": sum(r["held"] for r in report),
+            "held": 0, "flagged": sum(r["flagged"] for r in report),
             "mandatory_sheets_empty": sum(r["required"] and not r["ready"] for r in report),
             "mapped_values": mapped,
             "load_mode": load_mode, "since": since.isoformat() if since else None,
@@ -1276,8 +1266,8 @@ def instructions(load_mode: str = "full", since: Optional[date] = None, sheets: 
         if not r.get("table"):
             continue
         missing = ", ".join(f"{k} ({v})" for k, v in (r.get("mandatory_missing") or {}).items()) or "none"
-        rows.append((f"Sheet {r['name']}", f"{r['rows']} rows for {r.get('people', 0)} records; {r['ready']} ready, "
-                                           f"{r['held']} held back; mandatory values missing: {missing}."))
+        rows.append((f"Sheet {r['name']}", f"{r['rows']} rows for {r.get('people', 0)} records; {r['ready']} clean, "
+                                           f"{r['flagged']} flagged (written as they are); mandatory values missing: {missing}."))
     rows += [(f"Sheet {name}", GENERATED_NOTE.capitalize() + ".") for name in generated]
     return pd.DataFrame(rows, columns=["Topic", "Detail"])
 

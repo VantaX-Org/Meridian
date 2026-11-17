@@ -212,6 +212,8 @@ export const COVERAGE_STATUS: Record<string, { label: () => string; tone?: "pass
   live: { label: () => tr("Read"), tone: "pass" },
   failed: { label: () => tr("Failed"), tone: "warn" },
   not_in_system: { label: () => tr("Not in this system") },
+  not_permitted: { label: () => tr("No permission"), tone: "warn", next: () => tr("The SuccessFactors API user may not read this entity set. Grant it in role-based permissions, then run again.") },
+  source_error: { label: () => tr("Source error"), tone: "warn", next: () => tr("SuccessFactors answered this entity set with a server error. The rest of the run is complete; run again later or raise it with SAP.") },
   delta_fallback: { label: () => tr("Read in full, no delta"), tone: "pass" },
   upload_required: {
     label: () => tr("Upload required"),

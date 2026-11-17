@@ -78,16 +78,17 @@ def test_reads_definitions_grids_and_picklists():
     assert (code.mandatory, code.max_length) == (True, 4)
 
 
-def test_fills_workbook_columns_and_holds_back_only_rule_breakers():
+def test_fills_every_row_as_it_is_and_flags_rule_breakers():
     tabs, report = wb.fill(wb.parse_workbook(sample()), frames())
     tab = tabs["Personal Info"]
     assert list(tab.columns) == ["person-id-external", "first-name", "gender", "second-title"]
     assert tab.iloc[0]["first-name"] == "First Name"  # label row, then data
-    # a broken mandatory value holds the row; a broken optional value blanks only that cell
-    assert tab["person-id-external"].tolist()[1:] == ["P1", "P4"]
-    assert pd.isna(tab.iloc[2]["gender"])
+    # no row is held back and no value is blanked or shortened; broken values are only flagged
+    assert tab["person-id-external"].tolist()[1:] == ["P1", "P2", "P3", "P4"]
+    assert tab["first-name"].tolist()[1:] == ["Ann", "Bartholomew", "", "Cy"]
+    assert tab.iloc[4]["gender"] == "X"
     row = next(s for s in report["sheets"] if s["name"] == "Personal Info")
-    assert (row["rows"], row["ready"], row["held"], row["blanked_cells"]) == (4, 2, 2, 1)
+    assert (row["rows"], row["ready"], row["held"], row["flagged"]) == (4, 1, 0, 3)
     assert row["added_keys"] == ["person-id-external"]
     assert report["reasons"] == {"too_long": 1, "mandatory": 1, "not_in_picklist": 1}
     assert {"id": "second-title", "label": "Second Title", "mandatory": True} in row["unmapped"]
