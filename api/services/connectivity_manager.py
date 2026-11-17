@@ -85,7 +85,10 @@ def _primary_first(df: pd.DataFrame, col: str) -> pd.DataFrame:
     """Rows whose isPrimary flag is true first, so first-row-per-key keeps the primary record."""
     if col not in df.columns:
         return df
-    flag = df[col].astype(str).str.strip().str.lower().isin({"true", "1", "y", "yes", "x"})
+    vals = df[col]
+    if isinstance(vals, pd.DataFrame):  # duplicate column names: the first copy carries the flag
+        vals = vals.iloc[:, 0]
+    flag = vals.astype(str).str.strip().str.lower().isin({"true", "1", "y", "yes", "x"})
     return df.iloc[(~flag).to_numpy().argsort(kind="stable")]
 
 
@@ -114,6 +117,11 @@ def _mark_current(df: pd.DataFrame, table: str, key_cols: list[str], hist_keys: 
     current[w.index[~w["k"].duplicated().to_numpy()]] = True
     current |= s.isna()
     return df.assign(**{col: current.map({True: "true", False: "false"})})
+
+def _status(e: Exception) -> int | None:
+    """The HTTP status behind a connector error, when it carries one."""
+    return e.__cause__.response.status_code if isinstance(e.__cause__, httpx.HTTPStatusError) else None
+
 
 def _bad_property(e: Exception, entity: str) -> str | None:
     """The property an SF 400 ('[COE0003]Bad property expression: Ent/prop', '[COE0021]Invalid property
@@ -631,7 +639,7 @@ class ConnectivityManager:
             elif set(modules) & set(PROCESS_EVENT_CLOUD_MODULES):
                 frames, coverage = self._extract_process_cloud(connector, modules, system_type, scope)
             elif system_type == "successfactors":
-                frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id, history)
+                frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id, history, sink)
             elif system_type == "s4hana_cloud":
                 frames, coverage = self._extract_s4hc(connector, modules, dictionary)
             elif system_type in ("concur", "ariba"):
@@ -989,7 +997,7 @@ class ConnectivityManager:
                              "detail": f"no {system_type} entity mapping for {', '.join(modules)}"})
         return frames, coverage
 
-    def _extract_successfactors(self, connector, modules, dictionary, system_id, history=None):
+    def _extract_successfactors(self, connector, modules, dictionary, system_id, history=None, sink=None):
         """Assemble SF canonical tables from their source entities (see canonical/successfactors.yaml).
         ``history="full"``: see ``extract``."""
         from checks.frames import tables_of
@@ -1025,6 +1033,7 @@ class ConnectivityManager:
                                              "AND config_table = 'PICKLIST_OPTION'"), {"s": str(system_id)}).first()
             for o in (row[0] if row else None) or []:
                 options.setdefault(o["picklist"], {})[str(o["optionId"])] = o["externalCode"]
+        options[""] = unique_option_codes(options)
         for table in sorted(wanted):
             t = dictionary.table(table)
             if t is None or not t.provenance.startswith("canonical:successfactors"):
@@ -1062,7 +1071,7 @@ class ConnectivityManager:
             merged = None
             absent: list[str] = []
             absent_keys: set[str] = set()
-            failed = False
+            failed = refused = False
             def model_of(ent: str):
                 if ent not in models:
                     # a family member is described by the whole-service $metadata already read for the family
@@ -1144,6 +1153,8 @@ class ConnectivityManager:
                 except Exception as e:
                     if _not_found(e):
                         return None, every, ("not_in_system", str(e)[:300])
+                    if _status(e) in (401, 403):  # the API user may not read it: a permission gap, not a failure
+                        return None, every, ("not_permitted", str(e)[:300])
                     return None, every, ("failed", str(e)[:300])
                 out = pd.DataFrame(index=df.index)
                 for prop, names in props.items():
@@ -1192,6 +1203,7 @@ class ConnectivityManager:
                         if status[0] == "failed":
                             failed = True
                         else:
+                            refused = refused or status[0] == "not_permitted"
                             absent.append(status[1])
                             absent_keys.add(key)
                         coverage.append({"table": f"{table}←{member}", "status": status[0], "entity": member,
@@ -1220,7 +1232,7 @@ class ConnectivityManager:
                                               if on else out, how="left", on=on) if on else merged
             if merged is None:
                 if not failed:  # every entity absent, or none has a property the dictionary maps
-                    coverage.append({"table": table, "status": "not_in_system", "entities": sorted(by_entity),
+                    coverage.append({"table": table, "status": "not_permitted" if refused else "not_in_system", "entities": sorted(by_entity),
                                      "unavailable_fields": sorted(unavailable),
                                      "detail": ("; ".join(absent) if len(absent_keys) == len(by_entity)
                                                 else "no dictionary property in tenant $metadata")[:300]})
@@ -1232,7 +1244,8 @@ class ConnectivityManager:
             key_cols = [f"{table}.{k}" for k in t.keys if k in mapped]
             if key_cols and len(by_entity) > 1 and len(merged) and not any(
                     c in merged.columns and merged[c].notna().any() for c in key_cols):
-                coverage.append({"table": table, "status": "failed" if failed else "not_in_system",
+                coverage.append({"table": table, "status": "failed" if failed else "not_permitted" if refused
+                                 else "not_in_system",
                                  "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable),
                                  "detail": ("no entity returned the key field(s) "
                                             + ", ".join(k.split(".", 1)[1] for k in key_cols))})
@@ -1253,7 +1266,9 @@ class ConnectivityManager:
                     merged[col] = merged[col].map(lambda v: str(v).lower() if v is not None and v == v else v)
             # legacy-picklist fields return the option id; rules and picklists speak external codes
             for f in t.fields.values():
-                col, opts = f"{table}.{f.name}", options.get(f.picklist or "")
+                # picklist ids differ per tenant: fall back to option ids that name one code in every picklist
+                col = f"{table}.{f.name}"
+                opts = (options.get(f.picklist) or options.get("")) if f.picklist else None
                 if opts and col in merged.columns:
                     merged[col] = merged[col].map(lambda v: opts.get(str(v).strip(), v) if v is not None else v)
             merged = _mark_current(merged, table, key_cols, hist_keys)
@@ -1263,6 +1278,9 @@ class ConnectivityManager:
         if full:
             self._sf_raw_sets(connector, modules, frames, coverage)
             self._sf_picklists(connector, dictionary, wanted, frames, coverage)
+        # every other entity set, skipping what the canonical tables and the move's raw sets already read
+        read = set(models) | {e for c in coverage for e in [c.get("entity"), *(c.get("entities") or ())] if e}
+        coverage += self._sf_every_entity_set(connector, read, frames, sink)
         return frames, coverage
 
     def _sf_raw_sets(self, connector, modules, frames, coverage, put=None) -> None:
@@ -1376,6 +1394,50 @@ class ConnectivityManager:
                 sink(table, framed, entry)
             else:
                 frames[table] = framed
+
+    def _sf_every_entity_set(self, connector, already: set[str], frames: dict, sink=None) -> list[dict]:
+        """Every entity set of the tenant's $metadata the canonical tables did not read, as its own raw table
+        (named after the entity set, columns "Entity.property"): a full export of the live system for
+        migration, MDF exports and workbook fills, with all effective-dated history.
+
+        A set the API user may not read (SF answers 400/403) is reported as not_permitted, so the gap
+        is listed without failing the extraction; anything else that goes wrong is failed."""
+        from sap.successfactors import binary_properties
+        out: list[dict] = []
+        if not hasattr(connector, "read_entity_set"):
+            return out
+        for ent in self._sf_family(connector, ""):
+            if ent in already:
+                continue
+            entry: dict = {"table": ent, "entity": ent, "raw": True}
+            try:
+                try:  # all effective-dated history; SF refuses fromDate on a set that is not dated
+                    df = connector.read_entity_set(ent, from_date="1900-01-01")
+                except Exception as e:
+                    if _status(e) != 400:
+                        raise
+                    df = connector.read_entity_set(ent)
+            except Exception as e:
+                code = _status(e)
+                # a raw set is extra coverage: an SF server error on it is a reported gap, never a failed run
+                entry.update(status="not_in_system" if code == 404 else "not_permitted" if code in (400, 401, 403)
+                             else "source_error", detail=str(e)[:300])
+                out.append(entry)
+                continue
+            # deferred navigations arrive as {"__deferred": …}: links, not data
+            # binary properties (Attachment.fileContent, Photo.photo) are files, not fields: keep the rows
+            binary = binary_properties(self._sf_edmx).get(ent, set()) if self._sf_edmx else set()
+            df = df.drop(columns=[c for c in df.columns if c in binary
+                                  or df[c].map(lambda v: isinstance(v, (dict, bytes, bytearray))).any()])
+            framed = df.rename(columns={c: f"{ent}.{c}" for c in df.columns})
+            del df
+            entry.update(status="live", rows=len(framed))
+            out.append(entry)
+            if sink is not None:
+                sink(ent, framed, entry)
+            else:
+                frames[ent] = framed
+        return out
 
     def _sf_family(self, connector, prefix: str) -> list[str]:
         """The tenant's entity sets of a per-country family (PerGlobalInfo → PerGlobalInfoBRA, …), from one
@@ -1961,3 +2023,12 @@ class ConnectivityManager:
             }
             for m in modules
         ]
+
+
+def unique_option_codes(options: dict[str, dict[str, str]]) -> dict[str, str]:
+    """optionId -> externalCode across every picklist, keeping only ids that map to exactly one code."""
+    seen: dict[str, set[str]] = {}
+    for opts in options.values():
+        for oid, code in opts.items():
+            seen.setdefault(oid, set()).add(code)
+    return {oid: next(iter(c)) for oid, c in seen.items() if len(c) == 1}

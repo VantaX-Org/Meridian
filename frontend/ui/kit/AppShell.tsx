@@ -7,7 +7,7 @@ export interface ShellSection { id: string; label: string; href: string; active?
 export interface ShellMenuItem { id: string; label: string; href?: string; onClick?: () => void }
 
 /** Top bar with sections and a user menu. No left menu. */
-export function AppShell({ brand, sections, navLabel, skipLabel, skipNavLabel, user, userMenuLabel, menu, launcher, aside, children }: { brand: string; sections: ShellSection[]; navLabel: string; skipLabel: string; skipNavLabel: string; user: { name: string; email?: string }; userMenuLabel: string; menu: ShellMenuItem[]; /** Violet Aletheia launcher in the top bar. */ launcher?: { label: string; onOpen: () => void }; /** Slot for the lazy AletheiaPanel. */ aside?: ReactNode; children: ReactNode }) {
+export function AppShell({ brand, sections, navLabel, skipLabel, skipNavLabel, user, userMenuLabel, menu, launcher, aside, banner, actions, children }: { brand: string; sections: ShellSection[]; navLabel: string; skipLabel: string; skipNavLabel: string; user: { name: string; email?: string }; userMenuLabel: string; menu: ShellMenuItem[]; /** Violet Aletheia launcher in the top bar. */ launcher?: { label: string; onOpen: () => void }; /** Slot for the lazy AletheiaPanel. */ aside?: ReactNode; /** Lines under the top bar: offline, sandbox, view-as. */ banner?: ReactNode; /** Small controls before the launcher: health word, inbox. */ actions?: ReactNode; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -27,6 +27,7 @@ export function AppShell({ brand, sections, navLabel, skipLabel, skipNavLabel, u
         <nav aria-label={navLabel} className="mx-sections">
           {sections.map((s) => <Link key={s.id} href={s.href} className="mx-section" aria-current={s.active ? "page" : undefined}>{s.label}</Link>)}
         </nav>
+        {actions}
         {launcher ? <button type="button" className="mx-btn mx-launcher" data-tone="aletheia" data-variant="secondary" onClick={launcher.onOpen}>{launcher.label}</button> : null}
         <div className="mx-user" ref={ref}>
           <button type="button" className="mx-avatar" aria-label={userMenuLabel} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>{initial}</button>
@@ -40,6 +41,7 @@ export function AppShell({ brand, sections, navLabel, skipLabel, skipNavLabel, u
           ) : null}
         </div>
       </header>
+      {banner}
       <main id="nx-main" tabIndex={-1} className="mx-main">{children}</main>
       {aside}
     </div>

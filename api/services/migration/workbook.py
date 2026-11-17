@@ -9,8 +9,9 @@ containers.
 
 The upload is never saved back: openpyxl would lose its shapes and comments, so a new file is written instead. Values
 stay byte for byte, as in every load file, with two exceptions: a confirmed value mapping replaces a value, and a date
-of all zeros, which is how SAP stores no date, is blank. Only the file's own rules and confirmed value mappings decide
-which rows are held back.
+of all zeros, which is how SAP stores no date, is blank. No row is held back and no value is blanked or shortened:
+every row is written, and a value that breaks the file's rules is flagged in the report for the customer to fix at
+source.
 """
 
 from __future__ import annotations
@@ -55,7 +56,7 @@ SHEET_ENTITIES = {
     "csfjobclassification": {"FOJobClassLocal*"},
     "paymentinfo": {"PaymentInformationDetailV3"},
     "emergencycontact": {"PerEmergencyContacts"},
-    "dependents": {"PerPersonRelationship", "PerPersonal", "PerNationalId"},
+    "dependents": {"PerPersonRelationship", "PerPerson", "PerPersonal", "PerNationalId"},
     "workpermit": {"EmpWorkPermit"},
     "employmentinfoathire": {"EmpEmployment"},
     "employmentinfoatterm": {"EmpEmployment"},
@@ -81,8 +82,8 @@ SHEET_ENTITIES = {
     "geozone": {"FOGeozone"},
     "locationgroup": {"FOLocationGroup"},
     "paycomponentgroup": {"FOPayComponentGroup"},
-    "payscaletype": {"FOPayScaleType"},
-    "payscalearea": {"FOPayScaleArea"},
+    "payscaletype": {"PayScaleType"},
+    "payscalearea": {"PayScaleArea"},
     "corporateaddress": {"FOCorporateAddressDEFLT"},
     "csfcorporateaddress": {"FOCorporateAddressDEFLT"},
     # The names the import templates and the User Data File use for the same objects.
@@ -134,6 +135,10 @@ class Column:
     mandatory: bool = False
     picklist: str = ""
     country: str = ""
+    # A country-specific field has one definition row per country: each country's picklist ('' for a text field)
+    # and whether it is mandatory there, keyed by the country's three and two letter codes.
+    country_picklists: dict[str, str] = field(default_factory=dict)
+    country_mandatory: set[str] = field(default_factory=set)
     pos: int = -1  # the column's place on the sheet, when the sheet is a load layout
     table: str = ""  # the SAP structure a cockpit field list names
 
@@ -195,21 +200,33 @@ def _definition(name: str, rows: list[tuple], at: int, id_col: int) -> Sheet:
         i = head.get(key)
         return row[i] if i is not None and i < len(row) else None
 
-    sheet, seen = Sheet(name, "definition"), set()
+    sheet, seen = Sheet(name, "definition"), dict[str, Column]()
     for row in rows[at + 1:]:
         fid = _text(row[id_col]) if id_col < len(row) else ""
         kind = _text(cell(row, "type"))
-        if not fid or kind.lower() not in FIELD_TYPES or fid in seen:
+        if not fid or kind.lower() not in FIELD_TYPES:
             continue
         if _text(cell(row, "visibility")).lower() in HIDDEN:
             continue
-        seen.add(fid)
-        sheet.columns.append(Column(
-            header=fid, id=fid, label=_text(cell(row, "sflabel")), type=kind.upper(),
-            max_length=_length(cell(row, "maxlength")),
-            mandatory=_text(cell(row, "mandatory")).lower() == "yes",
-            picklist=re.sub(r"^picklist:\s*", "", _text(cell(row, "picklist")), flags=re.I),
-            country=_text(cell(row, "country"))))
+        mandatory = _text(cell(row, "mandatory")).lower() == "yes"
+        picklist = re.sub(r"^picklist:\s*", "", _text(cell(row, "picklist")), flags=re.I)
+        picklist = "" if kind.lower() != "picklist" and picklist.lower() in ("", "no") else picklist
+        country = _text(cell(row, "country"))
+        col = seen.get(fid)
+        if col is None:
+            col = seen[fid] = Column(header=fid, id=fid, label=_text(cell(row, "sflabel")), type=kind.upper(),
+                                     max_length=_length(cell(row, "maxlength")), mandatory=mandatory,
+                                     picklist=picklist, country=country)
+            sheet.columns.append(col)
+        elif not (country and col.country):
+            continue  # a repeated global field: the first definition wins
+        for token in _country_tokens(country):  # each country keeps its own picklist and mandatory flag
+            col.country_picklists.setdefault(token, picklist)
+            if mandatory:
+                col.country_mandatory.add(token)
+    for col in sheet.columns:
+        if len(set(col.country_picklists.values())) > 1:  # no single picklist holds for every country
+            col.picklist = ""
     return sheet
 
 
@@ -390,6 +407,7 @@ def _parse(source: Source, picklists: dict[str, set[str]]) -> list[Sheet]:
             if rule:
                 col.id, col.label, col.type, col.max_length = rule.id, rule.label, rule.type, rule.max_length
                 col.mandatory, col.picklist, col.country = rule.mandatory, rule.picklist, rule.country
+                col.country_picklists, col.country_mandatory = rule.country_picklists, rule.country_mandatory
     return [d for d in definitions if d.name not in replaced] + grids
 
 
@@ -496,8 +514,8 @@ def coverage(workbook: Workbook, dictionary: Dictionary) -> dict:
 # property, so Min fills only a pay range.
 _FRIENDLY = {
     "min": ("minimumpay",), "mid": ("midpoint",), "max": ("maximumpay",),
-    "legalentity": ("company", "custlegalentityexternalcode"),
-    "parentlegalentity": ("company", "custlegalentityexternalcode"),
+    "legalentity": ("company", "custlegalentityexternalcode", "custtolegalentityexternalcode"),
+    "parentlegalentity": ("company", "custlegalentityexternalcode", "custtolegalentityexternalcode"),
     "parentcostcenter": ("parent",),
     "addressline1": ("addressnavdefltaddress1",), "addressline2": ("addressnavdefltaddress2",),
     "addressline3": ("addressnavdefltaddress3",),
@@ -524,6 +542,9 @@ def _matched(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field]
         keys = {_norm(k): table.fields[k] for k in table.keys}
         keys |= {_norm(f.source.split(".", 1)[1]): table.fields[k]
                  for k in table.keys for f in [table.fields[k]] if f.source and "." in f.source}
+        # PaymentInformationV3_worker is the parent's worker reached from the detail; a load file heads it worker
+        keys |= {_norm(f.source.rsplit("_", 1)[1]): f for k in table.keys for f in [table.fields[k]]
+                 if f.source and "_" in f.source.split(".")[-1]}
         index = dict(keys)
         index |= {_norm((f.source or "").split(".", 1)[1].split(" ")[0]): f for f in fields}
         if "status" in index:  # foundation load files call the status field effectiveStatus
@@ -691,7 +712,7 @@ def _problems(col: Column, values: pd.Series, picklists: dict[str, set[str]]) ->
     found = []
     if col.mandatory and not col.country:  # a country field is mandatory for that country only
         found.append((~filled, "mandatory"))
-    if col.max_length:
+    if col.max_length and kind != "BOOLEAN":  # SF exports a Boolean with length 1 and loads true or false
         found.append((filled & (text.str.len() > col.max_length), "too_long"))
     if kind == "DATE":
         found.append((filled & pd.to_datetime(text, errors="coerce", format="mixed").isna(), "bad_date"))
@@ -701,7 +722,7 @@ def _problems(col: Column, values: pd.Series, picklists: dict[str, set[str]]) ->
         whole = text.str.fullmatch(_WHOLE).fillna(False)
         size = pd.to_numeric(text.where(whole), errors="coerce").abs() <= _LONG_MAX
         found.append((filled & ~(whole & size.fillna(False)), "bad_whole_number"))
-    elif kind in ("DOUBLE", "DECIMAL", "NUMBER"):
+    elif kind in ("DOUBLE", "DECIMAL", "NUMBER") and not _WORD_CODES.get(col.id.split(".")[-1]):
         num = pd.to_numeric(text.where(filled), errors="coerce")
         found.append((filled & (num.isna() | num.isin([float("inf"), float("-inf")])), "bad_number"))
     allowed = picklists.get(col.picklist.casefold()) if col.picklist else None
@@ -713,6 +734,40 @@ def _problems(col: Column, values: pd.Series, picklists: dict[str, set[str]]) ->
     else:
         found.append((values.astype("string").fillna("").str.contains(_TEXT_CONTROL, regex=True), "bad_text"))
     return found
+
+
+# Fields SF declares numeric that hold words: payComponentType is a Double holding Amount or Percentage.
+_WORD_CODES = {"payComponentType": True}
+
+
+def snap_to_picklist(values: pd.Series, allowed: set[str]) -> pd.Series:
+    """Each value outside its picklist moved onto the one code it plainly means, and left alone otherwise.
+
+    Three deterministic rewrites only: a case difference ('Home' to 'home'), a missing zero pad ('1' to '01'),
+    and a prefixed code ('1611_R' to 'R'). A rewrite counts only when exactly one allowed code matches."""
+    if not allowed:
+        return values
+    folded: dict[str, list[str]] = {}
+    for a in allowed:
+        folded.setdefault(a.casefold(), []).append(a)
+    width = {len(a) for a in allowed if a.isdigit()}
+
+    def snap(v: str) -> Optional[str]:
+        tries = [v.casefold()]
+        if v.isdigit():
+            tries += [v.zfill(w).casefold() for w in width]
+        if "_" in v:
+            tries.append(v.rsplit("_", 1)[1].casefold())
+        hits = {a for t in tries for a in folded.get(t, [])}
+        return hits.pop() if len(hits) == 1 else None
+
+    text = values.astype("string").str.strip()
+    todo = [v for v in text.dropna().unique() if v and v not in allowed]
+    fix = {v: s for v in todo if (s := snap(v)) is not None}
+    if not fix:
+        return values
+    hit = text.isin(list(fix)).fillna(False).astype(bool)
+    return values.astype(object).where(~hit, text.map(fix))
 
 
 def _country_field(dictionary: Dictionary, table: str, stored) -> Optional[Field]:
@@ -742,10 +797,12 @@ def _pick(options: dict, sheet, dictionary) -> Optional[str]:
     """The sheet's main table. A sheet that carries every key of a table keyed on a start or effective date takes
     that history table (EmpJob history for Job Info) over a current-record table with more matched columns,
     unless the sheet names its table."""
-    def dated(t: str) -> bool:
+    def dated(t: str, full: bool) -> bool:
         keys = set(dictionary.keys(t))
-        return bool(keys & {"START_DATE", "EFFECTIVE_DATE"}) and keys <= {f.name for f in options[t].values()}
-    return max(options, key=lambda t: (t == _named_table(sheet), dated(t), len(options[t])), default=None)
+        return bool(keys & {"START_DATE", "EFFECTIVE_DATE"}) and (not full or keys <= {f.name for f in options[t].values()})
+    # a field-list sheet carries no key columns (the fill adds them), so on a tie the history table still wins
+    return max(options, key=lambda t: (t == _named_table(sheet), dated(t, True), len(options[t]), dated(t, False)),
+               default=None)
 
 
 LOAD_MODES = {"full": "Full Purge", "incremental": "Incremental Load"}  # SuccessFactors Import Employee Data purge types
@@ -868,7 +925,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                           key=lambda c: not c.mandatory)
         row: dict[str, Any] = {"name": sheet.name, "kind": sheet.kind, "table": table, "columns": len(columns), "added_keys": added,
                "control": control, "map": {h: f.qualified for h, f in hits.items()}, "mapped": [],
-               "matched": len(hits), "rows": 0, "ready": 0, "held": 0,
+               "matched": len(hits), "rows": 0, "ready": 0, "held": 0, "flagged": 0,
                "known": bool(options) or sheet.base in SHEET_ENTITIES, "required": sheet.required,
                "unmapped": [{"id": c.id, "label": c.label, "mandatory": c.mandatory and not c.country}
                             for c in unmapped]}
@@ -895,6 +952,13 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                     start_date_only.append(sheet.name)
             else:
                 unfiltered.append(sheet.name)
+        # The termination sheet loads only people who left: an active employment has no end date to load.
+        if sheet.base == "terminationinfo" or re.search(r"\bat term\b|terminat", sheet.name, re.I):
+            ends = [hits[c.header].qualified for c in columns
+                    if c.header in hits and _norm(c.id) in {"enddate", "terminationdate"}]
+            if ends:
+                gone = df[ends[0]].astype("string").fillna("").str.strip()
+                df = df[(gone != "") & ~gone.str.fullmatch("0+").fillna(False)]
         from api.services.connectivity_manager import _asof_join, _primary_first  # lazy: avoids an import cycle
         for other, fs in joins.items():
             key = fs[0][0]
@@ -936,15 +1000,19 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         values: dict[str, pd.Series] = {}
 
         def hold(mask: pd.Series, col: Column, reason: str) -> None:
+            """Flag a broken value. The row is still written with the value as it is; scope says whether the
+            problem would fail the whole row on load (mandatory, key, unmapped strict value) or only that cell."""
             nonlocal bad
             count = int(mask.sum())
             if not count:
                 return
+            whole = (col.mandatory or col.country_mandatory or col.header in added
+                     or reason in ("value_map", "mandatory_for_country"))
             bad |= mask
             reasons[reason] += count
             why = explain(col, reason)
-            held.extend({"sheet": sheet.name, "record": k, "field": col.id, "reason": reason, "detail": why}
-                        for k in keys[mask])
+            held.extend({"sheet": sheet.name, "record": k, "field": col.id, "reason": reason, "detail": why,
+                         "scope": "row" if whole else "cell"} for k in keys[mask])
 
         for col in columns:
             if col.header not in hits:
@@ -962,19 +1030,36 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                     hold(text.fillna("").str.strip().ne("") & ~found, col, "value_map")
             if col.type.upper() == "DATE":  # SAP stores no date as zeros
                 value = value.astype(object).where(~value.astype("string").str.fullmatch("0+").fillna(False), None)
+            by_country = col.country_picklists and countries is not None
+            if col.picklist:
+                value = snap_to_picklist(value, workbook.picklists.get(col.picklist.casefold(), set()))
+            elif by_country:  # each row checks against its own country's picklist
+                assert countries is not None
+                for token, name in col.country_picklists.items():
+                    allowed = workbook.picklists.get(name.casefold()) if name else None
+                    rows = countries.eq(token).to_numpy()
+                    if allowed and rows.any():
+                        value = value.astype(object).copy()
+                        value[rows] = snap_to_picklist(value[rows], allowed)
+                        here = value[rows].astype("string").fillna("").str.strip()
+                        mask = pd.Series(False, index=value.index)
+                        mask[rows] = (here != "") & ~here.isin(allowed)
+                        hold(mask, col, "not_in_picklist")
+            elif col.country_picklists:
+                unchecked.append({"sheet": sheet.name, "id": col.id, "label": col.label})
             values[col.header] = value
             for mask, reason in _problems(col, value, workbook.picklists):
                 hold(mask, col, reason)
-            if col.mandatory and col.country:
-                tokens = _country_tokens(col.country)
+            if (col.mandatory or col.country_mandatory) and col.country:
+                tokens = col.country_mandatory or _country_tokens(col.country)
                 if countries is None or not tokens:
                     unchecked.append({"sheet": sheet.name, "id": col.id, "label": col.label})
                 else:
                     blank = value.astype("string").fillna("").str.strip() == ""
                     hold(blank & countries.isin(tokens), col, "mandatory_for_country")
 
-        out = pd.DataFrame({c.header: values[c.header][~bad].values if c.header in hits else None
-                            for c in columns}, index=range(int((~bad).sum())))
+        out = pd.DataFrame({c.header: values[c.header].values if c.header in hits else None
+                            for c in columns}, index=range(len(df)))
         if sheet.kind == "definition" or sheet.labels:  # the import layout: field ids on row one, labels on row two
             label = {c.header: sheet.labels.get(c.header, c.label) for c in columns}
             out = pd.concat([pd.DataFrame([label]), out], ignore_index=True)
@@ -982,7 +1067,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         same = same and sheet.kind == "grid" and all(c.pos >= 0 for c in columns if c.header in hits)
         missing = {c.id: int((values[c.header].astype("string").fillna("").str.strip() == "").sum())
                    if c.header in values else len(df) for c in columns if c.mandatory and not c.country}
-        row.update(rows=len(df), ready=int((~bad).sum()), held=int(bad.sum()),
+        row.update(rows=len(df), ready=int((~bad).sum()), held=0, flagged=int(bad.sum()), blanked_cells=0,
                    mandatory_missing={k: v for k, v in missing.items() if v},
                    people=int(df[key_cols[0]].nunique()) if key_cols else len(df))
 
@@ -995,7 +1080,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
             "columns": sum(r["columns"] for r in report), "matched_columns": sum(r["matched"] for r in report),
             "mandatory_unmapped": sum(u["mandatory"] for r in known for u in r["unmapped"]),
             "rows": sum(r["rows"] for r in report), "ready": sum(r["ready"] for r in report),
-            "held": sum(r["held"] for r in report),
+            "held": 0, "flagged": sum(r["flagged"] for r in report),
             "mandatory_sheets_empty": sum(r["required"] and not r["ready"] for r in report),
             "mapped_values": mapped,
             "load_mode": load_mode, "since": since.isoformat() if since else None,
@@ -1181,8 +1266,8 @@ def instructions(load_mode: str = "full", since: Optional[date] = None, sheets: 
         if not r.get("table"):
             continue
         missing = ", ".join(f"{k} ({v})" for k, v in (r.get("mandatory_missing") or {}).items()) or "none"
-        rows.append((f"Sheet {r['name']}", f"{r['rows']} rows for {r.get('people', 0)} records; {r['ready']} ready, "
-                                           f"{r['held']} held back; mandatory values missing: {missing}."))
+        rows.append((f"Sheet {r['name']}", f"{r['rows']} rows for {r.get('people', 0)} records; {r['ready']} clean, "
+                                           f"{r['flagged']} flagged (written as they are); mandatory values missing: {missing}."))
     rows += [(f"Sheet {name}", GENERATED_NOTE.capitalize() + ".") for name in generated]
     return pd.DataFrame(rows, columns=["Topic", "Detail"])
 

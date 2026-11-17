@@ -486,6 +486,12 @@ def _extraction_issues(coverage: list[dict]) -> list[dict]:
         elif st == "not_in_system":
             out.append({"level": "Warning", "table": t,
                         "text": "Not available in this system; checks that need it were skipped."})
+        elif st == "source_error":
+            out.append({"level": "Warning", "table": t,
+                        "text": f"The source answered with an error: {redact(c.get('detail')) or 'no detail'}"})
+        elif st == "not_permitted":
+            out.append({"level": "Warning", "table": t,
+                        "text": f"The API user may not read it: {redact(c.get('detail')) or 'no detail'}"})
         elif st == "no_rule_mapping":
             out.append({"level": "Warning", "table": t, "text": redact(c.get("detail"))})
         elif st == "preview":

@@ -17,7 +17,7 @@ def test_job_requisition_nav_fields_are_expanded():
 
 
 def test_cost_center_and_benefit_user_mappings():
-    assert _src("FOCOSTCENTER", "LEGAL_ENTITY") == "FOCostCenter.cust_LegalEntity.externalCode"
+    assert _src("FOCOSTCENTER", "LEGAL_ENTITY") == "FOCostCenter.cust_toLegalEntity.externalCode"
     assert _src("BENEFITENROLLMENT", "USERID") == "BenefitEnrollment.userId"
 
 

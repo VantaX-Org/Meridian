@@ -33,4 +33,15 @@ describe("AppShell", () => {
     expect(open).toHaveBeenCalled();
     expect(screen.getByText("Panel slot")).toBeTruthy();
   });
+  it("renders the banner under the top bar and the actions in it", () => {
+    render(
+      <AppShell brand="Meridian" navLabel="Sections" skipLabel="Skip to content" skipNavLabel="Skip links" userMenuLabel="Account" user={{ name: "Resh" }} sections={[]} menu={[]}
+        banner={<div role="status">Offline band</div>} actions={<a href="/status">Healthy</a>}>
+        <p>Body</p>
+      </AppShell>,
+    );
+    expect(screen.getByRole("banner").textContent).toMatch(/Healthy/);
+    expect(screen.getByRole("status").textContent).toBe("Offline band");
+    expect(screen.getByRole("banner").contains(screen.getByRole("status"))).toBe(false);
+  });
 });
