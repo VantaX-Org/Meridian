@@ -12,19 +12,19 @@ const NAV = { timeout: 90_000 };
 // the dev server compiles each route on first visit
 test.setTimeout(150_000);
 const ROUTES: [string, string | RegExp][] = [
-  ["/n/mdm/catalogue", "Catalogue"],
-  ["/n/mdm/glossary", "Glossary"],
-  ["/n/mdm/reference", "Reference data"],
-  ["/n/mdm/links", "Links"],
-  ["/n/mdm/mining", "Data mining"],
-  ["/n/mdm/lineage", "Lineage"],
-  ["/n/mdm/issues", "Record issues"],
-  ["/n/mdm/processes", "Process discovery"],
-  ["/n/requests", "Change requests"],
-  ["/n/requests/new", "New request"],
-  ["/n/requests/CR-1001", "New spare part: hydraulic seal kit"],
-  ["/n/requests/analytics", "Process analytics"],
-  ["/n/requests/workflows", "Workflows"],
+  ["/mdm/catalogue", "Catalogue"],
+  ["/mdm/glossary", "Glossary"],
+  ["/mdm/reference", "Reference data"],
+  ["/mdm/links", "Links"],
+  ["/mdm/mining", "Data mining"],
+  ["/mdm/lineage", "Lineage"],
+  ["/mdm/issues", "Record issues"],
+  ["/mdm/processes", "Process discovery"],
+  ["/requests", "Change requests"],
+  ["/requests/new", "New request"],
+  ["/requests/CR-1001", "New spare part: hydraulic seal kit"],
+  ["/requests/analytics", "Process analytics"],
+  ["/requests/workflows", "Workflows"],
 ];
 
 test.beforeEach(async ({ page }) => {

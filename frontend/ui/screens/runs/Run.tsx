@@ -276,7 +276,7 @@ export function Run({ id }: { id: string }) {
       <Confirm open={dlg === "restore"} title={t("Restore archived runs?")} confirmLabel={t("Restore")} cancelLabel={t("Cancel")} onCancel={close}
         onConfirm={() => { close(); void act(() => restoreRuns(), t("Archived runs restored")); }}>{t("Every archived run comes back into the list.")}</Confirm>
       <Confirm danger open={dlg === "delete"} title={t("Delete this run for good?")} confirmLabel={t("Delete")} cancelLabel={t("Cancel")} onCancel={close}
-        onConfirm={() => { const v = text; close(); void act(async () => { await purgeVersion(id, v); router.push(href("/n/runs")); }, t("Run deleted")); }}>
+        onConfirm={() => { const v = text; close(); void act(async () => { await purgeVersion(id, v); router.push(href("/runs")); }, t("Run deleted")); }}>
         <p>{t("Only an archived run can be deleted. Type its name to confirm: {name}", { name: label })}</p>
         <Field label={t("Name")}><Input value={text} onChange={(e) => setText(e.target.value)} /></Field>
       </Confirm>

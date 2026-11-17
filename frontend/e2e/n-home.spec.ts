@@ -8,9 +8,9 @@ import { expect, test } from "@playwright/test";
 
 const NAV = { timeout: 90_000 };
 const ROUTES = [
-  { url: "/n?fixture=1", title: "Home", row: (p: import("@playwright/test").Page) => p.getByRole("list", { name: "Attention items" }).getByRole("button").first() },
-  { url: "/n/o?fixture=1", title: "Objects", row: (p: import("@playwright/test").Page) => p.getByRole("main").getByRole("row").nth(1) },
-  { url: "/n/status?fixture=1", title: "Status", row: (p: import("@playwright/test").Page) => p.getByRole("main").getByRole("row").nth(1) },
+  { url: "/?fixture=1", title: "Home", row: (p: import("@playwright/test").Page) => p.getByRole("list", { name: "Attention items" }).getByRole("button").first() },
+  { url: "/o?fixture=1", title: "Objects", row: (p: import("@playwright/test").Page) => p.getByRole("main").getByRole("row").nth(1) },
+  { url: "/status?fixture=1", title: "Status", row: (p: import("@playwright/test").Page) => p.getByRole("main").getByRole("row").nth(1) },
 ];
 
 test.beforeEach(async ({ page }) => {

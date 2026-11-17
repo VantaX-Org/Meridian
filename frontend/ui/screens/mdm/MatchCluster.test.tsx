@@ -20,7 +20,7 @@ let undo: () => void = () => undefined;
 beforeEach(() => {
   undo = stubLayout();
   window.sessionStorage.clear();
-  window.history.replaceState(null, "", "/n/mdm/match/gr-0?fixture=1");
+  window.history.replaceState(null, "", "/mdm/match/gr-0?fixture=1");
 });
 afterEach(() => undo());
 

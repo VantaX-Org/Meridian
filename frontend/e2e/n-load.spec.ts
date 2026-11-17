@@ -11,18 +11,18 @@ const NAV = { timeout: 150_000 };
 test.setTimeout(300_000);
 
 const ROUTES: [string, string][] = [
-  ["/n/load", "Load"],
-  ["/n/load/plan", "Load order"],
-  ["/n/load/s4", "S/4 readiness"],
-  ["/n/load/go-live", "Go-live readiness"],
-  ["/n/load/waves", "Migration waves"],
-  ["/n/load/waves/w-1", "Wave 1: finance foundations"],
-  ["/n/load/runs", "Migration runs"],
-  ["/n/load/runs/mig-0002", "Run mig-0002"],
-  ["/n/load/templates", "Target templates"],
-  ["/n/load/maps", "Field and value maps"],
-  ["/n/load/compare", "Paired systems"],
-  ["/n/load/compare/pair-0001", "ECC production to S/4HANA quality"],
+  ["/load", "Load"],
+  ["/load/plan", "Load order"],
+  ["/load/s4", "S/4 readiness"],
+  ["/load/go-live", "Go-live readiness"],
+  ["/load/waves", "Migration waves"],
+  ["/load/waves/w-1", "Wave 1: finance foundations"],
+  ["/load/runs", "Migration runs"],
+  ["/load/runs/mig-0002", "Run mig-0002"],
+  ["/load/templates", "Target templates"],
+  ["/load/maps", "Field and value maps"],
+  ["/load/compare", "Paired systems"],
+  ["/load/compare/pair-0001", "ECC production to S/4HANA quality"],
 ];
 
 test.beforeEach(async ({ page }) => {

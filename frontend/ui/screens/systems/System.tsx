@@ -40,7 +40,7 @@ export function System({ id }: { id: string }) {
 
   if (q.isLoading) return <Skeleton lines={8} label={t("Loading the system")} />;
   if (q.isError) return <ErrorState heading={t("This system could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
-  if (!sys) return <EmptyState heading={t("System not found")} body={t("It may have been removed.")} action={<Button variant="primary" href={href("/n/s")}>{t("Back to systems")}</Button>} />;
+  if (!sys) return <EmptyState heading={t("System not found")} body={t("It may have been removed.")} action={<Button variant="primary" href={href("/s")}>{t("Back to systems")}</Button>} />;
 
   const test = async () => {
     setBusy(true);
@@ -62,7 +62,7 @@ export function System({ id }: { id: string }) {
           <Health value={sys.health_status} />
           <Button variant="secondary" disabled={busy} onClick={() => void test()}>{busy ? t("Testing") : t("Test connection")}</Button>
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
-          <Button variant="ghost" href={href("/n/s")}>{t("All systems")}</Button>
+          <Button variant="ghost" href={href("/s")}>{t("All systems")}</Button>
         </>}
       />
       <Tabs idBase="system" label={t("System sections")} items={TABS.map((x) => ({ id: x, label: label[x] }))} value={tab} onChange={(id) => setTab(id as typeof tab)} />

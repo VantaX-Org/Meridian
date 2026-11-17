@@ -28,7 +28,7 @@ test.beforeEach(async ({ page }) => {
 const noDot = async (page: Page) => expect(await page.locator("body").innerText()).not.toContain(MIDDLE_DOT);
 
 test("systems list shows rows and links to the wizard", async ({ page }) => {
-  await page.goto("/n/s?fixture=1", NAV);
+  await page.goto("/s?fixture=1", NAV);
   await expect(page.getByRole("heading", { level: 1, name: "Systems" })).toBeVisible(NAV);
   await expect(page.getByRole("row").nth(1)).toBeVisible(NAV);
   await expect(page.getByRole("link", { name: "Connect a system" })).toBeVisible();
@@ -36,7 +36,7 @@ test("systems list shows rows and links to the wizard", async ({ page }) => {
 });
 
 test("connect wizard shows the form with a masked password", async ({ page }) => {
-  await page.goto("/n/s/new?fixture=1", NAV);
+  await page.goto("/s/new?fixture=1", NAV);
   await expect(page.getByRole("heading", { level: 1, name: "Connect a system" })).toBeVisible(NAV);
   await expect(page.getByLabel("System name")).toBeVisible();
   await expect(page.locator('input[type="password"]').first()).toBeVisible();
@@ -45,7 +45,7 @@ test("connect wizard shows the form with a masked password", async ({ page }) =>
 
 for (const tab of ["extractions", "design", "config", "pilot", "reference", "custom"]) {
   test(`system screen tab ${tab}`, async ({ page }) => {
-    await page.goto(`/n/s/${SYS}?fixture=1&tab=${tab}`, NAV);
+    await page.goto(`/s/${SYS}?fixture=1&tab=${tab}`, NAV);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible(NAV);
     await expect(page.getByRole("tab", { selected: true })).toBeVisible(NAV);
     await expect(page.getByRole("tabpanel")).toBeVisible(NAV);

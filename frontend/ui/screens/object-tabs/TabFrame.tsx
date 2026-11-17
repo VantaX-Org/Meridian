@@ -24,7 +24,7 @@ export const TABS: { id: Tab; path: string; label: () => string }[] = [
   { id: "processes", path: "processes", label: () => t("Processes") },
 ];
 
-export const objectPath = (system: string, module: string, sub = "") => `/n/o/${system}/${module.replace(/_/g, "-")}${sub ? `/${sub}` : ""}`;
+export const objectPath = (system: string, module: string, sub = "") => `/o/${system}/${module.replace(/_/g, "-")}${sub ? `/${sub}` : ""}`;
 
 /** Registers the shell chat for this sub-screen, scoped to the object. */
 export function useTabChat(system: string, module: string, tab: Tab, label: string, suggestions: string[], answer: (prompt: string) => AletheiaAnswer) {

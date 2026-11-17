@@ -50,7 +50,7 @@ export function MatchRules() {
         title={t("Match rules")}
         context={t("{n} rules", { n: mine.length })}
         actions={<>
-          <Button variant="ghost" href={href("/n/mdm/match")}>{t("Match review")}</Button>
+          <Button variant="ghost" href={href("/mdm/match")}>{t("Match review")}</Button>
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />

@@ -99,7 +99,7 @@ export function WorkflowsScreen() {
   };
   return (
     <>
-      <Head title={t("Workflows")} actions={<Button variant="secondary" href="/n/requests">{t("Back to requests")}</Button>} />
+      <Head title={t("Workflows")} actions={<Button variant="secondary" href="/requests">{t("Back to requests")}</Button>} />
       <Tabs idBase="wf" label={t("Workflow lists")} value={tab} onChange={setTab} items={[{ id: "definitions", label: t("Definitions") }, { id: "tasks", label: t("My tasks") }, { id: "instances", label: t("Instances") }]} />
       {tab === "definitions" ? (
         <Split leftLabel={t("Definitions")} rightLabel={t("Workflow detail")}

@@ -1,5 +1,5 @@
 /**
- * The admin index and the ten access sections (11a) at /n/admin and /n/admin/{section} in fixture mode: each route
+ * The admin index and the ten access sections (11a) at /admin and /admin/{section} in fixture mode: each route
  * shows its title, at least one row of data and never the middle dot.
  *
  *   PLAYWRIGHT_BASE_URL=http://localhost:3711 npx playwright test e2e/n-admin-access.spec.ts
@@ -39,8 +39,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 for (const [slug, title, row] of ROUTES) {
-  test(`/n/admin/${slug} shows its title and data`, async ({ page }) => {
-    await page.goto(`/n/admin${slug ? `/${slug}` : ""}?fixture=1`, NAV);
+  test(`/admin/${slug} shows its title and data`, async ({ page }) => {
+    await page.goto(`/admin${slug ? `/${slug}` : ""}?fixture=1`, NAV);
     await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible(NAV);
     await expect(page.locator("main").locator(row).first()).toBeVisible(NAV);
     expect(await page.locator("main").innerText()).not.toContain(DOT);
@@ -48,7 +48,7 @@ for (const [slug, title, row] of ROUTES) {
 }
 
 test("the invite button on the users screen opens a sheet", async ({ page }) => {
-  await page.goto("/n/admin/users?fixture=1", NAV);
+  await page.goto("/admin/users?fixture=1", NAV);
   await expect(page.getByRole("heading", { level: 1, name: "Users" })).toBeVisible(NAV);
   await page.getByRole("button", { name: "Invite someone" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();

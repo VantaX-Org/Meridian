@@ -9,13 +9,13 @@ import { expect, test } from "@playwright/test";
 const NAV = { timeout: 90_000 };
 
 const ROUTES: { path: string; title: string | RegExp; row: "row" | "link" | "item" }[] = [
-  { path: "/n/mdm", title: "Master data", row: "link" },
-  { path: "/n/mdm/golden", title: "Golden records", row: "row" },
-  { path: "/n/mdm/golden/gr-0", title: /\S/, row: "row" },
-  { path: "/n/mdm/match", title: "Match review", row: "row" },
-  { path: "/n/mdm/match/gr-0", title: "Match cluster", row: "row" },
-  { path: "/n/mdm/match-rules", title: "Match rules", row: "row" },
-  { path: "/n/mdm/survivorship", title: "Survivorship", row: "item" },
+  { path: "/mdm", title: "Master data", row: "link" },
+  { path: "/mdm/golden", title: "Golden records", row: "row" },
+  { path: "/mdm/golden/gr-0", title: /\S/, row: "row" },
+  { path: "/mdm/match", title: "Match review", row: "row" },
+  { path: "/mdm/match/gr-0", title: "Match cluster", row: "row" },
+  { path: "/mdm/match-rules", title: "Match rules", row: "row" },
+  { path: "/mdm/survivorship", title: "Survivorship", row: "item" },
 ];
 
 test.setTimeout(150_000);

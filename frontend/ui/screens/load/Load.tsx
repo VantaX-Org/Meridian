@@ -31,14 +31,14 @@ export function Load() {
   });
 
   const areas: { to: string; title: string; note: string }[] = [
-    { to: "/n/load/plan", title: t("Load order"), note: t("Which object loads first, and why.") },
-    { to: "/n/load/s4", title: t("S/4 readiness"), note: t("Rules that must pass before the move.") },
-    { to: "/n/load/go-live", title: t("Go-live gates"), note: t("Gates, certificates and sign-off per wave.") },
-    { to: "/n/load/waves", title: t("Waves"), note: t("Groups of objects that move together.") },
-    { to: "/n/load/runs", title: t("Migration runs"), note: t("Every dry run and its findings.") },
-    { to: "/n/load/templates", title: t("Load templates"), note: t("The workbooks the new system gave.") },
-    { to: "/n/load/maps", title: t("Field and value maps"), note: t("How each source value becomes a target value.") },
-    { to: "/n/load/compare", title: t("Paired systems"), note: t("Source against target, object by object.") },
+    { to: "/load/plan", title: t("Load order"), note: t("Which object loads first, and why.") },
+    { to: "/load/s4", title: t("S/4 readiness"), note: t("Rules that must pass before the move.") },
+    { to: "/load/go-live", title: t("Go-live gates"), note: t("Gates, certificates and sign-off per wave.") },
+    { to: "/load/waves", title: t("Waves"), note: t("Groups of objects that move together.") },
+    { to: "/load/runs", title: t("Migration runs"), note: t("Every dry run and its findings.") },
+    { to: "/load/templates", title: t("Load templates"), note: t("The workbooks the new system gave.") },
+    { to: "/load/maps", title: t("Field and value maps"), note: t("How each source value becomes a target value.") },
+    { to: "/load/compare", title: t("Paired systems"), note: t("Source against target, object by object.") },
   ];
 
   return (
@@ -79,9 +79,9 @@ export function Load() {
                   rowKey={(e) => e.id}
                   columns={[
                     { key: "f", label: t("File"), render: (e) => e.filename },
-                    { key: "r", label: t("Run"), render: (e) => <Link href={href(`/n/load/runs/${e.run_id}`)}>{e.run_id}</Link> },
+                    { key: "r", label: t("Run"), render: (e) => <Link href={href(`/load/runs/${e.run_id}`)}>{e.run_id}</Link> },
                     { key: "n", label: t("Records"), align: "end", sort: (e) => e.record_count, render: (e) => e.record_count },
-                    { key: "w", label: t("Wave"), render: (e) => (e.wave_id ? <Link href={href(`/n/load/waves/${e.wave_id}`)}>{e.wave_name}</Link> : t("None")) },
+                    { key: "w", label: t("Wave"), render: (e) => (e.wave_id ? <Link href={href(`/load/waves/${e.wave_id}`)}>{e.wave_name}</Link> : t("None")) },
                     { key: "by", label: t("Handed over by"), render: (e) => e.exported_by_label ?? "" },
                     { key: "at", label: t("Date"), sort: (e) => e.exported_at ?? "", render: (e) => when(e.exported_at) },
                   ]}

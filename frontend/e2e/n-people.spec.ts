@@ -8,12 +8,12 @@ import { expect, test } from "@playwright/test";
 
 const NAV = { timeout: 90_000 };
 const ROUTES: [string, string][] = [
-  ["/n/people?fixture=1", "People"],
-  ["/n/people/stewardship?fixture=1", "Stewardship"],
-  ["/n/people/contracts?fixture=1", "Data contracts"],
-  ["/n/people/digests?fixture=1", "Digests"],
-  ["/n/people/assignments?fixture=1", "Assignments"],
-  ["/n/share/demo-token?fixture=1", "Shared with you"],
+  ["/people?fixture=1", "People"],
+  ["/people/stewardship?fixture=1", "Stewardship"],
+  ["/people/contracts?fixture=1", "Data contracts"],
+  ["/people/digests?fixture=1", "Digests"],
+  ["/people/assignments?fixture=1", "Assignments"],
+  ["/share/demo-token?fixture=1", "Shared with you"],
 ];
 
 test.beforeEach(async ({ page }) => {

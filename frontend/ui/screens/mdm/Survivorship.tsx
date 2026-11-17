@@ -80,7 +80,7 @@ export function Survivorship() {
         title={t("Survivorship")}
         context={t("{n} rules", { n: list.length })}
         actions={<>
-          <Button variant="ghost" href={href("/n/mdm/golden")}>{t("Golden records")}</Button>
+          <Button variant="ghost" href={href("/mdm/golden")}>{t("Golden records")}</Button>
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />

@@ -10,7 +10,7 @@ let undo: () => void = () => undefined;
 beforeEach(() => {
   undo = stubLayout();
   window.sessionStorage.clear();
-  window.history.replaceState(null, "", "/n/load/compare/pair-0001?fixture=1");
+  window.history.replaceState(null, "", "/load/compare/pair-0001?fixture=1");
 });
 afterEach(() => undo());
 

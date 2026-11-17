@@ -120,7 +120,7 @@ export function GoLive() {
               selected={g?.wave_id ?? null}
               onSelect={(x) => setSel(x.wave_id)}
               columns={[
-                { key: "n", label: t("Wave"), sort: (x) => x.name, render: (x) => <Link href={href(`/n/load/waves/${x.wave_id}`)}>{x.name}</Link> },
+                { key: "n", label: t("Wave"), sort: (x) => x.name, render: (x) => <Link href={href(`/load/waves/${x.wave_id}`)}>{x.name}</Link> },
                 { key: "m", label: t("Objects"), render: (x) => x.modules.map((m) => <FieldChip key={m} code={m} description={humanize(m)} />) },
                 { key: "v", label: t("Verdict"), sort: (x) => Number(x.status.passed), render: (x) => <Verdict v={x.status.passed ? "go" : "no-go"} /> },
                 { key: "c", label: t("Checks passed"), align: "end", render: (x) => `${x.status.checks.filter((c) => c.passed).length}/${x.status.checks.length}` },

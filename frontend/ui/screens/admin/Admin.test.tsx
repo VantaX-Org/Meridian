@@ -10,7 +10,7 @@ vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-
 
 beforeEach(() => {
   window.sessionStorage.clear();
-  window.history.replaceState(null, "", "/n/admin?fixture=1");
+  window.history.replaceState(null, "", "/admin?fixture=1");
 });
 
 describe("admin sections", () => {
@@ -29,7 +29,7 @@ describe("admin sections", () => {
   it("lists the sections in fixture mode", async () => {
     renderWithQuery(<AletheiaProvider><Admin /></AletheiaProvider>);
     expect(await screen.findByRole("heading", { level: 1, name: "Administration" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Users/ }).getAttribute("href")).toBe("/n/admin/users?fixture=1");
+    expect(screen.getByRole("link", { name: /Users/ }).getAttribute("href")).toBe("/admin/users?fixture=1");
   });
 
   it("answers an unknown section with an empty state", () => {

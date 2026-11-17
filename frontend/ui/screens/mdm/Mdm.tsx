@@ -8,19 +8,19 @@ import { Button, Card, EmptyState, ErrorState, PageHeader, Skeleton, StatTile, T
 import { day, pct, useHref } from "./shared";
 
 const LINKS: { path: string; title: () => string; body: () => string; own: boolean }[] = [
-  { path: "/n/mdm/golden", own: true, title: () => t("Golden records"), body: () => t("The surviving record for each real-world thing, with its sources, history and write-back.") },
-  { path: "/n/mdm/match", own: true, title: () => t("Match review"), body: () => t("Duplicate candidates, scores, decisions, merges and clusters.") },
-  { path: "/n/mdm/match-rules", own: true, title: () => t("Match rules"), body: () => t("Which fields are compared, how much each counts, and what a change would do.") },
-  { path: "/n/mdm/survivorship", own: true, title: () => t("Survivorship"), body: () => t("Which source wins each field, and the decisions Aletheia proposes.") },
-  { path: "/n/mdm/glossary", own: false, title: () => t("Glossary"), body: () => t("Business terms and their definitions.") },
-  { path: "/n/mdm/reference", own: false, title: () => t("Reference data"), body: () => t("Shared code lists and their values.") },
-  { path: "/n/mdm/links", own: false, title: () => t("Record links"), body: () => t("Cross-system keys that point at the same record.") },
-  { path: "/n/mdm/catalogue", own: false, title: () => t("Catalogue"), body: () => t("What data exists, where it lives and who owns it.") },
-  { path: "/n/mdm/mining", own: false, title: () => t("Mining"), body: () => t("Patterns found in the data.") },
-  { path: "/n/mdm/lineage", own: false, title: () => t("Lineage"), body: () => t("Where a value came from and where it goes.") },
-  { path: "/n/mdm/issues", own: false, title: () => t("Issues"), body: () => t("Open master data problems.") },
-  { path: "/n/mdm/processes", own: false, title: () => t("Processes"), body: () => t("The master data processes and their owners.") },
-  { path: "/n/requests", own: false, title: () => t("Requests"), body: () => t("Change requests for master data.") },
+  { path: "/mdm/golden", own: true, title: () => t("Golden records"), body: () => t("The surviving record for each real-world thing, with its sources, history and write-back.") },
+  { path: "/mdm/match", own: true, title: () => t("Match review"), body: () => t("Duplicate candidates, scores, decisions, merges and clusters.") },
+  { path: "/mdm/match-rules", own: true, title: () => t("Match rules"), body: () => t("Which fields are compared, how much each counts, and what a change would do.") },
+  { path: "/mdm/survivorship", own: true, title: () => t("Survivorship"), body: () => t("Which source wins each field, and the decisions Aletheia proposes.") },
+  { path: "/mdm/glossary", own: false, title: () => t("Glossary"), body: () => t("Business terms and their definitions.") },
+  { path: "/mdm/reference", own: false, title: () => t("Reference data"), body: () => t("Shared code lists and their values.") },
+  { path: "/mdm/links", own: false, title: () => t("Record links"), body: () => t("Cross-system keys that point at the same record.") },
+  { path: "/mdm/catalogue", own: false, title: () => t("Catalogue"), body: () => t("What data exists, where it lives and who owns it.") },
+  { path: "/mdm/mining", own: false, title: () => t("Mining"), body: () => t("Patterns found in the data.") },
+  { path: "/mdm/lineage", own: false, title: () => t("Lineage"), body: () => t("Where a value came from and where it goes.") },
+  { path: "/mdm/issues", own: false, title: () => t("Issues"), body: () => t("Open master data problems.") },
+  { path: "/mdm/processes", own: false, title: () => t("Processes"), body: () => t("The master data processes and their owners.") },
+  { path: "/requests", own: false, title: () => t("Requests"), body: () => t("Change requests for master data.") },
 ];
 
 export function Mdm() {
@@ -41,7 +41,7 @@ export function Mdm() {
       ? {
           text: t("Master data health is {score} out of 100 with {backlog} items waiting for a steward. Coverage of golden records is {cov}.", { score: Math.round(snap.mdm_health_score), backlog: snap.backlog_count, cov: pct(snap.golden_record_coverage_pct) }),
           evidence: [t("Snapshot of {date}", { date: day(snap.snapshot_date) })],
-          actions: [{ id: "match", label: t("Open match review"), href: href("/n/mdm/match") }],
+          actions: [{ id: "match", label: t("Open match review"), href: href("/mdm/match") }],
         }
       : { text: t("There is no master data snapshot yet, so there is nothing to explain.") },
   });

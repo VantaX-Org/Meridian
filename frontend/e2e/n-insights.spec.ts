@@ -11,19 +11,19 @@ const NAV = { timeout: 90_000 };
 const ROW = "main tbody tr, main [role='listitem'], main li, main .b8-item";
 
 const routes: [string, string][] = [
-  ["/n/insights?fixture=1", "Insights"],
-  ["/n/insights/score?fixture=1", "Score lens"],
-  ["/n/insights/forecast?fixture=1", "Forecast"],
-  ["/n/insights/value?fixture=1", "Value"],
-  ["/n/monitor?fixture=1", "Monitor"],
-  ["/n/monitor?fixture=1&view=objects", "Monitor"],
-  ["/n/monitor?fixture=1&view=after-clean", "Monitor"],
-  ["/n/monitor?fixture=1&view=learned", "Monitor"],
-  ["/n/monitor?fixture=1&view=shifts", "Monitor"],
-  ["/n/monitor?fixture=1&view=config", "Monitor"],
-  ["/n/monitor?fixture=1&view=contracts", "Monitor"],
-  ["/n/monitor?fixture=1&view=gate", "Monitor"],
-  ["/n/monitor?fixture=1&open=schedule", "Monitor"],
+  ["/insights?fixture=1", "Insights"],
+  ["/insights/score?fixture=1", "Score lens"],
+  ["/insights/forecast?fixture=1", "Forecast"],
+  ["/insights/value?fixture=1", "Value"],
+  ["/monitor?fixture=1", "Monitor"],
+  ["/monitor?fixture=1&view=objects", "Monitor"],
+  ["/monitor?fixture=1&view=after-clean", "Monitor"],
+  ["/monitor?fixture=1&view=learned", "Monitor"],
+  ["/monitor?fixture=1&view=shifts", "Monitor"],
+  ["/monitor?fixture=1&view=config", "Monitor"],
+  ["/monitor?fixture=1&view=contracts", "Monitor"],
+  ["/monitor?fixture=1&view=gate", "Monitor"],
+  ["/monitor?fixture=1&open=schedule", "Monitor"],
 ];
 
 test.beforeEach(async ({ page }) => {
@@ -48,7 +48,7 @@ for (const [url, title] of routes) {
 }
 
 test("Aletheia chat opens from the insights screen", async ({ page }) => {
-  await page.goto("/n/insights?fixture=1", NAV);
+  await page.goto("/insights?fixture=1", NAV);
   await page.getByRole("button", { name: "Ask Aletheia" }).first().click();
   await expect(page.getByRole("dialog")).toBeVisible();
 });

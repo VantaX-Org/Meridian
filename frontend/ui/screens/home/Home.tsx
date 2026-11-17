@@ -82,7 +82,7 @@ export function Home() {
         context={sentence}
         actions={<>
           <Button variant="primary" onClick={() => setAsk(true)} disabled={!rows.length || busy}>{t("Pull every object")}</Button>
-          <Button variant="secondary" href={href("/n/o")}>{t("All objects")}</Button>
+          <Button variant="secondary" href={href("/o")}>{t("All objects")}</Button>
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />

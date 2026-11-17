@@ -1,12 +1,12 @@
 /**
- * The kit gallery at /n/kit in fixture mode: a table row selects by keyboard, a toast shows, the command palette opens and asks Aletheia.
+ * The kit gallery at /kit in fixture mode: a table row selects by keyboard, a toast shows, the command palette opens and asks Aletheia.
  *
  *   PLAYWRIGHT_BASE_URL=http://localhost:3700 npx playwright test e2e/ui-kit.spec.ts
  */
 
 import { expect, test } from "@playwright/test";
 
-const URL = "/n/kit?fixture=1";
+const URL = "/kit?fixture=1";
 const NAV = { timeout: 90_000 };
 
 test.beforeEach(async ({ page }) => {

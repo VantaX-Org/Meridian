@@ -55,7 +55,7 @@ export function Waves() {
               rows={waves}
               rowKey={(w) => w.id}
               columns={[
-                { key: "n", label: t("Wave"), sort: (w) => w.name, render: (w) => <Link href={href(`/n/load/waves/${w.id}`)}>{w.name}</Link> },
+                { key: "n", label: t("Wave"), sort: (w) => w.name, render: (w) => <Link href={href(`/load/waves/${w.id}`)}>{w.name}</Link> },
                 { key: "m", label: t("Objects"), render: (w) => w.modules.map((m) => <FieldChip key={m} code={m} description={humanize(m)} />) },
                 { key: "st", label: t("Stage"), sort: (w) => STAGES.indexOf(w.stage), render: (w) => stageLabel(w.stage) },
                 { key: "d", label: t("Target date"), sort: (w) => w.target_date ?? "", render: (w) => (w.target_date ? when(w.target_date) : t("Not set")) },

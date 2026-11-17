@@ -58,7 +58,7 @@ export function Pairs() {
               rows={pairs}
               rowKey={(p) => p.id}
               columns={[
-                { key: "module", label: t("Object"), sort: (p) => p.module, render: (p) => <Link href={href(`/n/load/compare/${p.id}`)}><FieldChip code={p.module} description={humanize(p.module)} /></Link> },
+                { key: "module", label: t("Object"), sort: (p) => p.module, render: (p) => <Link href={href(`/load/compare/${p.id}`)}><FieldChip code={p.module} description={humanize(p.module)} /></Link> },
                 { key: "source", label: t("Source system"), sort: (p) => p.source.name, render: (p) => p.source.name },
                 { key: "target", label: t("Target system"), sort: (p) => p.target.name, render: (p) => p.target.name },
                 { key: "s", label: t("Source DQS"), align: "end", sort: (p) => p.last?.scores?.source ?? -1, render: (p) => pct(p.last?.scores?.source) },

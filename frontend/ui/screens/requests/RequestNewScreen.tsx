@@ -182,7 +182,7 @@ export function RequestNewScreen() {
         ) : <Empty heading={t("No fields for this object")} />}</Async>
         <Button variant="secondary" disabled={busy} onClick={() => void act(async (id) => toast(`${t("Draft saved")} ${id}`, "good"))}>{t("Save draft")}</Button>
         <Button variant="secondary" disabled={busy} onClick={() => void act(async (id) => setPre(await validateRequest(id)))}>{t("Validate")}</Button>
-        <Button variant="primary" disabled={busy} onClick={() => void act(async (id) => { await submitRequest(id); router.push(withFixture(`/n/requests/${encodeURIComponent(id)}`, fx)); })}>{t("Submit")}</Button>
+        <Button variant="primary" disabled={busy} onClick={() => void act(async (id) => { await submitRequest(id); router.push(withFixture(`/requests/${encodeURIComponent(id)}`, fx)); })}>{t("Submit")}</Button>
       </Card>
       {pre ? <PrecheckView p={pre} /> : null}
     </>

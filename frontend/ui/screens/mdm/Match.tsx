@@ -71,7 +71,7 @@ export function Match() {
         title={t("Match review")}
         context={t("{n} pairs waiting", { n: pairs.data?.total ?? 0 })}
         actions={<>
-          <Button variant="ghost" href={href("/n/mdm/match-rules")}>{t("Match rules")}</Button>
+          <Button variant="ghost" href={href("/mdm/match-rules")}>{t("Match rules")}</Button>
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />
@@ -127,7 +127,7 @@ export function Match() {
                         <span className="mx-links">
                           <Button variant="primary" disabled={busy} onClick={() => setPending({ kind: "merge", pair: p })}>{t("Merge")}</Button>
                           <Button variant="ghost" disabled={busy} onClick={() => setPending({ kind: "dismiss", pair: p })}>{t("Not a duplicate")}</Button>
-                          {p.a_record_id ? <Button variant="ghost" href={href(`/n/mdm/match/${p.a_record_id}`)}>{t("Cluster")}</Button> : null}
+                          {p.a_record_id ? <Button variant="ghost" href={href(`/mdm/match/${p.a_record_id}`)}>{t("Cluster")}</Button> : null}
                         </span>
                       ),
                     },
@@ -169,7 +169,7 @@ export function Match() {
                   { key: "p", label: t("Pairs"), align: "end", render: (c) => c.pairs },
                   { key: "b", label: t("Best score"), align: "end", sort: (c) => c.best, render: (c) => pct(c.best) },
                   { key: "st", label: t("State"), render: (c) => (c.merged ? t("Merged") : t("Open")) },
-                  { key: "g", label: t("Graph"), render: (c) => { const g = c.members.find((m) => m.golden_record_id)?.golden_record_id; return g ? <Button variant="ghost" href={href(`/n/mdm/match/${g}`)}>{t("Open graph")}</Button> : ""; } },
+                  { key: "g", label: t("Graph"), render: (c) => { const g = c.members.find((m) => m.golden_record_id)?.golden_record_id; return g ? <Button variant="ghost" href={href(`/mdm/match/${g}`)}>{t("Open graph")}</Button> : ""; } },
                 ]}
               />
             )}

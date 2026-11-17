@@ -13,10 +13,10 @@ import { Button, Card, DataTable, EmptyState, ErrorState, Field, FieldChip, Inpu
 import { Gate, day, refreshV2, useQ } from "./common";
 
 const SECTIONS = [
-  { href: "/n/people/stewardship", label: () => t("Stewardship") },
-  { href: "/n/people/contracts", label: () => t("Contracts") },
-  { href: "/n/people/digests", label: () => t("Digests") },
-  { href: "/n/people/assignments", label: () => t("Assignments") },
+  { href: "/people/stewardship", label: () => t("Stewardship") },
+  { href: "/people/contracts", label: () => t("Contracts") },
+  { href: "/people/digests", label: () => t("Digests") },
+  { href: "/people/assignments", label: () => t("Assignments") },
 ];
 
 function ShareCard() {
@@ -26,7 +26,7 @@ function ShareCard() {
   const [days, setDays] = useState("7");
   const links = useQ(["share-links"], () => listShareLinks());
   const make = useMutation({
-    mutationFn: () => createShareLink("/n/people", {}, Number(days), label.trim() || undefined),
+    mutationFn: () => createShareLink("/people", {}, Number(days), label.trim() || undefined),
     onSuccess: (l) => { setLabel(""); toast(t("Link made: {url}", { url: l.url }), "good"); void refreshV2(qc); },
   });
   const revoke = useMutation({ mutationFn: (id: string) => revokeShareLink(id), onSuccess: () => void refreshV2(qc) });

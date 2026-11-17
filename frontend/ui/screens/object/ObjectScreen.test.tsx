@@ -20,7 +20,7 @@ let undo: () => void = () => undefined;
 beforeEach(() => {
   undo = stubLayout();
   window.sessionStorage.clear();
-  window.history.replaceState(null, "", "/n/o/ecc-production/material-master?fixture=1");
+  window.history.replaceState(null, "", "/o/ecc-production/material-master?fixture=1");
 });
 afterEach(() => undo());
 

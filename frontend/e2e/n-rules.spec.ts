@@ -8,15 +8,15 @@ import { expect, test } from "@playwright/test";
 
 const NAV = { timeout: 90_000 };
 const ROUTES: { path: string; title: string | RegExp; row: string }[] = [
-  { path: "/n/rules?fixture=1", title: "Rules", row: "main table tbody tr[id^=mx-row-]" },
-  { path: "/n/rules?view=drafts&fixture=1", title: "Rules", row: "main table, main [role=grid], main [role=list], main .mx-card" },
-  { path: "/n/rules?view=learned&fixture=1", title: "Rules", row: "main .mx-card" },
-  { path: "/n/rules?view=coverage&fixture=1", title: "Rules", row: "main .mx-card" },
-  { path: "/n/rules?view=packs&fixture=1", title: "Rules", row: "main .mx-card" },
-  { path: "/n/rules?view=fix-drafts&fixture=1", title: "Rules", row: "main .mx-card, main [role=grid]" },
-  { path: "/n/rules/dry-run?fixture=1", title: "Try a rule change", row: "main .mx-card" },
-  { path: "/n/rules/promotion?fixture=1", title: "Rule promotion", row: "main .mx-card" },
-  { path: "/n/r/MM142?fixture=1", title: /.+/, row: "[role=tab]" },
+  { path: "/rules?fixture=1", title: "Rules", row: "main table tbody tr[id^=mx-row-]" },
+  { path: "/rules?view=drafts&fixture=1", title: "Rules", row: "main table, main [role=grid], main [role=list], main .mx-card" },
+  { path: "/rules?view=learned&fixture=1", title: "Rules", row: "main .mx-card" },
+  { path: "/rules?view=coverage&fixture=1", title: "Rules", row: "main .mx-card" },
+  { path: "/rules?view=packs&fixture=1", title: "Rules", row: "main .mx-card" },
+  { path: "/rules?view=fix-drafts&fixture=1", title: "Rules", row: "main .mx-card, main [role=grid]" },
+  { path: "/rules/dry-run?fixture=1", title: "Try a rule change", row: "main .mx-card" },
+  { path: "/rules/promotion?fixture=1", title: "Rule promotion", row: "main .mx-card" },
+  { path: "/r/MM142?fixture=1", title: /.+/, row: "[role=tab]" },
 ];
 
 test.beforeEach(async ({ page }) => {

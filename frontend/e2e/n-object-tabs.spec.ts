@@ -6,7 +6,7 @@
 
 import { expect, test } from "@playwright/test";
 
-const BASE = "/n/o/ecc-production/material-master";
+const BASE = "/o/ecc-production/material-master";
 const NAV = { timeout: 90_000 };
 
 // ponytail: "row" = any table row, list item or card heading below the title; tighten per screen if fixtures change.

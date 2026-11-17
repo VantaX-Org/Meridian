@@ -1,5 +1,5 @@
 /**
- * Batch 11b routes in fixture mode: /n/reports, /n/me, /n/me/notifications. Each shows a title, at least one data row
+ * Batch 11b routes in fixture mode: /reports, /me, /me/notifications. Each shows a title, at least one data row
  * and no middle dot.
  *
  *   PLAYWRIGHT_BASE_URL=http://localhost:3721 PW_CHROMIUM=... npx playwright test e2e/n-admin-ops.spec.ts
@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 
 const NAV = { timeout: 90_000 };
 test.setTimeout(180_000);
-const ROUTES = ["/n/reports", "/n/me", "/n/me/notifications"] as const;
+const ROUTES = ["/reports", "/me", "/me/notifications"] as const;
 
 for (const route of ROUTES) {
   test(`${route} shows a title and a data row`, async ({ page }) => {

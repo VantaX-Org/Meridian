@@ -1,6 +1,6 @@
 # Meridian UI kit
 
-Import everything from `@/ui/kit`. Builders use these instead of writing their own. Every component takes already-translated strings as props (no i18n inside the kit); translate with `t()` at the call site. See every component live at `/n/kit?fixture=1`. Style only with `--mx-*` tokens.
+Import everything from `@/ui/kit`. Builders use these instead of writing their own. Every component takes already-translated strings as props (no i18n inside the kit); translate with `t()` at the call site. See every component live at `/kit?fixture=1`. Style only with `--mx-*` tokens.
 
 ## Layout and shell
 - `AppShell`: `{brand, sections, navLabel, user, userMenuLabel, menu, launcher?, aside?, children}`, the top bar, nav, user menu and Aletheia launcher.

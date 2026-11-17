@@ -10,7 +10,7 @@ let undo: () => void = () => undefined;
 beforeEach(() => {
   undo = stubLayout();
   window.sessionStorage.clear();
-  window.history.replaceState(null, "", "/n/load/s4?fixture=1");
+  window.history.replaceState(null, "", "/load/s4?fixture=1");
 });
 afterEach(() => undo());
 

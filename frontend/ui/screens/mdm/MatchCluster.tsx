@@ -56,8 +56,8 @@ export function MatchCluster({ id }: { id: string }) {
         title={t("Match cluster")}
         context={id}
         actions={<>
-          <Button variant="ghost" href={href(`/n/mdm/golden/${id}`)}>{t("Golden record")}</Button>
-          <Button variant="ghost" href={href("/n/mdm/match")}>{t("Match review")}</Button>
+          <Button variant="ghost" href={href(`/mdm/golden/${id}`)}>{t("Golden record")}</Button>
+          <Button variant="ghost" href={href("/mdm/match")}>{t("Match review")}</Button>
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />

@@ -57,7 +57,7 @@ function Rules({ filter }: { filter?: (f: AletheiaFinding) => boolean }) {
         { key: "fix", label: t("Auto fix"), end: true, render: (r) => pc(r.auto_fix_pct) },
         { key: "cost", label: t("Cost at risk"), end: true, render: (r) => money(r.money.cost_at_risk, r.money.currency || cur) },
         { key: "why", label: t("Why"), render: (r) => (r.why.origin.top ? t("Mostly from {top}", { top: r.why.origin.top }) : t("n/a")) },
-        { key: "go", label: t("Action"), render: (r) => (r.action.kind === "merge" || r.action.kind === "across" ? <Button variant="ghost" href="/n/mdm/match">{t("Review matches")}</Button> : <Button variant="ghost" href={`/n/o/${r.module}`}>{t("Open the object")}</Button>) },
+        { key: "go", label: t("Action"), render: (r) => (r.action.kind === "merge" || r.action.kind === "across" ? <Button variant="ghost" href="/mdm/match">{t("Review matches")}</Button> : <Button variant="ghost" href={`/o/${r.module}`}>{t("Open the object")}</Button>) },
       ]} />
     </Gate>
   );

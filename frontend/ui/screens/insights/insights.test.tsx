@@ -15,7 +15,7 @@ let undo: () => void = () => undefined;
 beforeEach(() => {
   undo = stubLayout();
   window.sessionStorage.clear();
-  window.history.replaceState(null, "", "/n/insights?fixture=1");
+  window.history.replaceState(null, "", "/insights?fixture=1");
 });
 afterEach(() => undo());
 

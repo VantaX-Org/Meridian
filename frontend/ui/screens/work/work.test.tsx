@@ -19,12 +19,12 @@ beforeEach(() => { undo = stubLayout(); window.sessionStorage.clear(); });
 afterEach(() => undo());
 
 const cases: [string, string, () => ReactElement][] = [
-  ["Work", "/n/work", () => <Work />],
-  ["Triage", "/n/work/triage", () => <Triage />],
-  ["Exceptions", "/n/work/exceptions", () => <Exceptions />],
-  ["Work analytics", "/n/work/analytics", () => <WorkAnalytics />],
-  ["Data requests", "/n/work/requests", () => <DataRequests />],
-  ["Approvals", "/n/approvals", () => <Approvals />],
+  ["Work", "/work", () => <Work />],
+  ["Triage", "/work/triage", () => <Triage />],
+  ["Exceptions", "/work/exceptions", () => <Exceptions />],
+  ["Work analytics", "/work/analytics", () => <WorkAnalytics />],
+  ["Data requests", "/work/requests", () => <DataRequests />],
+  ["Approvals", "/approvals", () => <Approvals />],
 ];
 
 describe("work screens in fixture mode", () => {

@@ -127,7 +127,7 @@ export function Work() {
   return (
     <>
       <PageHeader title={t("Work")} context={state.module ? <ObjChip code={state.module} /> : t("Everything waiting for a decision")}
-        actions={<><Button variant="primary" href={withFixture("/n/approvals", fx)}>{t("Approvals")}</Button><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
+        actions={<><Button variant="primary" href={withFixture("/approvals", fx)}>{t("Approvals")}</Button><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
       <div className="mx-chips" role="group" aria-label={t("Work status")}>
         {CHIPS.map((c) => <Chip key={c.id} selected={state.chip === c.id} count={c.count(summary.data) ?? undefined} onClick={() => chip(c.id)}>{c.label}</Chip>)}
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The kit gallery: every shared component once, with sample data, at /n/kit?fixture=1. Builders copy from here.
+ * The kit gallery: every shared component once, with sample data, at /kit?fixture=1. Builders copy from here.
  * It is a developer page, so its sample copy is not translated (each literal line is marked i18n-ignore).
  */
 import { useState, type ReactNode } from "react";

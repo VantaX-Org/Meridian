@@ -45,7 +45,7 @@ export function Golden() {
       <div className="mx-col">
         <DomainSelect value={domain} onChange={(v) => { setDomain(v); setPage(1); }} />
         {q.isLoading ? <Skeleton lines={8} label={t("Loading golden records")} /> : q.isError ? <ErrorState heading={t("Golden records could not be loaded")} /> : rows.length === 0 ? (
-          <EmptyState heading={t("No golden records yet")} body={t("Golden records appear once matched duplicates are merged or a record is promoted.")} action={<Button href={href("/n/mdm/match")}>{t("Open match review")}</Button>} />
+          <EmptyState heading={t("No golden records yet")} body={t("Golden records appear once matched duplicates are merged or a record is promoted.")} action={<Button href={href("/mdm/match")}>{t("Open match review")}</Button>} />
         ) : (
           <Card title={t("Records")} sub={t("Select a row for a summary. Open the record for fields, history and write-back.")}>
             <DataTable<GoldenRow>
@@ -54,7 +54,7 @@ export function Golden() {
               rowKey={(r) => r.id}
               onSelect={(r) => sheet.open("golden", r.id)}
               columns={[
-                { key: "key", label: t("Record"), sort: (r) => r.sap_object_key, render: (r) => <Link href={href(`/n/mdm/golden/${r.id}`)}><FieldChip code={r.sap_object_key} description={r.name ?? undefined} /></Link> },
+                { key: "key", label: t("Record"), sort: (r) => r.sap_object_key, render: (r) => <Link href={href(`/mdm/golden/${r.id}`)}><FieldChip code={r.sap_object_key} description={r.name ?? undefined} /></Link> },
                 { key: "status", label: t("Status"), sort: (r) => r.status, render: (r) => <SeverityPill sev={r.status === "golden" ? "low" : r.status === "superseded" ? "info" : "medium"} label={statusLabel(r.status)} /> },
                 { key: "conf", label: t("Confidence"), align: "end", sort: (r) => r.overall_confidence, render: (r) => pct(r.overall_confidence) },
                 { key: "src", label: t("Sources"), align: "end", sort: (r) => r.source_count, render: (r) => r.source_count },

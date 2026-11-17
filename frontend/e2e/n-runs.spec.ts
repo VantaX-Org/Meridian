@@ -13,12 +13,12 @@ const A = id(499);
 const B = id(498);
 
 const ROUTES: { name: string; url: string; title: string | RegExp; row: string }[] = [
-  { name: "runs", url: "/n/runs?fixture=1", title: "Runs", row: "table tbody tr, [role=row]" },
-  { name: "jobs", url: "/n/runs?view=jobs&fixture=1", title: "Runs", row: "table tbody tr, [role=row]" },
-  { name: "sets", url: "/n/runs?view=sets&fixture=1", title: "Runs", row: "table tbody tr, [role=row]" },
-  { name: "run", url: `/n/run/${A}?fixture=1`, title: /.+/, row: "table tbody tr, [role=row]" },
-  { name: "compare", url: `/n/run/${A}/vs/${B}?fixture=1`, title: "Compare runs", row: "table tbody tr, [role=row]" },
-  { name: "agreement", url: `/n/run/${A}/agreement?fixture=1`, title: "Agreement with the cleaned file", row: "table tbody tr, [role=row]" },
+  { name: "runs", url: "/runs?fixture=1", title: "Runs", row: "table tbody tr, [role=row]" },
+  { name: "jobs", url: "/runs?view=jobs&fixture=1", title: "Runs", row: "table tbody tr, [role=row]" },
+  { name: "sets", url: "/runs?view=sets&fixture=1", title: "Runs", row: "table tbody tr, [role=row]" },
+  { name: "run", url: `/run/${A}?fixture=1`, title: /.+/, row: "table tbody tr, [role=row]" },
+  { name: "compare", url: `/run/${A}/vs/${B}?fixture=1`, title: "Compare runs", row: "table tbody tr, [role=row]" },
+  { name: "agreement", url: `/run/${A}/agreement?fixture=1`, title: "Agreement with the cleaned file", row: "table tbody tr, [role=row]" },
 ];
 
 test.beforeEach(async ({ page }) => {
@@ -39,12 +39,12 @@ for (const r of ROUTES) {
 }
 
 test("start a run sheet opens from the runs list", async ({ page }) => {
-  await page.goto("/n/runs?fixture=1", NAV);
+  await page.goto("/runs?fixture=1", NAV);
   await page.getByRole("button", { name: "Start a run" }).first().click();
   await expect(page.getByRole("dialog")).toBeVisible(NAV);
 });
 
 test("extract-target sheet opens from ?open=extract-target", async ({ page }) => {
-  await page.goto(`/n/run/${A}?open=extract-target&fixture=1`, NAV);
+  await page.goto(`/run/${A}?open=extract-target&fixture=1`, NAV);
   await expect(page.getByRole("dialog")).toBeVisible(NAV);
 });

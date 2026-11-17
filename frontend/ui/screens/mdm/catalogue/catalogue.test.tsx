@@ -19,7 +19,7 @@ let undo: () => void = () => undefined;
 beforeEach(() => {
   undo = stubLayout();
   window.sessionStorage.clear();
-  window.history.replaceState(null, "", "/n/mdm/catalogue?fixture=1");
+  window.history.replaceState(null, "", "/mdm/catalogue?fixture=1");
 });
 afterEach(() => undo());
 
