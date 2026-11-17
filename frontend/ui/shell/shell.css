@@ -1,0 +1,8 @@
+/* Shell lines under the top bar (offline, sandbox, view-as, shared, failed job) and the small top-bar links. */
+.mx-root .mx-banner { display: flex; align-items: center; gap: var(--mx-s3); flex-wrap: wrap; padding: var(--mx-s1) var(--mx-gutter); background: var(--mx-surface-2); color: var(--mx-ink); border-block-end: 1px solid var(--mx-border); font-size: var(--mx-fs-small); }
+.mx-root .mx-banner p { margin: 0; flex: 1 1 auto; min-inline-size: 0; }
+.mx-root .mx-banner strong { font-weight: var(--mx-w-heading); }
+.mx-root .mx-banner[data-tone="warn"] { color: var(--mx-warn-ink); }
+.mx-root .mx-banner[data-tone="bad"] { color: var(--mx-bad-ink); }
+.mx-root .mx-topbtn { display: inline-flex; align-items: center; gap: var(--mx-s1); padding: var(--mx-s1) var(--mx-s2); border-radius: var(--mx-r-pill); color: var(--mx-ink-2); font-size: var(--mx-fs-small); text-decoration: none; white-space: nowrap; }
+.mx-root .mx-topbtn:hover { background: var(--mx-surface-2); color: var(--mx-ink); }

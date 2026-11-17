@@ -16,6 +16,7 @@ import {
 import { CleaningQueue } from "./CleaningQueue";
 import { ObjChip } from "./ObjChip";
 import { RecordDetail } from "./RecordDetail";
+import { SimulateSheet } from "./SimulateSheet";
 import { fieldText, sevLabel, sevOf, useDo } from "./shared";
 
 const rowId = (r: WorkRow) => `${r.module}|${r.record_key}`;
@@ -38,6 +39,7 @@ export function Work() {
   const [sheet, setSheet] = useState(false);
   const [setTo, setSetTo] = useState("");
   const [onlyBlank, setOnlyBlank] = useState(true);
+  const [sim, setSim] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const stacked = useStacked();
   const chat = useAletheia();
@@ -74,6 +76,7 @@ export function Work() {
       <Button onClick={() => file.current?.click()}>{t("Import workbook")}</Button>
       <input ref={file} type="file" accept=".xlsx,.csv" hidden aria-label={t("Import workbook")} onChange={(e) => { const f = e.target.files?.[0]; if (f) void imp(f); e.target.value = ""; }} />
       <Button onClick={() => sheets.open("whatif", { module: state.module })}>{t("What if")}</Button>
+      {list.length ? <Button onClick={() => setSim(true)}>{t("Simulate fixing")}</Button> : null}
       <Button onClick={saveView}>{t("Save this view")}</Button>
       {vs.length ? (
         <Select aria-label={t("Saved views")} value="" options={[{ value: "", label: t("Saved views") }, ...vs.map((v) => ({ value: v.id, label: v.name }))]}
@@ -137,6 +140,7 @@ export function Work() {
         <Chip selected={tab === "cleaning"} onClick={() => setTab("cleaning")}>{t("Cleaning queue")}</Chip>
       </div>
       {tab === "cleaning" ? <CleaningQueue /> : records}
+      <SimulateSheet rows={list} open={sim} onClose={() => setSim(false)} />
       <p className="mx-muted">{state.chip ? chipDef(state.chip).label : ""}</p>
     </>
   );

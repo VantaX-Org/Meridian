@@ -13,6 +13,8 @@ import { PATHS } from "@/lib/next/nav-defaults";
 import { DemoBar, Standalone, useDocumentLang } from "@/ui/kit";
 import { AletheiaProvider, AppShell, CommandPalette, SheetHost, ToastHost, useAletheia } from "@/ui/kit";
 import { SHEETS } from "@/ui/sheets";
+import { Banners, FailedJobLine, HealthWord, InboxButton, usePaletteSearch, ViewAsSheet } from "@/ui/shell/parts";
+import { useV2Session } from "@/lib/v2/hooks";
 
 // Lazy slot: the one chat instance, scoped by whichever screen is open.
 const AletheiaPanel = lazy(() => import("@/ui/kit/AletheiaPanel"));
@@ -36,6 +38,14 @@ function Shell({ children }: { children: ReactNode }) {
   const link = (p: string) => withFixture(p, fx);
   const router = useRouter();
   const [palette, setPalette] = useState(false);
+  const [q, setQ] = useState("");
+  const found = usePaletteSearch(palette ? q : "");
+  const [viewAs, setViewAs] = useState(false);
+  const session = useV2Session();
+  const menu = [
+    ...(session.can("manage_users") && !session.viewAs && !session.shared ? [{ id: "view-as", label: t("View as a role"), onClick: () => setViewAs(true) }] : []),
+    ...(fx ? [] : [{ id: "out", label: t("Sign out"), onClick: logout }]),
+  ];
   useEffect(() => {
     // "g" then a letter jumps to a place, as in the old interface. The chord lapses after 1.2 seconds.
     const CHORDS: Record<string, string> = { h: PATHS.home, w: PATHS.work, l: PATHS.load, r: PATHS.runs, m: PATHS.more, u: "/rules", c: "/mdm", k: "/insights" };
@@ -69,7 +79,9 @@ function Shell({ children }: { children: ReactNode }) {
       skipNavLabel={t("Skip links")}
       user={{ name: user?.name ?? user?.email ?? t("Demo user"), email: user?.email }}
       userMenuLabel={t("Account menu")}
-      menu={fx ? [] : [{ id: "out", label: t("Sign out"), onClick: logout }]}
+      menu={menu}
+      banner={<><Banners /><FailedJobLine /></>}
+      actions={<><HealthWord /><InboxButton /></>}
       launcher={{ label: t("Ask Aletheia"), onOpen: () => chat.setOpen(true) }}
       aside={chat.open ? (
         <Suspense fallback={null}>
@@ -83,14 +95,17 @@ function Shell({ children }: { children: ReactNode }) {
     </AppShell>
     <CommandPalette
       open={palette}
-      onClose={() => setPalette(false)}
+      onClose={() => { setPalette(false); setQ(""); }}
       commands={commands}
+      onQuery={setQ}
+      extra={found}
       onAsk={(q) => { chat.setOpen(true); chat.ask(q); }}
       label={t("Command palette")}
       placeholder={t("Go to a screen or ask Aletheia")}
       askLabel={(q) => t("Ask Aletheia: {q}", { q })}
       emptyLabel={t("No matches")}
     />
+    <ViewAsSheet open={viewAs} onClose={() => setViewAs(false)} />
     </>
   );
 }

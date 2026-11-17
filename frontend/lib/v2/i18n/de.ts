@@ -14405,4 +14405,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Loading the process models": "Prozessmodelle werden geladen",
   "Loading the model": "Modell wird geladen",
   "This link points to {kind}, which has no page yet.": "Dieser Link verweist auf {kind}, wofür es noch keine Seite gibt.",
+  "(capped)": "(gedeckelt)",
+  "Loading the timeline": "Zeitachse wird geladen",
+  "The timeline could not be loaded": "Die Zeitachse konnte nicht geladen werden",
+  "No finished run yet": "Noch kein abgeschlossener Lauf",
+  "Every finished run, newest first.": "Jeder abgeschlossene Lauf, der neueste zuerst.",
+  "{n} records of {object}": "{n} Datensätze von {object}",
+  "The simulation failed": "Die Simulation ist fehlgeschlagen",
+  "Score after, simulated": "Wert danach, simuliert",
+  "Critical rules cleared": "Behobene kritische Regeln",
 };

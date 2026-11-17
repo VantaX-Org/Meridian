@@ -14405,4 +14405,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Loading the process models": "プロセスモデルを読み込み中",
   "Loading the model": "モデルを読み込み中",
   "This link points to {kind}, which has no page yet.": "このリンクは {kind} を指していますが、まだページがありません。",
+  "(capped)": "(上限適用)",
+  "Loading the timeline": "タイムラインを読み込み中",
+  "The timeline could not be loaded": "タイムラインを読み込めませんでした",
+  "No finished run yet": "完了した実行はまだありません",
+  "Every finished run, newest first.": "完了したすべての実行(新しい順)。",
+  "{n} records of {object}": "{object} の {n} 件のレコード",
+  "The simulation failed": "シミュレーションに失敗しました",
+  "Score after, simulated": "実施後のスコア(シミュレーション)",
+  "Critical rules cleared": "解消された重大ルール",
 };
