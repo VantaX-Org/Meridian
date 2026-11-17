@@ -88,7 +88,8 @@ def fire(rid, tables):
 
 
 def test_ids_contiguous_and_fully_enriched():
-    assert [int(r["id"][2:]) for r in NEW] == list(range(728, 782))
+    # EC768 removed: PaymentInformationDetailV3 has one start date (EFFECTIVE_DATE).
+    assert [int(r["id"][2:]) for r in NEW] == [i for i in range(728, 782) if i != 768]
     for r in NEW:
         for k in MANDATORY:
             assert r.get(k), (r["id"], k)
