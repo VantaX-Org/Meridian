@@ -24,7 +24,7 @@ const B = "/api/v1/migration/move";
 describe("Delta", () => {
   it("needs a date and a dry run, then sends the delta", async () => {
     const calls = route({
-      [`POST ${B}/plans/p1/delta`]: (b) => ((b as { dry_run: boolean }).dry_run ? { ...RUN, id: "d0" } : { ...RUN, id: "d1", dry_run: false }),
+      [`POST ${B}/plans/p1/delta`]: (b: unknown) => ((b as { dry_run: boolean }).dry_run ? { ...RUN, id: "d0" } : { ...RUN, id: "d1", dry_run: false }),
       [`GET ${B}/runs/d0`]: { ...RUN, id: "d0" },
       [`GET ${B}/runs/d1`]: { ...RUN, id: "d1", dry_run: false },
     });
