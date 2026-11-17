@@ -82,6 +82,32 @@ def _primary_first(df: pd.DataFrame, col: str) -> pd.DataFrame:
     return df.iloc[(~flag).to_numpy().argsort(kind="stable")]
 
 
+_START_NAMES = ("START_DATE", "EFFECTIVE_DATE", "EFFECTIVE_START_DATE")
+
+
+def _mark_current(df: pd.DataFrame, table: str, key_cols: list[str], hist_keys: list[str]) -> pd.DataFrame:
+    """Add ``{table}.IS_CURRENT`` ('true'/'false'). Every historic row is kept; per business key (the
+    table key without its date and sequence columns) the current row is the latest start on or before
+    today, highest seqNumber on a tie. SF effective dating is gapless, so that is the row whose
+    effectiveEndDate is 9999-12-31 or covers today. A key with only future rows has no current row.
+    Undated tables and undated rows are current. Rules and DQS score the current row; the move loads all."""
+    col = f"{table}.IS_CURRENT"
+    starts = [c for c in dict.fromkeys(hist_keys + [f"{table}.{n}" for n in _START_NAMES]) if c in df.columns]
+    if not len(df) or not starts:
+        return df.assign(**{col: "true"})
+    seq = f"{table}.SEQ_NUMBER"
+    biz = [c for c in key_cols if c in df.columns and c not in starts and c != seq]
+    s = df[starts[0]].astype("string").str[:10]
+    in_force = s.where(s <= pd.Timestamp.today().strftime("%Y-%m-%d"))
+    w = pd.DataFrame({"s": in_force, "q": pd.to_numeric(df[seq], errors="coerce") if seq in df.columns else 0,
+                      "k": list(zip(*[df[c].astype("string").fillna("") for c in biz])) if biz else 0},
+                     index=df.index)
+    w = w.dropna(subset=["s"]).sort_values(["s", "q"], ascending=False, kind="stable")
+    current = pd.Series(False, index=df.index)
+    current[w.index[~w["k"].duplicated().to_numpy()]] = True
+    current |= s.isna()
+    return df.assign(**{col: current.map({True: "true", False: "false"})})
+
 def _bad_property(e: Exception, entity: str) -> str | None:
     """The property an SF 400 ('[COE0003]Bad property expression: Ent/prop', '[COE0021]Invalid property
     names: Ent/prop') rejects, as it appears in $select."""
@@ -1025,7 +1051,7 @@ class ConnectivityManager:
             # A table keyed on a start or effective date is a history table: the entity feeding that date
             # is read with every record. Other entities in the table stay current and join first row per key.
             all_records = "all records" in (t.note or "")
-            date_keys = set(t.keys) & {"START_DATE", "EFFECTIVE_DATE"}
+            date_keys = set(t.keys) & {"START_DATE", "EFFECTIVE_DATE", "EFFECTIVE_START_DATE"}
             merged = None
             absent: list[str] = []
             absent_keys: set[str] = set()
@@ -1223,6 +1249,7 @@ class ConnectivityManager:
                 col, opts = f"{table}.{f.name}", options.get(f.picklist or "")
                 if opts and col in merged.columns:
                     merged[col] = merged[col].map(lambda v: opts.get(str(v).strip(), v) if v is not None else v)
+            merged = _mark_current(merged, table, key_cols, hist_keys)
             frames[table] = merged
             coverage.append({"table": table, "status": "live", "rows": len(merged),
                              "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable), **extra})
