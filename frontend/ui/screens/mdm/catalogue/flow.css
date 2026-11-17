@@ -1,0 +1,24 @@
+/* As-is flow graph (FlowGraph.tsx): steps as boxes over an SVG of hand-offs. */
+.mx-flow { overflow-x: auto; }
+.mx-flow-canvas { position: relative; }
+.mx-flow-canvas svg { position: absolute; inset: 0; }
+.mx-flow-edge path { stroke: var(--mx-border-strong); }
+.mx-flow-edge text { fill: var(--mx-ink-3); font-size: var(--mx-fs-micro); font-variant-numeric: tabular-nums; }
+.mx-flow-edge[data-on="true"] path { stroke: var(--mx-data); }
+.mx-flow-edge[data-on="false"] { opacity: 0.35; }
+.mx-flow-head { fill: var(--mx-ink-3); }
+.mx-flow-node { position: absolute; display: flex; flex-direction: column; justify-content: center; gap: var(--mx-s1); padding: var(--mx-s2) var(--mx-s3); text-align: left; font: inherit; font-size: var(--mx-fs-small); color: var(--mx-ink); background: var(--mx-surface); border: 1px solid var(--mx-border-strong); border-left: 4px solid var(--mx-ink-3); border-radius: var(--mx-r-control); cursor: pointer; overflow: hidden; }
+.mx-flow-node:hover, .mx-flow-node:focus-visible { border-color: var(--mx-data); }
+.mx-flow-node:focus-visible { outline: 2px solid var(--mx-focus); outline-offset: 2px; }
+.mx-flow-node[data-tone="pass"] { border-left-color: var(--mx-good); }
+.mx-flow-node[data-tone="crit"] { border-left-color: var(--mx-bad); background: var(--mx-surface-2); }
+.mx-flow-node[data-observed="false"] { border-style: dashed; }
+.mx-flow-node[data-on="true"] { border-color: var(--mx-data); }
+.mx-flow-node[data-on="false"] { opacity: 0.45; }
+.mx-flow-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mx-flow-name code { font-family: var(--mx-font-mono); color: var(--mx-ink-2); }
+.mx-flow-meta { color: var(--mx-ink-2); font-size: var(--mx-fs-micro); font-variant-numeric: tabular-nums; }
+.mx-flow-key { display: flex; flex-wrap: wrap; gap: var(--mx-s3); margin: var(--mx-s2) 0 0; color: var(--mx-ink-2); font-size: var(--mx-fs-micro); }
+.mx-flow-key [data-tone]::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: var(--mx-s1); border-radius: var(--mx-r-pill); background: var(--mx-ink-3); vertical-align: middle; }
+.mx-flow-key [data-tone="pass"]::before { background: var(--mx-good); }
+.mx-flow-key [data-tone="crit"]::before { background: var(--mx-bad); }

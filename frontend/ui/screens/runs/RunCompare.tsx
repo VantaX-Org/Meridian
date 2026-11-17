@@ -7,6 +7,7 @@ import { moduleText } from "@/lib/v2/labels";
 import { useCompareSets, useCompareSummary, useRun, type Change, type CompareRecord } from "@/lib/api/next/runs";
 import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, Skeleton, StatTile, useAletheiaScope, type Column } from "@/ui/kit";
 import { answer } from "./answers";
+import { CompareObject } from "./CompareObject";
 import { JobHairline } from "./JobHairline";
 import { runPath, runTitle } from "./util";
 import "./runs.css";
@@ -15,7 +16,7 @@ const CHANGES: Change[] = ["new", "resolved", "regressed", "persisting"];
 const changeText = (c: Change) => ({ new: t("Newly failing"), resolved: t("Fixed"), regressed: t("Got worse"), persisting: t("Still failing") })[c];
 const cell = (v: Record<string, unknown> | null) => (v ? Object.entries(v).map(([k, x]) => `${k}=${String(x)}`).join(", ") : "");
 
-export function RunCompare({ a, b }: { a: string; b: string }) {
+export function RunCompare({ a, b, runs, objects }: { a: string; b: string; runs?: readonly string[]; objects?: readonly string[] }) {
   useInterfaceLang();
   const fx = useFixture();
   const href = (p: string) => withFixture(p, fx);
@@ -68,6 +69,7 @@ export function RunCompare({ a, b }: { a: string; b: string }) {
           <DataTable columns={cols} rows={rows} rowKey={(r) => `${r.check_id}/${r.record_key}/${r.change}`} label={t("Changed records")} height={420} />
         )}
       </Card>
+      <CompareObject ids={runs?.length ? runs : [a, b]} objects={objects} />
     </div>
   );
 }
