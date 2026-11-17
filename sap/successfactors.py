@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 _RATE_LIMIT_BACKOFF_SECONDS = 2.0
 _MAX_RETRIES = 3
+UPSERT_CHUNK = 200
 
 
 _ODATA_DATE = re.compile(r"^/Date\((-?\d+)([+-]\d{4})?\)/$")
@@ -296,6 +297,36 @@ class SuccessFactorsConnector(CloudSAPConnector):
         # the client's default Accept is JSON; $metadata is XML-only and answers 406 to it
         return self._request_with_retry("GET", path, params={}, headers={"Accept": "application/xml"}).text
 
+    def upsert(self, entity: str, records: list[dict], purge_type: str | None = None,
+               chunk_size: int = UPSERT_CHUNK) -> list[dict]:
+        """Write ``records`` to ``entity`` through /odata/v2/upsert, ``chunk_size`` records per call.
+
+        Each record gets ``__metadata.uri`` set to the entity name when absent. ``purge_type="full"`` replaces
+        every effective-dated row of the person with the rows sent. Returns one status per record in the order
+        sent: {index, key, status: "ok"|"failed", http_code, message}. A chunk whose call fails outright marks
+        all its records failed with the masked error; transient errors are retried by ``_request_with_retry``."""
+        self._ensure_connected()
+        params = {"$format": "json"}
+        if purge_type:
+            params["purgeType"] = purge_type
+        out: list[dict] = []
+        for start in range(0, len(records), max(1, chunk_size)):
+            chunk = [r if "__metadata" in r else {"__metadata": {"uri": entity}, **r}
+                     for r in records[start:start + chunk_size]]
+            try:
+                resp = self._request_with_retry("POST", "/odata/v2/upsert", params=params, json_body=chunk,
+                                                headers={"Content-Type": "application/json"})
+                rows = parse_upsert(resp.json())
+            except (SAPConnectorError, ValueError) as exc:
+                msg = self._mask(str(exc))[:500]
+                rows = [{"key": None, "status": "failed", "http_code": None, "message": msg}] * len(chunk)
+            missing = {"key": None, "status": "failed", "http_code": None,
+                       "message": "No status returned for this record."}
+            rows = rows[:len(chunk)] + [missing] * (len(chunk) - len(rows))
+            for i, row in enumerate(rows):
+                out.append({"index": start + i, **row, "message": self._mask(row.get("message") or "")[:500]})
+        return out
+
     # ------------------------------------------------------------------
     # Report reading
     # ------------------------------------------------------------------
@@ -397,6 +428,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         params: Optional[dict[str, str]] = None,
         headers: Optional[dict[str, str]] = None,
         retries: int = _MAX_RETRIES,
+        json_body: Any = None,
     ) -> httpx.Response:
         """Execute an HTTP request with rate-limit handling and retries.
 
@@ -410,7 +442,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
 
         for attempt in range(1, retries + 1):
             try:
-                resp = self._client.request(method, url, params=params, headers=headers)
+                resp = self._client.request(method, url, params=params, headers=headers, json=json_body)
 
                 # Check rate limit headers
                 remaining = resp.headers.get("X-RateLimit-Remaining")
@@ -494,6 +526,19 @@ class SuccessFactorsConnector(CloudSAPConnector):
         raise SAPConnectorError(
             f"SuccessFactors request failed after {retries} retries"
         ) from last_exc
+
+
+def parse_upsert(body: Any) -> list[dict]:
+    """Per-record rows of an SF upsert response: {key, status: "ok"|"failed", http_code, message}.
+    SF answers {"d": [{"key", "status": "OK"|"ERROR", "editStatus", "message", "httpCode"}]}."""
+    items = body.get("d", body) if isinstance(body, dict) else body
+    items = items.get("results", items) if isinstance(items, dict) else items
+    rows = []
+    for it in items or []:
+        ok = str(it.get("status", "")).upper() == "OK"
+        rows.append({"key": it.get("key"), "status": "ok" if ok else "failed",
+                     "http_code": it.get("httpCode"), "message": it.get("message") or ""})
+    return rows
 
 
 def error_body(resp: httpx.Response, mask: Callable[[str], str] = str, limit: int = 300) -> str:
