@@ -1,4 +1,4 @@
-// Smoke test: every signed-out page renders in the frame of the one interface (design/v2/auth).
+// Smoke test: every signed-out page renders in the frame of the one interface (ui/auth).
 import { fireEvent, render } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
@@ -41,8 +41,8 @@ describe("signed-out pages render in the one frame", () => {
 
   it("sign-in shows the product name above one card on the ground, with no picture and no old classes", () => {
     const { container } = render(<SignInPage />);
-    expect(container.querySelector("main.m2-auth .m2-auth-card h1")?.textContent).toBe("Sign in");
-    expect(container.querySelector(".m2-auth-brand")?.textContent).toContain("Meridian");
+    expect(container.querySelector("main.mx-auth .mx-auth-card h1")?.textContent).toBe("Sign in");
+    expect(container.querySelector(".mx-auth-brand")?.textContent).toContain("Meridian");
     expect(container.querySelector("aside")).toBeNull();
     expect(container.querySelector("[class*='m-card'], [class*='m-motion']")).toBeNull();
   });

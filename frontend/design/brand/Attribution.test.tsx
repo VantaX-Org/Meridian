@@ -52,9 +52,9 @@ describe("Aletheia attribution (licence section 6: on every screen)", () => {
     expect(rule).toMatch(/height:\s*var\(--m-attribution-h\)/);
   });
 
-  it("is reserved out of the shell's height, so the map, canvas and inspector and the strip fit one screen", () => {
-    const shell = readFileSync(join(root, "design/v2/v2.css"), "utf8");
-    expect(shell).toMatch(/height: calc\(100dvh - var\(--m-attribution-h, 0px\)\)/);
+  it("never covers the shell: the shell only sets a minimum height, so the strip flows below it", () => {
+    const shell = readFileSync(join(root, "ui/kit/kit.css"), "utf8");
+    expect(shell).toMatch(/\.mx-shell \{ min-block-size: 100dvh/);
   });
 
   it("ships Aletheia's own mark file, byte for byte", () => {

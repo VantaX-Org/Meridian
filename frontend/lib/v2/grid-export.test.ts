@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
-import { Coded } from "@/design/v2/parts";
+// Stand-in for a described-code cell: the exporter reads its code and text props.
+const Coded = (props: { code: string; text?: string | null }) => props.code && null;
 import { domTable, exportColumns, gridCsv, tableTitle, nodeDescription, nodeText, type ToolColumn } from "./grid-export";
 
 type Row = { mtart: string; text: string; n: number };

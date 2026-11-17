@@ -31,7 +31,7 @@ export interface Preferences {
   /** The last "What's new" version the user saw (wired by the What's new drawer). */
   seen_version?: string;
   notifications?: NotificationPrefs;
-  /** Try the new Meridian (design/next). Off unless the person turns it on. */
+  /** Legacy switch for the old interface. Off unless the person turns it on. */
   ui_next?: boolean;
 }
 

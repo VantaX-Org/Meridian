@@ -127,9 +127,9 @@ meridian/
 ├── llm/provider.py                  ← swappable LLM with request_timeout=120
 │
 ├── frontend/                        ← Next.js 16 dashboard (16.4.1)
-│   ├── app/(v2)/                    ← the one interface at the root: landscape /, /o/{system}/{module}, /r/{check_id}, /work, /run, /runs, /people, /reports, /rules, /admin
+│   ├── app/(app)/                   ← the one interface at the root: home /, /work, /load, /runs, /o/{system}/{module}, /rules, /mdm, /insights, /people, /admin, /status
 │   ├── app/(auth)/                  ← sign-in, invite, password and licence pages on the same tokens
-│   ├── design/v2/                   ← the component library: shell (map, canvas, inspector), ruler, grid, inspector kinds, screens, admin, tokens.css
+│   ├── ui/                          ← kit (ui/kit), screens (ui/screens), sheets registry, tokens.css
 │   ├── lib/v2/                      ← hooks, i18n (en, de, ja), help index, keys, formatters
 │   ├── lib/api/                     ← typed API client modules inc. connectivity.ts
 │
@@ -253,17 +253,15 @@ RLS policy on every data table — always set `app.tenant_id` before queries.
 Source of truth: `frontend/DESIGN.md`. When this summary and DESIGN.md
 disagree, follow DESIGN.md.
 
-- **One interface**: Meridian 2, the map, canvas and inspector, served at the
-  root from `frontend/app/(v2)`. The old page tree, its component library and
-  its help centre were deleted in the cut-over; every old URL redirects
-  permanently (table in `frontend/docs/guide/redirects.md`, checked by a test).
-- **One component library**: `frontend/design/v2/` with `lib/v2/`: the shell
-  (280px map of systems and objects, the canvas, the 400px inspector opened by
-  `?open=kind:id`), the ruler for every score (six weighted segments, measured
-  tick, capped number), the virtual grid, the command line, inspector kinds in
-  `design/v2/inspector/registry.tsx`, screens under `design/v2/screens`.
-- **Tokens**: `frontend/design/v2/tokens.css` defines every `--m2-*` token,
-  light and dark. `npm run lint:tokens` rejects raw hex, gradients, blur, ad hoc
+- **One interface**: the rebuilt Meridian UI (design C, Split analyst), served at the
+  root from `frontend/app/(app)`. The old page trees, their component libraries
+  and help centre are deleted; every old URL redirects permanently (table in
+  `frontend/docs/guide/redirects.md`, checked by a test).
+- **One component library**: `frontend/ui/kit` (shell, tables, tabs, sheets,
+  the Aletheia chat) with screens under `ui/screens` and `lib/v2` for logic.
+  Sheets are registered in `ui/sheets.ts`; `?open=kind:id` opens one.
+- **Tokens**: `frontend/ui/tokens.css` defines every `--mx-*` token, light and
+  dark. `npm run lint:tokens` rejects raw hex, gradients, blur, ad hoc
   shadows and motion literals outside the token files.
   `frontend/scripts/lint-tokens.allow.txt` is empty. Never add a line to it.
 - **Type**: IBM Plex Sans for UI and numerals (tabular figures), IBM Plex Mono
@@ -277,7 +275,7 @@ disagree, follow DESIGN.md.
   tests, recordings and the e2e specs run on it.
 - **Help**: chapters in `frontend/docs/guide`, recordings in
   `frontend/docs/help-videos/guide2-*`, index built by `npm run help:index`;
-  every route under `app/(v2)` must map to a chapter (`lib/v2/help.test.ts`).
+  every route under `app/(app)` must map to a chapter (`lib/v2/help.test.ts`).
 
 ## SAP module coverage — 29 modules
 

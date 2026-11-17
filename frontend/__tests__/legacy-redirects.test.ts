@@ -24,6 +24,12 @@ const OLD_ROUTES = [
   "/rules/[ruleId]", "/rules/contracts", "/rules/dictionary", "/rules/drafts", "/rules/learned", "/rules/scoring",
   "/runs", "/runs/[versionId]", "/runs/[versionId]/vs/[b]", "/search", "/systems", "/systems/[systemId]",
   "/systems/[systemId]/extractions/[runId]",
+  "/n/work", "/next/work", "/portfolio", "/more/x", "/cleansing", "/aletheia", "/aletheia/chat", "/aletheia-survivorship",
+  "/fix-drafts", "/anomaly-rules", "/atlas", "/config", "/entry-gate", "/monitors", "/issues", "/links", "/catalogue",
+  "/mining", "/reference-data", "/processes", "/materials", "/score", "/forecast", "/value", "/rule-dry-run",
+  "/rule-promotion", "/data-requests", "/work/monitor", "/admin/matchrules", "/admin/workflows", "/admin/runschedules",
+  "/admin/step10", "/admin/thresholds", "/admin/accuracy", "/admin/kit", "/admin/capabilities", "/admin/tenant",
+  "/admin/sandbox", "/admin/maintenance", "/admin/runs", "/system-compare", "/migration/load-plan", "/s4", "/go-live",
 ] as const;
 
 /** A sample value for each dynamic segment, so `/runs/[versionId]` is tested as `/runs/R1`. */
@@ -50,7 +56,7 @@ function livePatterns(): RegExp[] {
 
 /** Next's source syntax (`:name`, `:name*`) as a regex over a path. */
 function sourcePattern(source: string): RegExp {
-  const body = source.replace(/\/:(\w+)\*/g, "(?:/.*)?").replace(/:(\w+)/g, "[^/]+");
+  const body = source.replace(/\/:(\w+)\*/g, "(?:/.*)?").replace(/:(\w+)(\((?:[^()]|\([^()]*\))*\))/g, "$2").replace(/:(\w+)/g, "[^/]+");
   return new RegExp(`^${body}$`);
 }
 
@@ -66,7 +72,7 @@ async function land(pathname: string): Promise<string | null> {
     const srcParts = rule.source.split("/").filter(Boolean);
     const params: Record<string, string> = {};
     srcParts.forEach((p, i) => {
-      if (p.startsWith(":")) params[p.slice(1).replace(/\*$/, "")] = p.endsWith("*") ? values.slice(i).join("/") : values[i];
+      if (p.startsWith(":")) params[p.slice(1).replace(/\(.*$/, "").replace(/\*$/, "")] = p.endsWith("*") ? values.slice(i).join("/") : values[i];
     });
     let dest = rule.destination;
     for (const n of names) dest = dest.replaceAll(`:${n}*`, params[n] ?? "").replaceAll(`:${n}`, params[n] ?? "");
@@ -103,7 +109,7 @@ describe("the cut-over redirects", () => {
     const rules = await nextConfig.redirects!();
     for (const rule of rules) {
       expect(rule.permanent, rule.source).toBe(true);
-      if (rule.source === "/v2/:path*") continue; // the whole tree, checked by the /v2 case below
+      if (["/v2/:path*", "/n/:path*", "/next/:path*", "/next/o/:system/:module/:tab*"].includes(rule.source)) continue; // whole trees, checked by the cases below
       const sample = rule.destination.replace(/:(\w+)\*/g, "x").replace(/:(\w+)/g, "X1");
       expect(isLive(sample), `${rule.source} -> ${rule.destination}`).toBe(true);
     }
@@ -136,13 +142,19 @@ describe("the cut-over redirects", () => {
       "/admin/sign-in": "/admin/signin",
       "/help": "/?open=help",
       "/me/preferences": "/?open=preferences",
-      "/import": "/admin/runs",
+      "/import": "/runs?view=jobs",
+      "/migration": "/load/runs",
       "/migration/W1": "/?view=waves&open=waves",
       "/system-compare": "/load/compare",
       "/migration/load-plan": "/load/plan",
       "/s4": "/load/s4",
       "/go-live": "/load/go-live",
-      "/mdm/golden/G1": "/?open=golden%3AG1",
+      "/n/work": "/work",
+      "/next/o/s/m/rules": "/o/s/m/rules",
+      "/portfolio": "/o?view=portfolio",
+      "/more/anything": "/admin",
+      "/admin/runs": "/runs?view=jobs",
+      "/rule-dry-run": "/rules/dry-run",
     };
     for (const [from, to] of Object.entries(cases)) expect(await land(from), from).toBe(to);
   });

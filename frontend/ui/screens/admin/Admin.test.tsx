@@ -6,7 +6,7 @@ import { Admin, AdminSectionScreen } from "./Admin";
 import { SECTIONS, isSection } from "./sections";
 import { isLastAdmin, removeBlock } from "./common";
 
-vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
+vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 
 beforeEach(() => {
   window.sessionStorage.clear();

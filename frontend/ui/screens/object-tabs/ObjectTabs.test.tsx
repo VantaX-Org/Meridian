@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
-import { stubLayout } from "@/design/v2/__tests__/layout-stub";
+import { stubLayout } from "@/ui/testing/layout-stub";
 import AletheiaPanel from "@/ui/kit/AletheiaPanel";
 import { AletheiaProvider } from "@/ui/kit";
 import { Screen } from "./Screen";
 import { cameBack, groupByTable } from "./Record";
 import type { Tab } from "./TabFrame";
 
-vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
+vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 
 const labels = { title: "Aletheia", scope: "All objects", close: "Close", inputLabel: "Ask a question", send: "Send", evidence: "Evidence", suggestionsLabel: "Suggested questions", threadLabel: "Conversation" };
 

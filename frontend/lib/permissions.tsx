@@ -3,7 +3,7 @@
 /**
  * Persona gating from GET /api/v1/me/permissions (rbac.md §3.3, §5).
  *
- * `PermissionsProvider` is mounted once inside the shell's AuthGuard (design/next/NextRoot.tsx).
+ * `PermissionsProvider` is mounted once inside the shell's AuthGuard (app/(app)/Frame.tsx).
  * Until the payload arrives every check answers false, so no mutating
  * control renders while loading (fail closed). `useRole().can()` reads the
  * same payload when a provider is present, so the existing page gates are
@@ -11,7 +11,7 @@
  *
  * The provider also holds what a request for access is about: a user-initiated scoped 403
  * (lib/api/client.ts `onAccessDenied`) or `requestAccess` sets it, and the shell draws the
- * request dialog for it (design/v2/RequestAccess.tsx); the library never imports the design.
+ * request dialog for it (ui/auth/RequestAccess.tsx); the library never imports the design.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";

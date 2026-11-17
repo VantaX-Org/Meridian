@@ -4,7 +4,7 @@ export const PATHS = {
   work: "/work",
   load: "/load",
   runs: "/runs",
-  more: "/more",
+  more: "/admin",
 } as const;
 export type DestId = keyof typeof PATHS;
 export const TABS: readonly DestId[] = ["home", "work", "load", "runs", "more"];

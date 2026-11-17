@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Sheet } from "./Sheet";
 
 export interface SheetDef { label: string; render: (arg: unknown) => ReactNode }
@@ -13,6 +13,17 @@ export function SheetHost({ sheets, closeLabel, children }: { sheets: Record<str
   const open = useCallback((id: string, arg?: unknown) => setCur({ id, arg }), []);
   const close = useCallback(() => setCur(null), []);
   const api = useMemo(() => ({ open, close, current: cur?.id ?? null }), [open, close, cur]);
+  // Deep link: ?open=kind:id opens that sheet once on arrival. Kinds with no sheet are ignored.
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get("open");
+    const i = v ? v.indexOf(":") : -1;
+    const kind = v ? (i < 0 ? v : v.slice(0, i)) : "";
+    if (!v || !kind || !sheets[kind]) return;
+    const id = i < 0 ? undefined : v.slice(i + 1);
+    // Rule sheets take { id }; the rest take the bare id.
+    setCur({ id: kind, arg: kind === "rule" || kind === "library-rule" ? { id } : id });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const def = cur ? sheets[cur.id] : undefined;
   return (
     <Ctx.Provider value={api}>

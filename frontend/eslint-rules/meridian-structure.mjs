@@ -89,9 +89,9 @@ const tallyVerdict = mk(
 // Rule 5: charts answer one question each, and every chart is clickable.
 const CLICK = { LineChart: "onPointClick", BarChart: "onBarClick", DonutChart: "onSegmentClick" };
 const chartRules = mk(
-  { recharts: "Draw charts with design/v2 components, not recharts.", click: "{{name}} needs {{prop}}: every mark opens its rows." },
+  { recharts: "Draw charts with the ui/kit components, not recharts.", click: "{{name}} needs {{prop}}: every mark opens its rows." },
   (context) => {
-    const inData = norm(context.filename).includes("/design/v2/");
+    const inData = norm(context.filename).includes("/ui/kit/");
     return {
       ImportDeclaration(node) {
         if (!inData && node.source.value === "recharts") context.report({ node, messageId: "recharts" });
@@ -109,10 +109,10 @@ const chartRules = mk(
 
 // Rule 6: StatusBadge is the only severity renderer.
 const severityViaBadge = mk(
-  { raw: "Render severity with SeverityMark (design/v2/marks.tsx), not data-severity on a raw element." },
+  { raw: "Render severity with the kit severity mark, not data-severity on a raw element." },
   (context) => {
     const f = norm(context.filename);
-    if (f.includes("/design/v2/")) return {};
+    if (f.includes("/ui/kit/")) return {};
     return {
       JSXOpeningElement(node) {
         const n = jsxName(node.name);
@@ -184,7 +184,7 @@ const urlIsState = {
 // Rule 16: one h1 per route, and PageTitle (or AuthFrame, outside the shell) owns it.
 const oneH1 = mk({ h1: "Only PageTitle renders the h1. Use PageTitle, or a lower heading level." }, (context) => {
   const f = norm(context.filename);
-  if (f.endsWith("/design/v2/parts.tsx") || f.endsWith("/design/v2/auth/AuthFrame.tsx")
+  if (f.endsWith("/ui/kit/PageHeader.tsx") || f.endsWith("/ui/auth/AuthFrame.tsx")
       || f.endsWith("/app/global-error.tsx") || f.endsWith("/app/not-found.tsx")) return {}; // outside the shell: no Breadcrumb to own the h1
   const lit = (a) => (a?.value?.type === "Literal" ? a.value.value : a?.value?.expression?.value);
   return {

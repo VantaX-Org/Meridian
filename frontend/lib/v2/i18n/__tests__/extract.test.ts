@@ -8,7 +8,7 @@ import { isProse } from "../../../../scripts/i18n-rules.mjs";
 describe("v2 message extraction", () => {
   const r = extract();
 
-  it("finds no user-visible literal outside t() in design/v2, app/(v2) and lib/v2", () => {
+  it("finds no user-visible literal outside t() in ui, app/(app) and lib/v2", () => {
     const list = r.untranslated.map((u: { at: string; kind: string; text: string }) => `${u.at} ${u.kind}: ${u.text}`);
     expect(list, "Wrap these in t() and run node scripts/i18n-extract.mjs --write").toEqual([]);
   });

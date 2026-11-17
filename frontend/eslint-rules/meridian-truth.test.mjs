@@ -24,7 +24,7 @@ assert.equal(count("one-h1", "const a = <h1>x</h1>;"), 1);
 assert.equal(count("one-h1", 'const a = <Text as="h1">x</Text>;'), 1);
 assert.equal(count("one-h1", 'const a = <Text variant="display-lg">x</Text>;'), 1);
 assert.equal(count("one-h1", 'const a = <Text variant="display-sm" as="p">x</Text>;'), 0);
-assert.equal(count("one-h1", "const a = <h1>x</h1>;", "/app/design/v2/parts.tsx"), 0);
+assert.equal(count("one-h1", "const a = <h1>x</h1>;", "/app/ui/kit/PageHeader.tsx"), 0);
 
 // tally-figure-numeric
 assert.equal(count("tally-figure-numeric", 'const a = <TallyFigure label="a" value="None" />;'), 1);

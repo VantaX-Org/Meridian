@@ -26,12 +26,12 @@ const PAGES: { name: string; url: string }[] = [
   { name: "work", url: "/work?fixture=1" },
   { name: "runs", url: "/runs?fixture=1" },
   { name: "load", url: "/load?fixture=1" },
-  { name: "object", url: "/next/o/ecc-production/material-master?fixture=1" },
-  { name: "people", url: "/more/people?fixture=1" },
-  { name: "rules", url: "/more/rules?fixture=1" },
-  { name: "systems", url: "/more/systems?fixture=1" },
-  { name: "admin", url: "/more/admin?fixture=1" },
-  { name: "reports", url: "/more/reports?fixture=1" },
+  { name: "object", url: "/o/ecc-production/material-master?fixture=1" },
+  { name: "people", url: "/people?fixture=1" },
+  { name: "rules", url: "/rules?fixture=1" },
+  { name: "systems", url: "/s?fixture=1" },
+  { name: "admin", url: "/admin?fixture=1" },
+  { name: "reports", url: "/reports?fixture=1" },
   { name: "status", url: "/status?fixture=1" },
 ];
 

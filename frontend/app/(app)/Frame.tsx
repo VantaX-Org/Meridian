@@ -2,14 +2,15 @@
 
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AuthGuard } from "@/design/v2/auth/Guard";
-import { RequestAccessHost } from "@/design/v2/RequestAccess";
+import { AuthGuard } from "@/ui/auth/Guard";
+import { RequestAccessHost } from "@/ui/auth/RequestAccess";
 import { useAuth } from "@/context/auth-context";
 import { usePreferencesSync } from "@/hooks/use-preferences";
 import { PermissionsProvider } from "@/lib/permissions";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { PATHS } from "@/lib/next/nav-defaults";
+import { DemoBar, Standalone } from "@/ui/kit";
 import { AletheiaProvider, AppShell, CommandPalette, SheetHost, ToastHost, useAletheia } from "@/ui/kit";
 import { SHEETS } from "@/ui/sheets";
 
@@ -36,10 +37,20 @@ function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [palette, setPalette] = useState(false);
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPalette((p) => !p); } };
+    // "g" then a letter jumps to a place, as in the old interface. The chord lapses after 1.2 seconds.
+    const CHORDS: Record<string, string> = { h: PATHS.home, w: PATHS.work, l: PATHS.load, r: PATHS.runs, m: PATHS.more, u: "/rules", c: "/mdm", k: "/insights" };
+    let armed = 0;
+    const k = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPalette((p) => !p); return; }
+      const el = e.target as HTMLElement | null;
+      if (e.metaKey || e.ctrlKey || e.altKey || el?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el?.tagName ?? "")) return;
+      const key = e.key.toLowerCase();
+      if (armed && Date.now() - armed < 1200 && CHORDS[key]) { armed = 0; e.preventDefault(); router.push(withFixture(CHORDS[key], fx)); return; }
+      armed = key === "g" ? Date.now() : 0;
+    };
     document.addEventListener("keydown", k);
     return () => document.removeEventListener("keydown", k);
-  }, []);
+  }, [router, fx]);
   const sections = [
     { id: "home", label: t("Home"), href: PATHS.home },
     { id: "work", label: t("Work"), href: PATHS.work },
@@ -85,8 +96,13 @@ function Shell({ children }: { children: ReactNode }) {
 /** Same sign-in and permissions chain as the current app; fixture mode skips sign-in. */
 export function Frame({ children }: { children: ReactNode }) {
   const fx = useFixture();
+  const path = usePathname() ?? "";
+  // The status page and share links are public: no sign-in, no navigation.
+  if (path === "/status" || path.startsWith("/share/")) {
+    return <Standalone><Suspense fallback={null}><ToastHost><SheetHost sheets={SHEETS} closeLabel={t("Close")}>{children}</SheetHost></ToastHost></Suspense></Standalone>;
+  }
   const inner = <Suspense fallback={null}><ChatHost><ToastHost><SheetHost sheets={SHEETS} closeLabel={t("Close")}><Shell>{children}</Shell></SheetHost></ToastHost></ChatHost></Suspense>;
-  if (fx) return <div className="mx-root">{inner}</div>;
+  if (fx) return <div className="mx-root"><DemoBar />{inner}</div>;
   return (
     <AuthGuard>
       <PermissionsProvider>

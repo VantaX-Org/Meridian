@@ -3,7 +3,7 @@ import { PATHS, TABS, redirectFor } from "../nav-defaults";
 
 describe("nav defaults", () => {
   it("has five tabs", () => {
-    expect(TABS.map((t) => PATHS[t])).toEqual(["/", "/work", "/load", "/runs", "/more"]);
+    expect(TABS.map((t) => PATHS[t])).toEqual(["/", "/work", "/load", "/runs", "/admin"]);
   });
   it("redirects legacy and preview addresses", () => {
     expect(redirectFor("/cleansing/")).toBe("/work/approvals");

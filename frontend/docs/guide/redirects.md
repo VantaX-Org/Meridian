@@ -12,8 +12,7 @@ Two kinds of target need a word:
 
 - `/o/_/{object}`: the old object pages named an object without its system. The object canvas replaces `_` with the
   system that holds the object (the one with the most records checked for it) and keeps the rest of the address.
-  Every `/o/{system}/{object}/...` address then moves to the same path under `/next/o/`, the object screen of the
-  Story feed; a record address (`/o/{system}/{object}/records/{key}`) opens the records tab with that record in the
+  A record address (`/o/{system}/{object}/records/{key}`) opens the records tab with that record in the
   inspector (`?open=record:{object}:{key}`).
 - `?open=kind:id`: the thing opens in the inspector over the page (`/?open=help`, `/work?open=inbox`,
   `/?open=golden:G1`).
@@ -23,9 +22,10 @@ The `/v2` addresses are kept for one release, so links shared before October 202
 Administration kept its addresses: `/admin/users`, `/admin/roles`, `/admin/settings`, `/admin/licence`,
 `/admin/billing`, `/admin/mappings`, `/admin/reference`, `/admin/audit`, `/admin/alerts` and
 `/admin/notifications` open the same section as before, and `/rules` and `/runs` are the rules library and the runs.
-`/attention`, `/insights`, `/issues`, `/mining`, `/mdm` and `/migration` are live pages again (Action centre,
-Cost and causes, Issues, Data mining, MDM health, Migration), so they are not redirected; their old sub-pages still are. The redirects are defined in `frontend/next.config.ts`;
-`frontend/__tests__/legacy-redirects.test.ts` checks that each of the 78 routes the old interface served opens a page,
+`/insights`, `/mdm` and `/load` are live pages, so they are not redirected; their old sub-pages still are. A
+redirect wins over a real page at the same address, so no row may match a live route. The redirects are defined in
+`frontend/next.config.ts`;
+`frontend/__tests__/legacy-redirects.test.ts` checks that each route the old interfaces served opens a page,
 and `frontend/e2e/redirects.spec.ts` follows a sample of them in the browser.
 
 ## The table
@@ -153,7 +153,6 @@ Insights: each view is a tab of an object, the rules library, the runs or People
 | `/insights/owners` | always | `/people` |
 | `/insights/reports` | always | `/reports` |
 | `/insights/trends` | always | `/runs` |
-| `/insights/forecast` | always | `/runs` |
 | `/insights/progress` | always | `/runs` |
 | `/insights/operations` | always | `/runs` |
 | `/executive-report` | always | `/reports` |
@@ -182,15 +181,10 @@ Master data: the Glossary and Golden records tabs of an object; one term or gold
 
 | Old address | When | New address |
 |---|---|---|
-| `/mdm/glossary` | always | `/` |
 | `/mdm/glossary/:id` | always | `/?open=term%3A:id` |
 | `/mdm/golden/merge` | `?id=…` | `/?open=golden%3A:id` |
 | `/mdm/golden/merge` | always | `/` |
 | `/mdm/golden` | `?object=…` | `/o/_/:object/golden` |
-| `/mdm/golden` | always | `/` |
-| `/mdm/golden/:id` | always | `/?open=golden%3A:id` |
-| `/mdm/match-rules` | always | `/` |
-| `/mdm/survivorship` | always | `/` |
 | `/glossary` | always | `/` |
 | `/glossary/:id` | always | `/?open=term%3A:id` |
 | `/golden-records` | always | `/` |
@@ -272,8 +266,8 @@ Data in: uploading a file is a block of Administration, Start and schedule.
 
 | Old address | When | New address |
 |---|---|---|
-| `/import` | always | `/admin/runs` |
-| `/upload` | always | `/admin/runs` |
+| `/import` | always | `/runs?view=jobs` |
+| `/upload` | always | `/runs?view=jobs` |
 
 ### Administration
 
@@ -291,4 +285,50 @@ Administration: the same sections at /admin/{section}; the few that moved or wer
 | `/settings/licence` | always | `/admin/licence` |
 | `/settings/exception-billing` | always | `/admin/billing` |
 | `/settings` | always | `/admin/settings` |
+| `/admin/matchrules` | always | `/mdm/match-rules` |
+| `/admin/workflows` | always | `/requests/workflows` |
+| `/admin/runschedules` | always | `/admin/schedules` |
+| `/admin/step10` | always | `/rules?view=packs` |
+| `/admin/thresholds` | always | `/admin/scoring` |
+| `/admin/accuracy` | always | `/rules?view=coverage` |
+| `/admin/kit` | always | `/admin` |
+| `/admin/capabilities` | always | `/admin/access` |
+| `/admin/tenant` | always | `/admin/settings` |
+| `/admin/sandbox` | always | `/admin/system` |
+| `/admin/maintenance` | always | `/admin/enterprise` |
+| `/admin/runs` | always | `/runs?view=jobs` |
+
+### The cut-over (November 2026)
+
+The new interface moved from `/n` and `/next` to the root, and the top-level pages that sat beside it took their
+places in the new map.
+
+| Old address | When | New address |
+|---|---|---|
+| `/n`, `/next` | always | `/` |
+| `/n/:path*`, `/next/:path*` | always | `/:path*` |
+| `/next/o/:system/:module/:tab*` | always | `/o/:system/:module/:tab*` |
+| `/portfolio` | always | `/o?view=portfolio` |
+| `/more/:slug*` | always | `/admin` |
+| `/cleansing` | always | `/work?filter=proposed` |
+| `/aletheia`, `/aletheia/:path*` | always | `/?aletheia=1` |
+| `/aletheia-survivorship` | always | `/mdm/survivorship` |
+| `/fix-drafts` | always | `/rules?view=fix-drafts` |
+| `/anomaly-rules` | always | `/monitor?view=shifts` |
+| `/atlas`, `/config` | always | `/s` |
+| `/entry-gate` | always | `/monitor?view=gate` |
+| `/monitors` | always | `/monitor?view=learned` |
+| `/issues` | always | `/mdm/issues` |
+| `/links` | always | `/mdm/links` |
+| `/catalogue` | always | `/mdm/catalogue` |
+| `/mining` | always | `/mdm/mining` |
+| `/reference-data` | always | `/mdm/reference` |
+| `/processes` | always | `/mdm/processes` |
+| `/materials` | always | `/o` |
+| `/score`, `/forecast`, `/value` | always | `/insights/score`, `/insights/forecast`, `/insights/value` |
+| `/migration` | always | `/load/runs` |
+| `/rule-dry-run` | always | `/rules/dry-run` |
+| `/rule-promotion` | always | `/rules/promotion` |
+| `/data-requests` | always | `/work/requests` |
+| `/work/monitor` | always | `/monitor?view=after-clean` |
 

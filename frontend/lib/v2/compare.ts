@@ -1,4 +1,4 @@
-/** Pure helpers for the system comparison screens (design/v2/screens/Compare*.tsx). */
+/** Pure helpers for the system comparison screens (ui/screens). */
 import type { TrendPointRow } from "@/lib/api/v2/compare";
 
 export type ScoreSide = "source" | "projected" | "actual";

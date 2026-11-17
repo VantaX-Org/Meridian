@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
-import { stubLayout } from "@/design/v2/__tests__/layout-stub";
+import { stubLayout } from "@/ui/testing/layout-stub";
 import { AletheiaProvider, ToastHost } from "@/ui/kit";
 import { Home } from "./Home";
 import { Objects } from "./Objects";
 import { Status } from "./Status";
 
-vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
+vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 
 const wrap = (el: React.ReactNode) => renderWithQuery(<AletheiaProvider><ToastHost>{el}</ToastHost></AletheiaProvider>);
 

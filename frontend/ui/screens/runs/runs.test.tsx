@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
-import { stubLayout } from "@/design/v2/__tests__/layout-stub";
+import { stubLayout } from "@/ui/testing/layout-stub";
 import { AletheiaProvider, SheetHost } from "@/ui/kit";
 import { SHEETS } from "@/ui/sheets";
 import { Runs } from "./Runs";
@@ -9,7 +9,7 @@ import { Run } from "./Run";
 import { RunCompare } from "./RunCompare";
 import { Agreement } from "./Agreement";
 
-vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
+vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 
 const id = (n: number) => `f0000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 let undo: () => void = () => undefined;
