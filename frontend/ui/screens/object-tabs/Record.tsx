@@ -12,6 +12,7 @@ import { STATUS_LABEL, splitKey, keyLabel } from "@/lib/v2/work";
 import { Button, Card, DataTable, EmptyState, FieldChip, Select, Skeleton, StatTile, SeverityPill } from "@/ui/kit";
 import type { ObjectRun } from "@/ui/screens/object/useObjectRun";
 import { useAsOf } from "./hooks";
+import { Material360 } from "./Material360";
 import { PostClean, sevLabel } from "./Records";
 import { TabFrame, objectPath, useTabChat } from "./TabFrame";
 
@@ -72,6 +73,8 @@ export function Record({ o, system, module, recordKey }: { o: ObjectRun; system:
             <StatTile label={t("Status")} value={d ? (STATUS_LABEL[d.status] ?? d.status) : t("n/a")} />
             <StatTile label={t("Open findings")} value={d ? String(d.issues.length) : t("n/a")} />
           </dl>
+
+          {o.module === "material_master" ? <Material360 matnr={splitKey(recordKey).find((p) => p.field === "MATNR" || p.field === "")?.value ?? recordKey} /> : null}
 
           <Card title={t("Findings")} sub={t("What fails on this record and why it matters")}>
             {d?.issues.length ? (
