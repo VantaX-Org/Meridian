@@ -77,6 +77,8 @@ def _plan_out(row: dict) -> dict:
     pre = row.get("preflight") or {}
     if pre.get("cleansing"):
         out["cleansing"] = pre["cleansing"]
+    if pre:
+        out["preflight"] = {"status": pre.get("status"), "issues": pre.get("issues", [])}
     return out
 
 
@@ -141,8 +143,12 @@ async def preflight(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db), tena
     await _rls(db, tenant)
     row = await _one(db, "SELECT preflight FROM move_plans WHERE id = :i", i=str(plan_id))
     from workers.tasks.run_instance_move import preflight_move
-    preflight_move.delay(str(tenant.id), str(plan_id))
     pre = row.get("preflight") or {}
+    # Marked queued first so GET /plans/{id} can be polled until the worker writes completed or failed.
+    await db.execute(text("UPDATE move_plans SET preflight = CAST(:p AS jsonb) WHERE id = :i"),
+                     {"p": json.dumps({**pre, "status": "queued"}, default=str), "i": str(plan_id)})
+    await db.commit()
+    preflight_move.delay(str(tenant.id), str(plan_id))
     return {"issues": pre.get("issues", []), "status": "queued", "previous": pre.get("status"),
             "cleansing": pre.get("cleansing"), "config": pre.get("config")}
 

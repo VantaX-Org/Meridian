@@ -60,3 +60,27 @@ def test_queue_plan_builds_at_once_from_an_existing_full_history_download():
         asyncio.run(route._queue_plan(_db("v1"), SimpleNamespace(id="t"), body, "p1"))
     plan_delay.assert_called_once_with("t", "p1")
     chain.assert_not_called()
+
+
+def _plan_row(**kw):
+    return {"id": "p1", "source_system_id": SRC, "target_system_id": TGT, "modules": ["employee_central"],
+            "mode": "cleansed", "plan": None, "preflight": None, **kw}
+
+
+def test_plan_out_is_building_until_the_plan_is_written_and_exposes_the_preflight_state():
+    assert route._plan_out(_plan_row())["status"] == "building"
+    assert "preflight" not in route._plan_out(_plan_row())
+    out = route._plan_out(_plan_row(preflight={"status": "queued", "issues": []}))
+    assert out["preflight"] == {"status": "queued", "issues": []}
+
+
+def test_preflight_route_marks_the_stored_preflight_queued_before_the_worker_runs():
+    db = mock.AsyncMock()
+    db.execute.return_value = mock.Mock()
+    db.execute.return_value.mappings.return_value.first.return_value = {"preflight": {"status": "completed", "issues": []}}
+    with mock.patch.object(task.preflight_move, "delay") as delay:
+        out = asyncio.run(route.preflight(uuid.uuid4(), db=db, tenant=SimpleNamespace(id="t")))
+    marked = [c.args[1]["p"] for c in db.execute.call_args_list if len(c.args) > 1 and "p" in (c.args[1] or {})]
+    assert '"status": "queued"' in marked[0]
+    delay.assert_called_once()
+    assert out["status"] == "queued" and out["previous"] == "completed"
