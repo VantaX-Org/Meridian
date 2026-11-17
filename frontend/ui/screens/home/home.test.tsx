@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
-import { stubLayout } from "@/design/v2/__tests__/layout-stub";
+import { stubLayout } from "@/ui/testing/layout-stub";
 import { AletheiaProvider, ToastHost } from "@/ui/kit";
 import { Home } from "./Home";
 import { Objects } from "./Objects";
 import { Status } from "./Status";
 
-vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
+vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 
 const wrap = (el: React.ReactNode) => renderWithQuery(<AletheiaProvider><ToastHost>{el}</ToastHost></AletheiaProvider>);
 
@@ -15,7 +15,7 @@ let undo: () => void = () => undefined;
 beforeEach(() => {
   undo = stubLayout();
   window.sessionStorage.clear();
-  window.history.replaceState(null, "", "/n?fixture=1");
+  window.history.replaceState(null, "", "/?fixture=1");
 });
 afterEach(() => undo());
 
@@ -38,7 +38,7 @@ describe("Home", () => {
 
 describe("Objects", () => {
   it("lists objects and filters by search", async () => {
-    window.history.replaceState(null, "", "/n/o?fixture=1");
+    window.history.replaceState(null, "", "/o?fixture=1");
     wrap(<Objects />);
     expect(await screen.findByRole("heading", { level: 1, name: "Objects" })).toBeTruthy();
     await waitFor(() => expect(screen.getAllByRole("row").length).toBeGreaterThan(1));
@@ -49,7 +49,7 @@ describe("Objects", () => {
 
 describe("Status", () => {
   it("shows overall state and the components table", async () => {
-    window.history.replaceState(null, "", "/n/status?fixture=1");
+    window.history.replaceState(null, "", "/status?fixture=1");
     wrap(<Status />);
     expect(await screen.findByRole("heading", { level: 1, name: "Status" })).toBeTruthy();
     await waitFor(() => expect(screen.getAllByRole("row").length).toBeGreaterThan(1));

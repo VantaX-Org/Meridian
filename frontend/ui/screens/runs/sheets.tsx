@@ -38,7 +38,7 @@ function Cycle() {
   const [busy, setBusy] = useState(false);
   const go = async () => {
     setBusy(true);
-    try { await startRun(system, { objects: picked, scope: {}, analyse }); toast(t("Run started"), "good"); sheet.close(); router.push(withFixture("/n/runs?view=jobs", fx)); }
+    try { await startRun(system, { objects: picked, scope: {}, analyse }); toast(t("Run started"), "good"); sheet.close(); router.push(withFixture("/runs?view=jobs", fx)); }
     catch { toast(t("The run could not start."), "bad"); } finally { setBusy(false); }
   };
   if (systems.isLoading) return <Skeleton lines={4} label={t("Loading the systems")} />;

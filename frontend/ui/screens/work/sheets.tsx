@@ -72,12 +72,12 @@ function WhatIf() {
       {id && !sim && !failed ? <Skeleton lines={3} label={t("Running the simulation")} /> : null}
       {sim && isDone(sim) ? (
         <>
-          <div className="mx-tiles">
+          <dl className="mx-tiles">
             <StatTile label={t("Score now")} value={fixed(sim.dqs.overall.before ?? 0, 1)} />
             <StatTile label={t("Score after")} value={fixed(sim.dqs.overall.after ?? 0, 1)} />
             <StatTile label={t("Change")} value={fixed(sim.dqs.overall.delta ?? 0, 1)} />
             <StatTile label={t("Records fixed")} value={String(sim.records.resolved)} />
-          </div>
+          </dl>
           {sim.side_effects.length ? <p>{t("{n} rules would get worse.", { n: sim.side_effects.length })}</p> : null}
         </>
       ) : null}

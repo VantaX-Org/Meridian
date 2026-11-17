@@ -88,12 +88,12 @@ export function SystemNew() {
 
   const packQ = usePolicyPacks(step === "packs");
   const next = (from: Step) => setStep(STEPS[STEPS.indexOf(from) + 1] ?? "invite");
-  const finish = () => router.push(created ? `/n/s/${created.id}` : "/n/s");
+  const finish = () => router.push(created ? `/s/${created.id}` : "/s");
 
   if (!allowed) return (
     <div className="mx-col">
       <PageHeader title={t("Connect a system")} />
-      <EmptyState heading={t("You cannot connect systems")} body={t("Ask a programme lead for the manage systems permission.")} action={<Button variant="secondary" href="/n/s">{t("All systems")}</Button>} />
+      <EmptyState heading={t("You cannot connect systems")} body={t("Ask a programme lead for the manage systems permission.")} action={<Button variant="secondary" href="/s">{t("All systems")}</Button>} />
     </div>
   );
 
@@ -101,7 +101,7 @@ export function SystemNew() {
 
   return (
     <div className="mx-col">
-      <PageHeader title={t("Connect a system")} actions={<Button variant="secondary" href="/n/s">{t("All systems")}</Button>} />
+      <PageHeader title={t("Connect a system")} actions={<Button variant="secondary" href="/s">{t("All systems")}</Button>} />
       <Stepper steps={labelSteps} current={STEPS.indexOf(step)} label={t("Connection steps")} />
       {error ? <ErrorState heading={t("That did not work")} body={error} /> : null}
 

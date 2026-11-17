@@ -57,7 +57,7 @@ export function MigrationRuns() {
               rows={runs}
               rowKey={(r: MigrationRun) => r.id}
               columns={[
-                { key: "id", label: t("Run"), sort: (r) => r.id, render: (r) => <Link href={href(`/n/load/runs/${r.id}`)}>{r.id}</Link> },
+                { key: "id", label: t("Run"), sort: (r) => r.id, render: (r) => <Link href={href(`/load/runs/${r.id}`)}>{r.id}</Link> },
                 { key: "mode", label: t("Mode"), sort: (r) => r.mode, render: (r) => modeLabel(r.mode) },
                 { key: "m", label: t("Objects"), render: (r) => r.modules.map((m) => <FieldChip key={m} code={m} description={humanize(m)} />) },
                 { key: "src", label: t("Source system"), render: (r) => sysName(r.source_system_id) },

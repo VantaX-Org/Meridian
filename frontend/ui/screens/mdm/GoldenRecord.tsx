@@ -51,7 +51,7 @@ export function GoldenRecord({ id }: { id: string }) {
       context={r ? statusLabel(r.status) : undefined}
       actions={<>
         {extra}
-        <Button variant="ghost" href={href("/n/mdm/golden")}>{t("All golden records")}</Button>
+        <Button variant="ghost" href={href("/mdm/golden")}>{t("All golden records")}</Button>
         <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
       </>}
     />
@@ -162,7 +162,7 @@ export function GoldenRecord({ id }: { id: string }) {
                 ]}
               />
             )}
-            <Button variant="ghost" href={href(`/n/mdm/match/${id}`)}>{t("Open the cluster graph")}</Button>
+            <Button variant="ghost" href={href(`/mdm/match/${id}`)}>{t("Open the cluster graph")}</Button>
           </Card>
         )}
         {tab === "history" && (

@@ -11,7 +11,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/api/sso", () => ({ getOidcPublicConfig: vi.fn() }));
 
 import * as ssoApi from "@/lib/api/sso";
-import { safeNext, ssoErrorSentence, ssoStartHref, takeSsoSession } from "@/design/v2/auth/sso";
+import { safeNext, ssoErrorSentence, ssoStartHref, takeSsoSession } from "@/ui/auth/sso";
 import SignInPage from "../page";
 
 const config = vi.mocked(ssoApi.getOidcPublicConfig);

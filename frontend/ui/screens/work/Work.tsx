@@ -116,10 +116,10 @@ export function Work() {
             </>
           )}
         </Card>
-        {!stacked && pick ? <RecordDetail module={pick.module} recordKey={pick.record_key} /> : null}
+        {!stacked && pick ? <RecordDetail module={pick.module} recordKey={pick.record_key} version={pick.version_id} /> : null}
       </div>
       <Sheet open={stacked && sheet && !!pick} onClose={() => setSheet(false)} label={t("Record detail")} closeLabel={t("Close")}>
-        {pick ? <RecordDetail module={pick.module} recordKey={pick.record_key} /> : null}
+        {pick ? <RecordDetail module={pick.module} recordKey={pick.record_key} version={pick.version_id} /> : null}
       </Sheet>
     </div>
   );
@@ -127,7 +127,7 @@ export function Work() {
   return (
     <>
       <PageHeader title={t("Work")} context={state.module ? <ObjChip code={state.module} /> : t("Everything waiting for a decision")}
-        actions={<><Button variant="primary" href={withFixture("/n/approvals", fx)}>{t("Approvals")}</Button><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
+        actions={<><Button variant="primary" href={withFixture("/approvals", fx)}>{t("Approvals")}</Button><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
       <div className="mx-chips" role="group" aria-label={t("Work status")}>
         {CHIPS.map((c) => <Chip key={c.id} selected={state.chip === c.id} count={c.count(summary.data) ?? undefined} onClick={() => chip(c.id)}>{c.label}</Chip>)}
       </div>

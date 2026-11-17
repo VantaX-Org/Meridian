@@ -183,12 +183,12 @@ export function CoverageView({ modules }: { modules: string[] }) {
         </div>
         <Load q={sc}>
           {scenarioInfo ? (
-            <div className="mx-tiles">
+            <dl className="mx-tiles">
               <StatTile label={t("Required")} value={String(scenarioInfo.counts.required)} />
               <StatTile label={t("Recommended")} value={String(scenarioInfo.counts.recommended)} />
               <StatTile label={t("Not applicable")} value={String(scenarioInfo.counts.not_applicable)} />
               <StatTile label={t("Blocking")} value={String(scenarioInfo.blocking)} />
-            </div>
+            </dl>
           ) : null}
           {scRules.length ? (
             <DataTable
@@ -230,12 +230,12 @@ export function PacksView() {
                 : <Button variant="secondary" onClick={() => on.mutate(p.id)}>{t("Apply the pack")}</Button>}
             >
               <p className="mx-muted">{p.description}</p>
-              <div className="mx-tiles">
+              <dl className="mx-tiles">
                 <StatTile label={t("Fields classified")} value={compactCount(p.coverage.fields_classified)} />
                 <StatTile label={t("Rules measured")} value={`${compactCount(p.coverage.rules_measured)} / ${compactCount(p.coverage.rules_evidencing)}`} />
                 <StatTile label={t("Failing records")} value={compactCount(p.coverage.failing_records)} />
                 <StatTile label={t("Classes breached")} value={compactCount(p.coverage.classes_breached)} />
-              </div>
+              </dl>
             </Card>
           ))}
         </div>
@@ -253,9 +253,9 @@ export function FixDraftsView({ fixture }: { fixture: boolean }) {
   const rows = q.data?.drafts ?? [];
   return (
     <div className="mx-col">
-      <div className="mx-tiles">
+      <dl className="mx-tiles">
         {cov.map((c) => <StatTile key={c.module} label={mod(c.module)} value={`${c.with_fix} / ${c.rules}`} note={t("rules with a drafted fix")} bar={c.rules ? c.with_fix / c.rules : 0} />)}
-      </div>
+      </dl>
       <Load q={q}>
         {rows.length ? (
           <DataTable

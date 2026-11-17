@@ -62,7 +62,7 @@ export function Systems() {
   };
 
   const cols: Column<SAPSystemExtended>[] = [
-    { key: "name", label: t("System"), sort: (s) => s.name, render: (s) => <Link href={href(`/n/s/${s.id}`)}>{s.name}</Link> },
+    { key: "name", label: t("System"), sort: (s) => s.name, render: (s) => <Link href={href(`/s/${s.id}`)}>{s.name}</Link> },
     { key: "type", label: t("Type"), sort: (s) => s.system_type, render: (s) => typeLabel(s.system_type) },
     { key: "env", label: t("Environment"), render: (s) => envLabel(s.environment) },
     { key: "role", label: t("Role"), render: (s) => (s.role === "target" ? t("Target") : t("Source")) },
@@ -72,7 +72,7 @@ export function Systems() {
       key: "act", label: t("Actions"), render: (s) => (
         <span className="mx-links">
           <Button variant="ghost" disabled={busy === s.id} onClick={() => void test(s)}>{busy === s.id ? t("Testing") : t("Test connection")}</Button>
-          <Button variant="ghost" href={href(`/n/s/${s.id}`)}>{t("Open")}</Button>
+          <Button variant="ghost" href={href(`/s/${s.id}`)}>{t("Open")}</Button>
           {manage ? <Button variant="ghost" onClick={() => setDrop(s)}>{t("Delete")}</Button> : null}
         </span>
       ),
@@ -89,11 +89,11 @@ export function Systems() {
         context={t("{n} connected", { n: systems.length })}
         actions={<>
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
-          {manage ? <Button variant="primary" href={href("/n/s/new")}>{t("Connect a system")}</Button> : null}
+          {manage ? <Button variant="primary" href={href("/s/new")}>{t("Connect a system")}</Button> : null}
         </>}
       />
       {systems.length === 0 ? (
-        <EmptyState heading={t("No system is connected")} body={t("Connect your first SAP system to extract data and measure its quality.")} action={manage ? <Button variant="primary" href={href("/n/s/new")}>{t("Connect a system")}</Button> : undefined} />
+        <EmptyState heading={t("No system is connected")} body={t("Connect your first SAP system to extract data and measure its quality.")} action={manage ? <Button variant="primary" href={href("/s/new")}>{t("Connect a system")}</Button> : undefined} />
       ) : (
         <div className="mx-col">
           <Search value={find} onChange={setFind} label={t("Search systems")} clearLabel={t("Clear search")} placeholder={t("Name, host or type")} />

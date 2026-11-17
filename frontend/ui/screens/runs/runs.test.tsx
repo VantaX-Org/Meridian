@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
-import { stubLayout } from "@/design/v2/__tests__/layout-stub";
+import { stubLayout } from "@/ui/testing/layout-stub";
 import { AletheiaProvider, SheetHost } from "@/ui/kit";
 import { SHEETS } from "@/ui/sheets";
 import { Runs } from "./Runs";
@@ -9,7 +9,7 @@ import { Run } from "./Run";
 import { RunCompare } from "./RunCompare";
 import { Agreement } from "./Agreement";
 
-vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
+vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 
 const id = (n: number) => `f0000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 let undo: () => void = () => undefined;
@@ -21,23 +21,23 @@ afterEach(() => undo());
 
 describe("runs screens in fixture mode", () => {
   it("Runs lists runs", async () => {
-    at("/n/runs");
+    at("/runs");
     wrap(<Runs />);
     expect(await screen.findByRole("heading", { level: 1, name: "Runs" })).toBeTruthy();
     expect((await screen.findAllByRole("row")).length).toBeGreaterThan(1);
   });
   it("Run shows a heading", async () => {
-    at(`/n/run/${id(499)}`);
+    at(`/run/${id(499)}`);
     wrap(<Run id={id(499)} />);
     expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
   });
   it("RunCompare shows its title", async () => {
-    at(`/n/run/${id(499)}/vs/${id(498)}`);
+    at(`/run/${id(499)}/vs/${id(498)}`);
     wrap(<RunCompare a={id(499)} b={id(498)} />);
     expect(await screen.findByRole("heading", { level: 1, name: "Compare runs" })).toBeTruthy();
   });
   it("Agreement shows its title", async () => {
-    at(`/n/run/${id(499)}/agreement`);
+    at(`/run/${id(499)}/agreement`);
     wrap(<Agreement id={id(499)} />);
     expect(await screen.findByRole("heading", { level: 1, name: "Agreement with the cleaned file" })).toBeTruthy();
   });

@@ -28,9 +28,9 @@ export function LineageScreen() {
       <Head title={t("Lineage")} context={model.data ? `${num(model.data.edge_count)} ${t("edges")}` : undefined} />
       <Async q={model} lines={2}>
         {(m) => (
-          <div className="mx-tiles">
+          <dl className="mx-tiles">
             {Object.entries(m.node_counts).map(([k, v]) => <StatTile key={k} label={k} value={num(v)} />)}
-          </div>
+          </dl>
         )}
       </Async>
       <Tabs idBase="lineage" label={t("Lineage views")} value={tab} onChange={setTab}

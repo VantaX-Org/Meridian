@@ -6,7 +6,7 @@ import { Button, ErrorState, FieldChip, Skeleton } from "@/ui/kit";
 import { describeField } from "@/lib/v2/sap-fields";
 import { day, pct, show, statusLabel, useHref } from "./shared";
 
-/** The summary sheet for one golden record; the full record lives at /n/mdm/golden/[id]. */
+/** The summary sheet for one golden record; the full record lives at /mdm/golden/[id]. */
 export function GoldenSheet({ id }: { id: string }) {
   const href = useHref();
   const q = useGoldenRecord(id);
@@ -26,7 +26,7 @@ export function GoldenSheet({ id }: { id: string }) {
           </div>
         ))}
       </dl>
-      <Button variant="primary" href={href(`/n/mdm/golden/${r.id}`)}>{t("Open the record")}</Button>
+      <Button variant="primary" href={href(`/mdm/golden/${r.id}`)}>{t("Open the record")}</Button>
     </div>
   );
 }

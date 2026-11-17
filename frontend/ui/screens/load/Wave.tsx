@@ -25,7 +25,7 @@ export function Wave({ id }: { id: string }) {
   const sign = useMutation({ mutationFn: () => signOffWave(id), onSuccess: () => { toast(t("Wave signed off"), "good"); done(); }, onError: () => toast(t("The wave is not a go yet, so it cannot be signed off"), "bad") });
   const run = useMutation({ mutationFn: () => runWave(id), onSuccess: () => { toast(t("Wave analysis started"), "good"); done(); }, onError: () => toast(t("The wave analysis could not start"), "bad") });
   const patch = useMutation({ mutationFn: () => updateWave(id, { min_readiness: Number(min) }), onSuccess: () => { toast(t("Threshold saved"), "good"); done(); }, onError: () => toast(t("The threshold could not be saved"), "bad") });
-  const del = useMutation({ mutationFn: () => deleteWave(id), onSuccess: () => { toast(t("Wave deleted"), "good"); window.location.assign(href("/n/load/waves")); }, onError: () => toast(t("The wave could not be deleted"), "bad") });
+  const del = useMutation({ mutationFn: () => deleteWave(id), onSuccess: () => { toast(t("Wave deleted"), "good"); window.location.assign(href("/load/waves")); }, onError: () => toast(t("The wave could not be deleted"), "bad") });
   const fix = useMutation({ mutationFn: (b: WaveBlocker) => draftBlockerFixBatch(id, { module: b.module, gap_type: b.gap_type, field: b.field }), onSuccess: (d) => toast(t("Fix batch drafted with {n} items", { n: d.items }), "good"), onError: () => toast(t("The fix batch could not be drafted"), "bad") });
   const objects = c?.objects ?? [];
 

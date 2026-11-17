@@ -52,7 +52,7 @@ export function Pair({ id }: { id: string }) {
         actions={<>
           <Button variant="primary" onClick={() => run.mutate()} disabled={run.isPending}>{t("Run comparison")}</Button>
           <Button variant="secondary" onClick={() => exp("xlsx")} disabled={!cmp}>{t("Export differences")}</Button>
-          <Button variant="secondary" href={href("/n/load/compare")}>{t("All pairs")}</Button>
+          <Button variant="secondary" href={href("/load/compare")}>{t("All pairs")}</Button>
           <AskButton />
         </>}
       />

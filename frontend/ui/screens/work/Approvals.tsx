@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { postApproveBatch, postSendBack } from "@/lib/api/v2/work";
@@ -70,15 +71,16 @@ export function BatchDetail({ b }: { b: BatchRow }) {
 function Batches() {
   const stacked = useStacked();
   const q = useBatches();
-  const [pick, setPick] = useState<string | null>(null);
-  const sel = q.rows.find((r) => r.id === pick) ?? null;
+  // ?batch= picks a batch on arrival, by id or by its B- label, so links from People and Home land on it.
+  const [pick, setPick] = useState<string | null>(useSearchParams().get("batch"));
+  const sel = q.rows.find((r) => r.id === pick || r.label === pick) ?? null;
   const detail = sel ? <BatchDetail b={sel} /> : <EmptyState heading={t("Pick a batch")} body={t("Its records and trail show here.")} />;
   return (
     <div className="mx-split">
       <div className="mx-col">
         <Card title={t("Remediation batches")} sub={t("{n} batches", { n: q.rows.length })}>
           {q.isLoading ? <Skeleton lines={5} label={t("Loading batches")} /> : q.isError ? <ErrorState heading={t("Batches could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : !q.rows.length ? <EmptyState heading={t("No batches yet")} /> : (
-            <DataTable label={t("Batches")} rows={q.rows} rowKey={(r: BatchRow) => r.id} selected={pick} onSelect={(r) => setPick(r.id)}
+            <DataTable label={t("Batches")} rows={q.rows} rowKey={(r: BatchRow) => r.id} selected={sel?.id ?? null} onSelect={(r) => setPick(r.id)}
               columns={[
                 { key: "b", label: t("Batch"), render: (r) => `${r.label} ${r.name}`, sort: (r) => r.label },
                 { key: "s", label: t("Status"), render: (r) => BATCH_STATUS_LABEL[r.status], sort: (r) => r.status },
@@ -105,12 +107,12 @@ function RunPanel({ id }: { id: string }) {
   const open = OPEN_RUN.includes(r.status);
   return (
     <>
-      <div className="mx-tiles">
+      <dl className="mx-tiles">
         <StatTile label={t("Sent")} value={whole(r.counts.committed)} />
         <StatTile label={t("Failed")} value={whole(r.counts.failed)} />
         <StatTile label={t("Waiting")} value={whole(r.counts.pending)} />
         <StatTile label={t("Needs a check")} value={whole(r.counts.needs_check)} />
-      </div>
+      </dl>
       {r.pause_reason ? <p>{r.pause_reason}</p> : null}
       {r.errors.map((e) => <p key={e} className="mx-muted">{e}</p>)}
       <div className="mx-row">
@@ -175,7 +177,7 @@ function Send() {
         </Card>
         <Card title={t("Approved batches")} sub={t("{n} batches", { n: ready.length })}>
           {!ready.length ? <EmptyState heading={t("No approved batches")} /> : (
-            <DataTable label={t("Approved batches")} rows={ready} rowKey={(r: BatchRow) => r.id} selected={pick} onSelect={(r) => setPick(r.id)}
+            <DataTable label={t("Approved batches")} rows={ready} rowKey={(r: BatchRow) => r.id} selected={sel?.id ?? null} onSelect={(r) => setPick(r.id)}
               columns={[
                 { key: "b", label: t("Batch"), render: (r) => `${r.label} ${r.name}`, sort: (r) => r.label },
                 { key: "s", label: t("Status"), render: (r) => BATCH_STATUS_LABEL[r.status], sort: (r) => r.status },

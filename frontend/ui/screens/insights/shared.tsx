@@ -68,11 +68,11 @@ export function Tbl<T>({ cols, rows, rowKey, label }: { cols: Col<T>[]; rows: T[
 /** Links between the sibling insight screens, so every one is one click from the others. */
 export function InsightsNav({ here }: { here: "insights" | "score" | "forecast" | "value" | "monitor" }) {
   const items: { id: typeof here; href: string; label: string }[] = [
-    { id: "insights", href: "/n/insights", label: t("Insights") },
-    { id: "score", href: "/n/insights/score", label: t("Score lens") },
-    { id: "forecast", href: "/n/insights/forecast", label: t("Forecast") },
-    { id: "value", href: "/n/insights/value", label: t("Value") },
-    { id: "monitor", href: "/n/monitor", label: t("Monitor") },
+    { id: "insights", href: "/insights", label: t("Insights") },
+    { id: "score", href: "/insights/score", label: t("Score lens") },
+    { id: "forecast", href: "/insights/forecast", label: t("Forecast") },
+    { id: "value", href: "/insights/value", label: t("Value") },
+    { id: "monitor", href: "/monitor", label: t("Monitor") },
   ];
   return (
     <nav className="b8-nav" aria-label={t("Insight screens")}>

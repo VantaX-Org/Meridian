@@ -6,7 +6,7 @@ import { useSyncExternalStore } from "react";
  * Fixture mode: `/?fixture=1` answers every v2 read from lib/api/v2/fixtures instead of the API, so the interface
  * can be built, screenshotted and tested with no backend. The flag is kept for the tab (sessionStorage) so links that
  * do not carry the query keep working; `?fixture=0` turns it off. Only builds that allow it (fixtureAllowed) honour the
- * query, and while it is on every page carries the "Demo data" bar (design/v2/shell/DemoBar.tsx).
+ * query, and while it is on every page carries the "Demo data" bar (ui/kit/DemoBar.tsx).
  */
 const KEY = "mn_v2_fixture";
 

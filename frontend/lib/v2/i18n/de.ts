@@ -14404,4 +14404,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Exporting needs the export permission.": "Der Export braucht die Exportberechtigung.",
   "Loading the process models": "Prozessmodelle werden geladen",
   "Loading the model": "Modell wird geladen",
+  "This link points to {kind}, which has no page yet.": "Dieser Link verweist auf {kind}, wofür es noch keine Seite gibt.",
 };

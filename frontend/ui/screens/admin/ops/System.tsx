@@ -23,11 +23,11 @@ export function System() {
     <Sec title={t("System")} scope="system" q={[doc, upd, health]} context={t("Health checks, version and support bundle.")}
       facts={[bad ? t("{n} health checks need attention.", { n: bad }) : t("All health checks pass.")]}
       actions={<Button variant="secondary" onClick={() => downloadDiagnostics().catch((e) => toast(errText(e), "bad"))}>{t("Download diagnostics")}</Button>}>
-      <div className="mx-tiles">
+      <dl className="mx-tiles">
         <StatTile label={t("Version")} value={u?.current_version ?? health.data?.version ?? ""} note={u?.update_available ? t("Update {v} is available", { v: u.latest_version }) : t("Up to date")} />
         <StatTile label={t("Checks needing attention")} value={String(bad)} />
         <StatTile label={t("Last checked")} value={doc.data ? when(doc.data.last_checked) : ""} />
-      </div>
+      </dl>
       <Card title={t("Health checks")} action={<Button variant="ghost" onClick={() => sheet.open("update")}>{t("Version details")}</Button>}>
         <DataTable label={t("Health checks")} rows={items} rowKey={(r) => r.id} height={320}
           columns={[

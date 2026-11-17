@@ -6,24 +6,29 @@
     "target_clicks": 30,
     "steps": [
       {
-        "route": "/more/landscape",
-        "control": "Open Administration",
-        "expect": "Landscape"
+        "route": "/",
+        "control": "More",
+        "expect": "Needs your attention"
       },
       {
         "route": "/admin",
         "control": "Users",
-        "expect": "Administration"
+        "expect": "Audit log"
       },
       {
         "route": "/admin/users",
+        "control": "Invite someone",
+        "expect": "Access requests"
+      },
+      {
+        "route": "/admin",
         "control": "Roles and permissions",
         "expect": "Users"
       },
       {
         "route": "/admin/roles",
         "control": null,
-        "expect": "What each role may do"
+        "expect": "Permission matrix"
       }
     ]
   },
@@ -41,7 +46,7 @@
       {
         "route": "/s/new",
         "control": null,
-        "expect": "Set up Meridian"
+        "expect": "Connect SAP"
       }
     ]
   },
@@ -52,13 +57,13 @@
     "steps": [
       {
         "route": "/admin",
-        "control": "View as a role",
-        "expect": "Administration"
+        "control": "Roles and permissions",
+        "expect": "Audit log"
       },
       {
-        "route": "/admin/viewas",
-        "control": null,
-        "expect": "View as a role"
+        "route": "/admin/roles",
+        "control": "Open",
+        "expect": "Permission matrix"
       }
     ]
   },
@@ -70,12 +75,12 @@
       {
         "route": "/admin",
         "control": "Audit log",
-        "expect": "Administration"
+        "expect": "Users"
       },
       {
         "route": "/admin/audit",
         "control": null,
-        "expect": "Audit log"
+        "expect": "Entries"
       }
     ]
   },
@@ -85,20 +90,14 @@
     "object": null,
     "steps": [
       {
-        "route": "/more/landscape",
-        "control": "Extract",
-        "expect": "Landscape"
+        "route": "/s",
+        "control": "ECC production",
+        "expect": "Systems"
       },
       {
-        "route": "/more/landscape?open=system:{system_id}",
-        "control": "Extract",
-        "expect": "Test connection"
-      },
-      {
-        "route": "/more/landscape?open=system:{system_id}",
-        "control": "Extract {n} objects",
-        "expect": "Analyse straight after extracting",
-        "needs": "Extract pressed on the system card"
+        "route": "/s/{system_id}",
+        "control": "Extract enabled modules",
+        "expect": "Extract by module"
       },
       {
         "route": "/runs?view=jobs",
@@ -114,14 +113,14 @@
     "target_clicks": 3,
     "steps": [
       {
-        "route": "/more/landscape",
-        "control": "Fix the {system} sign-in",
-        "expect": "Landscape"
+        "route": "/",
+        "control": "Open system",
+        "expect": "Needs your attention"
       },
       {
-        "route": "/more/landscape?open=connection:{system_id}",
-        "control": null,
-        "expect": "Test connection"
+        "route": "/s/{system_id}",
+        "control": "Test connection",
+        "expect": "Connection"
       }
     ]
   },
@@ -131,9 +130,9 @@
     "object": null,
     "steps": [
       {
-        "route": "/more/landscape?open=system:{system_id}",
-        "control": "Schedule",
-        "expect": "Test connection"
+        "route": "/s/{system_id}",
+        "control": "Add schedule",
+        "expect": "Schedules"
       },
       {
         "route": "/s/{system_id}?tab=schedules",
@@ -148,19 +147,19 @@
     "object": "material_master",
     "steps": [
       {
-        "route": "/o/_/material-master",
-        "control": "Rules",
-        "expect": "How this is scored"
+        "route": "/o/{system}/{object}",
+        "control": "Fix records",
+        "expect": "Failing rules"
       },
       {
-        "route": "/o/_/material-master/rules",
-        "control": "Accept all",
-        "expect": "All rules"
+        "route": "/work?module=material_master&seg=proposed",
+        "control": "Waiting for approval",
+        "expect": "Rules with work"
       },
       {
         "route": "/work",
         "control": null,
-        "expect": "Most urgent first"
+        "expect": "Records"
       }
     ]
   },
@@ -171,19 +170,19 @@
     "target_clicks": 5,
     "steps": [
       {
-        "route": "/more/landscape",
-        "control": "Accept {count} suggested values for {check}",
-        "expect": "Landscape"
+        "route": "/",
+        "control": "Review records",
+        "expect": "Needs your attention"
       },
       {
         "route": "/work?rule={rule_id}",
-        "control": "Accept {count} suggested values on {check}",
-        "expect": "Nothing reaches SAP until it is approved and applied."
+        "control": "{rule_id}",
+        "expect": "Rules with work"
       },
       {
         "route": "/work",
         "control": null,
-        "expect": "Work"
+        "expect": "Cleaning queue"
       }
     ]
   },
@@ -193,19 +192,19 @@
     "object": null,
     "steps": [
       {
-        "route": "/work/monitor",
-        "control": "After cleaning",
-        "expect": "Everything new, resolved or regressed"
+        "route": "/monitor?view=after-clean",
+        "control": "After a clean",
+        "expect": "By clean"
       },
       {
-        "route": "/cleansing",
-        "control": "Review the proposals",
-        "expect": "Cleansing"
+        "route": "/work?filter=proposed",
+        "control": "Waiting",
+        "expect": "Cleaning queue"
       },
       {
-        "route": "/cleansing",
+        "route": "/work?filter=proposed",
         "control": null,
-        "expect": "rolled back"
+        "expect": "Applied"
       }
     ]
   },
@@ -215,15 +214,19 @@
     "object": "material_master",
     "steps": [
       {
-        "route": "/o/_/material-master/profile",
-        "control": "Make it a rule",
-        "expect": "Mined dependencies"
+        "route": "/rules",
+        "control": "Write a rule",
+        "expect": "Library"
       },
       {
-        "route": "/o/_/material-master/profile",
+        "route": "/rules/dry-run",
+        "control": "Draft the rule",
+        "expect": "Write a new rule"
+      },
+      {
+        "route": "/rules/dry-run",
         "control": null,
-        "expect": "It runs from the next analysis.",
-        "needs": "Make it a rule pressed on a mined dependency"
+        "expect": "Save as draft"
       }
     ]
   },
@@ -233,14 +236,14 @@
     "object": null,
     "steps": [
       {
-        "route": "/fix-drafts",
-        "control": "Review the first pending draft",
-        "expect": "Aletheia verified fixes"
+        "route": "/rules?view=fix-drafts",
+        "control": "Approve",
+        "expect": "Open the rule"
       },
       {
-        "route": "/fix-drafts",
+        "route": "/rules?view=fix-drafts",
         "control": null,
-        "expect": "Approve"
+        "expect": "Reject"
       }
     ]
   },
@@ -251,32 +254,24 @@
     "target_clicks": 4,
     "steps": [
       {
-        "route": "/more/landscape",
-        "control": "Approve batch {label}",
-        "expect": "for your approval"
+        "route": "/",
+        "control": "Review approvals",
+        "expect": "Needs your attention"
       },
       {
-        "route": "/more/landscape?open=batch:{batch_id}",
+        "route": "/approvals?batch={batch_id}",
         "control": "Approve",
+        "expect": "Unit of measure and material type"
+      },
+      {
+        "route": "/approvals?batch={batch_id}",
+        "control": "Send to SAP",
         "expect": "Send back"
       },
       {
-        "route": "/more/landscape?open=batch:{batch_id}",
-        "control": "Export load file",
-        "expect": "Export load file",
-        "needs": "the batch approved"
-      },
-      {
-        "route": "/more/landscape?open=batch:{batch_id}",
-        "control": "Loaded in SAP",
-        "expect": "Who loads it in SAP",
-        "needs": "the batch approved"
-      },
-      {
-        "route": "/more/landscape?open=batch:{batch_id}",
+        "route": "/approvals?batch={batch_id}",
         "control": null,
-        "expect": "Sent to SAP",
-        "needs": "the batch approved"
+        "expect": "Trail"
       }
     ]
   },
@@ -287,8 +282,13 @@
     "steps": [
       {
         "route": "/work?filter=approvals",
+        "control": "Approvals",
+        "expect": "Waiting for approval"
+      },
+      {
+        "route": "/approvals",
         "control": null,
-        "expect": "Nothing reaches SAP until it is approved and applied."
+        "expect": "Remediation batches"
       }
     ]
   },
@@ -300,17 +300,17 @@
       {
         "route": "/requests",
         "control": "To approve",
-        "expect": "Create and change master data with approval"
+        "expect": "Change requests"
       },
       {
         "route": "/requests?open=request:{request_id}",
-        "control": "Approve",
-        "expect": "Approve"
+        "control": "Approval",
+        "expect": "Proposed values"
       },
       {
-        "route": "/requests",
+        "route": "/requests/{request_id}",
         "control": null,
-        "expect": "Requests"
+        "expect": "Checks before submission"
       }
     ]
   },
@@ -322,12 +322,12 @@
       {
         "route": "/requests",
         "control": "New request",
-        "expect": "Create and change master data with approval"
+        "expect": "Change requests"
       },
       {
-        "route": "/requests",
+        "route": "/requests/new",
         "control": null,
-        "expect": "Requests"
+        "expect": "What do you want to do"
       }
     ]
   },
@@ -338,14 +338,19 @@
     "target_clicks": 12,
     "steps": [
       {
-        "route": "/load/waves",
-        "control": "Open the waves",
-        "expect": "Waves group objects into the loads"
+        "route": "/load",
+        "control": "Waves",
+        "expect": "Load order"
       },
       {
-        "route": "/more/landscape?view=waves",
-        "control": "Waves",
-        "expect": "Coverage"
+        "route": "/load/waves",
+        "control": "Wave 1",
+        "expect": "Migration waves"
+      },
+      {
+        "route": "/load/waves/w-1",
+        "control": null,
+        "expect": "Readiness trend"
       }
     ]
   },
@@ -355,14 +360,19 @@
     "object": null,
     "steps": [
       {
-        "route": "/more/landscape",
-        "control": "Clear the {n} no-go objects in {wave}",
-        "expect": "Landscape"
+        "route": "/load",
+        "control": "Go-live gates",
+        "expect": "Files handed over"
+      },
+      {
+        "route": "/load/go-live",
+        "control": null,
+        "expect": "Wave gates"
       },
       {
         "route": "/work?verdict=no-go",
         "control": null,
-        "expect": "Work"
+        "expect": "Rules with work"
       }
     ]
   },
@@ -374,13 +384,13 @@
     "steps": [
       {
         "route": "/people",
-        "control": "Open {name}'s overdue work",
-        "expect": "Open work"
+        "control": "Unit of measure and material type",
+        "expect": "Your next steps"
       },
       {
-        "route": "/work",
+        "route": "/?open=batch:{batch_id}",
         "control": null,
-        "expect": "Work"
+        "expect": "Send back"
       }
     ]
   },
@@ -390,9 +400,9 @@
     "object": null,
     "steps": [
       {
-        "route": "/load/analysis",
+        "route": "/load/runs",
         "control": null,
-        "expect": "Migration"
+        "expect": "Migration runs"
       }
     ]
   },
@@ -402,9 +412,9 @@
     "object": null,
     "steps": [
       {
-        "route": "/go-live",
+        "route": "/load/go-live",
         "control": null,
-        "expect": "Days to go-live"
+        "expect": "Readiness certificate"
       }
     ]
   },
@@ -427,21 +437,19 @@
     "object": "employee_central",
     "steps": [
       {
-        "route": "/load/analysis",
-        "control": "Check the workbook",
-        "expect": "Workbook from the new system"
+        "route": "/load",
+        "control": "Load templates",
+        "expect": "Load order"
       },
       {
-        "route": "/load/analysis",
-        "control": "Export in the same format",
-        "expect": "Check what fits",
-        "needs": "a workbook from the new system uploaded and checked"
+        "route": "/load/templates",
+        "control": "Check this template",
+        "expect": "Kept templates"
       },
       {
-        "route": "/load/analysis",
+        "route": "/load/templates",
         "control": null,
-        "expect": "Export the data",
-        "needs": "a workbook from the new system uploaded and checked"
+        "expect": "Fill and download"
       }
     ]
   },
@@ -451,21 +459,21 @@
     "object": "employee_central",
     "steps": [
       {
-        "route": "/objects",
-        "control": "Employee central",
-        "expect": "Objects",
+        "route": "/o",
+        "control": null,
+        "expect": "Find an object",
         "needs": "a SuccessFactors system connected and analysed"
       },
       {
         "route": "/o/_/employee-central",
         "control": "Rules",
-        "expect": "How this is scored",
+        "expect": "Score",
         "needs": "a SuccessFactors system connected and analysed"
       },
       {
         "route": "/o/_/employee-central/rules",
         "control": null,
-        "expect": "All rules",
+        "expect": "Pass rate",
         "needs": "a SuccessFactors system connected and analysed"
       }
     ]
@@ -476,20 +484,14 @@
     "object": "sd_customer_master",
     "steps": [
       {
-        "route": "/o/_/sd-customer-master",
-        "control": "Rules",
-        "expect": "How this is scored"
+        "route": "/o/{system}/sd-customer-master",
+        "control": "Fix records",
+        "expect": "SD customer master"
       },
       {
-        "route": "/o/_/sd-customer-master/rules",
-        "control": "Accept all",
-        "expect": "All rules",
-        "needs": "suggested values for a customer rule"
-      },
-      {
-        "route": "/work",
+        "route": "/work?module=sd_customer_master&seg=proposed",
         "control": null,
-        "expect": "Most urgent first"
+        "expect": "Rules with work"
       }
     ]
   },
@@ -499,14 +501,14 @@
     "object": null,
     "steps": [
       {
-        "route": "/load/analysis",
-        "control": "Start an analysis",
-        "expect": "Migration"
+        "route": "/load/runs",
+        "control": "Start a run",
+        "expect": "Migration runs"
       },
       {
-        "route": "/load/analysis",
-        "control": null,
-        "expect": "Source to target system"
+        "route": "/load/compare",
+        "control": "Run comparison",
+        "expect": "Paired systems"
       }
     ]
   },
@@ -517,18 +519,18 @@
     "steps": [
       {
         "route": "/runs",
-        "control": "Compare",
-        "expect": "Runs, newest first"
+        "control": "Compare sets",
+        "expect": "Keep the list tidy"
       },
       {
         "route": "/run/{a}/vs/{b}",
-        "control": "Scores and rules",
+        "control": "Newly failing",
         "expect": "Compare runs"
       },
       {
-        "route": "/run/{a}/vs/{b}?view=full",
+        "route": "/run/{a}/vs/{b}",
         "control": null,
-        "expect": "Score of each object in each run"
+        "expect": "Rules that changed"
       }
     ]
   },
@@ -538,14 +540,14 @@
     "object": "material_master",
     "steps": [
       {
-        "route": "/o/_/material-master",
+        "route": "/o/{system}/{object}",
         "control": "Trend",
-        "expect": "How this is scored"
+        "expect": "Score over runs"
       },
       {
-        "route": "/o/_/material-master/trend",
+        "route": "/o/{system}/{object}/trend",
         "control": null,
-        "expect": "Why the score moved"
+        "expect": "What changed since the run before"
       }
     ]
   },
@@ -556,23 +558,23 @@
     "steps": [
       {
         "route": "/runs",
-        "control": "{run}",
-        "expect": "Runs, newest first"
+        "control": "Open",
+        "expect": "Keep the list tidy"
       },
       {
         "route": "/run/{run_id}",
-        "control": "Export findings",
-        "expect": "Back to runs"
+        "control": "Set as baseline",
+        "expect": "What you can do"
       },
       {
-        "route": "/run/{run_id}?view=full",
-        "control": "Pin as baseline",
-        "expect": "What changed"
+        "route": "/run/{run_id}",
+        "control": "Download reconciliation",
+        "expect": "Steps"
       },
       {
-        "route": "/run/{run_id}?view=full",
+        "route": "/run/{run_id}",
         "control": null,
-        "expect": "Score of each object in this run"
+        "expect": "Run 500"
       }
     ]
   },
@@ -582,14 +584,14 @@
     "object": null,
     "steps": [
       {
-        "route": "/more/landscape",
-        "control": "Open {l1} step {n}",
-        "expect": "Landscape"
+        "route": "/",
+        "control": "Open process",
+        "expect": "Needs your attention"
       },
       {
         "route": "/o/{system}/{object}/processes",
-        "control": null,
-        "expect": "Processes"
+        "control": "Open the process designer",
+        "expect": "Process steps"
       }
     ]
   },
@@ -599,8 +601,8 @@
     "object": null,
     "steps": [
       {
-        "route": "/processes",
-        "control": null,
+        "route": "/mdm/processes",
+        "control": "Discover this process",
         "expect": "Process discovery"
       }
     ]
@@ -612,19 +614,19 @@
     "target_clicks": 12,
     "steps": [
       {
-        "route": "/more/landscape",
-        "control": "Open the rules library",
-        "expect": "Landscape"
+        "route": "/",
+        "control": "Review rules",
+        "expect": "Needs your attention"
       },
       {
-        "route": "/rules",
-        "control": "{rule_id}",
-        "expect": "Rules"
+        "route": "/rules?open=library-rule:{rule_id}",
+        "control": "Open the rule",
+        "expect": "Library"
       },
       {
         "route": "/r/{rule_id}",
         "control": null,
-        "expect": "One rule and what it finds in the newest run."
+        "expect": "Base unit of measure MEINS"
       }
     ]
   },
@@ -637,12 +639,12 @@
       {
         "route": "/admin",
         "control": "Audit log",
-        "expect": "Administration"
+        "expect": "Users"
       },
       {
         "route": "/admin/audit",
         "control": null,
-        "expect": "Audit log"
+        "expect": "Entries"
       }
     ]
   },
@@ -652,14 +654,14 @@
     "object": null,
     "steps": [
       {
-        "route": "/objects",
-        "control": "{object}",
-        "expect": "Objects"
+        "route": "/",
+        "control": "Material master",
+        "expect": "Lowest scores"
       },
       {
         "route": "/o/{system}/{object}",
         "control": null,
-        "expect": "How this is scored"
+        "expect": "Score over runs"
       }
     ]
   },
@@ -669,14 +671,19 @@
     "object": null,
     "steps": [
       {
+        "route": "/work",
+        "control": "Exceptions",
+        "expect": "Rules with work"
+      },
+      {
         "route": "/work/exceptions",
-        "control": "Open the exception with the nearest deadline",
-        "expect": "exceptions still open"
+        "control": "Raise exception",
+        "expect": "Raise an exception"
       },
       {
         "route": "/work/exceptions",
         "control": null,
-        "expect": "Resolve"
+        "expect": "Resolved"
       }
     ]
   },
@@ -686,14 +693,14 @@
     "object": null,
     "steps": [
       {
-        "route": "/attention",
-        "control": "Start triage",
-        "expect": "Action centre"
+        "route": "/",
+        "control": "Open overdue items",
+        "expect": "Needs your attention"
       },
       {
         "route": "/work/triage",
-        "control": null,
-        "expect": "items waiting"
+        "control": "Overdue",
+        "expect": "Bulk action"
       }
     ]
   }

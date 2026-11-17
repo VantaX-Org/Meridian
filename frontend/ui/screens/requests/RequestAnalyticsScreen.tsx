@@ -27,13 +27,13 @@ export function RequestAnalyticsScreen() {
       <Async q={a}>
         {(d) => d.total === 0 ? <Empty heading={t("No requests in this period")} /> : (
           <>
-            <div className="mx-tiles">
+            <dl className="mx-tiles">
               <StatTile label={t("Requests")} value={num(d.total)} />
               <StatTile label={t("Median cycle time")} value={hrs(d.cycle.median_hours)} note={`${t("Slowest tenth")} ${hrs(d.cycle.p90_hours)}`} />
               <StatTile label={t("Median approval time")} value={hrs(d.approval.median_hours)} note={`${t("Slowest tenth")} ${hrs(d.approval.p90_hours)}`} />
               <StatTile label={t("SLA breaches")} value={num(d.sla.breached)} note={`${t("of")} ${num(d.sla.with_sla)}, ${pct(d.sla.rate)}`} />
               <StatTile label={t("Rejection rate")} value={pct(d.rates.rejection)} />
-            </div>
+            </dl>
             <div className="mx-split">
               <Card title={t("Backlog age")}>
                 <BarList label={t("Backlog age")} items={[
@@ -74,9 +74,9 @@ export function RequestAnalyticsScreen() {
         <Async q={f}>
           {(d) => d.requests.length ? (
             <>
-              <div className="mx-tiles">
+              <dl className="mx-tiles">
                 <StatTile label={t("Open")} value={num(d.open)} /><StatTile label={t("At risk")} value={num(d.at_risk)} /><StatTile label={t("Past due")} value={num(d.breached)} />
-              </div>
+              </dl>
               <DataTable<ForecastRow> label={t("Approval forecast")} rows={d.requests} rowKey={(r) => r.request_id} height={260}
                 columns={[
                   { key: "r", label: t("Request"), render: (r) => <Code code={r.request_id} description={r.title ?? undefined} /> },

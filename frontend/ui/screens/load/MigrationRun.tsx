@@ -33,7 +33,7 @@ export function MigrationRun({ id }: { id: string }) {
   const recon = useRecon(id);
   const bad = () => toast(t("The action failed"), "bad");
   const extract = useMutation({ mutationFn: () => extractMigrationTarget(id), onSuccess: () => { toast(t("Target extraction started"), "info"); invalidateLoad(qc); }, onError: bad });
-  const remove = useMutation({ mutationFn: () => deleteMigrationRun(id), onSuccess: () => { invalidateLoad(qc); router.push(href("/n/load/runs")); }, onError: bad });
+  const remove = useMutation({ mutationFn: () => deleteMigrationRun(id), onSuccess: () => { invalidateLoad(qc); router.push(href("/load/runs")); }, onError: bad });
   const dry = run?.mode === "s4_dry_run";
 
   useAletheiaScope({

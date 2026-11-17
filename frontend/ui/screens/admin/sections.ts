@@ -12,7 +12,7 @@ import { Webhooks } from "./access/Webhooks";
 import { OPS_SECTIONS } from "./ops";
 import { t } from "@/lib/v2/i18n";
 
-/** One page under /n/admin/[section]. Labels are functions so t() runs at render time, in the viewer's language. */
+/** One page under /admin/[section]. Labels are functions so t() runs at render time, in the viewer's language. */
 export interface AdminSection {
   slug: string;
   label: () => string;

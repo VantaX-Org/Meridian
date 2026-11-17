@@ -36,11 +36,11 @@ export function PilotTab({ id }: { id: string }) {
         <Gate q={sc} empty={{ heading: t("No scorecard yet"), body: t("Review findings or load known issues to build it.") }}>
           {(d) => (
             <>
-              <div className="mx-tiles">
+              <dl className="mx-tiles">
                 <StatTile label={t("Precision")} value={pct(d.precision.precision)} note={t("Target {n}", { n: pct(d.precision.target) })} />
                 <StatTile label={t("Reviewed")} value={whole(d.precision.reviewed)} note={t("{n} false positives", { n: d.precision.false_positives })} />
                 <StatTile label={t("Recall")} value={pct(d.recall.recall)} note={t("{a} of {b} known issues caught", { a: d.recall.caught, b: d.recall.known })} />
-              </div>
+              </dl>
               <DataTable columns={[
                 { key: "check_id", label: t("Check"), render: (r) => <FieldChip code={r.check_id} description={r.message} /> },
                 { key: "module", label: t("Module"), render: (r) => r.module },

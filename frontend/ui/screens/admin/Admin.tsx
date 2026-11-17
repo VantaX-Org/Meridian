@@ -26,7 +26,7 @@ export function Admin() {
           <ul className="mx-links">
             {open.filter((s) => s.group() === g).map((s) => (
               <li key={s.slug}>
-                <a href={withFixture(`/n/admin/${s.slug}`, fx)}><strong>{s.label()}</strong></a>
+                <a href={withFixture(`/admin/${s.slug}`, fx)}><strong>{s.label()}</strong></a>
                 <p className="mx-muted">{s.lead()}</p>
               </li>
             ))}

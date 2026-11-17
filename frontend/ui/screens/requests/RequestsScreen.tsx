@@ -28,16 +28,16 @@ export function RequestsScreen() {
   return (
     <>
       <Head title={t("Change requests")} actions={<>
-        <Button variant="secondary" href={withFixture("/n/requests/analytics", fx)}>{t("Process analytics")}</Button>
-        <Button variant="secondary" href={withFixture("/n/requests/workflows", fx)}>{t("Workflows")}</Button>
-        <Button variant="primary" href={withFixture("/n/requests/new", fx)}>{t("New request")}</Button>
+        <Button variant="secondary" href={withFixture("/requests/analytics", fx)}>{t("Process analytics")}</Button>
+        <Button variant="secondary" href={withFixture("/requests/workflows", fx)}>{t("Workflows")}</Button>
+        <Button variant="primary" href={withFixture("/requests/new", fx)}>{t("New request")}</Button>
       </>} />
       <div className="mx-tiles" role="group" aria-label={t("Request views")}>
         {views.map((v) => <Chip key={v.id} selected={view === v.id} onClick={() => setView(v.id)}>{v.label}</Chip>)}
       </div>
       <Async q={q}>
         {() => rows.length ? (
-          <DataTable<ChangeRequest> label={t("Change requests")} rows={rows} rowKey={(r) => r.id} height={520} onSelect={(r) => router.push(withFixture(`/n/requests/${encodeURIComponent(r.id)}`, fx))}
+          <DataTable<ChangeRequest> label={t("Change requests")} rows={rows} rowKey={(r) => r.id} height={520} onSelect={(r) => router.push(withFixture(`/requests/${encodeURIComponent(r.id)}`, fx))}
             columns={[
               { key: "id", label: t("Request"), sort: (r) => r.id, render: (r) => <Code code={r.id} description={r.title ?? undefined} /> },
               { key: "o", label: t("Object"), sort: (r) => r.object, render: (r) => objectText(r.object) },

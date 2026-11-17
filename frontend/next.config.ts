@@ -13,16 +13,15 @@ const q = (source: string, key: string, value: string | undefined, destination: 
 });
 
 /**
- * Every address of the old interface, and every older address before it, sent to the place that does the same job in
- * the map, canvas and inspector model. The table of old and new is frontend/docs/guide/redirects.md, and
+ * Every address of the old interfaces (the first one, the /v2 tree, /next and /n), sent to the place that does the same
+ * job in the one interface at the root. The table of old and new is frontend/docs/guide/redirects.md, and
  * __tests__/legacy-redirects.test.ts asserts that every route the old interface served lands here or on a live page.
  *
  * `/o/_/{module}` names an object without its system; the object canvas replaces `_` with the system that holds it.
  * Rules with `has` come before the plain rule for the same address, because the first rule that matches wins.
  */
 export const REDIRECTS: Redirect[] = [
-  // /attention, /insights, /issues, /mining, /mdm and /migration are live Meridian 2 pages again (the map links to
-  // them), so they are not redirected; their old sub-pages still are.
+  // A rule here wins over a real page at the same address, so a row must never match a live route.
   // Meridian 2 lived under /v2 while both interfaces shipped. Kept for a release so bookmarks and share links still open.
   r("/v2", "/"),
   r("/v2/:path*", "/:path*"),
@@ -115,7 +114,6 @@ export const REDIRECTS: Redirect[] = [
   r("/insights/owners", "/people"),
   r("/insights/reports", "/reports"),
   r("/insights/trends", "/runs"),
-  r("/insights/forecast", "/runs"),
   r("/insights/progress", "/runs"),
   r("/insights/operations", "/runs"),
   r("/executive-report", "/reports"),
@@ -134,15 +132,10 @@ export const REDIRECTS: Redirect[] = [
   r("/process/:l1", "/"),
 
   // Master data: the Glossary and Golden records tabs of an object; one term or golden record opens in the inspector.
-  r("/mdm/glossary", "/"),
   r("/mdm/glossary/:id", "/?open=term%3A:id"),
   q("/mdm/golden/merge", "id", "(?<id>[^&]+)", "/?open=golden%3A:id"),
   r("/mdm/golden/merge", "/"),
   q("/mdm/golden", "object", "(?<object>[^&]+)", "/o/_/:object/golden"),
-  r("/mdm/golden", "/"),
-  r("/mdm/golden/:id", "/?open=golden%3A:id"),
-  r("/mdm/match-rules", "/"),
-  r("/mdm/survivorship", "/"),
   r("/glossary", "/"),
   r("/glossary/:id", "/?open=term%3A:id"),
   r("/golden-records", "/"),
@@ -159,6 +152,7 @@ export const REDIRECTS: Redirect[] = [
   r("/go-live", "/load/go-live"),
 
   // Migration: the landscape's Waves view and the waves panel (gates, sign-off, certificate).
+  r("/migration", "/load/runs"),
   r("/migration/dry-run", "/?view=waves&open=waves"),
   r("/migration/:waveId", "/?view=waves&open=waves"),
 
@@ -168,7 +162,7 @@ export const REDIRECTS: Redirect[] = [
   r("/rules/drafts", "/rules?view=drafts"),
   r("/rules/learned", "/rules?view=drafts"),
   r("/rules/scoring", "/admin/settings"),
-  r("/rules/:ruleId", "/r/:ruleId"),
+  r("/rules/:ruleId((?!dry-run$|promotion$)[\\w.-]+)", "/r/:ruleId"),
   r("/contracts", "/people?open=contracts"),
   r("/settings/scoring", "/admin/settings"),
   r("/settings/rules", "/rules"),
@@ -194,8 +188,55 @@ export const REDIRECTS: Redirect[] = [
   r("/sync", "/"),
 
   // Data in: uploading a file is a block of Administration, Runs and jobs.
-  r("/import", "/admin/runs"),
-  r("/upload", "/admin/runs"),
+  r("/import", "/runs?view=jobs"),
+  r("/upload", "/runs?view=jobs"),
+
+// Cut-over: the /n and /next trees became the root, and the old top-level pages took a place in the new map.
+  r("/n", "/"),
+  r("/n/:path*", "/:path*"),
+  r("/next/o/:system/:module/:tab*", "/o/:system/:module/:tab*"),
+  r("/next", "/"),
+  r("/next/:path*", "/:path*"),
+  r("/portfolio", "/o?view=portfolio"),
+  r("/attention", "/work"),
+  r("/objects", "/o"),
+  r("/more/:slug*", "/admin"),
+  r("/cleansing", "/work?filter=proposed"),
+  r("/aletheia/:path*", "/?aletheia=1"),
+  r("/aletheia", "/?aletheia=1"),
+  r("/aletheia-survivorship", "/mdm/survivorship"),
+  r("/fix-drafts", "/rules?view=fix-drafts"),
+  r("/anomaly-rules", "/monitor?view=shifts"),
+  r("/atlas", "/s"),
+  r("/config", "/s"),
+  r("/entry-gate", "/monitor?view=gate"),
+  r("/monitors", "/monitor?view=learned"),
+  r("/issues", "/mdm/issues"),
+  r("/links", "/mdm/links"),
+  r("/catalogue", "/mdm/catalogue"),
+  r("/mining", "/mdm/mining"),
+  r("/reference-data", "/mdm/reference"),
+  r("/processes", "/mdm/processes"),
+  r("/materials", "/o"),
+  r("/score", "/insights/score"),
+  r("/forecast", "/insights/forecast"),
+  r("/value", "/insights/value"),
+  r("/rule-dry-run", "/rules/dry-run"),
+  r("/rule-promotion", "/rules/promotion"),
+  r("/data-requests", "/work/requests"),
+  r("/work/monitor", "/monitor?view=after-clean"),
+  r("/admin/matchrules", "/mdm/match-rules"),
+  r("/admin/workflows", "/requests/workflows"),
+  r("/admin/runschedules", "/admin/schedules"),
+  r("/admin/step10", "/rules?view=packs"),
+  r("/admin/thresholds", "/admin/scoring"),
+  r("/admin/accuracy", "/rules?view=coverage"),
+  r("/admin/kit", "/admin"),
+  r("/admin/capabilities", "/admin/access"),
+  r("/admin/tenant", "/admin/settings"),
+  r("/admin/sandbox", "/admin/system"),
+  r("/admin/maintenance", "/admin/enterprise"),
+  r("/admin/runs", "/runs?view=jobs"),
 
   // Administration: the same sections at /admin/{section}; the few that moved or were renamed.
   q("/admin/roles", "tab", "keys", "/admin/apikeys"),

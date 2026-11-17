@@ -17,7 +17,7 @@
 .mx-root .mx-brand { font-weight: var(--mx-w-heading); font-size: var(--mx-fs-title); }
 .mx-root .mx-sections { display: flex; gap: var(--mx-s1); flex: 1; overflow-x: auto; }
 .mx-root .mx-section { padding: var(--mx-s1) var(--mx-s3); border-radius: var(--mx-r-pill); color: var(--mx-ink-2); font-size: var(--mx-fs-small); font-weight: var(--mx-w-label); white-space: nowrap; }
-.mx-root .mx-section[aria-current="page"] { background: var(--mx-accent-soft); color: var(--mx-accent-ink); }
+.mx-root .mx-section[aria-current="page"] { background: var(--mx-accent-soft); color: var(--mx-ink); }
 .mx-root .mx-user { position: relative; }
 .mx-root .mx-avatar { inline-size: var(--mx-h-control); block-size: var(--mx-h-control); border-radius: var(--mx-r-pill); border: 1px solid var(--mx-border-strong); background: var(--mx-surface); color: var(--mx-ink); font: inherit; font-weight: var(--mx-w-heading); cursor: pointer; }
 .mx-root .mx-menu { position: absolute; inset-inline-end: 0; inset-block-start: 100%; min-inline-size: 14rem; margin-block-start: var(--mx-s1); padding: var(--mx-s2); background: var(--mx-surface); border: 1px solid var(--mx-border); border-radius: var(--mx-r-card); box-shadow: var(--mx-elev-2); display: grid; gap: var(--mx-s1); }
@@ -213,3 +213,6 @@
 .mx-root .mx-undo { display: flex; align-items: center; justify-content: space-between; gap: var(--mx-s3); padding: var(--mx-s2) var(--mx-s4); border: 1px solid var(--mx-border); border-radius: var(--mx-r-control); background: var(--mx-surface); }
 .mx-root .mx-graph { max-inline-size: 100%; }
 .mx-root .mx-table tr.mx-expand > td { padding: var(--mx-s3); white-space: normal; overflow: auto; background: var(--mx-surface-2); }
+.mx-root .mx-skip a { position: absolute; inset-inline-start: var(--mx-s3); inset-block-start: var(--mx-s3); z-index: 100; padding: var(--mx-s2) var(--mx-s3); border-radius: var(--mx-r-control); background: var(--mx-surface); color: var(--mx-ink); transform: translateY(-200%); }
+.mx-root .mx-skip a:focus { transform: none; }
+.mx-root .mx-main:focus { outline: none; }

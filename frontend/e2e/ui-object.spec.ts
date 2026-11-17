@@ -1,5 +1,5 @@
 /**
- * The rebuilt object screen (design C, Split analyst) at /n/o/{system}/{module} in fixture mode: the header, the score
+ * The rebuilt object screen (design C, Split analyst) at /o/{system}/{module} in fixture mode: the header, the score
  * ring and the rule list, then a selected row and the detail tabs, and the Aletheia chat opened from the launcher.
  *
  *   PLAYWRIGHT_BASE_URL=http://localhost:3700 npx playwright test e2e/ui-object.spec.ts
@@ -7,7 +7,7 @@
 
 import { expect, test } from "@playwright/test";
 
-const URL = "/n/o/ecc-production/material-master?fixture=1";
+const URL = "/o/ecc-production/material-master?fixture=1";
 const NAV = { timeout: 90_000 };
 
 test.beforeEach(async ({ page }) => {

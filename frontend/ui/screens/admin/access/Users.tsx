@@ -93,11 +93,11 @@ export function Users() {
         </span>
       ) : undefined}
     >
-      <div className="mx-tiles">
+      <dl className="mx-tiles">
         <StatTile label={t("Seats")} value={seatsText(seats)} bar={seats.limit ? Math.min(100, (seats.used / seats.limit) * 100) : undefined} />
         <StatTile label={t("People")} value={String(all.length)} />
         <StatTile label={t("Open access requests")} value={String(openReqs.length)} />
-      </div>
+      </dl>
       {seatsFull(seats) && <p role="alert">{t("Every seat is in use. Suspend or remove someone before inviting.")}</p>}
       {!seatsFull(seats) && seatsNearlyFull(seats) && <p>{t("Seats are nearly full.")}</p>}
       {attentionText && <p role="status">{attentionText}</p>}

@@ -6,7 +6,7 @@ describe("AppShell", () => {
   it("shows sections with the active one marked, and a user menu", () => {
     const out = vi.fn();
     render(
-      <AppShell brand="Meridian" navLabel="Sections" userMenuLabel="Account" user={{ name: "Resh", email: "r@x.co" }}
+      <AppShell brand="Meridian" navLabel="Sections" skipLabel="Skip to content" skipNavLabel="Skip links" userMenuLabel="Account" user={{ name: "Resh", email: "r@x.co" }}
         sections={[{ id: "h", label: "Home", href: "/", active: true }, { id: "w", label: "Work", href: "/work" }]}
         menu={[{ id: "out", label: "Sign out", onClick: out }]}>
         <p>Body</p>
@@ -24,7 +24,7 @@ describe("AppShell", () => {
   it("renders the launcher and the aside slot", () => {
     const open = vi.fn();
     render(
-      <AppShell brand="Meridian" navLabel="Sections" userMenuLabel="Account" user={{ name: "Resh", email: "r@x.co" }} sections={[]} menu={[]}
+      <AppShell brand="Meridian" navLabel="Sections" skipLabel="Skip to content" skipNavLabel="Skip links" userMenuLabel="Account" user={{ name: "Resh", email: "r@x.co" }} sections={[]} menu={[]}
         launcher={{ label: "Ask Aletheia", onOpen: open }} aside={<p>Panel slot</p>}>
         <p>Body</p>
       </AppShell>,

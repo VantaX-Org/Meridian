@@ -42,6 +42,8 @@ export { SeverityStrip as SegBar } from "./SeverityStrip";
 export { TrendArea as AreaSpark } from "./TrendArea";
 export { FieldChip as Code } from "./FieldChip";
 export { Badge } from "./Badge";
+export { Standalone, useDocumentLang } from "./Standalone";
+export { DemoBar } from "./DemoBar";
 export { CodeView, DiffView } from "./CodeView";
 export { CodeView as YamlView } from "./CodeView";
 export { CommentsPanel, type CommentItem } from "./CommentsPanel";

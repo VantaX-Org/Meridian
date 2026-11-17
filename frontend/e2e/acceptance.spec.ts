@@ -145,14 +145,14 @@ for (const [who, label] of Object.entries(ROLES) as [keyof typeof ROLES, string]
   });
 }
 
-test("3. lead: the object canvas, its receipt and every tab", async ({ page }) => {
+test("3. lead: the object canvas, its measurement and every tab", async ({ page }) => {
   await signIn(page, "lead");
-  // The receipt lives on the Rules tab (design spec 2.4: Overview is the default tab).
+  // What was measured lives on the Rules tab: how many rules ran, then one row per rule with its pass rate.
   await page.goto(`/o/${SYSTEM}/${OBJECT}/rules`);
-  await expect(page.getByTestId("receipt")).toBeVisible({ timeout: 30_000 });
-  // The receipt is a closed disclosure on the rules tab; open it so its rows are in the accessibility tree.
-  await page.getByTestId("receipt").locator("summary").click();
-  note((await page.getByTestId("receipt").getByRole("row", { name: /^Measured/ }).first().innerText()).replace(/\s+/g, " ").trim());
+  const measured = page.getByText(/\d+ rules? ran on this object/);
+  await expect(measured).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("group", { name: "Rules" })).toBeVisible();
+  note((await measured.innerText()).trim());
   for (const tab of ["records", "fixes", "runs", "readiness", "processes", "lineage", "glossary", "golden"]) {
     await page.goto(`/o/${SYSTEM}/${OBJECT}/${tab}`);
     await page.waitForLoadState("load");
@@ -161,38 +161,51 @@ test("3. lead: the object canvas, its receipt and every tab", async ({ page }) =
   }
 });
 
-test("4. lead: the rule canvas and its four tabs", async ({ page }) => {
+test("4. lead: the rule canvas and its tabs", async ({ page }) => {
   await signIn(page, "lead");
   await page.goto(`/r/${CHECK}`);
-  await expect(page.getByText(/failing across \d+ objects?/)).toBeVisible({ timeout: 45_000 });
-  note((await page.getByText(/failing across \d+ objects?/).innerText()).trim());
-  for (const tab of ["Failing records", "Impact", "History", "Definition"]) {
-    await page.getByRole("link", { name: tab, exact: true }).or(page.getByRole("tab", { name: tab, exact: true })).first().click();
+  // the Overview tab: where the rule fails, as tiles (records failing, objects, systems)
+  const tiles = page.locator("dl.mx-tiles").filter({ hasText: "Objects" });
+  await expect(tiles).toBeVisible({ timeout: 45_000 });
+  note((await tiles.innerText()).replace(/\s+/g, " ").trim());
+  // the Records tab carries a count badge, so a tab name only starts with its label
+  for (const tab of [/^Fix/, /^Why/, /^Records/, /^History/]) {
+    await page.getByRole("tab", { name: tab }).click();
+    await expect(page.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel")).toBeVisible();
+    await expect(page.getByText("The rule could not be loaded")).toHaveCount(0);
     await expectScreen(page);
   }
 });
 
-test("5. steward: a decision and a proposed fix in the Work ledger", async ({ page, request }) => {
+test("5. steward: a decision and a proposed fix in Work", async ({ page, request }) => {
   await signIn(page, "steward");
   await page.goto(`/work?module=${MODULE}`);
-  const decisions = page.getByLabel(/^Decision for /);
-  await expect(decisions.first()).toBeVisible({ timeout: 45_000 });
+  // the records of the object with work, one row each; a row opens its decide panel
+  const rows = page.getByRole("group", { name: "Records" }).locator("tbody tr[aria-rowindex]");
+  await expect(rows.nth(1)).toBeVisible({ timeout: 45_000 });
   // a fix goes into the steward's draft batch, which the owner approves in test 6
   type Batches = { items: { status: string; items: number }[] };
   const drafted = async () => (await apiGet<Batches>(request, "steward", "/remediation/batches")).items
     .filter((x) => x.status === "draft").reduce((n, x) => n + Number(x.items), 0);
   const before = await drafted();
-  // a fix: a new value and the decision "fix"
-  const firstKey = ((await decisions.nth(1).getAttribute("aria-label")) ?? "").replace("Decision for ", "");
-  await page.getByLabel(`New value for ${firstKey}`).fill("1000009101");
-  await page.getByLabel(`Decision for ${firstKey}`).selectOption({ label: "fix" });
-  // a decision: not an issue
-  const secondKey = ((await decisions.nth(2).getAttribute("aria-label")) ?? "").replace("Decision for ", "");
-  await page.getByLabel(`Decision for ${secondKey}`).selectOption({ label: "not an issue" });
-  const dlg = page.getByRole("dialog", { name: "Mark as not an issue" });
-  await dlg.getByLabel("Reason").fill("Acceptance walk: the value is correct for this partner.");
-  await dlg.getByRole("button", { name: "Mark as not an issue" }).click();
-  await expect(dlg).toHaveCount(0);
+  const detail = page.getByRole("region", { name: "Record detail" });
+  const open = async (i: number) => {
+    await rows.nth(i).click();
+    await detail.getByRole("tab", { name: /^Fix/ }).click();
+    await expect(detail.getByRole("list", { name: "Issues" })).toBeVisible({ timeout: 30_000 });
+    return (await detail.locator("h2 code").innerText()).trim();
+  };
+  // a fix: a new value for the first record's first issue
+  const firstKey = await open(0);
+  await detail.getByLabel("Set another value").first().fill("1000009101");
+  await detail.getByRole("button", { name: "Save value" }).first().click();
+  await expect(page.getByText("Your decision is saved.").first()).toBeVisible({ timeout: 30_000 });
+  // a decision: not an issue, on the second record
+  const secondKey = await open(1);
+  expect(secondKey).not.toBe(firstKey);
+  await detail.getByRole("button", { name: "Not an issue" }).first().click();
+  await expect(page.getByText("Your decision is saved.").first()).toBeVisible({ timeout: 30_000 });
   await expect.poll(drafted, { timeout: 30_000 }).toBeGreaterThan(before);
   note(`draft batch items ${before} -> ${await drafted()}; fixed ${firstKey}, not an issue ${secondKey}`);
 });

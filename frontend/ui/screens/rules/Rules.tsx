@@ -119,12 +119,12 @@ export function Rules() {
         : lib.isError ? <ErrorState heading={t("The rules could not be loaded")} retryLabel={t("Try again")} onRetry={() => void lib.refetch()} />
         : (
           <>
-            <div className="mx-tiles">
+            <dl className="mx-tiles">
               <StatTile label={t("Rules")} value={compactCount(rules.length)} />
               <StatTile label={t("Switched on")} value={compactCount(enabled)} bar={rules.length ? enabled / rules.length : 0} />
               <StatTile label={t("Objects covered")} value={compactCount(modules.length)} />
               <StatTile label={t("Records failing")} value={compactCount(failing)} />
-            </div>
+            </dl>
             <div className="mx-rules-row">
               <Search value={q} onChange={setQ} label={t("Search rules")} clearLabel={t("Clear search")} placeholder={t("Search by rule, field or text")} />
               <Select aria-label={t("Object")} value={module} onChange={(e) => setModule(e.target.value)} options={[{ value: "", label: t("All objects") }, ...modules.map((m) => ({ value: m, label: formatModuleName(m) }))]} />

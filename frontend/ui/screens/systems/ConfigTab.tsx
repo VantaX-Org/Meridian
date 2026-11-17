@@ -32,11 +32,11 @@ export function ConfigTab({ id }: { id: string }) {
     <div className="mx-col">
       <Card title={t("Configuration read")} sub={t("The customising held in this system.")} action={run ? <Button variant="secondary" disabled={busy !== null} onClick={() => void act("load", async () => { await loadSystemConfig(id); return t("Configuration read started."); })}>{t("Read configuration")}</Button> : undefined}>
         {l ? (
-          <div className="mx-tiles">
+          <dl className="mx-tiles">
             <StatTile label={t("Status")} value={l.status} note={when(l.finished_at ?? l.created_at)} />
             <StatTile label={t("Areas read")} value={`${whole(l.areas_loaded)} / ${whole(l.areas_total)}`} />
             <StatTile label={t("Objects")} value={whole(l.objects.length)} />
-          </div>
+          </dl>
         ) : <p className="mx-muted">{t("The configuration has not been read yet.")}</p>}
       </Card>
       <Card title={t("Configuration intelligence")} sub={t("Keys and descriptions against the target, or the SAP standard.")} action={run ? <span className="mx-links"><Button variant="ghost" disabled={busy !== null} onClick={() => void act("disc", async () => { await discoverConfig(id); return t("Configuration discovery queued."); })}>{t("Discover")}</Button><Button variant="secondary" disabled={busy !== null} onClick={() => void act("prop", async () => { const r = await proposeConfigMatches(id); return t("{n} matches proposed.", { n: r.proposed }); })}>{t("Propose matches")}</Button></span> : undefined}>

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { watchEventsLine } from "@/design/v2/inspector/collab";
 import { fixtureResponse, fixtureWrite } from "@/lib/api/v2/fixtures";
 
 describe("my watches", () => {
@@ -13,8 +12,4 @@ describe("my watches", () => {
     expect(after.watches.find((w) => w.target_id === first.target_id)).toBeUndefined();
   });
 
-  it("says all events when none are chosen", () => {
-    expect(watchEventsLine([])).toBe("All events");
-    expect(watchEventsLine(["comment", "score_dropped"])).toBe("Comments, Score drops");
-  });
 });

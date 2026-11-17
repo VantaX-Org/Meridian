@@ -7,7 +7,7 @@ import { CYCLE_STEPS } from "@/ui/kit";
 /** The object screen of one portfolio row; the system's name is the slug. */
 export function objectPath(row: Pick<PortfolioRow, "module" | "system_id">, systems: readonly { id: string; name: string }[]): string {
   const sys = systems.find((s) => s.id === row.system_id);
-  return `/n/o/${sys ? systemSlug(sys.name) : row.system_id ?? "unknown"}/${row.module.replace(/_/g, "-")}`;
+  return `/o/${sys ? systemSlug(sys.name) : row.system_id ?? "unknown"}/${row.module.replace(/_/g, "-")}`;
 }
 
 export const STEPS: CycleStep[] = [...CYCLE_STEPS];

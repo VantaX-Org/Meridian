@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLandscape } from "@/lib/v2/queries";
-import { findSystem, moduleFromSlug } from "@/lib/v2/score";
+import { ANY_SYSTEM, findSystem, moduleFromSlug, systemForModule, systemSlug } from "@/lib/v2/score";
 import { formatModuleName } from "@/lib/format";
 import { useRun, useRunsInfinite } from "@/lib/api/next/runs";
 import type { VersionHead } from "@/lib/api/v2/runs";
@@ -57,6 +57,15 @@ export function useObjectRun(systemSeg: string, moduleSeg: string): ObjectRun {
     },
     [params],
   );
+
+  // `/o/_/{module}` (an old link or /objects/{module}): replace `_` with the system that holds the object.
+  const L = landscape.data;
+  const holder = systemSeg === ANY_SYSTEM && L ? systemForModule(L.systems, L.cells, mod) : undefined;
+  useEffect(() => {
+    if (!holder) return;
+    const qs = params.toString();
+    router.replace(`${pathname.replace(`/o/${ANY_SYSTEM}/`, `/o/${systemSlug(holder.name)}/`)}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [holder, params, router, pathname]);
 
   useEffect(() => {
     if (!urlRun && recalled) router.replace(hrefWith(pathname, { run: recalled }), { scroll: false });

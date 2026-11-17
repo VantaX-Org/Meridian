@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
-import { stubLayout } from "@/design/v2/__tests__/layout-stub";
+import { stubLayout } from "@/ui/testing/layout-stub";
 import { AletheiaProvider } from "@/ui/kit";
 import { Forecast } from "./Forecast";
 import { InsightsScreen } from "./InsightsScreen";
@@ -9,13 +9,13 @@ import { Monitor } from "./Monitor";
 import { ScoreLens } from "./ScoreLens";
 import { Value } from "./Value";
 
-vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
+vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 
 let undo: () => void = () => undefined;
 beforeEach(() => {
   undo = stubLayout();
   window.sessionStorage.clear();
-  window.history.replaceState(null, "", "/n/insights?fixture=1");
+  window.history.replaceState(null, "", "/insights?fixture=1");
 });
 afterEach(() => undo());
 

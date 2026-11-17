@@ -20,7 +20,7 @@ export function Me() {
   return (
     <Sec title={t("Me")} scope="me" q={[d]} context={t("Your settings and notifications")}
       facts={[t("{n} notifications were sent to you lately.", { n: rows.length })]}
-      actions={<Button variant="secondary" href="/n/me/notifications">{t("Inbox")}</Button>}>
+      actions={<Button variant="secondary" href="/me/notifications">{t("Inbox")}</Button>}>
       <Card title={t("Preferences")}><PrefsForm /></Card>
       <Card title={t("Notification log")} action={<Button variant="ghost" disabled={busy} onClick={() => run(() => sendTestNotification(), t("Test notification sent."))}>{t("Send a test")}</Button>}>
         {rows.length === 0 ? <p className="mx-muted">{t("Nothing has been sent to you yet.")}</p> : (

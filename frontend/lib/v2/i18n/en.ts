@@ -14403,6 +14403,7 @@ export const en = {
   "Exporting needs the export permission.": "Exporting needs the export permission.",
   "Loading the process models": "Loading the process models",
   "Loading the model": "Loading the model",
+  "This link points to {kind}, which has no page yet.": "This link points to {kind}, which has no page yet.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

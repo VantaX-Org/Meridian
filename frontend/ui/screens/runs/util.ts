@@ -3,7 +3,7 @@ import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { f1 } from "@/lib/v2/score";
 
-export const runPath = (id: string) => `/n/run/${id}`;
+export const runPath = (id: string) => `/run/${id}`;
 
 /** The name a person knows a run by: its label, else its number. */
 export function runTitle(h: Pick<VersionHead, "label" | "run_number" | "id">): string {

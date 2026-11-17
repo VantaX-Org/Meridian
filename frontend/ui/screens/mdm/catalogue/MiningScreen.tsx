@@ -37,12 +37,12 @@ export function MiningScreen() {
       <Head title={t("Data mining")} actions={<Button variant="primary" onClick={() => void run()}>{t("Mine the latest run")}</Button>} />
       <Async q={sum} lines={2}>
         {(s) => (
-          <div className="mx-tiles">
+          <dl className="mx-tiles">
             <StatTile label={t("Patterns")} value={num(s.total_patterns)} note={`${s.window_days} ${t("days")}`} />
             <StatTile label={t("New anomalies")} value={num(s.new_anomalies)} />
             <StatTile label={t("Stable patterns")} value={num(s.stable_patterns)} />
             <StatTile label={t("Objects mined")} value={`${s.coverage_pct}%`} note={`${num(s.runs_total)} ${t("runs")}`} />
-          </div>
+          </dl>
         )}
       </Async>
       <Tabs idBase="mining" label={t("Mining results")} value={tab} onChange={setTab}
