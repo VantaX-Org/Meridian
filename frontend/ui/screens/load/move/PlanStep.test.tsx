@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { renderScreen } from "../test-utils";
 import { stubLayout } from "@/ui/testing/layout-stub";
 import { PlanStep } from "./PlanStep";
@@ -33,15 +33,26 @@ describe("PlanStep", () => {
     expect(document.body.textContent ?? "").not.toContain(String.fromCharCode(0xb7));
   });
 
-  it("shows what was cleaned and opens the review list", async () => {
+  it("shows what was cleaned and the configuration lists", async () => {
     route({ "GET /api/v1/migration/move/plans/p1": PLAN });
     renderScreen(<PlanStep planId="p1" onBack={() => undefined} onNext={() => undefined} />);
     expect(await screen.findByText("Cleaned automatically")).toBeTruthy();
-    expect(screen.getByText("Phone number format")).toBeTruthy();
+    expect(screen.getByText("SF-EC-002")).toBeTruthy();
+    expect(screen.getByText("1,520")).toBeTruthy();
     expect(screen.getByText(/still need review load with their current value/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Show the 7 records to review" }));
-    const dialog = await screen.findByRole("dialog");
-    expect(dialog.textContent).toContain("a@x");
-    expect(dialog.textContent).toContain("Email must be valid");
+    const lists = screen.getByRole("group", { name: "Configuration lists" });
+    expect(lists.textContent).toContain("company_code");
+    expect(lists.textContent).toContain("Company code");
+    expect(screen.getAllByText("Upsert").length).toBeGreaterThan(0);
+  });
+
+  it("says the plan is being made while it builds, and shows the reason when it fails", async () => {
+    route({ "GET /api/v1/migration/move/plans/p1": { ...PLAN, status: "building", waves: [] } });
+    const { unmount } = renderScreen(<PlanStep planId="p1" onBack={() => undefined} onNext={() => undefined} />);
+    expect(await screen.findByText("Making the plan")).toBeTruthy();
+    unmount();
+    route({ "GET /api/v1/migration/move/plans/p1": { ...PLAN, status: "failed", reason: "No full-history download" } });
+    renderScreen(<PlanStep planId="p1" onBack={() => undefined} onNext={() => undefined} />);
+    expect(await screen.findByText("No full-history download")).toBeTruthy();
   });
 });
