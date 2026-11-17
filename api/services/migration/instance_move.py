@@ -474,6 +474,209 @@ def person_batches(step: dict, records: list[tuple[str, dict]], size: int = BATC
     return batches
 
 
+# ── pilot sample and country scope ───────────────────────────────────────────
+
+PILOT_PER_CELL = 10
+PILOT_CLOSURE_CAP = 200
+EXCLUDED_COUNTRIES = ("ZMB",)  # out of scope: no country rules in the target tenant
+ACTIVE_STATUS = ("A", "U", "P", "S")  # EmpJob.emplStatus codes the EC rule pack treats as active
+_MANAGER_REFS = ("EmpJob.managerId", "EmpJobRelationships.relUserId")
+OUT_OF_SAMPLE = "manager outside pilot sample"
+OUT_OF_SCOPE = "manager in an excluded country"
+
+
+def band(grade) -> str:
+    """Sample band of a payGrade: the leading letter A-F (AA -> A), G, H, APPR (every APPR_*), "No Grade",
+    UNGRADED when blank; any other grade is its own band."""
+    g = "" if grade is None or (isinstance(grade, float) and pd.isna(grade)) else str(grade).strip()
+    if not g:
+        return "UNGRADED"
+    if g.lower() == "no grade":
+        return "No Grade"
+    if g.upper().startswith("APPR"):
+        return "APPR"
+    return g[0].upper() if g[0].upper() in "ABCDEFGH" else g
+
+
+def _frame(frames, name: str) -> pd.DataFrame:
+    from checks.frames import _decoded
+    return _decoded(frames.frames[name])
+
+
+def _prop_cols(frames, dictionary, name: str) -> dict[str, str]:
+    """``Entity.prop`` -> column of frame ``name`` (dictionary fields, or the SFRAW_ columns)."""
+    if name.startswith(RAW_PREFIX):
+        ent, pre = name[len(RAW_PREFIX):], name + "."
+        return {f"{ent}.{c[len(pre):]}": c for c in frames.frames[name].columns if c.startswith(pre)}
+    tb = dictionary.table(name)
+    if tb is None:
+        return {}
+    return {f"{ep[0]}.{ep[1]}": f"{name}.{f.name}" for f in tb.fields.values() if (ep := _entity_prop(f.source))}
+
+
+def person_column(name: str, frames, dictionary) -> Optional[str]:
+    """The person column of a person-keyed frame, else None. A dictionary table is person-keyed when a key
+    field is a person column or comes from userId/personIdExternal; a raw set when its $metadata key
+    (``__raw_key__``) holds one of those, or, with no key written, when it carries one of them."""
+    df = frames.frames[name]
+    if name.startswith(RAW_PREFIX):
+        pc = _prop_cols(frames, dictionary, name)
+        ent = name[len(RAW_PREFIX):]
+        if "__raw_key__" in df.columns:
+            first = next((str(k) for k in _frame(frames, name)["__raw_key__"] if k), "")
+            parts = {p.split("=", 1)[0] for p in first.split("|") if "=" in p}
+        else:  # no key written: conservative, any person property makes it person data
+            parts = set(_RAW_PERSON_PROPS)
+        return next((pc[f"{ent}.{p}"] for p in _RAW_PERSON_PROPS if p in parts and f"{ent}.{p}" in pc), None)
+    tb = dictionary.table(name)
+    if tb is None:
+        return None
+    for f in tb.fields.values():
+        ep = _entity_prop(f.source)
+        if f.key and (f.name in _PERSON_COLS or (ep and ep[1] in _RAW_PERSON_PROPS)):
+            return f"{name}.{f.name}"
+    return None
+
+
+def _strs(s: pd.Series) -> pd.Series:
+    return s.astype("string").str.strip()
+
+
+def _people(frames, dictionary) -> dict[str, dict]:
+    """userId -> {country, grade, status} from the EmpJob history: country and status of the latest record
+    (latest non-blank), grade the latest non-blank payGrade."""
+    names = sorted((n for n in frames.frames
+                    if {"EmpJob.userId", "EmpJob.payGrade"} <= set(_prop_cols(frames, dictionary, n))),
+                   key=lambda n: n.startswith(RAW_PREFIX))
+    if not names:
+        return {}
+    pc = _prop_cols(frames, dictionary, names[0])
+    props = ("userId", "payGrade", "countryOfCompany", "emplStatus", "startDate", "seqNumber")
+    df = _frame(frames, names[0])
+    d = pd.DataFrame({p: df[pc[f"EmpJob.{p}"]] for p in props if pc.get(f"EmpJob.{p}") in df.columns})
+    order = [c for c in ("startDate", "seqNumber") if c in d]
+    if "startDate" in d:
+        d["startDate"] = pd.to_datetime(d["startDate"], errors="coerce", utc=True)
+    if "seqNumber" in d:
+        d["seqNumber"] = pd.to_numeric(d["seqNumber"], errors="coerce")
+    d = d.sort_values(order, kind="stable", na_position="first") if order else d
+    out = {}
+    for uid, g in d.groupby(_strs(d["userId"]), sort=True):
+        def last(p):
+            s = _strs(g[p]) if p in g else pd.Series([], dtype="string")
+            s = s[s.notna() & (s != "")]
+            return s.iloc[-1] if len(s) else None
+        out[str(uid)] = {"country": last("countryOfCompany"), "grade": last("payGrade"), "status": last("emplStatus")}
+    return out
+
+
+def _pairs(frames, dictionary, a: str, b: tuple[str, ...]) -> list[tuple[str, str]]:
+    """(value of prop ``a``, value of a prop in ``b``) per row, over every frame with both from one entity."""
+    out = []
+    for n in frames.frames:
+        pc = _prop_cols(frames, dictionary, n)
+        for key, col in pc.items():
+            ent, prop = key.split(".", 1)
+            src = pc.get(f"{ent}.{a}") if key in b or prop in b else None
+            if src is None or src == col:
+                continue
+            df = _frame(frames, n)
+            if src in df.columns and col in df.columns:
+                x, y = _strs(df[src]), _strs(df[col])
+                out += [(u, v) for u, v in zip(x, y) if pd.notna(u) and pd.notna(v) and u and v]
+    return out
+
+
+def move_scope(frames, dictionary, sample: Optional[dict] = None,
+               exclude_countries: Iterable[str] = EXCLUDED_COUNTRIES) -> dict:
+    """Which users a move loads. Users whose latest country is excluded never load. Without ``sample`` every
+    other user loads (full move); with one, ``per_cell`` users per (country, band, status) cell by userId,
+    plus the managers they reference (managerId, relUserId), transitively, at most ``closure_cap`` added."""
+    people = _people(frames, dictionary)
+    excl = {str(c) for c in exclude_countries or ()}
+    excluded = Counter(p["country"] for p in people.values() if p["country"] in excl)
+    out_users = {u for u, p in people.items() if p["country"] in excl}
+    scope = {"pilot": bool(sample), "excluded_countries": sorted(excl), "excluded": dict(excluded),
+             "excluded_lines": [f"{c} excluded (out of scope): {n} users" for c, n in sorted(excluded.items())],
+             "known": sorted(people), "keep": None, "drop": sorted(out_users)}
+    if not sample:
+        return scope
+    per_cell = int(sample.get("per_cell", PILOT_PER_CELL))
+    cap = int(sample.get("closure_cap", PILOT_CLOSURE_CAP))
+    active = {str(a) for a in sample.get("active_status", ACTIVE_STATUS)}
+    cells: dict[str, list[str]] = {}
+    for u, p in sorted(people.items()):
+        if u in out_users:
+            continue
+        status = "active" if p["status"] in active else "terminated/other"
+        cells.setdefault(f"{p['country'] or '(none)'}|{band(p['grade'])}|{status}", []).append(u)
+    picked = sorted(u for us in cells.values() for u in us[:per_cell])
+    refs: dict[str, set] = {}
+    for u, m in _pairs(frames, dictionary, "userId", _MANAGER_REFS):
+        refs.setdefault(u, set()).add(m)
+    seen, frontier, added = set(picked), picked, []
+    while frontier and len(added) < cap:
+        nxt = sorted({m for u in frontier for m in refs.get(u, ()) if m in people and m not in seen
+                      and m not in out_users})[:cap - len(added)]
+        added += nxt
+        seen |= set(nxt)
+        frontier = nxt
+    scope.update(per_cell=per_cell, closure_cap=cap, active_status=sorted(active),
+                 cells={c: min(len(us), per_cell) for c, us in sorted(cells.items())},
+                 sampled=len(picked), closure_added=added, keep=sorted(seen))
+    return scope
+
+
+def apply_scope(frames, dictionary, scope: dict) -> tuple[Any, dict]:
+    """Frames holding only the scope's users in person-keyed tables (every history row of each), every other
+    table in full. A manager reference to a known user outside the scope is blanked and listed for review;
+    no row of a table that is not person-keyed is dropped. Returns (frames, report)."""
+    import copy
+
+    from checks.base import record_keys
+
+    keep, drop = scope.get("keep"), set(scope.get("drop") or ())
+    report = {k: v for k, v in scope.items() if k not in ("known", "keep", "drop")}
+    report.update(users=len(keep) if keep is not None else len(scope.get("known") or ()) - len(drop),
+                  blanked=0, needs_review=[])
+    if keep is None and not drop:
+        return frames, report
+    persons = dict(_pairs(frames, dictionary, "userId", ("personIdExternal",)))
+    keep_ids = None if keep is None else set(keep) | {persons[u] for u in keep if u in persons}
+    drop_ids = drop | {persons[u] for u in drop if u in persons}
+    outside = (set(scope["known"]) - set(keep)) if keep is not None else drop
+    reason = OUT_OF_SAMPLE if keep is not None else OUT_OF_SCOPE
+    out = copy.copy(frames)
+    out.frames = dict(frames.frames)
+    out.reset_caches()
+    out.flat = frames.flat
+    for name in frames.frames:
+        pcol = person_column(name, frames, dictionary)
+        mcols = [c for k, c in _prop_cols(frames, dictionary, name).items() if k in _MANAGER_REFS]
+        if pcol is None and not mcols:
+            continue
+        df = _frame(frames, name)
+        if pcol in df.columns:
+            v = _strs(df[pcol])
+            mask = v.isin(keep_ids).fillna(False) if keep_ids is not None else ~v.isin(drop_ids).fillna(False)
+            df = df[mask.astype(bool)]
+        bad = {c: _strs(df[c]).isin(outside).fillna(False).astype(bool) for c in mcols if c in df.columns}
+        if not any(b.any() for b in bad.values()) and len(df) == len(frames.frames[name]):
+            continue
+        df = df.copy()
+        if any(b.any() for b in bad.values()):
+            keys = (df["__raw_key__"].astype("string") if "__raw_key__" in df.columns else
+                    record_keys(df, [f"{name}.{k}" for k in dictionary.keys(name) if f"{name}.{k}" in df.columns]))
+            for c, b in bad.items():
+                report["needs_review"] += [{"table": name, "record_key": k, "field": c.split(".", 1)[1],
+                                            "value": val, "reason": reason}
+                                           for k, val in zip(keys[b], df.loc[b, c])]
+                df.loc[b, c] = None
+        out.frames[name] = df.reset_index(drop=True)
+    report["blanked"] = len(report["needs_review"])
+    return out, report
+
+
 # ── config lists ─────────────────────────────────────────────────────────────
 
 
@@ -491,8 +694,8 @@ def _list_keys(name: str, dictionary=None) -> list[str]:
 
 def config_diff(source_lists: dict[str, list[dict]], target_lists: dict[str, list[dict]],
                 dictionary=None) -> dict[str, dict]:
-    """Per list: values already in the target (present), values to create (create) and values whose label or
-    status differ in the target (conflict, skipped). Only values the target lacks are planned; nothing in the
+    """Per list: values already in the target, matched by external code (present, listed in mapped), values to
+    create (create) and values whose label or status differ in the target (conflict, skipped). Only values the target lacks are planned; nothing in the
     target is overwritten."""
     out = {}
     for name, rows in source_lists.items():
@@ -509,7 +712,8 @@ def config_diff(source_lists: dict[str, list[dict]], target_lists: dict[str, lis
                     if str(r.get(c) or "") != str(t.get(c) or "")}
             (conflict.append({"key": dict(zip(keys, k)), "differs": diff}) if diff else present.append(r))
         out[name] = {"present": len(present), "create": len(create), "conflict": len(conflict),
-                     "create_values": create, "conflicts": conflict, "keys": keys,
+                     "mapped": [{c: r.get(c) for c in keys} for r in present], "create_values": create,
+                     "conflicts": conflict, "keys": keys,
                      "target_keys": sorted(list(k) for k in tgt),
                      "target_codes": sorted([list(k) for k in tgt] + [[str(r.get(c)) for c in keys] for r in create])}
     return out

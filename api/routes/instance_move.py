@@ -26,6 +26,13 @@ router = APIRouter(prefix="/api/v1/migration/move", tags=["migration"], dependen
 _SYSTEM_COLS = "id, name, system_type, host, client, sysnr, base_url, company_id, migration_target"
 
 
+class SampleBody(BaseModel):
+    """Pilot: person data for ``per_cell`` users per (country, pay-grade band, status) cell plus their managers."""
+    per_cell: int = Field(default=im.PILOT_PER_CELL, ge=1)
+    closure_cap: int = Field(default=im.PILOT_CLOSURE_CAP, ge=0)
+    active_status: list[str] = Field(default_factory=lambda: list(im.ACTIVE_STATUS), min_length=1)
+
+
 class PlanBody(BaseModel):
     source_system_id: uuid.UUID
     target_system_id: uuid.UUID
@@ -34,6 +41,9 @@ class PlanBody(BaseModel):
     id_map_upload_id: Optional[uuid.UUID] = None
     # A move always carries every record ever held; "full" is the only value and the default.
     history: Literal["full"] = "full"
+    sample: Optional[SampleBody] = None  # None: full move
+    # countries whose person records are out of scope (latest EmpJob.countryOfCompany); never loaded
+    exclude_countries: list[str] = Field(default_factory=lambda: list(im.EXCLUDED_COUNTRIES))
 
 
 class RunBody(BaseModel):
@@ -70,7 +80,9 @@ def _plan_out(row: dict) -> dict:
     out = {"id": str(row["id"]), "source": str(row["source_system_id"]), "target": str(row["target_system_id"]),
            "modules": list(row["modules"]), "mode": row["mode"], "waves": body["waves"], "unplaced": body["unplaced"],
            "status": plan.get("status") or ("ready" if plan else "building")}
-    for k in ("reason", "config"):
+    out["sample"] = row.get("sample")
+    out["exclude_countries"] = row.get("exclude_countries")
+    for k in ("reason", "config", "scope", "target_config"):
         if plan.get(k):
             out[k] = plan[k]
     pre = row.get("preflight") or {}
@@ -90,12 +102,14 @@ async def create_plan(body: PlanBody, request: Request, db: AsyncSession = Depen
         raise HTTPException(status_code=422, detail="Source and target are the same system.")
     pid = str(uuid.uuid4())
     await db.execute(text("""INSERT INTO move_plans (id, tenant_id, source_system_id, target_system_id, modules, mode,
-                                                     id_map_upload_id, created_by)
-                             VALUES (:id, :t, :s, :g, :m, :mode, :idm, :u)"""),
+                                                     id_map_upload_id, created_by, sample, exclude_countries)
+                             VALUES (:id, :t, :s, :g, :m, :mode, :idm, :u, CAST(:smp AS jsonb), CAST(:exc AS jsonb))"""),
                      {"id": pid, "t": str(tenant.id), "s": str(body.source_system_id), "g": str(body.target_system_id),
                       "m": body.modules, "mode": body.mode,
                       "idm": str(body.id_map_upload_id) if body.id_map_upload_id else None,
-                      "u": current_user_id(request)})
+                      "u": current_user_id(request),
+                      "smp": body.sample.model_dump_json() if body.sample else None,
+                      "exc": json.dumps(body.exclude_countries)})
     await db.commit()
     await _queue_plan(db, tenant, body, pid)
     return _plan_out(await _one(db, "SELECT * FROM move_plans WHERE id = :i", i=pid))
