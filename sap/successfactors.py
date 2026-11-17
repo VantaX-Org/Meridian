@@ -233,6 +233,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
             params["$select"] = ",".join(select)
         if expand:
             params["$expand"] = ",".join(expand)
+        filter_expr = entity_filter(entity_set, filter_expr)
         if filter_expr:
             params["$filter"] = filter_expr
         if from_date:
@@ -627,6 +628,17 @@ def entity_model(edmx: str, entity: str) -> tuple[set[str], dict[str, set[str] |
 # Key properties that make an entity effective dated: one record per key per validity start.
 HISTORY_DATES = ("effectiveStartDate", "startDate")
 FULL_HISTORY = {"from_date": "1900-01-01", "to_date": "9999-12-31"}
+
+# SF returns only active users unless the status is filtered: t/f active/inactive, T/F their
+# password-protected forms, e/d active/inactive external users.
+USER_STATUS_FILTER = "status in 't','f','T','F','e','d'"
+
+
+def entity_filter(entity_set: str, filter_expr: str | None) -> str | None:
+    """The $filter to send: a User read always carries every status, combined with the caller's filter."""
+    if entity_set != "User" or (filter_expr and "status" in filter_expr):
+        return filter_expr
+    return f"({filter_expr}) and {USER_STATUS_FILTER}" if filter_expr else USER_STATUS_FILTER
 
 
 def entity_keys(edmx: str, entity: str) -> list[str] | None:
