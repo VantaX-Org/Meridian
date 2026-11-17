@@ -6,13 +6,25 @@ import { useBatches } from "@/lib/v2/approvals-queries";
 import { useRecordLinks, useWorkSummary } from "@/lib/v2/work-queries";
 import { fixed } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
+import { useCanvasRun } from "@/lib/v2/scope";
 import type { SheetDef } from "@/ui/kit/SheetHost";
 import { Button, DataTable, EmptyState, FieldChip, Skeleton, StatTile } from "@/ui/kit";
 import { BatchDetail } from "./Approvals";
 import { RecordDetail } from "./RecordDetail";
 import { day } from "./shared";
 
-type RecArg = { module: string; recordKey: string };
+type RecArg = { module: string; recordKey: string; version?: string };
+
+/**
+ * The record sheet. A caller passes { module, recordKey, version }; the deep link `?open=record:<module>:<key>` passes the
+ * bare id, and the run then comes from the address (`?run=` or the run page). With neither it reads the latest run.
+ */
+export function RecordSheet({ arg }: { arg: unknown }) {
+  const run = useCanvasRun();
+  const i = typeof arg === "string" ? arg.indexOf(":") : -1;
+  const a: RecArg = typeof arg === "string" ? { module: arg.slice(0, Math.max(i, 0)), recordKey: arg.slice(i + 1) } : (arg as RecArg);
+  return <RecordDetail module={a.module} recordKey={a.recordKey} version={a.version ?? run ?? undefined} />;
+}
 
 function Decisions({ module, recordKey }: RecArg) {
   const rec = useRecordLinks(module, recordKey, null);
@@ -86,7 +98,7 @@ function WhatIf() {
 }
 
 export const workSheets: Record<string, SheetDef> = {
-  record: { get label() { return t("Record"); }, render: (a) => <RecordDetail {...(a as RecArg)} /> },
+  record: { get label() { return t("Record"); }, render: (a) => <RecordSheet arg={a} /> },
   decisions: { get label() { return t("Decisions"); }, render: (a) => <Decisions {...(a as RecArg)} /> },
   approve: { get label() { return t("Approve a batch"); }, render: (a) => <Approve id={String((a as { id: string }).id)} /> },
   whatif: { get label() { return t("What if"); }, render: () => <WhatIf /> },
