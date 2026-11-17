@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { downloadCleansingLog, downloadErrors, moveKeys, RUN_DONE, runAction, startRun, usePlan, useRun, type MovePlan } from "@/lib/api/next/move";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getSystemsExtended } from "@/lib/api/v2/runs";
+import { apiDetail, downloadCleansingLog, downloadErrors, moveKeys, RUN_DONE, runAction, startRun, usePlan, useRun, type RunCleansing, type Unfixable } from "@/lib/api/next/move";
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Confirm, DataTable, FieldChip, StatTile, type Column } from "@/ui/kit";
 import { WaveProgress } from "./charts";
 
 interface Row { key: string; wave: number; entity: string; sent: number; ok: number; failed: number; error_rate: number }
 
-const targetName = (p?: MovePlan) => (!p ? "" : typeof p.target === "string" ? p.target : p.target.name ?? p.target.id);
 const num = (n: number) => n.toLocaleString("en");
 
 const cols = (): Column<Row>[] => [
@@ -21,10 +21,34 @@ const cols = (): Column<Row>[] => [
   { key: "error_rate", label: t("Error rate"), align: "end", render: (r) => <span className="mx-num">{`${Math.round(r.error_rate * 1000) / 10}%`}</span>, sort: (r) => r.error_rate },
 ];
 
+const unfixCols = (): Column<Unfixable & { k: string }>[] => [
+  { key: "rule", label: t("Rule"), render: (r) => <FieldChip code={r.rule} description={r.reason} />, sort: (r) => r.rule },
+  { key: "field", label: t("Field"), render: (r) => <FieldChip code={r.field} /> },
+  { key: "record_key", label: t("Record"), render: (r) => <span className="mx-num">{r.record_key}</span> },
+  { key: "current_value", label: t("Value loaded"), render: (r) => r.current_value ?? t("empty") },
+];
+
+function RunCleansingCard({ c }: { c: RunCleansing }) {
+  const fixed = Object.values(c.summary?.cells_fixed_per_rule ?? {}).reduce((a, n) => a + n, 0);
+  const left = (c.unfixable ?? []).map((u, i) => ({ ...u, k: `${i}` }));
+  return (
+    <Card title={t("Cleaned in this run")} sub={t("Every rule fix was applied. Records that could not be fixed loaded with their current value.")}>
+      <div className="mx-col">
+        <dl className="mx-tiles">
+          <StatTile label={t("Cells fixed")} value={num(fixed)} />
+          <StatTile label={t("Could not be fixed")} value={num(left.length)} />
+        </dl>
+        {left.length ? <DataTable columns={unfixCols()} rows={left.slice(0, 50)} rowKey={(r) => r.k} label={t("Could not be fixed")} /> : null}
+      </div>
+    </Card>
+  );
+}
+
 /** Step 5: a dry run first, then the real load behind a confirm sheet. Progress is read from the run every 2 seconds. */
 export function MoveLoad({ planId, runId, onRun, onBack, onNext }: { planId: string; runId: string | null; onRun: (id: string) => void; onBack: () => void; onNext: () => void }) {
   const qc = useQueryClient();
   const plan = usePlan(planId).data;
+  const systems = useQuery({ queryKey: moveKeys.systems, queryFn: getSystemsExtended }).data ?? [];
   const run = useRun(runId);
   const r = run.data;
   const [ask, setAsk] = useState(false);
@@ -33,13 +57,16 @@ export function MoveLoad({ planId, runId, onRun, onBack, onNext }: { planId: str
 
   const planned: Record<string, number> = {};
   plan?.waves.forEach((w) => w.steps.forEach((s) => { planned[s.entity] = s.rows + s.history_rows; }));
-  const rows: Row[] = (r?.waves ?? []).flatMap((w) => w.steps.map((s) => ({ key: `${w.wave}:${s.entity}`, wave: w.wave, ...s })));
+  const live0 = !!r && !RUN_DONE.includes(r.status);
+  const rows: Row[] = live0 && r?.progress?.length ? r.progress.map((s) => ({ key: s.entity, wave: 0, ...s })) : (r?.waves ?? []).flatMap((w) => w.steps.map((s) => ({ key: `${w.wave}:${s.entity}`, wave: w.wave, ...s })));
   const failed = rows.reduce((a, x) => a + x.failed, 0);
   const done = !!r && RUN_DONE.includes(r.status);
   const live = !!r && !done;
   const dryOk = !!r && r.dry_run && r.status === "completed";
   const realOk = !!r && !r.dry_run && done;
-  const name = targetName(plan);
+  const stopping = r?.status === "stopping";
+  const name = systems.find((x) => x.id === plan?.target)?.name ?? plan?.target ?? "";
+  const err = start.error ?? act.error;
 
   return (
     <div className="mx-col">
@@ -58,17 +85,18 @@ export function MoveLoad({ planId, runId, onRun, onBack, onNext }: { planId: str
           <div className="mx-actions">
             <Button onClick={onBack} disabled={live}>{t("Back")}</Button>
             {!r || (done && !realOk && !dryOk) ? <Button variant="primary" disabled={start.isPending} onClick={() => start.mutate(true)}>{t("Run a dry run")}</Button> : null}
-            {live ? <Button onClick={() => act.mutate("stop")}>{t("Stop")}</Button> : null}
+            {live ? <Button disabled={stopping || act.isPending} onClick={() => act.mutate("stop")}>{stopping ? t("Stopping after this batch") : t("Stop")}</Button> : null}
             {done && r?.status !== "completed" ? <Button onClick={() => act.mutate("resume")}>{t("Resume")}</Button> : null}
             {done && failed > 0 ? <Button onClick={() => act.mutate("retry-failed")}>{t("Retry failed")}</Button> : null}
             {runId && plan?.mode === "cleansed" ? <Button onClick={() => downloadCleansingLog(runId)}>{t("Download cleansing log (CSV)")}</Button> : null}
             {failed > 0 && runId ? <Button onClick={() => downloadErrors(runId)}>{t("Download errors (CSV)")}</Button> : null}
             {realOk ? <Button variant="primary" onClick={onNext}>{t("Reconcile")}</Button> : null}
           </div>
-          {start.isError || act.isError ? <p className="mx-field-e" role="alert">{t("That did not work. Nothing was changed.")}</p> : null}
+          {err ? <p className="mx-field-e" role="alert">{apiDetail(err) ?? t("That did not work. Nothing was changed.")}</p> : null}
         </div>
       </Card>
       {rows.length ? <Card title={t("By entity")}><DataTable columns={cols()} rows={rows} rowKey={(x) => x.key} label={t("By entity")} /></Card> : null}
+      {r?.cleansing ? <RunCleansingCard c={r.cleansing} /> : null}
       {dryOk ? (
         <Card title={t("Dry run passed")} sub={t("Nothing has been written yet. The next button writes real data.")}>
           <div className="mx-actions"><Button variant="primary" onClick={() => setAsk(true)}>{t("Load into {name}", { name })}</Button></div>
