@@ -33,7 +33,9 @@ export function useObjectRun(systemSeg: string, moduleSeg: string): ObjectRun {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const urlRun = params.get("run");
+  // An old link's `?as_of=` names the same run as `?run=`; it is rewritten below.
+  const asOf = params.get("as_of");
+  const urlRun = params.get("run") ?? asOf;
   const mod = moduleFromSlug(moduleSeg);
   const landscape = useLandscape(null);
   const system = landscape.data ? findSystem(landscape.data.systems, decodeURIComponent(systemSeg)) : undefined;
@@ -66,6 +68,14 @@ export function useObjectRun(systemSeg: string, moduleSeg: string): ObjectRun {
     const qs = params.toString();
     router.replace(`${pathname.replace(`/o/${ANY_SYSTEM}/`, `/o/${systemSlug(holder.name)}/`)}${qs ? `?${qs}` : ""}`, { scroll: false });
   }, [holder, params, router, pathname]);
+
+  useEffect(() => {
+    if (!asOf) return;
+    const q = new URLSearchParams(params.toString());
+    q.delete("as_of");
+    if (!q.get("run")) q.set("run", asOf);
+    router.replace(`${pathname}?${q.toString()}`, { scroll: false });
+  }, [asOf, params, router, pathname]);
 
   useEffect(() => {
     if (!urlRun && recalled) router.replace(hrefWith(pathname, { run: recalled }), { scroll: false });

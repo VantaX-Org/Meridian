@@ -1,5 +1,7 @@
 "use client";
 
+import { useBatches } from "@/lib/v2/approvals-queries";
+import { BATCH_STATUS_LABEL, type BatchStatus } from "@/lib/v2/batches";
 import { useWorkGroups } from "@/lib/v2/object-queries";
 import { withFixture, useFixture } from "@/lib/api/v2/fixture";
 import { t } from "@/lib/v2/i18n";
@@ -8,13 +10,17 @@ import { Button, Card, DataTable, EmptyState, ErrorState, FieldChip, Skeleton, S
 import { compactCount } from "@/ui/screens/object/format";
 import type { ObjectRun } from "@/ui/screens/object/useObjectRun";
 import { sevLabel } from "./Records";
+import { Lead, type Tone } from "./Lead";
 import { useTabChat } from "./TabFrame";
+
+const BATCH_STATES: [BatchStatus, Tone | undefined][] = [["draft", "warn"], ["approved", undefined], ["awaiting_load", undefined], ["exported", "good"]];
 
 /** The fixes the object needs, grouped by rule, with how many already carry a proposed value. */
 export function Fixes({ o, system, module }: { o: ObjectRun; system: string; module: string }) {
   const fx = useFixture();
   const q = useWorkGroups(module, o.runId, !o.runsLoading);
   const rows = q.data ?? [];
+  const batches = useBatches().rows.filter((b) => b.modules.includes(module));
   const open = rows.reduce((n, r) => n + r.open, 0);
   const proposed = rows.reduce((n, r) => n + r.proposed, 0);
   useTabChat(system, module, "fixes", o.label, [t("Where should we start fixing?")], () => {
@@ -32,6 +38,8 @@ export function Fixes({ o, system, module }: { o: ObjectRun; system: string; mod
   ];
   return (
     <div className="mx-col">
+      <Lead tab="fixes" title={t("Fix batches by state")} sentence={t("{n} fix batches hold records of this object.", { n: batches.length })}
+        bars={BATCH_STATES.map(([s, tone]) => ({ id: s, label: BATCH_STATUS_LABEL[s], value: batches.filter((b) => b.status === s).length, tone }))} />
       <dl className="mx-tiles">
         <StatTile label={t("Open findings")} value={compactCount(open)} />
         <StatTile label={t("With a proposed value")} value={compactCount(proposed)} bar={open ? (100 * proposed) / open : 0} barTone="pass" />

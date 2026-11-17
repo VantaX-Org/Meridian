@@ -220,3 +220,8 @@
 .mx-root .mx-skip a { position: absolute; inset-inline-start: var(--mx-s3); inset-block-start: var(--mx-s3); z-index: 100; padding: var(--mx-s2) var(--mx-s3); border-radius: var(--mx-r-control); background: var(--mx-surface); color: var(--mx-ink); transform: translateY(-200%); }
 .mx-root .mx-skip a:focus { transform: none; }
 .mx-root .mx-main:focus { outline: none; }
+
+/* Object overview: the score receipt and the old-run action gate. */
+.mx-root .mx-receipt { margin-block-start: var(--mx-s3); display: grid; gap: var(--mx-s2); }
+.mx-root .mx-receipt > summary { cursor: pointer; color: var(--mx-ink-2); }
+.mx-root .mx-gate { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
