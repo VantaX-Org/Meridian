@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SheetHost } from "./SheetHost";
+import { SheetHost, useSheet } from "./SheetHost";
 import { ToastHost } from "./Toast";
 
 vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
@@ -10,6 +10,23 @@ const land = (search: string) => {
   window.history.replaceState({}, "", `/x${search}`);
   return render(<ToastHost><SheetHost sheets={sheets} closeLabel="Close">page</SheetHost></ToastHost>);
 };
+
+function Opener() {
+  const s = useSheet();
+  return <button type="button" onClick={() => s.open("rule", "R1")}>go</button>;
+}
+
+describe("SheetHost", () => {
+  it("opens a registered sheet with its argument and closes it", () => {
+    window.history.replaceState({}, "", "/x");
+    render(<SheetHost closeLabel="Close" sheets={{ rule: { label: "Rule", render: (a) => <p>rule {String(a)}</p> } }}><Opener /></SheetHost>);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByText("go"));
+    expect(screen.getByRole("dialog", { name: "Rule" }).textContent).toContain("rule R1");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
 
 describe("SheetHost ?open deep link", () => {
   beforeEach(async () => { (await import("@/ui/testing/nav-store")).replace.mockClear(); });
