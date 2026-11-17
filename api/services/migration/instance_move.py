@@ -4,10 +4,12 @@ Every function here is pure. The connector, the status store and the check runne
 worker drives a real target and the tests drive a mocked one. Entity and property names come only from the
 data dictionary (``Field.source`` is ``Entity.property``) or from the target's $metadata, never from code.
 
-Waves for SuccessFactors follow the Employee Central import order:
-  0 picklists, MDF config and Foundation; 1 Position; 2 User; 3 person; 4 employment;
-  5 job history, relationships, compensation and pay; 6 other modules.
-SAP objects follow the DDIC load plan (``load_plan.build_plan``) as waves 7 onwards.
+SuccessFactors waves are ``SF_MOVE_STAGES`` (index = wave): picklists and MDF config, Foundation in check-table
+order, job architecture, Position, User, person, employment, job history (two passes), compensation and pay,
+cust_ MDF, time config, time data, PMGM and development, recruiting, onboarding, workflow history, attachments.
+Dictionary tables load through their mapped fields; every other set of a stage is a raw full-history copy
+(``SFRAW_<set>``, every property the tenant returns). Effective-dated rows load oldest first per key.
+SAP objects follow the DDIC load plan (``load_plan.build_plan``) as waves ``SAP_WAVE_BASE`` onwards.
 """
 from __future__ import annotations
 
@@ -20,27 +22,90 @@ from typing import Any, Callable, Iterable, Optional, Protocol
 
 import pandas as pd
 
-from api.services.migration.load_plan import OWNED_TABLES, build_plan
+from api.services.migration.load_plan import EC_LOAD_ORDER, OWNED_TABLES, build_plan
 
-WAVE_LABELS = {
-    0: "Picklists, MDF config and Foundation",
-    1: "Position",
-    2: "User",
-    3: "Person",
-    4: "Employment",
-    5: "Job history, relationships, compensation and pay",
-    6: "Other modules",
+_EC = ("employee_central",)
+# (label, modules whose move extracts the stage's raw sets, entity sets in load order). A trailing * is a family.
+SF_MOVE_STAGES: tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...] = (
+    ("Picklists and MDF config", _EC, ("PickListV2", "PickListValueV2")),
+    ("Foundation", _EC, (
+        "FOCompany", "FOBusinessUnit", "FODivision", "FODepartment", "FOLocationGroup", "FOGeozone", "FOLocation",
+        "FOCorporateAddressDEFLT", "FOCostCenter", "FOJobFunction", "FOPayGrade", "FOJobCode", "FOPayRange",
+        "FOPayGroup", "FOFrequency", "FOPayComponent", "FOPayComponentGroup", "FOPayScaleType", "FOPayScaleArea",
+        "FOEventReason", "FOWfConfig", "FODynamicRole", "FoTranslation", "PayScaleType", "PayScaleArea",
+        "PayScaleGroup", "PayScaleLevel", "PayScalePayComponent", "JobClassificationCountry", "JobClassificationZAF",
+        "Bank")),
+    ("Job architecture", _EC, (
+        "FamilyEntity", "RoleEntity", "JobCodeMappingEntity", "CompetencyEntity", "RcmCompetency",
+        "JobResponsibilityEntity", "RoleCompetencyMappingEntity", "JobDescTemplate", "JobProfile",
+        "JobProfileLocalizedData", "JobDescSection", "JobResponsibilityContent")),
+    ("Position", _EC, ("Position",)),
+    ("User", _EC, ("User", "UserAccount")),
+    ("Person", _EC, (
+        "PerPerson", "PersonKey", "PerPersonal", "PerGlobalInfo*", "PerAddressDEFLT", "PerPhone", "PerEmail",
+        "PerNationalId", "PerSocialAccount", "PerPersonRelationship", "PerEmergencyContacts")),
+    ("Employment", _EC, ("EmpEmployment", "EmpGlobalAssignment", "EmpWorkPermit")),
+    ("Job history (two passes)", _EC, (
+        "EmpJob", "EmpJobRelationships", "SecondaryAssignments", "EmpEmploymentTermination", "HireDateChange")),
+    ("Compensation, pay and deductions", ("employee_central", "compensation", "benefits", "payroll_integration"), (
+        "EmpCompensation", "EmpPayCompRecurring", "EmpPayCompNonRecurring", "PaymentInformationV3",
+        "PaymentInformationDetailV3", "PaymentInformationDetailV3ZAF", "RecurringDeduction",
+        "RecurringDeductionItem", "BenefitEnrollment")),
+    ("cust_ MDF", _EC, (
+        "cust_birthday", "cust_customRetirement_Date", "cust_employeeRelationCase",
+        "cust_employeeRelationsCollection", "cust_COVID_19_VACCINE_TRACKING", "cust_HEALTH_STATUS_TRACKING",
+        "cust_JobClassificationBWA", "cust_JobClassificationNAM", "cust_JobClassificationMOZ", "cust_MedicalAid",
+        "cust_uniform", "cust_Pension", "cust_Union")),
+    ("Time config", ("time_attendance",), (
+        "TimeType", "TimeAccountType", "TimeTypeProfile", "HolidayCalendar", "Holiday", "HolidayAssignment",
+        "WorkSchedule", "WorkScheduleDayModelAssignment", "AvailableTimeType")),
+    ("Time data", ("time_attendance",), (
+        "TimeAccount", "TimeAccountDetail", "EmployeeTime", "EmployeeTimeCalendar", "EmployeeTimeSheetEntry")),
+    ("PMGM and development", ("performance_goals", "succession_planning"), (
+        "FormTemplate", "FormFolder", "FormHeader", "FormContent", "FormAuditTrail", "CompetencyContent", "Goal_1",
+        "Goal_2", "Goal_9", "Goal_10", "Goal_11", "SimpleGoal", "TalentRatings", "CalibrationSession",
+        "CalibrationSessionSubject", "TrendData_SysOverallPerformance", "TrendData_SysOverallObjective",
+        "TrendData_SysOverallPotential", "DevGoal_*", "SimpleDevGoal", "Background_*", "TalentPool",
+        "NominationTarget", "Successor")),
+    ("Recruiting", ("recruiting_onboarding",), (
+        "JobRequisition", "JobRequisitionLocale", "JobRequisitionPosting", "JobRequisitionOperator",
+        "JobRequisitionScreeningQuestion", "JobRequisitionFOLocation", "Candidate", "CandidateBackground_*",
+        "JobApplication", "JobApplicationQuestionResponse", "JobApplicationSnapshot_*", "JobApplicationComments",
+        "JobApplicationInterview", "InterviewIndividualAssessment", "InterviewOverallAssessment",
+        "JobApplicationAudit", "JobApplicationStatusAuditTrail", "JobReqFwdCandidates", "JobOffer",
+        "JobOfferApprover", "OfferLetter")),
+    ("Onboarding", ("recruiting_onboarding",), (
+        "ONB2Process", "ONB2ProcessTask", "ONB2ProcessTrigger", "ONB2ProcessUserTask", "OnboardingInfo",
+        "ONB2EquipmentActivity")),
+    ("Workflow history", _EC, (
+        "WfRequest", "WfRequestStep", "WfRequestComments", "WfRequestParticipator", "EMEvent", "EMEventAttribute",
+        "EMMonitoredProcess", "TodoEntryV2")),
+    ("Attachments", _EC, ("Attachment", "Photo")),
+)
+# Audit trails, snapshots, trend data, workflow and event history: the target API has no create for them, so they
+# go out as a read-only history archive (method history_import, exported, never upserted).
+SF_HISTORY_IMPORT = ("FormAuditTrail", "JobApplicationAudit", "JobApplicationStatusAuditTrail",
+                     "JobApplicationSnapshot_*", "TrendData_*", "WfRequest*", "EMEvent*", "EMMonitoredProcess",
+                     "TodoEntryV2")
+SF_FILE_LOAD = ("FormHeader", "FormContent")  # forms are created by the form engine, not by OData upsert
+# Sets the BizX OData API does not serve on this tenant: stated in every plan, never assumed empty.
+SF_NOT_REACHABLE: dict[str, str] = {
+    "ExternalLearner*": "Learning (LMS) data is on the LMS odatav4 API, not BizX OData; not extracted",
+    "Achievement": "COE0025 Unsupported feature on this tenant",
+    "Activity": "COE0025 Unsupported feature on this tenant",
+    "ContinuousFeedback*": "COE0025 Unsupported feature on this tenant",
+    "CPM*": "COE0025 Unsupported feature on this tenant (Continuous Performance Management)",
+    "Background_VarPayEmpHistData": "COE0020 permission error for the API user",
 }
-SAP_WAVE_BASE = 7
-_SF_WAVE = {
-    "POSITION": 1, "USERACCOUNT": 2,
-    **{t: 3 for t in ("PERINFO", "PER_GLOBAL_INFO", "PEREMAIL", "PERPHONE", "PERADDRESS", "PEREMERGENCY",
-                      "PERSOCIALACCOUNT")},
-    **{t: 4 for t in ("EMPEMPLOYMENT", "EMPGLOBALASSIGNMENT", "EMPWORKPERMIT")},
-    **{t: 5 for t in ("EMPJOBHIST", "EMPJOBRELATIONSHIPS", "PAYMENTINFO", "COMPINFO", "PAYCOMPNONREC")},
-}
+WAVE_LABELS = {i: label for i, (label, _, _) in enumerate(SF_MOVE_STAGES)}
+SAP_WAVE_BASE = len(SF_MOVE_STAGES)
+_OTHER_WAVE = 12  # an SF entity no stage names loads with PMGM and development
 _PERSON_COLS = ("USERID", "PERSON_ID", "USER_ID", "PERSON_ID_EXTERNAL")
 _EFFECTIVE_KEYS = ("START_DATE", "EFFECTIVE_DATE", "EFFECTIVESTARTDATE")
+_EFFECTIVE_PROPS = ("effectiveStartDate", "startDate")  # sap.successfactors.HISTORY_DATES
+_HISTORY_PARTS = {*_EFFECTIVE_KEYS, "EFFECTIVE_START_DATE", "SEQ_NUMBER", *_EFFECTIVE_PROPS, "seqNumber"}
+RAW_PREFIX = "SFRAW_"
+_RAW_PERSON_PROPS = ("userId", "personIdExternal")  # person keys of the BizX entities (sap/successfactors.py)
 _CHANGE_DOCS = ("CDHDR", "CDPOS")
 _PICKLIST = "PickListValueV2"
 _CLOUD_KEYS = {_PICKLIST: ["PickListV2_id", "externalCode"]}  # mirrors sap/config_loader._CLOUD_KEYS
@@ -103,6 +168,54 @@ def _rows(frames, table: str) -> tuple[int, int]:
     return n, (n - df[person].nunique()) if person else 0
 
 
+def _match(name: str, patterns: Iterable[str]) -> bool:
+    """``name`` is one of ``patterns``; a pattern ending in ``*`` matches by prefix."""
+    return any(name == p or (p.endswith("*") and name.startswith(p[:-1])) for p in patterns)
+
+
+def stage_of(entity: str) -> int:
+    """The SF_MOVE_STAGES wave an entity loads in; an entity no stage names loads with PMGM."""
+    return next((i for i, (_, _, sets) in enumerate(SF_MOVE_STAGES) if _match(entity, sets)), _OTHER_WAVE)
+
+
+def method_of(entity: str) -> str:
+    """history_import (read-only archive: audit trails, workflow, event history), file_load (forms) or upsert."""
+    if _match(entity, SF_HISTORY_IMPORT):
+        return "history_import"
+    return "file_load" if _match(entity, SF_FILE_LOAD) else "upsert"
+
+
+def not_reachable(entity: str) -> Optional[str]:
+    return next((why for p, why in SF_NOT_REACHABLE.items() if _match(entity, (p,))), None)
+
+
+def _effective(table, entity: str) -> Optional[str]:
+    """The dictionary field that dates one record of ``table`` (start or effective date), else None."""
+    key = next((k for k in table.keys if k in _EFFECTIVE_KEYS), None)
+    if key:
+        return key
+    return next((f.name for p, f in entity_fields(table, entity).items() if p in _EFFECTIVE_PROPS), None)
+
+
+def _order(steps: list[dict]) -> list[dict]:
+    """Topological order on check_table within one wave (Kahn), EC_LOAD_ORDER breaking ties. A cycle is cut
+    at the first table by EC_LOAD_ORDER: its references to tables not yet loaded go to a second pass."""
+    rank = {t: i for i, t in enumerate(EC_LOAD_ORDER)}
+    tie = {id(s): (rank.get(s["table"], len(rank)), s["table"]) for s in steps}
+    ents = {s["entity"] for s in steps}
+    need = {id(s): {r for r in s.pop("_refs").values() if r in ents and r != s["entity"]} for s in steps}
+    done: set[str] = set()
+    left, out = list(steps), []
+    while left:
+        ready = [s for s in left if need[id(s)] <= done] or [min(left, key=lambda s: tie[id(s)])]
+        nxt = min(ready, key=lambda s: tie[id(s)])
+        nxt["_late"] += sorted(p for p, r in nxt["_ref_props"].items() if r in ents and r not in done | {nxt["entity"]})
+        out.append(nxt)
+        left.remove(nxt)
+        done.add(nxt["entity"])
+    return out
+
+
 def _sf_steps(module: str, dictionary, frames, unplaced: list) -> list[dict]:
     out = []
     for t in OWNED_TABLES.get(module, []):
@@ -117,23 +230,65 @@ def _sf_steps(module: str, dictionary, frames, unplaced: list) -> list[dict]:
         for other in sorted({ep[0] for f in tb.fields.values() if (ep := _entity_prop(f.source))} - {ent}):
             unplaced.append({"module": module, "table": t, "entity": other,
                              "reason": f"fields of {other} sit on {t}; they load with no step of their own"})
-        wave = 0 if t.startswith("FO") else _SF_WAVE.get(t, 6)
-        effective = any(k in _EFFECTIVE_KEYS for k in tb.keys)
+        props = entity_fields(tb, ent)
+        refs = {p: f.check_table for p, f in props.items() if f.check_table and not f.key}
+        eff = _effective(tb, ent)
         rows, hist = _rows(frames, t)
-        out.append({"module": module, "table": t, "entity": ent, "wave": wave, "method": "upsert",
-                    "rows": rows, "history_rows": hist, "purge_type": "full" if effective else None,
-                    "pass": 1, "fields": None})
-        if t == "EMPJOBHIST":
-            mgr = next((p for p, f in entity_fields(tb, ent).items() if f.name == "MANAGER_ID"), None)
-            if mgr:
-                out[-1]["exclude"] = [mgr]
-                out.append({**out[-1], "pass": 2, "purge_type": None, "exclude": [],
-                            "fields": [*(entity_fields(tb, ent)[p].name for p in _key_props(tb, ent)), "MANAGER_ID"]})
+        out.append({"module": module, "table": t, "entity": ent, "wave": stage_of(ent), "method": method_of(ent),
+                    "rows": rows, "history_rows": hist, "purge_type": "full" if eff else None, "effective": eff,
+                    "pass": 1, "fields": None, "_refs": refs, "_ref_props": refs,
+                    # a reference to itself (parent division, manager) can only point at a record already loaded
+                    "_late": sorted(p for p, r in refs.items() if r == ent)
+                    + [p for p, f in props.items() if f.name == "MANAGER_ID"]})
     return out
+
+
+def _second_passes(steps: list[dict], dictionary) -> list[dict]:
+    """Pass-2 steps (keys plus the late references) for every step that held references back in pass 1."""
+    late = []
+    for s in steps:
+        fields = s.pop("_late", [])
+        s.pop("_ref_props", None)
+        if not fields or s["method"] != "upsert":
+            continue
+        props = entity_fields(dictionary.table(s["table"]), s["entity"])
+        s["exclude"] = fields
+        late.append({**s, "pass": 2, "purge_type": None, "exclude": [],
+                     "fields": list(dict.fromkeys([
+                         *(props[p].name for p in _key_props(dictionary.table(s["table"]), s["entity"])),
+                         *(props[p].name for p in fields), *([s["effective"]] if s.get("effective") else [])]))})
+    return late
 
 
 def _key_props(table, entity: str) -> list[str]:
     return [p for p, f in entity_fields(table, entity).items() if f.key]
+
+
+def _raw_steps(modules: list[str], covered: set[str], frames, unplaced: list) -> list[dict]:
+    """A step for every SF_MOVE_STAGES set of ``modules`` that no dictionary table loads: the whole entity
+    set as extracted (SFRAW_<set>, every property, every effective-dated record). A family (``X*``) expands
+    to the sets the extract found; the not-reachable sets are listed in the plan, never loaded."""
+    have = sorted(k[len(RAW_PREFIX):] for k in (frames.frames if frames is not None else {})
+                  if k.startswith(RAW_PREFIX))
+    out = []
+    for wave, (_, mods, sets) in enumerate(SF_MOVE_STAGES):
+        mod = next((m for m in modules if m in mods), None)
+        if mod is None:
+            continue
+        for pattern in sets:
+            names = [n for n in have if _match(n, (pattern,))] if pattern.endswith("*") else [pattern]
+            if not names:
+                unplaced.append({"module": mod, "entity": pattern,
+                                 "reason": "the entity family expands from the move extract; none extracted yet"})
+            for ent in names:
+                if ent in covered or not_reachable(ent):
+                    continue
+                df = frames.frames.get(RAW_PREFIX + ent) if frames is not None else None
+                out.append({"module": mod, "table": RAW_PREFIX + ent, "entity": ent, "wave": wave,
+                            "method": method_of(ent), "rows": 0 if df is None else len(df), "history_rows": 0,
+                            "purge_type": None, "effective": None, "pass": 1, "fields": None, "raw": True})
+                covered = covered | {ent}
+    return out
 
 
 def build_move_plan(modules: Iterable[str], dictionary, frames=None, columns_of=None,
@@ -144,9 +299,22 @@ def build_move_plan(modules: Iterable[str], dictionary, frames=None, columns_of=
     unplaced: list[dict] = []
     steps: list[dict] = []
     sap_modules = []
+    sf: list[dict] = []
+    sf_modules = []
     for m in modules:
         first = dictionary.table(OWNED_TABLES[m][0]) if OWNED_TABLES.get(m) else None
-        (steps.extend(_sf_steps(m, dictionary, frames, unplaced)) if _is_sf(first) else sap_modules.append(m))
+        if _is_sf(first):
+            sf_modules.append(m)
+            sf.extend(_sf_steps(m, dictionary, frames, unplaced))
+        else:
+            sap_modules.append(m)
+    by_wave: dict[int, list[dict]] = {}
+    for s in sf:
+        by_wave.setdefault(s["wave"], []).append(s)
+    for w in sorted(by_wave):
+        ordered = _order(by_wave[w])
+        steps += ordered + _second_passes(ordered, dictionary)  # pass 2 runs once the whole wave is in
+    steps += _raw_steps(sf_modules, {s["entity"] for s in sf}, frames, unplaced)
     if sap_modules:
         from checks.runner import get_required_columns
         lp = build_plan(sap_modules, dictionary, columns_of or get_required_columns)
@@ -176,12 +344,14 @@ def build_move_plan(modules: Iterable[str], dictionary, frames=None, columns_of=
         prev = sorted({s["entity"] for s in waves[w]})
         out.append({"wave": w, "label": WAVE_LABELS.get(w, f"SAP load step {w - SAP_WAVE_BASE}"), "steps": waves[w]})
     return {"modules": modules, "mode": mode, "waves": out, "unplaced": unplaced,
+            "not_reachable": [{"entity": p, "reason": why} for p, why in SF_NOT_REACHABLE.items()]
+            if sf_modules else [],
             "config": {k: {n: v[n] for n in ("present", "create", "conflict")} for k, v in (config_lists or {}).items()}}
 
 
 def public_plan(plan: dict) -> dict:
     """The plan as the API returns it (internal step fields dropped)."""
-    keep = ("module", "entity", "method", "rows", "history_rows", "purge_type", "depends_on")
+    keep = ("module", "entity", "method", "rows", "history_rows", "purge_type", "depends_on", "raw")
     return {**plan, "waves": [{"wave": w["wave"], "label": w["label"],
                                "steps": [{k: s.get(k) for k in keep} for s in w["steps"]]} for w in plan["waves"]]}
 
@@ -213,6 +383,10 @@ def step_records(step: dict, frames, dictionary, id_map: Optional[dict] = None) 
     props = {p: f for p, f in props.items() if p not in (step.get("exclude") or []) and f.name in df.columns}
     mapped = {f.name for f in props.values()
               if id_map and (f.key or f.name in _PERSON_COLS or f.check_table in ("User", "PerPerson"))}
+    eff = step.get("effective")
+    if eff and eff in df.columns:  # oldest record first: SF builds each later slice on the one before
+        df = df.iloc[pd.to_datetime(df[eff], errors="coerce", utc=True).argsort(kind="stable")]
+    tag = eff if eff and eff in df.columns and eff not in tb.keys else None
     out = []
     for row in df.to_dict("records"):
         rec = {}
@@ -222,7 +396,27 @@ def step_records(step: dict, frames, dictionary, id_map: Optional[dict] = None) 
                 continue
             v = (id_map or {}).get(str(v), v) if f.name in mapped else v
             rec[p] = _odata_date(v) if str(f.type).upper() in ("DATE", "DATETIME", "DATS") else v
-        out.append((row["__key__"], rec))
+        out.append((f"{row['__key__']}|{tag}={row.get(tag)}" if tag else row["__key__"], rec))
+    return out
+
+
+def raw_records(step: dict, frames, id_map: Optional[dict] = None) -> list[tuple[str, dict]]:
+    """(record key, payload) for a raw SFRAW_ step: every property the extract read, blanks left out, oldest
+    effective-dated record first. The key is the $metadata key the extract wrote to ``__raw_key__``."""
+    df = frames.frames.get(step["table"]) if frames is not None else None
+    if df is None or len(df) == 0:
+        return []
+    pre = step["table"] + "."
+    df = df.rename(columns=lambda c: c[len(pre):] if c.startswith(pre) else c)
+    eff = next((c for c in _EFFECTIVE_PROPS if c in df.columns), None)
+    if eff:
+        df = df.iloc[pd.to_datetime(df[eff], errors="coerce", utc=True).argsort(kind="stable")]
+    out = []
+    for i, row in enumerate(df.to_dict("records")):
+        key = str(row.pop("__raw_key__", "") or f"row:{i}")
+        rec = {p: (id_map or {}).get(str(v), v) if p in _RAW_PERSON_PROPS else v for p, v in row.items()
+               if not (v is None or (isinstance(v, float) and pd.isna(v)) or str(v).strip() == "")}
+        out.append((key, rec))
     return out
 
 
@@ -231,7 +425,9 @@ def person_batches(step: dict, records: list[tuple[str, dict]], size: int = BATC
     per batch; records with no person go ``size`` to a batch."""
     def person(key: str) -> str:
         parts = dict(p.split("=", 1) for p in key.split("|") if "=" in p)
-        return next((parts[c] for c in _PERSON_COLS if c in parts), key)
+        who = next((parts[c] for c in (*_PERSON_COLS, *_RAW_PERSON_PROPS) if c in parts), None)
+        # no person: one key's effective-dated records still travel together
+        return who or "|".join(f"{k}={v}" for k, v in parts.items() if k not in _HISTORY_PARTS) or key
     groups: dict[str, list] = {}
     for kr in records:
         groups.setdefault(person(kr[0]), []).append(kr)

@@ -18,12 +18,13 @@ def _sf_plan():
 def test_sf_waves_follow_import_order():
     plan = _sf_plan()
     wave_of = {(s["table"], s["pass"]): s["wave"] for s in _steps(plan)}
-    assert wave_of[("POSITION", 1)] == 1
-    assert wave_of[("USERACCOUNT", 1)] == 2
-    assert wave_of[("PERINFO", 1)] == 3
-    assert wave_of[("EMPEMPLOYMENT", 1)] == 4
-    assert wave_of[("EMPJOBHIST", 1)] == 5
-    assert all(w == 0 for (t, _), w in wave_of.items() if t.startswith("FO"))
+    assert wave_of[("POSITION", 1)] == 3
+    assert wave_of[("USERACCOUNT", 1)] == 4
+    assert wave_of[("PERINFO", 1)] == 5
+    assert wave_of[("EMPEMPLOYMENT", 1)] == 6
+    assert wave_of[("EMPJOBHIST", 1)] == wave_of[("EMPJOBHIST", 2)] == 7
+    assert wave_of[("COMPINFO", 1)] == 8
+    assert all(w == 1 for (t, _), w in wave_of.items() if t.startswith("FO"))
     assert [w["wave"] for w in plan["waves"]] == sorted(w["wave"] for w in plan["waves"])
     first, second = plan["waves"][0], plan["waves"][1]
     assert all(s["depends_on"] == sorted({x["entity"] for x in first["steps"]}) for s in second["steps"])
@@ -40,7 +41,8 @@ def test_job_history_full_purge_and_manager_second_pass():
 
 def test_wildcard_entities_are_unplaced_not_guessed():
     plan = _sf_plan()
-    assert any("wildcard" in u["reason"] for u in plan["unplaced"])
+    fam = {u["entity"] for u in plan["unplaced"] if "entity family" in u["reason"]}
+    assert {"PerGlobalInfo*", "DevGoal_*", "Background_*"} <= fam
     assert not any("*" in s["entity"] for s in _steps(plan))
 
 
@@ -54,7 +56,7 @@ def test_sap_material_master_is_bapi_after_sf_waves():
 
 def test_public_plan_drops_internal_fields():
     s = im.public_plan(_sf_plan())["waves"][0]["steps"][0]
-    assert set(s) == {"module", "entity", "method", "rows", "history_rows", "purge_type", "depends_on"}
+    assert set(s) == {"module", "entity", "method", "rows", "history_rows", "purge_type", "depends_on", "raw"}
 
 
 def test_config_list_adds_wave_zero_step():
