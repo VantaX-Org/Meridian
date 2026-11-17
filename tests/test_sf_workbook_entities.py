@@ -61,7 +61,7 @@ def test_friendly_headers_map_on_their_own_entity_only():
     cc = cands("Cost Centre Data", ["Cost Centre Code", "Parent Cost Centre", "Parent Legal Entity", "Custom Field 1"], "grid")
     assert {h: f.source for h, f in cc["FOCOSTCENTER"].items()} == {
         "Cost Centre Code": "FOCostCenter.externalCode", "Parent Cost Centre": "FOCostCenter.parent",
-        "Parent Legal Entity": "FOCostCenter.cust_LegalEntity.externalCode"}
+        "Parent Legal Entity": "FOCostCenter.cust_toLegalEntity.externalCode"}
 
 
 def test_position_external_name_matches_default_value():

@@ -81,8 +81,8 @@ SHEET_ENTITIES = {
     "geozone": {"FOGeozone"},
     "locationgroup": {"FOLocationGroup"},
     "paycomponentgroup": {"FOPayComponentGroup"},
-    "payscaletype": {"FOPayScaleType"},
-    "payscalearea": {"FOPayScaleArea"},
+    "payscaletype": {"PayScaleType"},
+    "payscalearea": {"PayScaleArea"},
     "corporateaddress": {"FOCorporateAddressDEFLT"},
     "csfcorporateaddress": {"FOCorporateAddressDEFLT"},
     # The names the import templates and the User Data File use for the same objects.
@@ -513,8 +513,8 @@ def coverage(workbook: Workbook, dictionary: Dictionary) -> dict:
 # property, so Min fills only a pay range.
 _FRIENDLY = {
     "min": ("minimumpay",), "mid": ("midpoint",), "max": ("maximumpay",),
-    "legalentity": ("company", "custlegalentityexternalcode"),
-    "parentlegalentity": ("company", "custlegalentityexternalcode"),
+    "legalentity": ("company", "custlegalentityexternalcode", "custtolegalentityexternalcode"),
+    "parentlegalentity": ("company", "custlegalentityexternalcode", "custtolegalentityexternalcode"),
     "parentcostcenter": ("parent",),
     "addressline1": ("addressnavdefltaddress1",), "addressline2": ("addressnavdefltaddress2",),
     "addressline3": ("addressnavdefltaddress3",),

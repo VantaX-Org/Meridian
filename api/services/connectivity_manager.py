@@ -980,6 +980,7 @@ class ConnectivityManager:
                                              "AND config_table = 'PICKLIST_OPTION'"), {"s": str(system_id)}).first()
             for o in (row[0] if row else None) or []:
                 options.setdefault(o["picklist"], {})[str(o["optionId"])] = o["externalCode"]
+        options[""] = unique_option_codes(options)
         for table in sorted(wanted):
             t = dictionary.table(table)
             if t is None or not t.provenance.startswith("canonical:successfactors"):
@@ -1174,7 +1175,9 @@ class ConnectivityManager:
                     merged[col] = merged[col].map(lambda v: str(v).lower() if v is not None and v == v else v)
             # legacy-picklist fields return the option id; rules and picklists speak external codes
             for f in t.fields.values():
-                col, opts = f"{table}.{f.name}", options.get(f.picklist or "")
+                # picklist ids differ per tenant: fall back to option ids that name one code in every picklist
+                col = f"{table}.{f.name}"
+                opts = (options.get(f.picklist) or options.get("")) if f.picklist else None
                 if opts and col in merged.columns:
                     merged[col] = merged[col].map(lambda v: opts.get(str(v).strip(), v) if v is not None else v)
             frames[table] = merged
@@ -1766,3 +1769,12 @@ class ConnectivityManager:
             }
             for m in modules
         ]
+
+
+def unique_option_codes(options: dict[str, dict[str, str]]) -> dict[str, str]:
+    """optionId -> externalCode across every picklist, keeping only ids that map to exactly one code."""
+    seen: dict[str, set[str]] = {}
+    for opts in options.values():
+        for oid, code in opts.items():
+            seen.setdefault(oid, set()).add(code)
+    return {oid: next(iter(c)) for oid, c in seen.items() if len(c) == 1}

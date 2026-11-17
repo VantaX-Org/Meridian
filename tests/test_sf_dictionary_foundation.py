@@ -10,8 +10,8 @@ NEW_ENTITIES = {
     "FOPAYGRADE": "FOPayGrade", "FOPAYRANGE": "FOPayRange", "FOPAYGROUP": "FOPayGroup",
     "FOFREQUENCY": "FOFrequency", "FOJOBFUNCTION": "FOJobFunction", "FOGEOZONE": "FOGeozone",
     "FOLOCATIONGROUP": "FOLocationGroup", "FOPAYCOMPONENT": "FOPayComponent",
-    "FOPAYCOMPONENTGROUP": "FOPayComponentGroup", "FOPAYSCALETYPE": "FOPayScaleType",
-    "FOPAYSCALEAREA": "FOPayScaleArea", "FOCORPORATEADDRESSDEFLT": "FOCorporateAddressDEFLT",
+    "FOPAYCOMPONENTGROUP": "FOPayComponentGroup", "FOPAYSCALETYPE": "PayScaleType",
+    "FOPAYSCALEAREA": "PayScaleArea", "FOCORPORATEADDRESSDEFLT": "FOCorporateAddressDEFLT",
     "PERSOCIALACCOUNT": "PerSocialAccount",
 }
 

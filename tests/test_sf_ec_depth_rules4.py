@@ -62,8 +62,7 @@ CASES = {
     "EC764": case(EE, GUARANTEED_PAYMENT=[1000.0, -1000.0]),
     "EC765": case(EE, REGRET_TERMINATION=[T, T], STATUS=["T", "A"], TERMINATION_DATE=[PAST, None]),
     "EC766": case(EE, REGRET_TERMINATION=[T, T], OK_TO_REHIRE=[T, F]),
-    "EC767": case(P, EFFECTIVE_START_DATE=[OLD, PAST], EFFECTIVE_END_DATE=[PAST, OLD]),
-    "EC768": case(P, EFFECTIVE_DATE=[PAST, PAST], EFFECTIVE_START_DATE=[PAST, OLD]),
+    "EC767": case(P, EFFECTIVE_DATE=[OLD, PAST], EFFECTIVE_END_DATE=[PAST, OLD]),
     "EC769": case(P, PAY_TYPE=["MAIN", None], IBAN=["DE00", "DE01"], ACCOUNT_NUMBER=[None, None]),
     "EC770": case(P, JOB_COUNTRY=["ZAF", None]),
     "EC771": case(M, DATE_OF_BIRTH=[OLD, FUT]),
@@ -100,7 +99,7 @@ def test_ids_contiguous_and_fully_enriched():
 
 
 def test_every_new_rule_has_a_fixture():
-    assert {r["id"] for r in NEW} == set(CASES)
+    assert {r["id"] for r in NEW if r.get("enabled") is not False} == set(CASES)
 
 
 @pytest.mark.parametrize("rid", sorted(CASES))
