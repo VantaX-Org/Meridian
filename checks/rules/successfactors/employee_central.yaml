@@ -13987,23 +13987,6 @@ rules:
   record_fix_template: 'Payment info {PAYMENTINFO.USERID}: EFFECTIVE_END_DATE is before EFFECTIVE_DATE.'
   fail_when: '`PAYMENTINFO.EFFECTIVE_END_DATE` < `PAYMENTINFO.EFFECTIVE_DATE`'
   require_populated: true
-- id: EC768
-  field: PAYMENTINFO.EFFECTIVE_DATE
-  enabled: false
-  disabled_reason: PaymentInformationDetailV3 exposes one start date (PaymentInformationV3_effectiveStartDate), so there is no second date to compare.
-  check_class: cross_field_check
-  severity: medium
-  dimension: consistency
-  message: Payment info start date differs from its effective date
-  why_it_matters: EFFECTIVE_DATE and EFFECTIVE_START_DATE both describe when the payment record starts. A mismatch means one
-    was migrated wrongly.
-  rule_authority: best_practice
-  sap_impact: Replication to Employee Central Payroll infotype 0009 uses the wrong start date.
-  fix_map:
-    __other__: Align EFFECTIVE_START_DATE with EFFECTIVE_DATE.
-  record_fix_template: 'Payment info {PAYMENTINFO.USERID}: start date differs from EFFECTIVE_DATE.'
-  fail_when: '`PAYMENTINFO.EFFECTIVE_DATE` != `PAYMENTINFO.EFFECTIVE_DATE`'
-  require_populated: true
 - id: EC769
   field: PAYMENTINFO.PAY_TYPE
   check_class: cross_field_check
