@@ -31,7 +31,7 @@ SF_MOVE_STAGES: tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...] = (
     ("Foundation", _EC, (
         "FOCompany", "FOBusinessUnit", "FODivision", "FODepartment", "FOLocationGroup", "FOGeozone", "FOLocation",
         "FOCorporateAddressDEFLT", "FOCostCenter", "FOJobFunction", "FOPayGrade", "FOJobCode", "FOPayRange",
-        "FOPayGroup", "FOFrequency", "FOPayComponent", "FOPayComponentGroup", "FOPayScaleType", "FOPayScaleArea",
+        "FOPayGroup", "FOFrequency", "FOPayComponent", "FOPayComponentGroup",
         "FOEventReason", "FOWfConfig", "FODynamicRole", "FoTranslation", "PayScaleType", "PayScaleArea",
         "PayScaleGroup", "PayScaleLevel", "PayScalePayComponent", "JobClassificationCountry", "JobClassificationZAF",
         "Bank")),
@@ -43,14 +43,14 @@ SF_MOVE_STAGES: tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...] = (
     ("User", _EC, ("User", "UserAccount")),
     ("Person", _EC, (
         "PerPerson", "PersonKey", "PerPersonal", "PerGlobalInfo*", "PerAddressDEFLT", "PerPhone", "PerEmail",
-        "PerNationalId", "PerSocialAccount", "PerPersonRelationship", "PerEmergencyContacts")),
+        "PerNationalId", "PerPersonRelationship", "PerEmergencyContacts")),
     ("Employment", _EC, ("EmpEmployment", "EmpGlobalAssignment", "EmpWorkPermit")),
     ("Job history (two passes)", _EC, (
         "EmpJob", "EmpJobRelationships", "SecondaryAssignments", "EmpEmploymentTermination", "HireDateChange")),
     ("Compensation, pay and deductions", ("employee_central", "compensation", "benefits", "payroll_integration"), (
         "EmpCompensation", "EmpPayCompRecurring", "EmpPayCompNonRecurring", "PaymentInformationV3",
         "PaymentInformationDetailV3", "PaymentInformationDetailV3ZAF", "RecurringDeduction",
-        "RecurringDeductionItem", "BenefitEnrollment")),
+        "RecurringDeductionItem")),
     ("cust_ MDF", _EC, (
         "cust_birthday", "cust_customRetirement_Date", "cust_employeeRelationCase",
         "cust_employeeRelationsCollection", "cust_COVID_19_VACCINE_TRACKING", "cust_HEALTH_STATUS_TRACKING",
@@ -69,7 +69,7 @@ SF_MOVE_STAGES: tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...] = (
         "NominationTarget", "Successor")),
     ("Recruiting", ("recruiting_onboarding",), (
         "JobRequisition", "JobRequisitionLocale", "JobRequisitionPosting", "JobRequisitionOperator",
-        "JobRequisitionScreeningQuestion", "JobRequisitionFOLocation", "Candidate", "CandidateBackground_*",
+        "JobReqScreeningQuestion", "JobReqFOLocation", "Candidate", "CandidateBackground_*",
         "JobApplication", "JobApplicationQuestionResponse", "JobApplicationSnapshot_*", "JobApplicationComments",
         "JobApplicationInterview", "InterviewIndividualAssessment", "InterviewOverallAssessment",
         "JobApplicationAudit", "JobApplicationStatusAuditTrail", "JobReqFwdCandidates", "JobOffer",
@@ -221,6 +221,10 @@ def _order(steps: list[dict]) -> list[dict]:
     return out
 
 
+# D7: dictionary tables whose entity the source metadata does not have; PayScaleType/Area load instead
+NOT_IN_SOURCE = {"FOPayScaleType", "FOPayScaleArea", "PerSocialAccount", "BenefitEnrollment"}
+
+
 def _sf_steps(module: str, dictionary, frames, unplaced: list) -> list[dict]:
     out = []
     for t in OWNED_TABLES.get(module, []):
@@ -229,6 +233,8 @@ def _sf_steps(module: str, dictionary, frames, unplaced: list) -> list[dict]:
             unplaced.append({"module": module, "table": t, "reason": "not in the data dictionary"})
             continue
         ent, why = table_entity(tb)
+        if ent in NOT_IN_SOURCE:
+            ent, why = None, f"{ent} is not an entity set on the source tenant (D7)"
         if ent is None:
             unplaced.append({"module": module, "table": t, "reason": why})
             continue
@@ -551,7 +557,7 @@ def _people(frames, dictionary) -> dict[str, dict]:
     if not names:
         return {}
     pc = _prop_cols(frames, dictionary, names[0])
-    props = ("userId", "payGrade", "countryOfCompany", "emplStatus", "startDate", "seqNumber")
+    props = ("userId", "payGrade", "countryOfCompany", "emplStatus", "managerId", "startDate", "seqNumber")
     df = _frame(frames, names[0])
     d = pd.DataFrame({p: df[pc[f"EmpJob.{p}"]] for p in props if pc.get(f"EmpJob.{p}") in df.columns})
     order = [c for c in ("startDate", "seqNumber") if c in d]
@@ -566,7 +572,8 @@ def _people(frames, dictionary) -> dict[str, dict]:
             s = _strs(g[p]) if p in g else pd.Series([], dtype="string")
             s = s[s.notna() & (s != "")]
             return s.iloc[-1] if len(s) else None
-        out[str(uid)] = {"country": last("countryOfCompany"), "grade": last("payGrade"), "status": last("emplStatus")}
+        out[str(uid)] = {"country": last("countryOfCompany"), "grade": last("payGrade"), "status": last("emplStatus"),
+                         "manager": last("managerId")}
     return out
 
 
@@ -587,18 +594,40 @@ def _pairs(frames, dictionary, a: str, b: tuple[str, ...]) -> list[tuple[str, st
     return out
 
 
+def _values(frames, dictionary, props: tuple[str, ...]) -> set[str]:
+    """Every non-blank value of the props in ``props`` (``Entity.prop``) over all frames."""
+    out: set[str] = set()
+    for n in frames.frames:
+        pc = _prop_cols(frames, dictionary, n)
+        cols = [pc[p] for p in props if p in pc]
+        if cols:
+            df = _frame(frames, n)
+            for c in cols:
+                if c in df.columns:
+                    v = _strs(df[c])
+                    out |= set(v[v.notna() & (v != "")])
+    return out
+
+
+NO_MANAGER = "NO_MANAGER"  # SF's own value for "no manager": not a person, never followed
+_USER_IDS = ("User.userId", "EmpEmployment.userId", "EmpJob.userId")
+
+
 def move_scope(frames, dictionary, sample: Optional[dict] = None,
                exclude_countries: Iterable[str] = EXCLUDED_COUNTRIES) -> dict:
     """Which users a move loads. Users whose latest country is excluded never load. Without ``sample`` every
     other user loads (full move); with one, ``per_cell`` users per (country, band, status) cell by userId,
-    plus the managers they reference (managerId, relUserId), transitively, at most ``closure_cap`` added."""
+    plus every person they reference in any history row (managerId, relUserId of any relationship type),
+    transitively, at most ``closure_cap`` added. The report lists what the cap cut, references to excluded
+    users and references to IDs found in no frame (never guessed)."""
     people = _people(frames, dictionary)
     excl = {str(c) for c in exclude_countries or ()}
     excluded = Counter(p["country"] for p in people.values() if p["country"] in excl)
     out_users = {u for u, p in people.items() if p["country"] in excl}
+    known = set(people) | _values(frames, dictionary, _USER_IDS)
     scope = {"pilot": bool(sample), "excluded_countries": sorted(excl), "excluded": dict(excluded),
              "excluded_lines": [f"{c} excluded (out of scope): {n} users" for c, n in sorted(excluded.items())],
-             "known": sorted(people), "keep": None, "drop": sorted(out_users)}
+             "known": sorted(known), "keep": None, "drop": sorted(out_users)}
     if not sample:
         return scope
     per_cell = int(sample.get("per_cell", PILOT_PER_CELL))
@@ -613,17 +642,31 @@ def move_scope(frames, dictionary, sample: Optional[dict] = None,
     picked = sorted(u for us in cells.values() for u in us[:per_cell])
     refs: dict[str, set] = {}
     for u, m in _pairs(frames, dictionary, "userId", _MANAGER_REFS):
-        refs.setdefault(u, set()).add(m)
-    seen, frontier, added = set(picked), picked, []
+        if m != NO_MANAGER:
+            refs.setdefault(u, set()).add(m)
+    seen, frontier, added = set(picked), picked, list[str]()
     while frontier and len(added) < cap:
-        nxt = sorted({m for u in frontier for m in refs.get(u, ()) if m in people and m not in seen
+        nxt = sorted({m for u in frontier for m in refs.get(u, ()) if m in known and m not in seen
                       and m not in out_users})[:cap - len(added)]
         added += nxt
         seen |= set(nxt)
         frontier = nxt
+    cut, to_excluded, not_found = set(), set(), set()
+    for u in seen:
+        for m in refs.get(u, ()):
+            if m not in known:
+                not_found.add(m)
+            elif m in out_users:
+                to_excluded.add(m)
+            elif m not in seen:
+                cut.add(m)
+    country = {u: (people.get(u) or {}).get("country") or "(none)" for u in seen}
     scope.update(per_cell=per_cell, closure_cap=cap, active_status=sorted(active),
                  cells={c: min(len(us), per_cell) for c, us in sorted(cells.items())},
-                 sampled=len(picked), closure_added=added, keep=sorted(seen))
+                 sampled=len(picked), closure_added=added, keep=sorted(seen),
+                 by_country=dict(sorted(Counter(country.values()).items())),
+                 closure_by_country=dict(sorted(Counter(country[u] for u in added).items())),
+                 cut_by_cap=sorted(cut), refs_to_excluded=sorted(to_excluded), refs_not_found=sorted(not_found))
     return scope
 
 
@@ -669,12 +712,226 @@ def apply_scope(frames, dictionary, scope: dict) -> tuple[Any, dict]:
                     record_keys(df, [f"{name}.{k}" for k in dictionary.keys(name) if f"{name}.{k}" in df.columns]))
             for c, b in bad.items():
                 report["needs_review"] += [{"table": name, "record_key": k, "field": c.split(".", 1)[1],
-                                            "value": val, "reason": reason}
+                                            "value": val, "reason": reason, "decision": "scope"}
                                            for k, val in zip(keys[b], df.loc[b, c])]
                 df.loc[b, c] = None
         out.frames[name] = df.reset_index(drop=True)
     report["blanked"] = len(report["needs_review"])
     return out, report
+
+
+# ── move defaults (DECISIONS.md D1-D5, 2026-11-17) ──────────────────────────
+# Nothing here invents a value: a row is changed only where the decision says how, every other problem is
+# listed for review with its decision, and no row is dropped unless the decision says to leave it out.
+
+TERMINATED_STATUS = ("T",)  # latest EmpJob.emplStatus of a terminated user (DECISIONS.md "Active and terminated")
+INACTIVE_USER = "f"  # User.status of an inactive login
+D1_NO_EMPLOYMENT = "user account without employment: left out until HR or IT names it"
+D1_CREATED = "terminated person without a user account: loaded inactive, username = user ID"
+D1_NO_ACCOUNT = "person without a user account who is not terminated: needs a real user account"
+D2_CONFLICT = "duplicate address (same person, type and start date, any case): latest row kept"
+D3_TERMINATED = "active user's current manager is terminated"
+D3_NO_MANAGER = "active user has NO_MANAGER"
+D3_NOT_FOUND = "manager ID not found in the source"
+D3_REL_TERMINATED = "current relationship of an active user points at a terminated user"
+D5_MISSING = "pay scale code not in the source pay scale objects"
+_PAYSCALE = {"payScaleType": "PayScaleType", "payScaleArea": "PayScaleArea", "payScaleGroup": "PayScaleGroup",
+             "payScaleLevel": "PayScaleLevel"}
+
+
+def _with(frames, dictionary, *props: str) -> list[tuple[str, dict]]:
+    """(frame, its Entity.prop columns) for every non-empty frame holding all of ``props``."""
+    out = []
+    for n in frames.frames:
+        pc = _prop_cols(frames, dictionary, n)
+        if all(p in pc and pc[p] in frames.frames[n].columns for p in props) and len(frames.frames[n]):
+            out.append((n, pc))
+    return out
+
+
+def _review(decision: str, table: str, key, field: str, value, reason: str, **extra) -> dict:
+    return {"decision": decision, "table": table, "record_key": None if key is None else str(key),
+            "field": field, "value": None if value is None or pd.isna(value) else str(value), "reason": reason,
+            **extra}
+
+
+def _row_keys(df: pd.DataFrame, name: str, dictionary) -> pd.Series:
+    from checks.base import record_keys
+    if "__raw_key__" in df.columns:
+        return df["__raw_key__"].astype("string")
+    return record_keys(df, [f"{name}.{k}" for k in dictionary.keys(name) if f"{name}.{k}" in df.columns])
+
+
+def _replace(frames, changed: dict[str, pd.DataFrame]):
+    import copy
+    if not changed:
+        return frames
+    out = copy.copy(frames)
+    out.frames = {**frames.frames, **changed}
+    out.reset_caches()
+    out.flat = frames.flat
+    return out
+
+
+def _d1(frames, dictionary, people: dict, review: list, changed: dict) -> dict:
+    emp = set()
+    for n, pc in _with(frames, dictionary, "EmpEmployment.userId"):
+        v = _strs(_frame(frames, n)[pc["EmpEmployment.userId"]])
+        emp |= set(v[v.notna() & (v != "")])
+    rep: dict[str, Any] = {"usernames_defaulted": 0, "left_out": [], "created_inactive": [], "no_account": []}
+    users = _with(frames, dictionary, "User.userId")
+    if not users or not emp:  # nothing to compare against: change nothing
+        rep["skipped"] = "no user or employment rows in the extract"
+        return rep
+    have = set()
+    for n, pc in users:
+        df = _frame(frames, n).copy()
+        uid = _strs(df[pc["User.userId"]])
+        have |= set(uid[uid.notna()])
+        name_col = pc.get("User.username")
+        if name_col in df.columns:
+            blank = (_strs(df[name_col]).fillna("") == "") & uid.notna()
+            df.loc[blank, name_col] = uid[blank]
+            rep["usernames_defaulted"] += int(blank.sum())
+        out = ~uid.isin(emp).fillna(True).astype(bool)
+        for k, u in zip(_row_keys(df, n, dictionary)[out], uid[out]):
+            review.append(_review("D1", n, k, "userId", u, D1_NO_EMPLOYMENT))
+            rep["left_out"].append(str(u))
+        changed[n] = df[~out].reset_index(drop=True)
+    for u in sorted(emp - have):
+        status = (people.get(u) or {}).get("status")
+        if status in TERMINATED_STATUS:
+            rep["created_inactive"].append(u)
+        else:
+            rep["no_account"].append(u)
+            review.append(_review("D1", "User", u, "userId", u, D1_NO_ACCOUNT, status=status))
+    for n, pc in users:  # one inactive login per terminated person, only into frames that carry the columns
+        cols = {pc.get("User.userId"): None, pc.get("User.username"): None, pc.get("User.status"): INACTIVE_USER}
+        if rep["created_inactive"] and None not in cols and all(c in changed[n].columns for c in cols):
+            new = pd.DataFrame([{c: (u if v is None else v) for c, v in cols.items()} for u in rep["created_inactive"]])
+            if "__raw_key__" in changed[n].columns:
+                new["__raw_key__"] = [f"userId={u}" for u in rep["created_inactive"]]
+            changed[n] = pd.concat([changed[n], new], ignore_index=True)
+    rep["left_out"] = sorted(set(rep["left_out"]))
+    return rep
+
+
+def _d2(frames, dictionary, review: list, changed: dict) -> dict:
+    rep: dict[str, Any] = {"identical_dropped": 0, "conflicts": 0, "rows_dropped": 0}
+    props = ("PerAddressDEFLT.personIdExternal", "PerAddressDEFLT.addressType", "PerAddressDEFLT.startDate")
+    for n, pc in _with(frames, dictionary, *props):
+        df = changed.get(n, _frame(frames, n))
+        data = [c for c in df.columns if not c.startswith("__")]
+        before = len(df)
+        df = df.loc[~df[data].astype("string").fillna("\0").duplicated()].reset_index(drop=True)
+        rep["identical_dropped"] += before - len(df)
+        grp = [_strs(df[pc[props[0]]]), _strs(df[pc[props[1]]]).str.lower(), _strs(df[pc[props[2]]])]
+        lm = pc.get("PerAddressDEFLT.lastModifiedDateTime")
+        order = pd.to_datetime(df[lm], errors="coerce", utc=True) if lm in df.columns else pd.Series(range(len(df)))
+        df = df.assign(__order__=order.values, __pos__=range(len(df)))
+        losers = []
+        keys = _row_keys(df, n, dictionary)
+        for _, g in df.groupby(grp, sort=False, dropna=False):
+            if len(g) < 2:
+                continue
+            g = g.sort_values(["__order__", "__pos__"], na_position="first", kind="stable")
+            win = g.iloc[-1]
+            rep["conflicts"] += 1
+            for i, row in g.iloc[:-1].iterrows():
+                diff = {c.split(".", 1)[1]: (None if pd.isna(row[c]) else str(row[c]),
+                                             None if pd.isna(win[c]) else str(win[c]))
+                        for c in data if str(row[c]) != str(win[c])}
+                review.append(_review("D2", n, keys[i], "addressType", row[pc[props[1]]], D2_CONFLICT,
+                                      kept=str(keys[win.name]), differs=diff))
+                losers.append(i)
+        rep["rows_dropped"] += len(losers)
+        changed[n] = df.drop(index=losers).drop(columns=["__order__", "__pos__"]).reset_index(drop=True)
+    return rep
+
+
+def _d3(frames, dictionary, people: dict, known: set, review: list) -> dict:
+    rep: dict[str, Any] = {"current_terminated_manager": 0, "current_no_manager": 0, "current_relationship_terminated": 0,
+           "manager_ids_not_found": {}}
+    terminated = {u for u, p in people.items() if p["status"] in TERMINATED_STATUS}
+    is_active = lambda u: u in people and people[u]["status"] not in TERMINATED_STATUS  # noqa: E731
+    for n, pc in _with(frames, dictionary, "EmpJob.userId", "EmpJob.managerId"):
+        df = _frame(frames, n)
+        m = _strs(df[pc["EmpJob.managerId"]])
+        miss = m[m.notna() & (m != "") & (m != NO_MANAGER) & ~m.isin(known)]
+        for mid, cnt in miss.value_counts().items():
+            rep["manager_ids_not_found"][str(mid)] = rep["manager_ids_not_found"].get(str(mid), 0) + int(cnt)
+    for u, p in sorted(people.items()):
+        mgr = p.get("manager")
+        if not is_active(u) or not mgr:
+            continue
+        why = (D3_NO_MANAGER if mgr == NO_MANAGER else D3_NOT_FOUND if mgr not in known
+               else D3_TERMINATED if mgr in terminated else None)
+        if why:
+            k = {D3_NO_MANAGER: "current_no_manager", D3_TERMINATED: "current_terminated_manager"}.get(
+                why, "current_manager_not_found")
+            rep[k] = rep.get(k, 0) + 1
+            review.append(_review("D3", "EmpJob", u, "managerId", mgr, why, country=p["country"]))
+    now = pd.Timestamp.now(tz="UTC")
+    for n, pc in _with(frames, dictionary, "EmpJobRelationships.userId", "EmpJobRelationships.relUserId"):
+        df = _frame(frames, n)
+        end = pc.get("EmpJobRelationships.endDate")
+        cur = (pd.to_datetime(df[end], errors="coerce", utc=True).fillna(now) >= now) if end in df.columns \
+            else pd.Series(True, index=df.index)
+        u, r = _strs(df[pc["EmpJobRelationships.userId"]]), _strs(df[pc["EmpJobRelationships.relUserId"]])
+        hit = cur & u.map(is_active).astype(bool) & r.isin(terminated).fillna(False).astype(bool)
+        for k, x, y in zip(_row_keys(df, n, dictionary)[hit], u[hit], r[hit]):
+            review.append(_review("D3", n, k, "relUserId", y, D3_REL_TERMINATED, user=x))
+        rep["current_relationship_terminated"] += int(hit.sum())
+    return rep
+
+
+def _source_codes(frames, entity: str) -> Optional[set]:
+    """Every key value of the source ``entity`` rows (from the $metadata key in ``__raw_key__``), else None."""
+    name = RAW_PREFIX + entity
+    if name not in frames.frames or "__raw_key__" not in frames.frames[name].columns:
+        return None
+    out = set()
+    for k in _frame(frames, name)["__raw_key__"].dropna().astype(str):
+        out |= {p.split("=", 1)[1] for p in k.split("|") if "=" in p}
+    return out
+
+
+def _d5(frames, dictionary, review: list) -> dict:
+    """Every pay scale code the employment rows use, checked against the source pay scale objects that load
+    in the Foundation stage first. Placeholder codes ("No Level") are kept, like any other code."""
+    rep: dict[str, Any] = {"checked": {}, "not_validated": []}
+    for prop, entity in _PAYSCALE.items():
+        used: Counter = Counter()
+        for ent in ("EmpJob", "EmpEmployment"):
+            for n, pc in _with(frames, dictionary, f"{ent}.{prop}"):
+                v = _strs(_frame(frames, n)[pc[f"{ent}.{prop}"]])
+                used.update(v[v.notna() & (v != "")])
+        if not used:
+            continue
+        codes = _source_codes(frames, entity)
+        if codes is None:
+            rep["not_validated"].append(f"{entity}: object not found in the extract")
+            continue
+        missing = {c: n for c, n in used.items() if c not in codes}  # ponytail: any key part matches; exact composite key when T2 keys are known
+        rep["checked"][entity] = {"codes": len(used), "missing": len(missing)}
+        review += [_review("D5", entity, c, prop, c, D5_MISSING, rows=n) for c, n in sorted(missing.items())]
+    return rep
+
+
+def apply_defaults(frames, dictionary, scope: dict) -> tuple[Any, list[dict], dict]:
+    """The agreed move defaults on the (scoped) frames. Returns (frames, needs_review, summary per decision).
+    D1 user accounts, D2 duplicate addresses, D3 manager flags (history loads as is), D5 pay scale check.
+    D4 (locale kept) and D7 (stage list) need no row change; D6 has no attachment data in the extract."""
+    people = _people(frames, dictionary)
+    known = set(scope.get("known") or ()) | set(people) | _values(frames, dictionary, _USER_IDS)
+    review: list[dict] = []
+    changed: dict[str, pd.DataFrame] = {}
+    summary = {"D1": _d1(frames, dictionary, people, review, changed),
+               "D2": _d2(frames, dictionary, review, changed),
+               "D3": _d3(frames, dictionary, people, known, review),
+               "D5": _d5(frames, dictionary, review)}
+    summary["needs_review"] = dict(Counter(r["decision"] for r in review))
+    return _replace(frames, changed), review, summary
 
 
 # ── config lists ─────────────────────────────────────────────────────────────

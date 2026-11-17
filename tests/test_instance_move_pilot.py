@@ -138,3 +138,88 @@ def test_config_diff_against_a_fake_target_maps_creates_and_flags_conflicts():
     assert d["mapped"] == [{"externalCode": "KZA"}]
     assert [r["externalCode"] for r in d["create_values"]] == ["KBW"]
     assert d["conflict"] == 1 and d["conflicts"][0]["key"] == {"externalCode": "KNA"}
+
+
+# ── closure reporting and the DECISIONS.md defaults ─────────────────────────
+
+
+def test_closure_reports_cut_excluded_and_not_found_refs():
+    rows = [("A1", "2020-01-01", 1, "AA", "ZAF", "A", "B1"), ("A1", "2021-01-01", 1, "AA", "ZAF", "A", "GONE"),
+            ("B1", "2019-01-01", 1, "G", "ZAF", "T", "C1"), ("C1", "2019-01-01", 1, "H", "NAM", "A", "NO_MANAGER"),
+            ("Y1", "2019-01-01", 1, "B", "ZMB", "A", None)]
+    f = _frames(rows, rel_rows=[("A1", "Y1")])
+    sc = im.move_scope(f, D, {"per_cell": 1, "closure_cap": 1})
+    assert sc["keep"] == ["A1", "B1", "C1"] or "C1" in sc["cut_by_cap"]
+    assert sc["refs_not_found"] == ["GONE"] and sc["refs_to_excluded"] == ["Y1"]
+    assert "NO_MANAGER" not in sc["keep"] + sc["cut_by_cap"] + sc["refs_not_found"]
+    # the sample already holds A1, B1 (terminated cell) and C1; with every cell sampled nothing is cut
+    sc = im.move_scope(f, D, {"per_cell": 10, "closure_cap": 0})
+    assert sc["cut_by_cap"] == [] and sc["by_country"] == {"NAM": 1, "ZAF": 2}
+
+
+def _people_frames(extra: dict):
+    job = _job([("A1", "2020-01-01", 1, "AA", "ZAF", "A", "T1"), ("T1", "2019-01-01", 1, "G", "ZAF", "T", "NO_MANAGER"),
+                ("A2", "2020-01-01", 1, "AA", "ZAF", "A", "NO_MANAGER"), ("A3", "2020-01-01", 1, "AA", "ZAF", "A", "X9"),
+                ("R1", "2020-01-01", 1, "AA", "ZAF", "RNS", "A1")])
+    emp = pd.DataFrame({"EMPEMPLOYMENT.USERID": ["A1", "T1", "A2", "A3", "R1"],
+                        "EMPEMPLOYMENT.PERSON_ID": ["A1", "T1", "A2", "A3", "R1"],
+                        "EMPEMPLOYMENT.PAY_SCALE_TYPE": ["ZAF/01", "ZAF/01", "ZAF/09", None, None],
+                        "EMPEMPLOYMENT.PAY_SCALE_LEVEL": ["No Level", None, None, None, None]})
+    user = pd.DataFrame({"USERACCOUNT.USER_ID": ["A1", "A2", "A3", "SVC"], "USERACCOUNT.USERNAME": ["a1", "", "a3", "svc"],
+                         "USERACCOUNT.STATUS": ["t", "t", "t", "t"]})
+    return TableFrames({"EMPJOBHIST": job, "EMPEMPLOYMENT": emp, "USERACCOUNT": user, **extra})
+
+
+def test_defaults_d1_user_accounts():
+    f = _people_frames({})
+    out, review, s = im.apply_defaults(f, D, im.move_scope(f, D))
+    u = out.frames["USERACCOUNT"].set_index("USERACCOUNT.USER_ID")
+    assert u.loc["A2", "USERACCOUNT.USERNAME"] == "A2"  # blank username = user ID
+    assert "SVC" not in u.index and s["D1"]["left_out"] == ["SVC"]  # no employment: left out, listed
+    assert u.loc["T1", "USERACCOUNT.STATUS"] == "f" and u.loc["T1", "USERACCOUNT.USERNAME"] == "T1"
+    assert s["D1"]["created_inactive"] == ["T1"] and s["D1"]["no_account"] == ["R1"]  # RNS is not terminated
+    d1 = {(r["record_key"], r["reason"]) for r in review if r["decision"] == "D1"}
+    assert d1 == {("USERACCOUNT|SVC", im.D1_NO_EMPLOYMENT), ("R1", im.D1_NO_ACCOUNT)} or \
+        {r for _, r in d1} == {im.D1_NO_EMPLOYMENT, im.D1_NO_ACCOUNT}
+    assert len(f.frames["USERACCOUNT"]) == 4  # input untouched
+
+
+def test_defaults_d1_without_employment_changes_nothing():
+    f = TableFrames({"USERACCOUNT": pd.DataFrame({"USERACCOUNT.USER_ID": ["S1"], "USERACCOUNT.USERNAME": ["s"]})})
+    out, review, s = im.apply_defaults(f, D, im.move_scope(f, D))
+    assert out is f and review == [] and "skipped" in s["D1"]
+
+
+def test_defaults_d2_duplicate_addresses():
+    cols = ["PERSON_ID", "ADDRESS_TYPE", "START_DATE", "CITY"]
+    rows = [("P1", "home", "2018-10-01", "Joburg"), ("P1", "home", "2018-10-01", "Joburg"),  # true copy
+            ("P2", "home", "2018-10-01", "Old"), ("P2", "Home", "2018-10-01", "New"),  # conflict, case differs
+            ("P2", "home2", "2018-10-01", "Other")]  # home2 is its own type
+    addr = pd.DataFrame([dict(zip([f"PERADDRESS.{c}" for c in cols], r)) for r in rows])
+    f = TableFrames({"PERADDRESS": addr})
+    out, review, s = im.apply_defaults(f, D, im.move_scope(f, D))
+    a = out.frames["PERADDRESS"]
+    assert len(a) == 3 and s["D2"] == {"identical_dropped": 1, "conflicts": 1, "rows_dropped": 1}
+    assert set(a["PERADDRESS.CITY"]) == {"Joburg", "New", "Other"}  # latest (last) row wins
+    (r,) = [r for r in review if r["decision"] == "D2"]
+    assert r["differs"] == {"ADDRESS_TYPE": ("home", "Home"), "CITY": ("Old", "New")}
+
+
+def test_defaults_d3_flags_only_and_d5_payscale():
+    rel = pd.DataFrame({"EMPJOBRELATIONSHIPS.USERID": ["A1", "A1", "T1"],
+                        "EMPJOBRELATIONSHIPS.RELATIONSHIP_TYPE": ["HR", "HR", "HR"],
+                        "EMPJOBRELATIONSHIPS.START_DATE": ["2020-01-01", "2010-01-01", "2020-01-01"],
+                        "EMPJOBRELATIONSHIPS.END_DATE": ["9999-12-31", "2011-01-01", "9999-12-31"],
+                        "EMPJOBRELATIONSHIPS.RELATED_USER_ID": ["T1", "T1", "A1"]})
+    pst = pd.DataFrame({"SFRAW_PayScaleType.code": ["ZAF/01"], "__raw_key__": ["code=ZAF/01|country=ZAF"]})
+    f = _people_frames({"EMPJOBRELATIONSHIPS": rel, "SFRAW_PayScaleType": pst})
+    out, review, s = im.apply_defaults(f, D, im.move_scope(f, D))
+    d3 = sorted((r["record_key"], r["reason"]) for r in review if r["decision"] == "D3" and r["table"] == "EmpJob")
+    assert d3 == [("A1", im.D3_TERMINATED), ("A2", im.D3_NO_MANAGER), ("A3", im.D3_NOT_FOUND)]
+    assert s["D3"]["manager_ids_not_found"] == {"X9": 1}
+    assert s["D3"]["current_relationship_terminated"] == 1  # the ended 2010 row and T1's own row are not flagged
+    assert out.frames["EMPJOBHIST"].equals(f.frames["EMPJOBHIST"])  # history loads as is
+    d5 = [(r["record_key"], r["rows"]) for r in review if r["decision"] == "D5"]
+    assert d5 == [("ZAF/09", 1)] and s["D5"]["checked"]["PayScaleType"] == {"codes": 2, "missing": 1}
+    assert s["D5"]["not_validated"] == ["PayScaleLevel: object not found in the extract"]  # "No Level" kept, not checked
+    assert s["needs_review"]["D5"] == 1

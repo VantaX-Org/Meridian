@@ -87,6 +87,8 @@ def _prepare(session: Session, engine, tid: str, plan: dict) -> dict:
                                       weights=ctx["weights"])
         ctx["frames"] = ctx["cleansing"]["frames"]
     ctx["frames"], ctx["scope"] = im.apply_scope(ctx["frames"], ctx["dictionary"], scope)
+    ctx["frames"], review, ctx["scope"]["defaults"] = im.apply_defaults(ctx["frames"], ctx["dictionary"], scope)
+    ctx["scope"]["needs_review"] += review
     return ctx
 
 
