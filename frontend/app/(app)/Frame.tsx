@@ -43,6 +43,9 @@ function Shell({ children }: { children: ReactNode }) {
   const [viewAs, setViewAs] = useState(false);
   const session = useV2Session();
   const menu = [
+    // The top-bar health word and inbox hide at phone width, so the menu carries both.
+    { id: "inbox", label: t("Inbox"), onClick: () => router.push(withFixture("/me/notifications", fx)) },
+    { id: "status", label: t("Platform status"), onClick: () => router.push("/status") },
     ...(session.can("manage_users") && !session.viewAs && !session.shared ? [{ id: "view-as", label: t("View as a role"), onClick: () => setViewAs(true) }] : []),
     ...(fx ? [] : [{ id: "out", label: t("Sign out"), onClick: logout }]),
   ];

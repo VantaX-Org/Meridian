@@ -6,3 +6,5 @@
 .mx-root .mx-banner[data-tone="bad"] { color: var(--mx-bad-ink); }
 .mx-root .mx-topbtn { display: inline-flex; align-items: center; gap: var(--mx-s1); padding: var(--mx-s1) var(--mx-s2); border-radius: var(--mx-r-pill); color: var(--mx-ink-2); font-size: var(--mx-fs-small); text-decoration: none; white-space: nowrap; }
 .mx-root .mx-topbtn:hover { background: var(--mx-surface-2); color: var(--mx-ink); }
+/* At phone width the health word and inbox leave the top bar; both stay in the user menu. */
+@media (max-width: 640px) { .mx-root .mx-topbtn { display: none; } }
