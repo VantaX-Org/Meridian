@@ -50,6 +50,13 @@ CLOUD_SYSTEM_TYPES = ("successfactors", "concur", "ariba", "s4hana_cloud", "btp"
 RELATED = "@related"
 
 
+def _put_blob(name: str, data: bytes) -> None:
+    """Instance-move file content into the uploads bucket; raises so a lost file fails the set, not the load."""
+    from api.config import settings
+    from api.services.storage import upload_file
+    upload_file(settings.minio_bucket_uploads, name, data, suppress=False)
+
+
 def _not_found(e: Exception) -> bool:
     """An OData 404: the entity is not enabled in this tenant. The HTTP status decides when the
     error carries one; the message (which includes the URL) is only a fallback."""
@@ -1258,10 +1265,11 @@ class ConnectivityManager:
             self._sf_picklists(connector, dictionary, wanted, frames, coverage)
         return frames, coverage
 
-    def _sf_raw_sets(self, connector, modules, frames, coverage) -> None:
+    def _sf_raw_sets(self, connector, modules, frames, coverage, put=None) -> None:
         """History mode: every move-sequence entity set (instance_move.SF_MOVE_STAGES) of ``modules`` that no
         canonical table read, copied whole as SFRAW_<set>: every property, every effective-dated record, oldest
-        first, with its $metadata key in ``__raw_key__``. One set failing never stops the others."""
+        first, with its $metadata key in ``__raw_key__``. One set failing never stops the others. File content
+        (instance_move.SF_BLOB_PROPS) is written to object storage as each page arrives, via ``put``."""
         from api.services.migration import instance_move as im
         from sap.successfactors import FULL_HISTORY, entity_keys, history_props
 
@@ -1282,10 +1290,12 @@ class ConnectivityManager:
                 coverage.append({"table": table, "status": "not_in_system", "entities": [ent], "raw": True})
                 continue
             keys = entity_keys(self._sf_edmx, ent) if self._sf_edmx else None
+            kw = dict(FULL_HISTORY) if history_props(keys, set()) else {}
+            if ent in im.SF_BLOB_PROPS:  # file content goes to storage page by page; the frame keeps refs only
+                kw["on_page"] = im.spool_blobs(f"move-blobs/{self.tenant_id}/{ent}/", im.SF_BLOB_PROPS[ent],
+                                               put or _put_blob)
             try:
-                # ponytail: one frame per set in memory; Attachment fileContent (base64) is the big one, page
-                # to disk per set if a tenant's attachments outgrow the worker
-                df = connector.read_entity_set(ent, **(FULL_HISTORY if history_props(keys, set()) else {}))
+                df = connector.read_entity_set(ent, **kw)
             except Exception as e:
                 coverage.append({"table": table, "status": "not_in_system" if _not_found(e) else "failed",
                                  "entities": [ent], "detail": str(e)[:300], "raw": True})

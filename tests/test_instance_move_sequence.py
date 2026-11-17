@@ -133,3 +133,43 @@ def test_move_extract_reads_raw_sets_whole_with_history():
     assert cov["SFRAW_JobProfile"]["status"] == "live"
     assert cov["SFRAW_FOCompany"]["status"] == "not_in_system"  # absent from $metadata: stated, not read
     assert "FOCompany" not in read
+
+
+ATT_EDMX = """<edmx:Edmx xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx">
+<edmx:DataServices><Schema xmlns="http://schemas.microsoft.com/ado/2008/09/edm" Namespace="SFOData">
+<EntityType Name="Attachment"><Key><PropertyRef Name="attachmentId"/></Key>
+  <Property Name="attachmentId"/><Property Name="fileName"/><Property Name="fileContent"/></EntityType>
+<EntityContainer Name="EC"><EntitySet Name="Attachment" EntityType="SFOData.Attachment"/></EntityContainer>
+</Schema></edmx:DataServices></edmx:Edmx>"""
+
+
+def test_attachment_content_is_paged_to_storage_never_kept_in_the_frame():
+    from sap.successfactors import SuccessFactorsConnector
+
+    pages = {"/odata/v2/Attachment": {"d": {"results": [{"attachmentId": "1", "fileName": "a.pdf",
+                                                         "fileContent": "QUFB"}],
+                                            "__next": "/odata/v2/Attachment?$skiptoken=2"}},
+             "/odata/v2/Attachment?$skiptoken=2": {"d": {"results": [{"attachmentId": "2", "fileName": "b.pdf",
+                                                                       "fileContent": "QkJC"}]}}}
+    urls = []
+
+    def get(method, url, params=None, **kw):
+        urls.append(url)
+        return SimpleNamespace(json=lambda: pages[url])
+
+    conn = SuccessFactorsConnector()
+    conn._client, conn._ensure_connected, conn._request_with_retry = object(), lambda: None, get
+    conn.metadata = lambda entity=None: ATT_EDMX
+    mgr = ConnectivityManager.__new__(ConnectivityManager)
+    mgr.tenant_id, stored, frames, coverage = "t1", {}, {}, []
+    mgr._sf_raw_sets(conn, ["employee_central"], frames, coverage, put=stored.__setitem__)
+    assert urls == ["/odata/v2/Attachment", "/odata/v2/Attachment?$skiptoken=2"]  # server pages via __next
+    df = frames["SFRAW_Attachment"]
+    assert list(df["SFRAW_Attachment.attachmentId"]) == ["1", "2"]
+    assert "SFRAW_Attachment.fileContent" not in df.columns  # content left the frame page by page
+    refs = list(df["SFRAW_Attachment.fileContent@ref"])
+    assert all(r.startswith("move-blobs/t1/Attachment/") for r in refs)
+    assert [stored[r] for r in refs] == [b"QUFB", b"QkJC"]
+    # the load puts the content back one batch at a time
+    rec = {"attachmentId": "1", "fileContent@ref": refs[0]}
+    assert im.with_blobs([rec], stored.__getitem__) == [{"attachmentId": "1", "fileContent": "QUFB"}]

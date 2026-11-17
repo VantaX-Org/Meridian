@@ -198,6 +198,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         from_date: str | None = None,
         expand: list[str] | None = None,
         to_date: str | None = None,
+        on_page: Callable[[list[dict[str, Any]]], None] | None = None,
     ) -> pd.DataFrame:
         """Read an OData V2 entity set with pagination and rate-limit handling.
 
@@ -214,6 +215,9 @@ class SuccessFactorsConnector(CloudSAPConnector):
                         ("nav/prop" in ``select``) come back as "nav/prop" columns: from the
                         related record in the row's defaultLanguage when both that and
                         "nav/locale" are selected, else the first non-blank one.
+            on_page:    Called with each server page's records, in place, before they are kept: a
+                        caller can move a large property (Attachment fileContent) out to storage so
+                        only one page of it is ever held in memory.
 
         Returns:
             pd.DataFrame with the entity set data.
@@ -273,6 +277,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
                     if isinstance(v, str) and v.startswith("/Date("):
                         rec[k] = odata_date(v)
 
+            if on_page is not None:
+                on_page(results)
             rows_to_take = len(results) if top <= 0 else min(len(results), remaining)
             all_records.extend(results[:rows_to_take])
             remaining -= rows_to_take

@@ -106,6 +106,11 @@ _EFFECTIVE_PROPS = ("effectiveStartDate", "startDate")  # sap.successfactors.HIS
 _HISTORY_PARTS = {*_EFFECTIVE_KEYS, "EFFECTIVE_START_DATE", "SEQ_NUMBER", *_EFFECTIVE_PROPS, "seqNumber"}
 RAW_PREFIX = "SFRAW_"
 _RAW_PERSON_PROPS = ("userId", "personIdExternal")  # person keys of the BizX entities (sap/successfactors.py)
+# Edm.Binary properties (base64) of the file sets, per SAP's SF OData reference: never held in a frame. The
+# extract writes each value to object storage page by page and keeps "<prop>@ref" (the object name); the load
+# reads it back one batch at a time, just before that batch is sent.
+SF_BLOB_PROPS = {"Attachment": "fileContent", "Photo": "photo"}
+BLOB_REF = "@ref"
 _CHANGE_DOCS = ("CDHDR", "CDPOS")
 _PICKLIST = "PickListValueV2"
 _CLOUD_KEYS = {_PICKLIST: ["PickListV2_id", "externalCode"]}  # mirrors sap/config_loader._CLOUD_KEYS
@@ -420,6 +425,33 @@ def raw_records(step: dict, frames, id_map: Optional[dict] = None) -> list[tuple
     return out
 
 
+def spool_blobs(prefix: str, prop: str, put: Callable[[str, bytes], None]) -> Callable[[list[dict]], None]:
+    """An ``on_page`` hook for SuccessFactorsConnector.read_entity_set: each record's ``prop`` goes to
+    ``put(name, bytes)`` under ``prefix`` + its sha256 (the same file is stored once) and the record keeps
+    ``prop@ref`` = that name instead. A blank value stays blank."""
+    def hook(page: list[dict]) -> None:
+        for rec in page:
+            v = rec.pop(prop, None)
+            if v:
+                data = v.encode() if isinstance(v, str) else bytes(v)
+                name = prefix + hashlib.sha256(data).hexdigest()
+                put(name, data)
+                rec[prop + BLOB_REF] = name
+    return hook
+
+
+def with_blobs(records: list[dict], fetch: Callable[[str], bytes]) -> list[dict]:
+    """``records`` with every ``prop@ref`` read back into ``prop`` (base64 text, as the source returned it)."""
+    return [{(p[:-len(BLOB_REF)] if p.endswith(BLOB_REF) else p): (fetch(v).decode() if p.endswith(BLOB_REF) else v)
+             for p, v in r.items()} for r in records]
+
+
+def _fetch_blob(name: str) -> bytes:
+    from api.config import settings
+    from api.services.storage import download_file
+    return download_file(settings.minio_bucket_uploads, name)
+
+
 def person_batches(step: dict, records: list[tuple[str, dict]], size: int = BATCH_PERSONS) -> list[list]:
     """Batches of whole persons (every effective-dated row of one person in one call), at most ``size`` persons
     per batch; records with no person go ``size`` to a batch."""
@@ -572,7 +604,7 @@ def metadata_issues(step: dict, records: list[tuple[str, dict]], meta: dict) -> 
         out.append({"entity": ent, "field": None, "records": [], "severity": "warning",
                     "reason": f"the target does not accept upserts on {ent}; its rows go to the archive file"})
         return out
-    sent = {p for _, r in records for p in r}
+    sent = {p.removesuffix(BLOB_REF) for _, r in records for p in r}
     for p in sorted(sent - set(m["properties"]) - {"__metadata"}):
         out.append({"entity": ent, "field": p, "records": [], "severity": "error",
                     "reason": f"{ent}.{p} is not in the target's $metadata"})
@@ -759,7 +791,8 @@ class MemoryStore:
 
 
 def load(plan_steps: list[dict], connector, store: Store, dry_run: bool = True, waves: Optional[set] = None,
-         threshold: float = ERROR_THRESHOLD, only: Optional[set] = None) -> dict:
+         threshold: float = ERROR_THRESHOLD, only: Optional[set] = None,
+         fetch: Callable[[str], bytes] = _fetch_blob) -> dict:
     """Send the steps' batches wave by wave. ``plan_steps`` carry ``batches`` (lists of (key, payload)).
 
     A dry run never touches the target and marks every record validated. A live run sends one ping first and
@@ -795,7 +828,8 @@ def load(plan_steps: list[dict], connector, store: Store, dry_run: bool = True, 
                     status = "validated" if dry_run else "exported"
                     rows = [{"key": k, "status": status, "http_code": None, "message": ""} for k, _ in batch]
                 else:
-                    res = connector.upsert(s["entity"], [r for _, r in batch], purge_type=s.get("purge_type"))
+                    res = connector.upsert(s["entity"], with_blobs([r for _, r in batch], fetch),
+                                           purge_type=s.get("purge_type"))
                     rows = [{**x, "key": batch[i][0]} for i, x in enumerate(res)]
                 for (_, payload), r in zip(batch, rows):
                     r["row_hash"] = row_hash(payload)
