@@ -79,10 +79,16 @@ def _prepare(session: Session, engine, tid: str, plan: dict) -> dict:
     ctx["dictionary"] = ctx["frames"].dictionary
     ctx["check"] = lambda f: _run(f, ctx["modules"], tid, ctx["run_kwargs"])
     ctx["cleansing"] = None
+    excl = plan.get("exclude_countries")
+    scope = im.move_scope(ctx["frames"], ctx["dictionary"], plan.get("sample"),
+                          im.EXCLUDED_COUNTRIES if excl is None else excl)
     if plan.get("mode", "cleansed") == "cleansed":
         ctx["cleansing"] = im.cleanse(ctx["frames"], ctx["rules"], ctx["check"], _steward_fixes(session, tid),
                                       weights=ctx["weights"])
         ctx["frames"] = ctx["cleansing"]["frames"]
+    ctx["frames"], ctx["scope"] = im.apply_scope(ctx["frames"], ctx["dictionary"], scope)
+    ctx["frames"], review, ctx["scope"]["defaults"] = im.apply_defaults(ctx["frames"], ctx["dictionary"], scope)
+    ctx["scope"]["needs_review"] += review
     return ctx
 
 
@@ -176,6 +182,9 @@ def plan_move(self, tenant_id: str, plan_id: str) -> str:
         try:
             ctx = _prepare(session, get_sync_engine(), tenant_id, {**plan, "mode": "as_is"})
             built = im.build_move_plan(plan["modules"], ctx["dictionary"], ctx["frames"], mode=plan["mode"])
+            built["scope"] = ctx["scope"]
+            # the target's config is read at pre-flight (the first step that connects); until then unverified
+            built["target_config"] = {"status": "unverified", "reason": "compared at pre-flight"}
         except Exception as exc:  # noqa: BLE001 - stored for the caller, no trace
             log.exception("instance move plan %s failed", plan_id)
             built = {"status": "failed", "reason": str(exc)[:500], "waves": [], "unplaced": []}
@@ -195,15 +204,18 @@ def preflight_move(self, tenant_id: str, plan_id: str) -> str:
         plan = _plan_row(session, plan_id)
         issues: list[dict] = []
         result: dict = {"status": "completed", "issues": issues}
+        overwritten: list[dict] = []
         conn = None
         try:
             ctx = _prepare(session, engine, tenant_id, plan)
             _rls(session, tenant_id)
             conn, why = _connect(session, tenant_id, plan["target_system_id"])
             why = why or im.auth_preflight(conn)
+            result["scope"] = ctx["scope"]
             if why:
                 issues.append({"entity": None, "field": None, "records": [], "severity": "error", "reason": why})
                 result["status"] = "failed"
+                result["target_config"] = {"status": "unverified", "reason": why}
             else:
                 src: dict[str, list] = {}
                 for name, data in session.execute(text(
@@ -223,13 +235,19 @@ def preflight_move(self, tenant_id: str, plan_id: str) -> str:
                     issues += im.reference_issues(s, recs, ctx["dictionary"], config)
                     keys = im._key_props(ctx["dictionary"].table(s["table"]), s["entity"]) if s.get("table") and not s.get("raw") else []
                     if keys and s.get("pass", 1) == 1:
-                        issues += im.key_conflicts(s, recs, conn.read_entity_set(s["entity"]).to_dict("records"), keys)
+                        trows = conn.read_entity_set(s["entity"]).to_dict("records")
+                        issues += im.key_conflicts(s, recs, trows, keys)
+                        if im.source_wins(s["entity"]):  # D8: list each target value the source replaces
+                            overwritten += im.key_overwrites(s, recs, trows, keys)
                 result["config"] = built["config"]
+                built["scope"] = ctx["scope"]
+                built["target_config"] = result["target_config"] = {"status": "verified"}
                 session.execute(text("UPDATE move_plans SET plan = CAST(:p AS jsonb) WHERE id = :id"),
                                 {"p": json.dumps(built, default=str), "id": plan_id})
             if ctx["cleansing"]:
                 result["cleansing"] = ctx["cleansing"]["summary"]
             result["config_lists"] = locals().get("config") or {}
+            result["overwritten_in_target"] = im.overwrites(result["config_lists"]) + overwritten
         except Exception as exc:  # noqa: BLE001
             log.exception("instance move preflight %s failed", plan_id)
             result.update(status="failed", issues=issues + [{"entity": None, "field": None, "records": [],
@@ -315,7 +333,8 @@ def run_move(self, tenant_id: str, run_id: str) -> str:
                 cleansing = {"summary": c["summary"], "unfixable": c["unfixable"], "passes": c["passes"]}
             status = "stopped" if res["status"] == "stopped" else \
                 ("failed" if res["status"] in ("failed", "stopped_error_rate") else "completed")
-            _finish(session, tenant_id, run_id, status, res["reason"], {**report_extra, **res}, cleansing)
+            _finish(session, tenant_id, run_id, status, res["reason"], {**report_extra, **res, "scope": ctx["scope"],
+                                                                  "overwritten_in_target": (plan.get("preflight") or {}).get("overwritten_in_target", [])}, cleansing)
             return status
         except Exception as exc:  # noqa: BLE001
             log.exception("instance move run %s failed", run_id)

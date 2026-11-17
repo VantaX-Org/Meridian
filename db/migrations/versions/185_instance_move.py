@@ -29,6 +29,8 @@ _TABLES = {
         id_map_upload_id uuid,
         plan jsonb NOT NULL DEFAULT '{}'::jsonb,
         preflight jsonb,
+        sample jsonb,
+        exclude_countries jsonb,
         created_by uuid,
         created_at timestamptz NOT NULL DEFAULT now()""",
     "move_runs": """
@@ -100,6 +102,8 @@ def upgrade() -> None:
         op.execute(f"""CREATE POLICY tenant_isolation ON {name}
             USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
             WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid)""")
+    for col in ("sample", "exclude_countries"):  # plans created before pilot mode
+        op.execute(f"ALTER TABLE move_plans ADD COLUMN IF NOT EXISTS {col} jsonb")
     op.execute("CREATE INDEX IF NOT EXISTS ix_move_record_status_failed ON move_record_status (run_id, status)")
     op.execute("CREATE INDEX IF NOT EXISTS ix_move_cleansing_log_run ON move_cleansing_log (run_id)")
 
