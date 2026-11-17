@@ -11,6 +11,7 @@ import {
   SeverityPill, SeverityStrip, Sheet, Skeleton, StatTile, TrendArea, FieldChip, useAletheia, useAletheiaScope, useStacked, type Severity,
 } from "@/ui/kit";
 import { answerFor, type PromptId } from "./answers";
+import { FindingsCard, MonitorStrip, OldRunGate, RelatedObjects, ScoreReceipt } from "./ObjectExtras";
 import { compactCount, signed } from "./format";
 import { useObjectData, type ObjectData } from "./useObjectData";
 import { useObjectRun } from "./useObjectRun";
@@ -77,6 +78,8 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
   const na = t("n/a");
   const pairScores = d.pair?.last?.scores;
   const proposed = g ? Math.min(g.proposed, g.open) : 0;
+  const latest = o.heads[0]?.id ?? null;
+  const onLatest = !latest || !o.runId || o.runId === latest;
 
   const detail = r ? (
             <DetailPanel
@@ -102,10 +105,12 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
                       <StatTile label={t("Fix proposed")} value={compactCount(proposed)} bar={g.open ? (100 * proposed) / g.open : 0} barTone="pass" />
                       <StatTile label={t("Needs a person")} value={compactCount(g.open - proposed)} bar={g.open ? (100 * (g.open - proposed)) / g.open : 0} barTone="data" />
                     </dl>
-                    <div className="mx-links">
-                      <Button variant="primary" href={fixHref("proposed", r.check_id)}>{t("Review fixes")}</Button>
-                      <Button variant="secondary" href={fixHref("manual", r.check_id)}>{t("Assign records")}</Button>
-                    </div>
+                    <OldRunGate runId={o.runId} latest={latest}>
+                      <div className="mx-links">
+                        <Button variant="primary" href={fixHref("proposed", r.check_id)}>{t("Review fixes")}</Button>
+                        <Button variant="secondary" href={fixHref("manual", r.check_id)}>{t("Assign records")}</Button>
+                      </div>
+                    </OldRunGate>
                   </>
                 ) : <p>{t("No work is open for this rule yet.")}</p>
               ) : null}
@@ -126,7 +131,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
           {[t("{system}, run {n}", { system: o.systemName, n: o.run?.run_number ?? "" }), d.cell ? t("{n} records checked against {m} rules", { n: compactCount(d.cell.records_checked ?? 0), m: d.measured }) : ""].filter(Boolean).join(", ")}
         </>}
         actions={<>
-          <Button variant="primary" href={fixHref("proposed")}>{t("Fix records")}</Button>
+          {onLatest ? <Button variant="primary" href={fixHref("proposed")}>{t("Fix records")}</Button> : <span title={t("This is not the current run, so actions are off. Open the current run to act.")} data-testid="old-run"><Button variant="primary" href={o.hrefWith(`/o/${system}/${module}`, { run: latest })}>{t("Open the current run to act")}</Button></span>}
           <Button variant="secondary" onClick={d.download ?? undefined} disabled={!d.download || d.busy} title={d.download ? undefined : t("No run yet")}>{t("Download workbook")}</Button>
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
@@ -142,7 +147,9 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
               </div>
             </div>
             <DimensionBars items={d.dims} naLabel={na} />
+            <ScoreReceipt receipt={d.receipt} />
           </Card>
+          <MonitorStrip module={o.module} />
           <Card title={t("Score over runs")} action={<Button variant="ghost" href={href(`/o/${system}/${module}/trend`)}>{t("Trend")}</Button>}>
             <TrendArea points={d.trend} label={t("Score over runs")} emptyLabel={t("Not enough runs to draw a trend yet.")} />
           </Card>
@@ -167,6 +174,8 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
             {rows.length ? <MasterList rows={rows} selectedId={!stacked || sheet ? r?.check_id ?? null : null} onSelect={(id) => { setPick(id); setSheet(true); }} label={t("Failing rules")} /> : <EmptyState heading={t("No rule fails in this run")} />}
           </Card>
           {!stacked ? detail : null}
+          <FindingsCard system={system} module={o.module} latest={onLatest} />
+          <RelatedObjects system={system} module={o.module} />
         </div>
       </div>
       <Sheet open={stacked && sheet && r !== null} onClose={() => setSheet(false)} label={t("Selected rule")} closeLabel={t("Close")}>{detail}</Sheet>

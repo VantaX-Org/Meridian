@@ -6,6 +6,7 @@ import type { ReadinessCell } from "@/lib/api/v2/object";
 import { Card, DataTable, EmptyState, ErrorState, Skeleton, StatTile, type Column } from "@/ui/kit";
 import { score } from "@/ui/screens/object/format";
 import type { ObjectRun } from "@/ui/screens/object/useObjectRun";
+import { Lead } from "./Lead";
 import { useTabChat } from "./TabFrame";
 
 const VERDICT = { go: () => t("Ready"), at_risk: () => t("At risk"), no_go: () => t("Blocked") } as const;
@@ -30,6 +31,8 @@ export function Readiness({ o, system, module }: { o: ObjectRun; system: string;
   ];
   return (
     <div className="mx-col">
+      <Lead tab="readiness" title={t("Waves by verdict")} sentence={t("{n} of {m} waves are ready for this object.", { n: rows.filter((r) => r.verdict === "go").length, m: rows.length })}
+        bars={[{ id: "go", label: VERDICT.go(), value: rows.filter((r) => r.verdict === "go").length, tone: "good" }, { id: "at_risk", label: VERDICT.at_risk(), value: rows.filter((r) => r.verdict === "at_risk").length, tone: "warn" }, { id: "no_go", label: VERDICT.no_go(), value: rows.filter((r) => r.verdict === "no_go").length, tone: "bad" }]} />
       <dl className="mx-tiles">
         <StatTile label={t("Waves")} value={String(rows.length)} />
         <StatTile label={t("Ready")} value={String(rows.filter((r) => r.verdict === "go").length)} />
