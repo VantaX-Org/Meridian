@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:8d2e2975-f61f-4aa2-9cab-5275e71ce211",
+  "serialNumber": "urn:uuid:5c0f4c33-6d3f-44fa-a5de-f448623f0c4f",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-11-17T04:53:52.512Z",
+    "timestamp": "2026-11-17T06:30:27.408Z",
     "lifecycles": [
       {
         "phase": "pre-build"
@@ -5362,7 +5362,7 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "file:/private/tmp/claude-501/-Users-reshigan/8f3248c7-1d4c-419a-8ab4-ba2431f2e286/scratchpad/wt-all/frontend/vendor/xlsx-0.20.3.tgz"
+          "url": "file:/Users/reshigan/Code/GONXT/Technology/Platforms/Meridian/Meridian_2/.claude/worktrees/ui-all/frontend/vendor/xlsx-0.20.3.tgz"
         }
       ],
       "hashes": [
