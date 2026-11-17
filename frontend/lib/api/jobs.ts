@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import { fixtureActive } from "@/lib/api/v2/fixture";
 import type { Job, JobListResponse } from "@/types/jobs";
 
 export async function getJobs(params: { active?: boolean; limit?: number } = {}): Promise<Job[]> {
@@ -26,6 +27,10 @@ export function streamJobs(
   onJob: (job: Job) => void,
   onEnd: (error?: unknown) => void,
 ): () => void {
+  if (fixtureActive()) {
+    const timer = setTimeout(() => onEnd(), 0);
+    return () => clearTimeout(timer);
+  }
   const controller = new AbortController();
   (async () => {
     try {

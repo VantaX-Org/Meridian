@@ -1,0 +1,124 @@
+"use client";
+
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { AuthGuard } from "@/ui/auth/Guard";
+import { RequestAccessHost } from "@/ui/auth/RequestAccess";
+import { useAuth } from "@/context/auth-context";
+import { usePreferencesSync } from "@/hooks/use-preferences";
+import { PermissionsProvider } from "@/lib/permissions";
+import { useFixture, withFixture } from "@/lib/api/v2/fixture";
+import { t, useInterfaceLang } from "@/lib/v2/i18n";
+import { PATHS } from "@/lib/next/nav-defaults";
+import { DemoBar, Standalone, useDocumentLang } from "@/ui/kit";
+import { AletheiaProvider, AppShell, CommandPalette, SheetHost, ToastHost, useAletheia } from "@/ui/kit";
+import { SHEETS } from "@/ui/sheets";
+
+// Lazy slot: the one chat instance, scoped by whichever screen is open.
+const AletheiaPanel = lazy(() => import("@/ui/kit/AletheiaPanel"));
+
+function PreferencesSync() {
+  const { user } = useAuth();
+  usePreferencesSync(user?.id);
+  return null;
+}
+
+function ChatHost({ children }: { children: ReactNode }) {
+  return <AletheiaProvider initialOpen={useSearchParams().get("aletheia") === "1"}>{children}</AletheiaProvider>;
+}
+
+function Shell({ children }: { children: ReactNode }) {
+  useInterfaceLang();
+  const fx = useFixture();
+  const path = usePathname() ?? "";
+  const { user, logout } = useAuth();
+  const chat = useAletheia();
+  const link = (p: string) => withFixture(p, fx);
+  const router = useRouter();
+  const [palette, setPalette] = useState(false);
+  useEffect(() => {
+    // "g" then a letter jumps to a place, as in the old interface. The chord lapses after 1.2 seconds.
+    const CHORDS: Record<string, string> = { h: PATHS.home, w: PATHS.work, l: PATHS.load, r: PATHS.runs, m: PATHS.more, u: "/rules", c: "/mdm", k: "/insights" };
+    let armed = 0;
+    const k = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPalette((p) => !p); return; }
+      const el = e.target as HTMLElement | null;
+      if (e.metaKey || e.ctrlKey || e.altKey || el?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el?.tagName ?? "")) return;
+      const key = e.key.toLowerCase();
+      if (armed && Date.now() - armed < 1200 && CHORDS[key]) { armed = 0; e.preventDefault(); router.push(withFixture(CHORDS[key], fx)); return; }
+      armed = key === "g" ? Date.now() : 0;
+    };
+    document.addEventListener("keydown", k);
+    return () => document.removeEventListener("keydown", k);
+  }, [router, fx]);
+  const sections = [
+    { id: "home", label: t("Home"), href: PATHS.home },
+    { id: "work", label: t("Work"), href: PATHS.work },
+    { id: "load", label: t("Load"), href: PATHS.load },
+    { id: "runs", label: t("Runs"), href: PATHS.runs },
+    { id: "more", label: t("More"), href: PATHS.more },
+  ].map((s) => ({ ...s, href: link(s.href), active: s.href !== "/" && path.startsWith(s.href) }));
+  const commands = sections.map((s) => ({ id: s.id, label: t("Go to {place}", { place: s.label }), run: () => router.push(s.href) }));
+  return (
+    <>
+    <AppShell
+      brand={t("Meridian")}
+      sections={sections}
+      navLabel={t("Main sections")}
+      skipLabel={t("Skip to content")}
+      skipNavLabel={t("Skip links")}
+      user={{ name: user?.name ?? user?.email ?? t("Demo user"), email: user?.email }}
+      userMenuLabel={t("Account menu")}
+      menu={fx ? [] : [{ id: "out", label: t("Sign out"), onClick: logout }]}
+      launcher={{ label: t("Ask Aletheia"), onOpen: () => chat.setOpen(true) }}
+      aside={chat.open ? (
+        <Suspense fallback={null}>
+          <AletheiaPanel
+            labels={{ title: t("Aletheia"), scope: t("Asking about the whole landscape"), close: t("Close"), inputLabel: t("Ask a question"), send: t("Send"), evidence: t("Evidence"), suggestionsLabel: t("Suggested questions"), threadLabel: t("Conversation") }}
+          />
+        </Suspense>
+      ) : null}
+    >
+      {children}
+    </AppShell>
+    <CommandPalette
+      open={palette}
+      onClose={() => setPalette(false)}
+      commands={commands}
+      onAsk={(q) => { chat.setOpen(true); chat.ask(q); }}
+      label={t("Command palette")}
+      placeholder={t("Go to a screen or ask Aletheia")}
+      askLabel={(q) => t("Ask Aletheia: {q}", { q })}
+      emptyLabel={t("No matches")}
+    />
+    </>
+  );
+}
+
+/** The shell root: tokens, and the interface language on the root and on <html> (WCAG 3.1.1). */
+function Root({ children }: { children: ReactNode }) {
+  const { tag } = useInterfaceLang();
+  useDocumentLang(tag);
+  return <div className="mx-root" lang={tag}>{children}</div>;
+}
+
+/** Same sign-in and permissions chain as the current app; fixture mode skips sign-in. */
+export function Frame({ children }: { children: ReactNode }) {
+  const fx = useFixture();
+  const path = usePathname() ?? "";
+  // The status page and share links are public: no sign-in, no navigation.
+  if (path === "/status" || path.startsWith("/share/")) {
+    return <Standalone><Suspense fallback={null}><ToastHost><SheetHost sheets={SHEETS} closeLabel={t("Close")}>{children}</SheetHost></ToastHost></Suspense></Standalone>;
+  }
+  const inner = <Suspense fallback={null}><ChatHost><ToastHost><SheetHost sheets={SHEETS} closeLabel={t("Close")}><Shell>{children}</Shell></SheetHost></ToastHost></ChatHost></Suspense>;
+  if (fx) return <Root><DemoBar />{inner}</Root>;
+  return (
+    <AuthGuard>
+      <PermissionsProvider>
+        <PreferencesSync />
+        <Root>{inner}</Root>
+        <RequestAccessHost />
+      </PermissionsProvider>
+    </AuthGuard>
+  );
+}

@@ -1,0 +1,179 @@
+/*
+ * Meridian "ui" tokens: the foundation of the rebuilt interface (design C, Split analyst). The only file under ui/ that
+ * may hold raw colour, shadow and motion (scripts/lint-tokens.mjs TOKEN_FILES); every other file reads var(--mx-*).
+ * Light is the default. Dark applies when html[data-theme="dark"], or when the system is dark and the person chose
+ * nothing. Spacing sits on a 4px grid. Aletheia has its own violet tokens, used by the chat sheet and its entry point.
+ */
+
+.mx-root {
+  --mx-bg: #F6F7F9;
+  --mx-surface: #FFFFFF;
+  --mx-surface-2: #F0F2F5;
+  --mx-border: #E3E6EB;
+  --mx-border-strong: #C9CED6;
+  --mx-ink: #14161A;
+  --mx-ink-2: #4A505A;
+  --mx-ink-3: #5F6672;
+  --mx-accent: #1C58F2;
+  --mx-accent-ink: #FFFFFF;
+  --mx-accent-soft: #E8EEFF;
+  --mx-aletheia: #6D4FD6;
+  --mx-aletheia-ink: #3B2A8F;
+  --mx-aletheia-on: #FFFFFF;
+  --mx-aletheia-soft: #EFEAFF;
+  --mx-aletheia-edge: #CBBDF5;
+  --mx-good: #1A7F4B;
+  --mx-good-ink: #11603A;
+  --mx-warn: #B26A00;
+  --mx-warn-ink: #7A4500;
+  --mx-bad: #C92A2A;
+  --mx-bad-ink: #A61F1F;
+  --mx-sev-critical: #C92A2A;
+  --mx-sev-high: #B84308;
+  --mx-sev-medium: #8A6400;
+  --mx-sev-low: #3D5BD9;
+  --mx-focus: #1C58F2;
+  --mx-scrim: rgb(20 22 26 / 40%);
+  --mx-data: #0759DB;
+  --mx-chart-1: #406FD1;
+  --mx-chart-2: #C65A1E;
+  --mx-chart-3: #0F8A78;
+  --mx-glass: rgb(255 255 255 / 72%);
+  --mx-elev-1: 0 1px 2px rgb(20 22 26 / 6%), 0 1px 1px rgb(20 22 26 / 4%);
+  --mx-elev-2: 0 8px 24px rgb(20 22 26 / 14%);
+
+  --mx-s1: 4px;
+  --mx-s2: 8px;
+  --mx-s3: 12px;
+  --mx-s4: 16px;
+  --mx-s5: 24px;
+  --mx-s6: 32px;
+  --mx-gutter: var(--mx-s4);
+  --mx-h-control: 36px;
+  --mx-r-control: 8px;
+  --mx-r-card: 14px;
+  --mx-r-pill: 999px;
+
+  --mx-font-sans: var(--font-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  --mx-font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+  --mx-fs-micro: 0.6875rem;
+  --mx-fs-small: 0.8125rem;
+  --mx-fs-body: 0.9375rem;
+  --mx-fs-title: 1.0625rem;
+  --mx-fs-h1: 1.75rem;
+  --mx-fs-display: 2.25rem;
+  --mx-lh-small: 1.25rem;
+  --mx-lh-body: 1.5rem;
+  --mx-lh-title: 1.5rem;
+  --mx-lh-h1: 2.25rem;
+  --mx-w-label: 500;
+  --mx-w-heading: 600;
+
+  --mx-dur: 140ms;
+  --mx-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  background: var(--mx-bg);
+  color: var(--mx-ink);
+  font-family: var(--mx-font-sans);
+  font-size: var(--mx-fs-body);
+  line-height: var(--mx-lh-body);
+  min-block-size: 100dvh;
+}
+
+html[data-theme="dark"] .mx-root {
+  --mx-bg: #0E0F18;
+  --mx-surface: #171826;
+  --mx-surface-2: #20223A;
+  --mx-border: #2A2C47;
+  --mx-border-strong: #3B3E63;
+  --mx-ink: #F2F3F8;
+  --mx-ink-2: #B9BDD0;
+  --mx-ink-3: #9096AE;
+  --mx-accent: #6C93FF;
+  --mx-accent-ink: #0E0F18;
+  --mx-accent-soft: #1F2A55;
+  --mx-aletheia: #A28BFF;
+  --mx-aletheia-ink: #E2DAFF;
+  --mx-aletheia-on: #0E0F18;
+  --mx-aletheia-soft: #2A2350;
+  --mx-aletheia-edge: #54468F;
+  --mx-good: #4CC38A;
+  --mx-good-ink: #7BDDAA;
+  --mx-warn: #F0A73C;
+  --mx-warn-ink: #F6C478;
+  --mx-bad: #FF6B6B;
+  --mx-bad-ink: #FF9A9A;
+  --mx-sev-critical: #FF6B6B;
+  --mx-sev-high: #FF8A4C;
+  --mx-sev-medium: #F2C94C;
+  --mx-sev-low: #8FA8FF;
+  --mx-focus: #8FB0FF;
+  --mx-scrim: rgb(0 0 0 / 60%);
+  --mx-data: #8FB0FF;
+  --mx-chart-1: #8FB0FF;
+  --mx-chart-2: #F2955C;
+  --mx-chart-3: #4FD1B8;
+  --mx-glass: rgb(23 24 38 / 72%);
+  --mx-elev-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --mx-elev-2: 0 8px 24px rgb(0 0 0 / 55%);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .mx-root {
+    --mx-bg: #0E0F18;
+    --mx-surface: #171826;
+    --mx-surface-2: #20223A;
+    --mx-border: #2A2C47;
+    --mx-border-strong: #3B3E63;
+    --mx-ink: #F2F3F8;
+    --mx-ink-2: #B9BDD0;
+    --mx-ink-3: #9096AE;
+    --mx-accent: #6C93FF;
+    --mx-accent-ink: #0E0F18;
+    --mx-accent-soft: #1F2A55;
+    --mx-aletheia: #A28BFF;
+    --mx-aletheia-ink: #E2DAFF;
+  --mx-aletheia-on: #0E0F18;
+    --mx-aletheia-soft: #2A2350;
+    --mx-aletheia-edge: #54468F;
+    --mx-good: #4CC38A;
+    --mx-good-ink: #7BDDAA;
+    --mx-warn: #F0A73C;
+    --mx-warn-ink: #F6C478;
+    --mx-bad: #FF6B6B;
+    --mx-bad-ink: #FF9A9A;
+    --mx-sev-critical: #FF6B6B;
+    --mx-sev-high: #FF8A4C;
+    --mx-sev-medium: #F2C94C;
+    --mx-sev-low: #8FA8FF;
+    --mx-focus: #8FB0FF;
+    --mx-scrim: rgb(0 0 0 / 60%);
+    --mx-data: #8FB0FF;
+    --mx-chart-1: #8FB0FF;
+    --mx-chart-2: #F2955C;
+    --mx-chart-3: #4FD1B8;
+    --mx-glass: rgb(23 24 38 / 72%);
+    --mx-elev-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --mx-elev-2: 0 8px 24px rgb(0 0 0 / 55%);
+  }
+}
+
+/* Motion lives here only (lint:tokens). One class per moving thing; reduced motion turns them all off. */
+.mx-root .mx-btn,
+.mx-root .mx-row,
+.mx-root .mx-tab,
+.mx-root .mx-bar > span,
+.mx-root .mx-chip-btn {
+  transition: background-color var(--mx-dur) var(--mx-ease), border-color var(--mx-dur) var(--mx-ease), inline-size var(--mx-dur) var(--mx-ease);
+}
+.mx-root .mx-skel {
+  animation: mx-pulse 1400ms var(--mx-ease) infinite alternate;
+}
+.mx-root .mx-sheet {
+  animation: mx-rise var(--mx-dur) var(--mx-ease);
+}
+@keyframes mx-pulse { from { opacity: 0.55; } to { opacity: 1; } }
+@keyframes mx-rise { from { transform: translateY(var(--mx-s4)); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .mx-root .mx-btn, .mx-root .mx-row, .mx-root .mx-tab, .mx-root .mx-bar > span, .mx-root .mx-chip-btn, .mx-root .mx-skel, .mx-root .mx-sheet { transition: none; animation: none; }
+}

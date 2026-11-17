@@ -196,9 +196,8 @@ async def list_versions(
         stmt = stmt.where(AnalysisVersion.metadata_.op("->>")("archived").is_distinct_from("true"))
     if module:
         # Filter by module in metadata JSON
-        stmt = stmt.where(
-            AnalysisVersion.metadata_.op("->>")("modules").contains(module)
-        )
+        # jsonb containment: metadata->'modules' @> '["<module>"]'
+        stmt = stmt.where(AnalysisVersion.metadata_["modules"].contains([module]))
     if system_id:
         stmt = stmt.where(AnalysisVersion.metadata_.op("->>")("system_id") == system_id)
     if status:

@@ -6,11 +6,12 @@ import { Attribution } from "@/design/brand/Attribution";
 import { Providers } from "@/lib/providers";
 import { themeBootScript } from "@/lib/theme";
 import brand from "../public/brand/brand.json";
+import "@/ui/tokens.css";
 import "./globals.css";
 
 // Geist for words and figures, Geist Mono for SAP identifiers, loaded once here for every page (the shell, the
 // signed-out pages, the status page, not found and the global error). Self-hosted (app/_fonts, latin subset, variable
-// weight, SIL OFL 1.1) so builds and offline customer deployments never fetch from a font service. design/v2/tokens.css
+// weight, SIL OFL 1.1) so builds and offline customer deployments never fetch from a font service. ui/tokens.css (Plex, set per layout in app/fonts.ts)
 // reads --font-geist-sans and --font-geist-mono; design/tokens.css falls back to the same faces.
 const geistSans = localFont({
   src: "./_fonts/Geist-latin-wght.woff2",
@@ -46,7 +47,7 @@ export default async function RootLayout({
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <AuthProvider>
-      {/* Font variables sit on <html> so both token files (:root and .m2-root) resolve the Plex faces. */}
+      {/* Font variables sit on <html> for the global stylesheet and design/tokens.css. */}
       <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable}`}>
         <head>
           {/* Sets data-theme before first paint from the keys lib/preferences.ts writes, defaulting to DEFAULT_THEME (lib/theme.ts). */}

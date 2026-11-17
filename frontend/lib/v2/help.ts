@@ -113,12 +113,12 @@ export const screensFor = (id: string): Screen[] => APPLIES[id] ?? [];
 export const appliesTo = (id: string, screen: Screen | null): boolean => screen !== null && screensFor(id).includes(screen);
 
 /**
- * Every page of app/(v2), as its route pattern, and the chapter that explains it. help.test.ts reads the page files and
- * fails when a route has no row here, so a new canvas cannot ship without its chapter.
+ * Every page of app/(app), as its route pattern, and the chapter that explains it. help.test.ts reads the page files and
+ * fails when a route has no row here, so a new screen cannot ship without its chapter.
  */
 export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/": "v2:landscape",
-  "/objects": "v2:objects",
+  "/o": "v2:objects",
   "/o/[system]/[module]": "v2:object",
   "/o/[system]/[module]/rules": "v2:object",
   "/o/[system]/[module]/records": "v2:work",
@@ -127,74 +127,79 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/o/[system]/[module]/runs": "v2:run-compare",
   "/o/[system]/[module]/trend": "v2:run-compare",
   "/o/[system]/[module]/readiness": "v2:waves",
-  "/go-live": "v2:waves",
-  "/atlas": "v2:landscape",
-  "/config": "v2:processes",
-  "/processes": "v2:processes",
-  "/cleansing": "v2:monitoring",
-  "/mining": "v2:monitoring",
-  "/anomaly-rules": "v2:monitoring",
-  "/monitors": "v2:monitoring",
-  "/entry-gate": "v2:monitoring",
-  "/rule-promotion": "v2:rules",
-  "/rule-dry-run": "v2:rules",
-  "/fix-drafts": "v2:rules",
-  "/data-requests": "v2:rules",
-  "/aletheia-survivorship": "v2:monitoring",
-  "/aletheia/evidence": "v2:monitoring",
-  "/aletheia/foresight": "v2:monitoring",
-  "/aletheia/reason": "v2:monitoring",
-  "/reference-data": "v2:monitoring",
-  "/mdm": "v2:monitoring",
-  "/links": "v2:monitoring",
-  "/catalogue": "v2:catalogue",
-  "/materials": "v2:monitoring",
-  "/issues": "v2:monitoring",
-  "/attention": "v2:monitoring",
   "/o/[system]/[module]/golden": "v2:golden-records",
   "/o/[system]/[module]/glossary": "v2:glossary",
   "/o/[system]/[module]/lineage": "v2:lineage",
   "/o/[system]/[module]/profile": "v2:object",
   "/o/[system]/[module]/processes": "v2:processes",
   "/o/[system]/[module]/processes/design": "v2:processes",
+  "/work": "v2:work",
+  "/work/analytics": "v2:monitoring",
+  "/work/exceptions": "v2:work",
+  "/work/triage": "v2:work",
+  "/work/requests": "v2:rules",
+  "/approvals": "v2:approvals",
+  "/monitor": "v2:monitoring",
+  "/insights": "v2:monitoring",
+  "/insights/forecast": "v2:monitoring",
+  "/insights/score": "v2:monitoring",
+  "/insights/value": "v2:monitoring",
+  "/mdm": "v2:monitoring",
+  "/mdm/catalogue": "v2:catalogue",
+  "/mdm/glossary": "v2:glossary",
+  "/mdm/golden": "v2:golden-records",
+  "/mdm/golden/[id]": "v2:golden-records",
+  "/mdm/issues": "v2:monitoring",
+  "/mdm/lineage": "v2:lineage",
+  "/mdm/links": "v2:monitoring",
+  "/mdm/match": "v2:golden-records",
+  "/mdm/match/[id]": "v2:golden-records",
+  "/mdm/match-rules": "v2:golden-records",
+  "/mdm/mining": "v2:monitoring",
+  "/mdm/processes": "v2:processes",
+  "/mdm/reference": "v2:monitoring",
+  "/mdm/survivorship": "v2:monitoring",
+  "/load": "v2:migration",
+  "/load/compare": "v2:migration",
+  "/load/compare/[pair]": "v2:migration",
+  "/load/go-live": "v2:waves",
+  "/load/maps": "v2:migration",
+  "/load/plan": "v2:migration",
+  "/load/runs": "v2:migration",
+  "/load/runs/[id]": "v2:migration",
+  "/load/s4": "v2:waves",
+  "/load/templates": "v2:migration",
+  "/load/waves": "v2:waves",
+  "/load/waves/[id]": "v2:waves",
   "/r/[id]": "v2:rules",
   "/rules": "v2:rules",
-  "/work": "v2:work",
-  "/work/monitor": "v2:monitoring",
-  "/work/analytics": "v2:monitoring",
-  "/work/exceptions": "v2:work", "/work/triage": "v2:work",
-  "/migration": "v2:migration",
-  "/system-compare": "v2:migration",
-  "/migration/load-plan": "v2:migration",
-  "/s4": "v2:waves",
-  "/insights": "v2:monitoring",
-  "/forecast": "v2:monitoring",
-  "/value": "v2:monitoring",
-  "/score": "v2:monitoring",
-  "/people": "v2:people",
+  "/rules/dry-run": "v2:rules",
+  "/rules/promotion": "v2:rules",
   "/requests": "v2:approvals",
-  "/requests/analytics": "v2:approvals",
   "/requests/[id]": "v2:approvals",
+  "/requests/analytics": "v2:approvals",
   "/requests/new": "v2:approvals",
+  "/requests/workflows": "v2:approvals",
   "/runs": "v2:runs",
   "/run/[id]": "v2:run-compare",
+  "/run/[id]/agreement": "v2:run-compare",
   "/run/[id]/vs/[b]": "v2:run-compare",
   "/s": "v2:systems",
   "/s/[id]": "v2:systems",
   "/s/new": "v2:systems",
-  "/share/[token]": "v2:persona-auditor",
+  "/people": "v2:people",
+  "/people/assignments": "v2:people",
+  "/people/contracts": "v2:people",
+  "/people/digests": "v2:people",
+  "/people/stewardship": "v2:people",
+  "/me": "v2:preferences",
+  "/me/notifications": "v2:preferences",
   "/reports": "v2:schedules",
   "/admin": "v2:administration",
   "/admin/[section]": "v2:administration",
-  // Batch 6 (next More): guided admin tasks and the More frame.
-  "/more": "v2:administration",
-  "/load": "v2:migration",
-  "/more/admin/flow/connect": "v2:systems",
-  "/more/admin/flow/users": "v2:administration",
-  "/more/admin/flow/rules": "v2:rules",
-  "/more/custom-objects": "v2:systems",
-  "/more/writeback": "v2:approvals",
-  "/more/golden-writeback": "v2:golden-records",
+  "/kit": "v2:administration",
+  "/share/[token]": "v2:persona-auditor",
+  "/status": "v2:administration",
 };
 
 /** The panels a `?open=` value opens, by its kind, and the chapter that explains each. They win over the route. */
@@ -236,20 +241,14 @@ export function routeOf(pathname: string): string | null {
   if (!a) return "/";
   if (a === "o" && b && c) return `/o/[system]/[module]${d ? `/${d}` : ""}${e ? (d === "records" ? "/[key]" : `/${e}`) : ""}`;
   if (a === "r" && b) return "/r/[id]";
-  if (a === "run" && b) return c === "vs" && d ? "/run/[id]/vs/[b]" : "/run/[id]";
+  if (a === "run" && b) return c === "agreement" ? "/run/[id]/agreement" : c === "vs" && d ? "/run/[id]/vs/[b]" : "/run/[id]";
   if (a === "s" && b) return b === "new" ? "/s/new" : "/s/[id]";
-  if (a === "aletheia" && b) return `/aletheia/${b}`;
   if (a === "share" && b) return "/share/[token]";
-  if (a === "requests" && b) return b === "analytics" ? "/requests/analytics" : b === "new" ? "/requests/new" : "/requests/[id]";
-  if (a === "migration" && b === "load-plan") return "/migration/load-plan";
-  if (a === "more" && b && !c && ROUTE_CHAPTERS[`/more/${b}`]) return `/more/${b}`;
-  if (a === "more") return b === "admin" && c === "flow" && d ? `/more/admin/flow/${d}` : "/more";
+  if (a === "requests" && b) return b === "analytics" || b === "new" || b === "workflows" ? `/requests/${b}` : "/requests/[id]";
+  if (a === "load" && c && (b === "runs" || b === "waves" || b === "compare")) return b === "compare" ? "/load/compare/[pair]" : `/load/${b}/[id]`;
+  if (a === "mdm" && c && (b === "golden" || b === "match")) return `/mdm/${b}/[id]`;
   if (a === "admin") return b ? "/admin/[section]" : "/admin";
-  if (a === "work" && b === "monitor") return "/work/monitor";
-  if (a === "work" && b === "analytics") return "/work/analytics";
-  if (a === "work" && b === "exceptions") return "/work/exceptions";
-  if (a === "work" && b === "triage") return "/work/triage";
-  return `/${a}`;
+  return b && ROUTE_CHAPTERS[`/${a}/${b}`] ? `/${a}/${b}` : `/${a}`;
 }
 
 /** The chapter for what the viewer looks at: an open panel's chapter first, then the ledger filter or view, then the route. */

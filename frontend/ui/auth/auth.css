@@ -1,0 +1,41 @@
+/*
+ * The signed-out pages (sign in, forgot and reset password, accept an invitation, licence needed, not found) and the
+ * forced password change: one centred solid card on the plain ground, the mark and product name above it, the version
+ * under it. Same --mx tokens as the rest of the app.
+ */
+.mx-root .mx-auth { min-block-size: 100dvh; display: grid; place-items: center; padding: var(--mx-s5) var(--mx-s4); background: var(--mx-bg); }
+.mx-root .mx-auth-wrap { inline-size: 100%; max-inline-size: 28rem; display: grid; gap: var(--mx-s4); justify-items: stretch; }
+.mx-root .mx-auth-brand { justify-self: center; display: inline-flex; align-items: center; gap: var(--mx-s2); font-weight: var(--mx-w-heading); font-size: var(--mx-fs-title); color: var(--mx-ink); min-inline-size: 0; overflow-wrap: anywhere; }
+.mx-root .mx-auth-col { display: grid; gap: var(--mx-s3); inline-size: 100%; box-sizing: border-box; }
+.mx-root .mx-auth-card { display: grid; gap: var(--mx-s4); padding: var(--mx-s6) var(--mx-s5); background: var(--mx-surface); border: 1px solid var(--mx-border); border-radius: var(--mx-r-card); }
+.mx-root .mx-auth-version { justify-self: center; }
+.mx-root .mx-auth-card h1 { margin: 0; font-size: var(--mx-fs-title); line-height: var(--mx-lh-title); font-weight: var(--mx-w-heading); color: var(--mx-ink); }
+.mx-root .mx-auth-lead { margin: 0; font-size: var(--mx-fs-small); line-height: var(--mx-lh-small); color: var(--mx-ink-2); }
+.mx-root .mx-auth-form { display: grid; gap: var(--mx-s4); }
+.mx-root .mx-auth-form .mx-input { inline-size: 100%; box-sizing: border-box; }
+.mx-root .mx-auth .mx-btn[data-wide] { inline-size: 100%; }
+.mx-root .mx-auth-row { display: flex; align-items: center; gap: var(--mx-s2); flex-wrap: wrap; }
+.mx-root .mx-auth-row > .mx-btn { flex: 1 1 0; }
+.mx-root .mx-auth-link { font-size: var(--mx-fs-small); color: var(--mx-data); text-decoration: underline; text-underline-offset: 2px; background: none; border: 0; padding: 0; cursor: pointer; justify-self: start; font-family: inherit; }
+.mx-root .mx-auth-meta { margin: 0; font-size: var(--mx-fs-micro); color: var(--mx-ink-3); }
+.mx-root .mx-auth-pw { position: relative; }
+.mx-root .mx-auth-pw .mx-input { padding-inline-end: calc(var(--mx-s6) + var(--mx-s6)); }
+.mx-root .mx-auth-pw .mx-auth-show { position: absolute; inset-inline-end: var(--mx-s1); inset-block-start: 50%; transform: translateY(-50%); block-size: var(--mx-s6); padding: 0 var(--mx-s2); border: 0; background: none; color: var(--mx-ink-2); font-size: var(--mx-fs-micro); border-radius: var(--mx-r-control); cursor: pointer; }
+.mx-root .mx-auth-pw .mx-auth-show:focus-visible { outline: 2px solid var(--mx-focus); outline-offset: 1px; }
+.mx-root .mx-auth-note { border: 1px solid var(--mx-border); background: var(--mx-surface-2); border-radius: var(--mx-r-control); padding: var(--mx-s2) var(--mx-s3); font-size: var(--mx-fs-small); line-height: var(--mx-lh-small); color: var(--mx-ink-2); display: grid; gap: var(--mx-s1); }
+.mx-root .mx-auth-note:focus { outline: none; }
+.mx-root .mx-auth-note strong { color: var(--mx-ink); font-weight: var(--mx-w-heading); }
+.mx-root .mx-auth-note[data-tone="danger"] { border-color: var(--mx-bad); color: var(--mx-bad-ink); }
+.mx-root .mx-auth-note[data-tone="warning"] { border-color: var(--mx-warn); color: var(--mx-warn-ink); }
+.mx-root .mx-auth-note[data-tone="info"] { background: var(--mx-accent-soft); }
+.mx-root .mx-auth-note[data-tone] strong { color: inherit; }
+.mx-root .mx-auth-note a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.mx-root .mx-auth-facts { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: var(--mx-s1) var(--mx-s3); margin: 0; font-size: var(--mx-fs-small); line-height: var(--mx-lh-small); }
+.mx-root .mx-auth-facts dt { color: var(--mx-ink-3); }
+.mx-root .mx-auth-facts dd { margin: 0; min-inline-size: 0; overflow-wrap: anywhere; }
+.mx-root .mx-auth-tenant { display: block; block-size: 32px; inline-size: auto; max-inline-size: 160px; object-fit: contain; }
+.mx-root .mx-auth-wait { min-block-size: 100dvh; display: grid; place-items: center; background: var(--mx-bg); color: var(--mx-ink-3); font-size: var(--mx-fs-small); padding: var(--mx-s4); }
+.mx-root .mx-auth-list { margin: 0; padding-inline-start: var(--mx-s4); }
+@media (max-width: 480px) {
+  .mx-root .mx-auth-card { padding: var(--mx-s5) var(--mx-s4); }
+}

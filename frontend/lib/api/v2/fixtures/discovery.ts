@@ -5,7 +5,8 @@
  * Only purchase to pay has a drill-down below L2; its other L2s answer with no children, as an L4 does on the server.
  * Starting a run adds a queued run; schedules are kept in memory.
  */
-import type { CatalogueEntry, CaseEvent, Conformance, Dfg, L1Health, NodeStats, RunSummary, Schedule, Variant } from "../discovery";
+import type { CatalogueEntry, CaseEvent, Conformance, Dfg, L1Health, NodeStats, RunDetail, RunSummary, Schedule, Variant } from "../discovery";
+import type { DiscoveryStats, L4, L5, ProcessModelDocument } from "@/types/process-model";
 
 export const NONE_DISCOVERY = Symbol("not a process discovery path");
 
@@ -223,6 +224,53 @@ function caseEvents(runId: string, caseId: string): { case_type: string; case_id
   };
 }
 
+function runDetail(runId: string): RunDetail {
+  const r = runs(ECC, undefined).find((x) => x.id === runId) ?? refuse(404, "Run not found");
+  const m = completed(r.l1);
+  const tables = Object.fromEntries((SOURCES[r.l1] ?? []).map(([t, rows]) => [t, { rows, partial: false }]));
+  return {
+    ...r, started_at: r.started_at ?? ago(1), watermark: r.finished_at, extraction_version_id: null, job_id: `job-${runId}`, filters: {},
+    stats: m ? { case_types: { po_item: m[3] }, variants: m[4], throughput: { median_seconds: m[5] }, automation_rate: m[6], conformance: { fitness: m[7] }, tables } : {},
+    system_id: ECC, system_type: "sap_ecc",
+  };
+}
+
+// The discovered model ids follow api/models/process_model.py: upper case, levels joined by "-".
+const mid = (id: string) => id.replace(/\./g, "-");
+const TCODES: Record<string, [string | null, string[]]> = {
+  "PTP.2.1": ["ME21N", ["EKKO", "EKPO"]], "PTP.2.2": ["ME22N", ["EKKO", "EKPO", "CDHDR"]],
+  "PTP.2.3": ["ME29N", ["EKKO"]], "PTP.2.4": ["ME9F", ["NAST", "EKKO"]],
+};
+function disc([id, , cases, days, fitness, , observed]: N, total: number, level: string): DiscoveryStats {
+  const edges = (EDGES[level] ?? []).filter((e) => e[0] === id).map(([, target, count, d]) => ({ target: mid(target), count, median_seconds: Math.round(d * DAY / 1000) }));
+  return {
+    case_count: cases, share: total ? Math.round((cases / total) * 1000) / 1000 : 0, event_count: cases, median_seconds: days === null ? null : Math.round(days * DAY / 1000),
+    p90_seconds: days === null ? null : Math.round(days * 2.4 * DAY / 1000), rework_rate: id === "PTP.2.2" ? 0.31 : null, automation_rate: observed ? 0.42 : null,
+    fitness, observed, case_type: "po_item", edges, entry_count: cases,
+  };
+}
+function model(runId: string): ProcessModelDocument {
+  const l1 = RUN_L1[runId] ?? refuse(404, "Run not found");
+  const total = L1_CASES[runId];
+  const activity = (n: N, order: number): L5 => {
+    const [tcode, sap_tables] = TCODES[n[0]] ?? [null, []];
+    return { id: mid(n[0]), name: n[1], description: "", order, tcode, fields: [], check_ids: [], sap_tables, source: "discovered", evidence: "extracted", discovery: disc(n, total, "PTP.2") };
+  };
+  const l4 = (n: N, order: number): L4 => ({
+    id: mid(n[0]), name: n[1], description: "", order, tcode: null, config_dependency: null, diagram: { nodes: [], flows: [] }, variants: [],
+    activities: (TREE[n[0]] ?? []).map(activity), source: n[6] ? "discovered" : "template", discovery: disc(n, total, l1),
+  });
+  const kids = l1 === "PTP" ? TREE.PTP : [];
+  return {
+    schema_version: 1, source: "discovered",
+    l1: [{
+      id: l1, name: NAMES[l1], description: "", order: 1, modules: [], source: "discovered",
+      l2: [{ id: `${l1}-AS_IS`, name: "As-is flow", description: "", order: 1, source: "discovered",
+        l3: [{ id: `${l1}-AS_IS-MAIN`, name: NAMES[l1], description: "", order: 1, source: "discovered", l4: kids.map(l4) }] }],
+    }],
+  };
+}
+
 const params = (path: string): [string, URLSearchParams] => {
   const [p, q = ""] = path.split("?");
   return [p, new URLSearchParams(q)];
@@ -240,6 +288,8 @@ export function discoveryRead(path: string, query: Record<string, unknown> = {})
     if (m[2] === "runs") return runs(id, get("l1"));
     return id === ECC ? schedules : [];
   }
+  m = /^\/process-discovery\/runs\/([^/]+)(\/model)?$/.exec(p);
+  if (m) return m[2] ? model(decodeURIComponent(m[1])) : runDetail(decodeURIComponent(m[1]));
   m = /^\/process-discovery\/runs\/([^/]+)\/(dfg|variants|conformance|cases)(?:\/(.+))?$/.exec(p);
   if (m) {
     const id = decodeURIComponent(m[1]);
