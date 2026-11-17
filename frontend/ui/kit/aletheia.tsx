@@ -13,6 +13,7 @@ export type AletheiaAnswer = Pick<ChatMessage, "text" | "evidence" | "actions">;
  * What the open screen tells the one chat. Two ways to answer:
  * - `context` (module, run, rule, record ids): the chat streams from the backend, or from the fixture stream in fixture mode.
  * - `answer`: the screen answers locally from data it already holds (the object screen does this).
+ * Both may be set: `answer` returns null for a question it cannot answer locally and the chat streams it instead.
  */
 export interface AletheiaScope {
   key: string;
@@ -21,7 +22,7 @@ export interface AletheiaScope {
   /** Static prompts: shown first and kept as the fallback when the live ones cannot load. */
   suggestions: string[];
   context?: AskContext;
-  answer?: (prompt: string) => AletheiaAnswer | Promise<AletheiaAnswer>;
+  answer?: (prompt: string) => AletheiaAnswer | Promise<AletheiaAnswer> | null;
 }
 
 interface Api {
@@ -72,8 +73,9 @@ export function AletheiaProvider({ children, initialOpen = false }: { children: 
     }));
     const push = (m: ChatMessage) => setThreads((cur) => ({ ...cur, [s.key]: [...(cur[s.key] ?? []), m] }));
     push({ id: `u${n}`, role: "user", text: prompt });
-    if (s.answer) {
-      Promise.resolve(s.answer(prompt)).then((a) => push({ id: `a${n}`, role: "aletheia", ...a }));
+    const local = s.answer?.(prompt) ?? null;
+    if (local) {
+      Promise.resolve(local).then((a) => push({ id: `a${n}`, role: "aletheia", ...a }));
       return;
     }
     const id = `a${n}`;
