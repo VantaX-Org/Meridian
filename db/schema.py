@@ -721,6 +721,8 @@ class SAPSystem(Base):
     sap_release = Column(Text, nullable=True)
     sap_product = Column(Text, nullable=True)  # ecc6 | s4hana | successfactors | …
     last_snapshot_id = Column(UUID(as_uuid=True), nullable=True)
+    # Instance move (migration 185): nothing is written to a system until this is set
+    migration_target = Column(Boolean, nullable=False, server_default="false")
 
     # Source/target pairing (migration 075)
     role = Column(Text, nullable=False, server_default="source")  # source | target
