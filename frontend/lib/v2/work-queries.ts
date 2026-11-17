@@ -73,9 +73,10 @@ export function useGroupRows(filters: WorkFilters, checks: readonly { check: str
   });
 }
 
-export function useWorkRecord(module: string, key: string) {
+/** One record, read from the run it was listed from: the current-state list spans several runs, so pass the row's version_id. */
+export function useWorkRecord(module: string, key: string, version?: string) {
   const fx = useFixture();
-  return useQuery({ queryKey: workKeys.record(fx, module, key), queryFn: () => getRecord(module, key), staleTime: STALE, retry: false });
+  return useQuery({ queryKey: [...workKeys.record(fx, module, key), version ?? null], queryFn: () => getRecord(module, key, version), staleTime: STALE, retry: false });
 }
 
 export function useRecordLinks(module: string, key: string, run: string | null) {

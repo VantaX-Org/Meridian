@@ -116,10 +116,10 @@ export function Work() {
             </>
           )}
         </Card>
-        {!stacked && pick ? <RecordDetail module={pick.module} recordKey={pick.record_key} /> : null}
+        {!stacked && pick ? <RecordDetail module={pick.module} recordKey={pick.record_key} version={pick.version_id} /> : null}
       </div>
       <Sheet open={stacked && sheet && !!pick} onClose={() => setSheet(false)} label={t("Record detail")} closeLabel={t("Close")}>
-        {pick ? <RecordDetail module={pick.module} recordKey={pick.record_key} /> : null}
+        {pick ? <RecordDetail module={pick.module} recordKey={pick.record_key} version={pick.version_id} /> : null}
       </Sheet>
     </div>
   );

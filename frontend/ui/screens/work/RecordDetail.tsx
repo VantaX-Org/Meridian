@@ -12,19 +12,19 @@ import { sevLabel, sevOf, fieldText, day, useDo } from "./shared";
 import { UndoBar } from "./UndoBar";
 
 /** One record's decide panel: Overview, Fix and Why. Used beside the list and inside the record sheet. */
-export function RecordDetail({ module, recordKey }: { module: string; recordKey: string }) {
+export function RecordDetail({ module, recordKey, version }: { module: string; recordKey: string; version?: string }) {
   const [tab, setTab] = useState("overview");
   const [undo, setUndo] = useState<{ id: string; msg: string } | null>(null);
   const [val, setVal] = useState<Record<string, string>>({});
   const run = useDo();
   const sheets = useSheet();
-  const rec = useWorkRecord(module, recordKey);
+  const rec = useWorkRecord(module, recordKey, version);
   if (rec.isLoading) return <Skeleton lines={5} label={t("Loading the record")} />;
   if (rec.isError || !rec.data) return <ErrorState heading={t("The record could not be loaded")} />;
   const d = rec.data;
   const top = d.issues[0];
   const decide = async (check: string, action: "accept" | "edit" | "not_an_issue", value?: string) => {
-    const r = await run(() => postDecide([{ module, record_key: recordKey, check_id: check, action, value }]), () => t("Your decision is saved."));
+    const r = await run(() => postDecide([{ module, record_key: recordKey, check_id: check, action, value }], version), () => t("Your decision is saved."));
     if (r?.action_id) setUndo({ id: r.action_id, msg: t("Your decision is saved.") });
   };
   return (
