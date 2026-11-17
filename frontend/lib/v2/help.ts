@@ -164,6 +164,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/load/compare/[pair]": "v2:migration",
   "/load/go-live": "v2:waves",
   "/load/maps": "v2:migration",
+  "/load/move": "v2:migration",
   "/load/plan": "v2:migration",
   "/load/runs": "v2:migration",
   "/load/runs/[id]": "v2:migration",
