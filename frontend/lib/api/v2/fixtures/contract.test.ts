@@ -115,6 +115,8 @@ const IDS: Record<string, string> = {
   simulation_id: "sim-1",
   case_id: "case-1",
   cid: "cmp-0002",
+  plan_id: "mp-1",
+  recon_id: "mr-1",
 };
 
 /** Values for the required query parameters of a route; ROUTE_QUERY overrides one route's. */
