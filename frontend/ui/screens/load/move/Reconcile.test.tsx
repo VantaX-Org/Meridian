@@ -33,6 +33,15 @@ describe("Reconcile", () => {
     fireEvent.click(document.getElementById("mx-row-PerPerson") as HTMLElement);
     expect(await screen.findByText("Sample rows for PerPerson")).toBeTruthy();
     expect(screen.getByText("a@x.test")).toBeTruthy();
+    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
     expect(document.body.textContent ?? "").not.toContain(String.fromCharCode(0xb7));
+  });
+
+  it("leaves the scores out while they are not known", async () => {
+    route({ [`POST ${B}/plans/p1/reconcile`]: { id: "c1" }, [`GET ${B}/reconciliations/c1`]: { ...RECON, dqs: null } });
+    renderScreen(<Reconcile planId="p1" onBack={() => undefined} onNext={() => undefined} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reconcile now" }));
+    await screen.findAllByText("PerPerson");
+    expect(screen.queryByText("Projected target")).toBeNull();
   });
 });

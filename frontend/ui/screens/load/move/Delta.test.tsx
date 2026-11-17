@@ -22,15 +22,23 @@ afterEach(() => undo());
 const B = "/api/v1/migration/move";
 
 describe("Delta", () => {
-  it("needs a date, then sends the delta", async () => {
-    const calls = route({ [`POST ${B}/plans/p1/delta`]: { ...RUN, id: "d1", dry_run: false }, [`GET ${B}/runs/d1`]: { ...RUN, id: "d1", dry_run: false } });
+  it("needs a date and a dry run, then sends the delta", async () => {
+    const calls = route({
+      [`POST ${B}/plans/p1/delta`]: (b) => ((b as { dry_run: boolean }).dry_run ? { ...RUN, id: "d0" } : { ...RUN, id: "d1", dry_run: false }),
+      [`GET ${B}/runs/d0`]: { ...RUN, id: "d0" },
+      [`GET ${B}/runs/d1`]: { ...RUN, id: "d1", dry_run: false },
+    });
     renderScreen(<Delta planId="p1" onBack={() => undefined} />);
+    const dry = screen.getByRole("button", { name: "Dry run the delta" }) as HTMLButtonElement;
     const send = screen.getByRole("button", { name: "Send the delta" }) as HTMLButtonElement;
-    expect(send.disabled).toBe(true);
+    expect(dry.disabled).toBe(true);
     fireEvent.change(document.querySelector("input[type=date]") as HTMLInputElement, { target: { value: "2026-11-01" } });
-    expect(send.disabled).toBe(false);
+    expect(send.disabled).toBe(true);
+    fireEvent.click(dry);
+    await waitFor(() => expect(calls.find((c) => c.key.endsWith("/delta"))?.body).toEqual({ since: "2026-11-01", dry_run: true }));
+    await waitFor(() => expect(send.disabled).toBe(false));
     fireEvent.click(send);
-    await waitFor(() => expect(calls.find((c) => c.key.endsWith("/delta"))?.body).toEqual({ since: "2026-11-01" }));
+    await waitFor(() => expect(calls.filter((c) => c.key.endsWith("/delta")).at(-1)?.body).toEqual({ since: "2026-11-01", dry_run: false }));
     expect(await screen.findByLabelText("Progress by wave")).toBeTruthy();
   });
 });
