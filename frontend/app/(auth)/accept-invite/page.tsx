@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import { acceptInvite } from "@/lib/api/auth";
-import { InvitePreview, SetPasswordForm } from "@/design/v2/auth/SetPassword";
+import { InvitePreview, SetPasswordForm } from "@/ui/auth/SetPassword";
 import { t } from "@/lib/v2/i18n";
 
 export default function AcceptInvitePage() {

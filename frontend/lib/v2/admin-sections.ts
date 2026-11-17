@@ -3,7 +3,7 @@ import { t } from "@/lib/v2/i18n";
 export type AdminSlug = "users" | "roles" | "sso" | "signin" | "apikeys" | "licence" | "billing" | "settings" | "mappings" | "reference" | "contactverify" | "matchrules" | "audit" | "alerts" | "notifications" | "webhooks" | "dqfirewall" | "externaldb" | "subjectrequests" | "runs" | "runschedules" | "systems" | "system" | "aletheia" | "workflows" | Step10Slug | CapabilitySlug;
 /** Step 10: policy packs and scheduled digests. */
 export type Step10Slug = "policypacks" | "digests";
-/** Step 6c, the role capability audit (design/v2/admin/capabilities.tsx). */
+/** Step 6c, the role capability audit (ui/screens/admin). */
 export type CapabilitySlug = "stewardship" | "configbundle" | "viewas" | "rulesio" | "sharelinks" | "delegations" | "ruleaccuracy";
 
 export interface AdminSection {

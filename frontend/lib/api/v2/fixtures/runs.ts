@@ -12,6 +12,7 @@ import runsJson from "./runs.json";
 import { fixtureParam } from "../fixture";
 import { LIBRARY, type LibraryRule } from "./library";
 import { formatDate } from "@/lib/format";
+import { fixtureMultiCompare } from "@/lib/api/next/runs-fixture";
 import type { Landscape, LandscapeCell } from "../types";
 import type { ChangeKind, CheckChange, CompareObject, CompareSide, CompareSummary, ScoreContribution, ScoreDelta, TimelineRun, VersionCompare, VersionHead } from "../runs";
 import type { Job, JobStage, JobTable } from "@/types/jobs";
@@ -143,6 +144,7 @@ export function fixtureTimeline(systemId: string | undefined, limit: number, mod
 
 /** Each rule's failing count across the visible runs: a steady fall that ends at the library's newest figure. */
 function fixtureRuleTrend(systemId: string, limit: number) {
+  if (systemId === "a1b2c3d4-0001-4000-8000-000000000001") systemId = ECC.id; // the generated runs' system
   if (systemId !== ECC.id) return { system_id: systemId, runs: [], rules: [] };
   const runs = visibleRuns().slice(-limit).map(timelineRun);
   const rules = LIBRARY.map((r) => ({
@@ -187,6 +189,11 @@ function failedHead(): VersionHead {
   };
 }
 const FAILED_RUN = "f0000000-0000-4000-8000-0000000000f1";
+/** The ids of the generated runs (runs-fixture) answer with the nearest of the eight runs here. */
+const canon = (id: string): string => {
+  const m = /^f0000000-0000-4000-8000-(\d{12})$/.exec(id);
+  return !m || id === FAILED_RUN ? id : RUNS[Number(m[1]) % RUNS.length].id;
+};
 /** The one finished run of the SuccessFactors system, for the target workbook step. */
 const sfHead = (): VersionHead => ({
   id: "5f000000-0000-4000-8000-000000000001",
@@ -656,8 +663,48 @@ function fixtureExtractTarget() {
   };
 }
 
+/** GET /jobs/active/progress: the newest generated run, mid-analysis, so the shell hairline has something to draw. */
+function fixtureLiveRun() {
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    id: "an-f0000000-0000-4000-8000-000000000500",
+    kind: "analysis",
+    label: "Material master",
+    status: "running",
+    state: "running",
+    pct: 58,
+    determinate: true,
+    stage: "checks",
+    stage_index: 1,
+    stage_count: 3,
+    stages: [
+      { id: "load", label: "Load data", status: "done" },
+      { id: "checks", label: "Run checks", status: "running" },
+      { id: "report", label: "Build report", status: "queued" },
+    ],
+    step: { unit: "rules", done: 1210, total: 2084, pct: 58 },
+    parts: [],
+    rows: 168400,
+    rows_per_min: 9400,
+    elapsed_s: 190,
+    idle_s: 2,
+    eta_s: 140,
+    eta_is_estimate: true,
+    message: "Running checks",
+    error: null,
+    started_at: now - 190,
+    updated_at: now,
+    finished_at: null,
+    queue_position: null,
+    system_id: "a1b2c3d4-0001-4000-8000-000000000001",
+    version_id: "f0000000-0000-4000-8000-000000000500",
+    modules: ["material_master"],
+  };
+}
+
 /** The answer to one step 3 read, or NONE when the path is not one of this step's. */
 export function runsFixtureResponse(path: string, params: Params): unknown {
+  if (path === "/runs/compare") return fixtureMultiCompare(String(params.runs ?? "").split(","), String(params.module ?? ""));
   if (path === "/runs/rule-trend") return fixtureRuleTrend(String(params.system_id), Number(params.limit ?? 8));
   if (path === "/runs/timeline") return fixtureTimeline(params.system_id ? String(params.system_id) : undefined, Number(params.limit ?? 8), params.module ? String(params.module) : undefined, params.version_id ? String(params.version_id) : undefined);
   const vs = /^\/runs\/([^/]+)\/vs\/([^/]+)\/summary$/.exec(path);
@@ -675,6 +722,7 @@ export function runsFixtureResponse(path: string, params: Params): unknown {
   }
   const xt = /^\/versions\/([^/]+)\/extract-target$/.exec(path);
   if (xt) return fixtureExtractTarget();
+  if (path === "/jobs/active/progress") return { runs: [fixtureLiveRun()] };
   if (path === "/jobs") return { jobs: jobs().slice(0, Number(params.limit ?? 100)) };
   const job = /^\/jobs\/([^/]+)$/.exec(path);
   if (job) {
@@ -786,7 +834,8 @@ export function fixtureAction(name: string, args: Record<string, unknown>): unkn
 // ── Run steps, record-level compare and the objects monitor ──────────────────────────────────
 
 /** GET /runs/{id}/steps: the analysis steps with their timings; the failed run stops at the checks with its error. */
-function stepsOf(id: string) {
+function stepsOf(requested: string) {
+  const id = canon(requested);
   const run = id === FAILED_RUN ? { run_at: "2026-10-15T09:12:00Z" } : RUNS.find((r) => r.id === id);
   if (!run) throw new FixtureNotFound(`/runs/${id}/steps`);
   const plan: [string, number][] = [["Load data", 41_000], ["Run checks", 512_000], ["Insights", 96_000], ["Build report", 28_000]];
@@ -798,7 +847,7 @@ function stepsOf(id: string) {
     steps.push({ step_number: i + 1, step_name: name, status: broken ? "failed" : "completed", started_at: new Date(at).toISOString(), finished_at: new Date(at + ms).toISOString(), duration_ms: ms, error_detail: broken ? "Rule MM-014 could not run: column MARC.DISMM is missing from the stored data." : null });
     at += ms;
   }
-  return { version_id: id, steps };
+  return { version_id: requested, steps };
 }
 
 /** GET /versions/compare/records: counts of records newly failing, fixed and still failing per check, from the check changes. */

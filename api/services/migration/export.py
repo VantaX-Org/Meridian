@@ -68,12 +68,11 @@ def build_load_tables(frames: TableFrames, module_tables: dict[str, list[str]], 
     return {t: pd.concat(parts, ignore_index=True) for t, parts in out.items() if parts}
 
 
-def load_order(tables: dict[str, pd.DataFrame], modules: list[str], dictionary: Dictionary) -> dict[str, pd.DataFrame]:
-    """``tables`` in load order: by the step of the object that owns each target table in the load plan
-    (load_plan.build_plan), then the object's own table order. Tables no planned object owns come last, by name."""
+def _plan_positions(modules: list[str], dictionary: Dictionary) -> tuple[dict[str, tuple[int, int, int, str]], int]:
+    """{table: (object rank, table index, step, object)} from the load plan, and the number of planned objects."""
     from checks.runner import get_required_columns
 
-    from .load_plan import OWNED_TABLES, build_plan
+    from .load_plan import build_plan
 
     def cols(m: str) -> set[str]:
         try:
@@ -81,23 +80,57 @@ def load_order(tables: dict[str, pd.DataFrame], modules: list[str], dictionary: 
         except Exception:  # a module without a rule pack reads nothing
             return set()
 
-    rank = {o.module: i for i, o in enumerate(build_plan(modules, dictionary, cols).objects)}
-    pos = {t: (rank[m], j) for m in rank for j, t in enumerate(OWNED_TABLES[m])}
-    return dict(sorted(tables.items(), key=lambda kv: (*pos.get(kv[0], (len(rank), 0)), kv[0])))
+    objects = build_plan(modules, dictionary, cols).objects
+    return ({t: (i, j, o.step, o.module) for i, o in enumerate(objects) for j, t in enumerate(o.tables)},
+            len(objects))
+
+
+def load_order(tables: dict, modules: list[str], dictionary: Dictionary) -> dict:
+    """``tables`` in load order: by the step of the object that owns each target table in the load plan
+    (load_plan.build_plan), then the object's table load order (EC_LOAD_ORDER for Employee Central). Tables no planned object owns come last, by name."""
+    pos, n = _plan_positions(modules, dictionary)
+    return dict(sorted(tables.items(), key=lambda kv: (*pos.get(kv[0], (n, 0))[:2], kv[0])))
+
+
+LOAD_ORDER_TAB = "Load order"
+
+
+def load_sequence(tables: list[str], modules: list[str], dictionary: Dictionary) -> pd.DataFrame:
+    """The index sheet of a load file: one row per table in the order given (load_order), with its load step, the
+    object that owns it, the SuccessFactors entities it holds, and the tables in the file it needs loaded first
+    (its fields' check tables, and the cross-object edges of load_plan.SF_EDGES)."""
+    from .load_plan import SF_EDGES
+
+    pos, _ = _plan_positions(modules, dictionary)
+    present = set(tables)
+    needs: dict[str, set[str]] = {}
+    for edge in SF_EDGES.values():
+        for fld, table, _req, _why in edge:
+            needs.setdefault(fld.split(".", 1)[0], set()).add(table)
+    rows = []
+    for i, name in enumerate(tables, start=1):
+        t = dictionary.tables.get(name)
+        fields = list(t.fields.values()) if t else []
+        after = {(f.check_table or "").upper() for f in fields} | needs.get(name, set())
+        rows.append({
+            "Order": i, "Step": pos[name][2] if name in pos else "", "Object": pos[name][3] if name in pos else "",
+            "Table": name, "Description": t.description if t else "",
+            "Entities": ", ".join(sorted({(f.source or "").split(".", 1)[0] for f in fields if "." in (f.source or "")})),
+            "Load after": ", ".join(sorted((after & present) - {name}))})
+    df = pd.DataFrame(rows, columns=["Order", "Step", "Object", "Table", "Description", "Entities", "Load after"])
+    return df if df["Entities"].astype(bool).any() else df.drop(columns="Entities")
 
 
 def target_dictionary(session, run) -> Dictionary:
     """The dictionary of the run's destination system, or of its target release when no system is set."""
-    from sqlalchemy import text
-
     from api.services.source_design import dictionary_for
     from sap.ddic import get_dictionary
 
     if run.dest_system_id:
         return dictionary_for(session, run.dest_system_id)
-    target_type = run.target_release or session.execute(
-        text("SELECT system_type FROM sap_systems WHERE id = :s"), {"s": run.dest_system_id}).scalar()
-    return get_dictionary(target_type or "s4hana")
+    # No destination system to look up. Every release dictionary carries the canonical SuccessFactors tables, so a
+    # SuccessFactors run resolves its target tables here too.
+    return get_dictionary(run.target_release or "s4hana")
 
 
 def load_run_tables(session, run, held_back: Optional[dict[str, pd.DataFrame]] = None,

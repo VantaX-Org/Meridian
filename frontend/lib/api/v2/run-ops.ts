@@ -20,6 +20,11 @@ export function exportRuns(format: ExportFormat, filters: { system_id?: string; 
   return v2Download("/runs/export", { format, ...filters }, `runs.${format}`);
 }
 
+/** GET /runs/{id}/reconciliation.xlsx: the workbook that proves the rules in SAP (one sheet per rule, empty SE16 count and Match columns). `rules` come first, then the top rules by failing records. Needs the export permission. */
+export function downloadReconciliation(id: string, opts: { top?: number; rules?: string[] } = {}): Promise<string> {
+  return v2Download(`/runs/${encodeURIComponent(id)}/reconciliation.xlsx`, { top: opts.top ?? 10, rules: opts.rules?.length ? opts.rules.join(",") : undefined }, "reconciliation.xlsx");
+}
+
 export interface RunStep {
   step_number: number;
   step_name: string;

@@ -1125,20 +1125,22 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                     start_stale_reconciliations(session, tenant_id, sys_id)
 
             # Step 9b: record-level findings + cross-run issue lifecycle
-            # (savepoint: a failure here never loses the findings above).
+            # (the findings above are already committed, so a failure here never loses them).
             try:
                 from api.services.record_issues import scope_of, track
                 if lost:  # an issue whose records were not stored would be resolved as fixed
                     raise RuntimeError(f"failing records of {len(lost)} check(s) not stored: {sorted(lost)[:5]}")
-                with session.begin_nested():
-                    # each failing check replaced its records as it streamed; the rest no longer fail here
-                    session.execute(text(
-                        "DELETE FROM finding_records WHERE version_id = :vid AND tenant_id = :tid "
-                        "AND check_id <> ALL(:ids)"),
-                        {"vid": version_id, "tid": str(tenant_id),
-                         "ids": [r.check_id for r in all_results if r.affected_count > 0]})
-                    stats = track(session, str(tenant_id), str(version_id), scope_of(metadata), all_results, frames,
-                                  store=False)
+                # each failing check replaced its records as it streamed; the rest no longer fail here
+                session.execute(text(
+                    "DELETE FROM finding_records WHERE version_id = :vid AND tenant_id = :tid "
+                    "AND check_id <> ALL(:ids)"),
+                    {"vid": version_id, "tid": str(tenant_id),
+                     "ids": [r.check_id for r in all_results if r.affected_count > 0]})
+                session.commit()
+                # track commits after every batch, so it must not run inside a savepoint: a commit
+                # there closes the context manager's transaction and batch 2 fails
+                stats = track(session, str(tenant_id), str(version_id), scope_of(metadata), all_results, frames,
+                              store=False)
                 logger.info(f"record issues for {version_id}: {stats}")
                 if "lifecycle" not in stats:  # newest run of this system
                     # exported fix batches were reconciled inside track, per batch, while each batch's
@@ -1168,6 +1170,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                         logger.error(f"baseline monitor failed for {version_id}: {e}", exc_info=True)
             except Exception as e:
                 reraise_soft_limit(e)
+                session.rollback()  # batches already committed stay; the failed one is discarded
                 logger.error(f"record-level tracking failed for {version_id}: {e}", exc_info=True)
 
             # Step 9c: route new / re-opened issues to owners and start their SLA clocks

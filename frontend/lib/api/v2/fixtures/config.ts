@@ -311,6 +311,12 @@ export function configDownload(path: string): { name: string; text: string } | n
 
 export function configRead(path: string): unknown {
   if (!path.startsWith("/config/") || path === "/config/drift") return NONE_CONFIG;
+  const pm = /^\/config\/processes\/([^/]+)$/.exec(path);
+  if (pm) {
+    const found = PROCESSES.find((x) => x.process_id === decodeURIComponent(pm[1]));
+    if (found) return found;
+    throw Object.assign(new Error("Process not found"), { status: 404, response: { status: 404, data: { detail: "Process not found" } } });
+  }
   switch (path) {
     case "/config/health-score":
       return { run_id: RUN, scores: healthScores() };
@@ -322,6 +328,25 @@ export function configRead(path: string): unknown {
       return { run_id: RUN, total: FINDINGS.length, findings: FINDINGS, currency: "ZAR" };
     case "/config/licence-utilisation":
       return { run_id: RUN, modules: licence() };
+    case "/config/ghost":
+    case "/config/shadow": {
+      const findings = FINDINGS.filter((f) => f.category === path.slice(8));
+      return { run_id: RUN, total: findings.length, findings, currency: "ZAR" };
+    }
+  }
+  const rc = /^\/config\/root-cause\/(.+)$/.exec(path);
+  if (rc) {
+    const f = FINDINGS.find((x) => x.check_id === decodeURIComponent(rc[1]));
+    if (!f) return NONE_CONFIG;
+    const process = f.category === "shadow" || f.category === "bottleneck";
+    return {
+      finding_id: f.check_id,
+      root_cause_type: process ? "process_gap" : "bad_config",
+      data_issue: null,
+      config_issue: process ? null : f.description,
+      process_issue: process ? f.description : null,
+      recommendation: f.remediation,
+    };
   }
   return NONE_CONFIG;
 }

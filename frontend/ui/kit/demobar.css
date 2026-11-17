@@ -1,0 +1,9 @@
+/* Demo data bar: one line at the top of every page while fixture mode is on. */
+.mx-root .mx-demobar { display: flex; align-items: baseline; gap: var(--mx-s3); flex-wrap: wrap; padding: var(--mx-s1) var(--mx-s4); background: var(--mx-surface-2); color: var(--mx-warn-ink); border-bottom: 1px solid var(--mx-border); font-size: var(--mx-fs-small); }
+.mx-root .mx-demobar strong { font-weight: var(--mx-w-heading); }
+.mx-root .mx-demobar-short { display: none; }
+@media (max-width: 760px) {
+  .mx-root .mx-demobar { flex-wrap: nowrap; }
+  .mx-root .mx-demobar-long { display: none; }
+  .mx-root .mx-demobar-short { display: inline; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}

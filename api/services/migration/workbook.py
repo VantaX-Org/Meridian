@@ -492,6 +492,19 @@ def coverage(workbook: Workbook, dictionary: Dictionary) -> dict:
             "sheets": sheets}
 
 
+# Friendly foundation grid headers and the property each names. An alias only hits on an entity that has the
+# property, so Min fills only a pay range.
+_FRIENDLY = {
+    "min": ("minimumpay",), "mid": ("midpoint",), "max": ("maximumpay",),
+    "legalentity": ("company", "custlegalentityexternalcode"),
+    "parentlegalentity": ("company", "custlegalentityexternalcode"),
+    "parentcostcenter": ("parent",),
+    "addressline1": ("addressnavdefltaddress1",), "addressline2": ("addressnavdefltaddress2",),
+    "addressline3": ("addressnavdefltaddress3",),
+    "regionstatecounty": ("addressnavdefltstate",), "postalcodezipcode": ("addressnavdefltzipcode",),
+}
+
+
 def _matched(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field]]:
     """Each table that could fill a sheet, with its matched column headers.
 
@@ -517,6 +530,8 @@ def _matched(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field]
             index["effectivestatus"] = index["status"]
         if "externalcode" in index:  # friendly grids head the code column with the object's name
             index[sheet.base + "code"] = index["externalcode"]
+        # Position.externalName_defaultValue is the name a load file heads externalName
+        index |= {k.removesuffix("defaultvalue"): f for k, f in list(index.items()) if k.endswith("defaultvalue")}
         if "EmpEmployment" in entities and "company" not in index:  # at hire, the new assignment's company is the job's
             index.update({"company": f for f in table.fields.values() if f.source == "EmpJob.company"})
         hits = {}
@@ -526,6 +541,10 @@ def _matched(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field]
             # personInfo.person-id-external is the person's id reached through a navigation. Only a key matches by
             # its tail: cust_LegalEntity.externalCode is the legal entity's code, not this object's own.
             hit = index.get(name) or index.get(_norm(col.id.split(".")[0])) or keys.get(_norm(col.id.rsplit(".", 1)[-1]))
+            if not hit and sheet.kind == "grid":
+                # friendly grids head columns 'Location Name' or 'Min'; only aliases the entity has can hit
+                bare = name.removeprefix(sheet.base)
+                hit = next((index[k] for c in (name, bare, *_FRIENDLY.get(name, ())) for k in (c, c + "flx") if k in index), None)
             if hit:
                 hits[col.header] = hit
         if hits:
@@ -1108,7 +1127,10 @@ def _sf_template(dictionary: Dictionary, tables: dict[str, list[Field]], require
         for name in sorted({entity(f) for f in fields if entity(f)}):
             sheet = _SF_SHEETS.get(name, name)
             own = [f for f in fields if entity(f) == name]
-            grid = "*" not in sheet and _sf_grid_name(sheet, table, len(spread[name]) > 1)
+            # An entity's own table (FOPAYCOMPONENT for FOPayComponent) keeps the plain grid name when the bracketed
+            # one is too long, so its headers stay property ids instead of falling to the technical grid.
+            grid = "*" not in sheet and (_sf_grid_name(sheet, table, len(spread[name]) > 1)
+                                         or (table == name.upper() and _sf_grid_name(sheet, table, False)))
             if not grid:
                 technical += own
                 continue
@@ -1185,5 +1207,13 @@ def sf_load_templates(dictionary: Dictionary, target_values: dict[str, set[str]]
         values = sorted(f.allowed_values() or target_values.get(f.check_ref or "", set()))
         return ", ".join(values) if 0 < len(values) <= VALUES_SHOWN else ""
 
+    from api.services.migration.export import LOAD_ORDER_TAB, load_order, load_sequence
+    from api.services.migration.load_plan import OWNED_TABLES
+
+    # Load order, not by name: foundation objects, then Position, then Person, Employment and Job, then the
+    # modules that need them (Compensation, Time, Performance ...). Both the definition sheets and the grids follow it.
+    modules = [m for m, owned in OWNED_TABLES.items() if owned[0] in tables]
+    tables = load_order(tables, modules, dictionary)
     tabs = _sf_template(dictionary, tables, set(), values_of)
-    return {INSTRUCTIONS_TAB: instructions(generated=sorted(tabs))} | tabs
+    return ({INSTRUCTIONS_TAB: instructions(generated=list(tabs)),
+             LOAD_ORDER_TAB: load_sequence(list(tables), modules, dictionary)} | tabs)

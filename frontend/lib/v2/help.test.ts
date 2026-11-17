@@ -17,10 +17,10 @@ const byId = (id: string) => chapters.find((c) => c.id === id) as HelpChapter;
 const diag = { version: "0.1.1", tenant: "Demo Corp", tenantId: "t-demo", licence: "enterprise, active", user: "a@demo.example", screen: "/admin/users", time: "2026-10-29T09:30:00.000Z", browser: "Test" };
 
 const ROOT = path.join(__dirname, "..", "..");
-const APP = path.join(ROOT, "app", "(v2)");
+const APP = path.join(ROOT, "app", "(app)");
 const MANIFEST = path.join(ROOT, "docs", "help-videos", "manifest.json");
 
-/** Every page.tsx under app/(v2) as its route pattern: "/o/[system]/[module]/golden". */
+/** Every page.tsx under app/(app) as its route pattern: "/o/[system]/[module]/golden". */
 function v2Routes(dir = APP, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
     const p = path.join(dir, name);
@@ -74,7 +74,7 @@ describe("the help index", () => {
 describe("every v2 route has a chapter", () => {
   const routes = v2Routes();
 
-  it("finds the pages of app/(v2)", () => {
+  it("finds the pages of app/(app)", () => {
     expect(routes.length).toBeGreaterThanOrEqual(25);
     expect(routes).toContain("/o/[system]/[module]/golden");
   });
@@ -242,14 +242,8 @@ describe("the support block", () => {
   });
 });
 
-describe("the next More addresses", () => {
-  it.each([
-    ["/more/admin/flow/connect", "v2:systems"],
-    ["/more/admin/flow/users", "v2:administration"],
-    ["/more/admin/flow/rules", "v2:rules"],
-    ["/more/rules", "v2:administration"],
-  ])("%s opens %s", (p, id) => {
-    expect(chapterFor(p)).toBe(id);
-    expect(byId(id)).toBeDefined();
+describe("retired addresses", () => {
+  it("have no chapter: they redirect before they render", () => {
+    for (const p of ["/more", "/more/writeback", "/n/work", "/next/o"]) expect(chapterFor(p), p).toBeNull();
   });
 });

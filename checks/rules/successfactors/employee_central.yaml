@@ -14251,3 +14251,52 @@ rules:
     - op: postcode
       country_field: PERADDRESS.COUNTRY
     confidence: medium
+- id: EC904
+  field: EMPJOBHIST.PROBATION_END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPJOBHIST.PROBATION_END_DATE` < `EMPJOBHIST.HIRE_DATE`'
+  severity: medium
+  dimension: accuracy
+  message: Probation ends before the hire date
+  why_it_matters: Probation starts on the hire date, so its end date cannot be earlier. A date before hire is usually a year
+    typo or a value carried over from an earlier employment of a rehire.
+  rule_authority: best_practice
+  sap_impact: Probation-end reminders and confirmation workflows fire on the wrong date or never fire, and notice periods
+    that depend on probation are applied wrongly.
+  fix_map:
+    __other__: Correct the record in Employee Central > Job Information history (Admin Center > Manage Data or Job History).
+      Set the probation end date from the hire date and the probation period in the contract.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID} record from {EMPJOBHIST.START_DATE}: probation ends {EMPJOBHIST.PROBATION_END_DATE},
+    hired {EMPJOBHIST.HIRE_DATE}.'
+- id: EC905
+  field: EMPJOBHIST.TERMINATION_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPJOBHIST.TERMINATION_DATE` < `EMPJOBHIST.HIRE_DATE`'
+  severity: high
+  dimension: accuracy
+  message: Termination date is before the hire date
+  why_it_matters: An employment cannot end before it starts. On a job history row this happens when a rehire carries the termination
+    date of the earlier employment, or when one of the two dates was keyed in the wrong year.
+  rule_authority: sap_hard_constraint
+  sap_impact: Replication to Employee Central Payroll or SAP HCM is rejected (action dates out of order), and tenure and headcount
+    reports compute negative service.
+  fix_map:
+    __other__: Correct the record in Employee Central > Job Information history (Admin Center > Manage Data or Job History).
+      Correct the hire or termination date; for a rehire, create a new employment instead of reusing the old one.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID} record from {EMPJOBHIST.START_DATE}: terminated {EMPJOBHIST.TERMINATION_DATE},
+    hired {EMPJOBHIST.HIRE_DATE}.'
+- id: EC906
+  field: EMPJOBHIST.SHIFT_CODE
+  check_class: cross_field_check
+  fail_when: '`EMPJOBHIST.IS_SHIFT_EMPLOYEE`.str.lower().isin([''true'',''y'',''1'',''x'']) & `EMPJOBHIST.SHIFT_CODE`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Shift employee has no shift code
+  why_it_matters: The shift flag says the employee works shifts and is paid shift premiums. The shift code says which shift
+    pattern and premium applies. With the flag set and no code, payroll knows a premium is due but not which one.
+  rule_authority: best_practice
+  sap_impact: Shift premiums are not paid or are paid at a default rate when the job record is replicated to payroll.
+  fix_map:
+    __other__: Correct the record in Employee Central > Job Information history (Admin Center > Manage Data or Job History).
+      Enter the shift code for the employee's shift pattern, or clear the shift flag.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID} record from {EMPJOBHIST.START_DATE}: shift employee without a shift code.'

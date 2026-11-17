@@ -250,6 +250,8 @@ async def test_runs_are_tenant_scoped(owner, monkeypatch):
         ids = {x["id"] for x in (await client.get("/api/v1/runs/timeline", headers=headers())).json()["runs"]}
         assert ids == {t2["run0"], t2["run_mid"], t2["run_spare"], t2["run"]} and not ids & {s["run"], s["run0"]}
         assert (await client.get(f"/api/v1/runs/{s['run0']}/vs/{t2['run']}/summary", headers=headers())).status_code == 404
+
+
 def test_multi_rules():
     from api.routes.run_timeline import multi_rules
     found = [("r1", "A", 0, "high", "validity"), ("r2", "A", 4, "high", "validity"), ("r3", "A", 0, "high", "validity"),

@@ -13,7 +13,7 @@ import type { V2Persona } from "./hooks";
  *
  * Until a person chooses, the role decides: compact for a data steward and SAP Basis, comfortable for everyone else
  * (the programme lead and the data owner first). The stored value "default" (from before the two modes) follows the role.
- * The values the CSS draws are tokens in design/v2/tokens.css under .m2-root[data-density]; the row heights the virtual
+ * The values the CSS draws are tokens in ui/tokens.css under .mx-root[data-density]; the row heights the virtual
  * grid measures with are the two numbers below, and tokens.test.ts holds the two to each other.
  */
 export type Density = "compact" | "comfortable";
@@ -31,7 +31,7 @@ export function resolveDensity(chosen: DensityTier | null | undefined, persona: 
   return chosen === "compact" || chosen === "comfortable" ? chosen : personaDensity(persona);
 }
 
-/** The density of the shell (V2Shell provides it); comfortable outside one. */
+/** The density of the shell (the next shell provides it); comfortable outside one. */
 export const DensityContext = createContext<Density>("comfortable");
 
 export const useDensity = (): Density => useContext(DensityContext);

@@ -342,7 +342,7 @@ def multi_rules(ids: list[str], found: list[tuple]) -> tuple[list[dict], list[di
     for vid, check, n, sev, dim in found:
         r = rules.setdefault(check, {"check_id": check, "severity": sev, "dimension": dim, "failing": [None] * len(ids)})
         r["failing"][at[vid]] = int(n or 0)
-    steps = [{"a": ids[i], "b": ids[i + 1], "newly_failing": 0, "fixed": 0, "worse": 0, "better": 0} for i in range(len(ids) - 1)]
+    steps: list[dict] = [{"a": ids[i], "b": ids[i + 1], "newly_failing": 0, "fixed": 0, "worse": 0, "better": 0} for i in range(len(ids) - 1)]
     for r in rules.values():
         f = r["failing"]
         r["change"] = [change_kind(f[i], f[i + 1]) if f[i] is not None and f[i + 1] is not None else None for i in range(len(ids) - 1)]
@@ -378,7 +378,8 @@ async def multi_compare(runs: str = Query(..., max_length=400), module: str = Qu
     for h in heads:
         m = (h["dqs_summary"] or {}).get(module) if isinstance(h["dqs_summary"], dict) else None
         m = m if isinstance(m, dict) else {}
-        dims = m.get("dimension_scores") if isinstance(m.get("dimension_scores"), dict) else {}
+        dims = m.get("dimension_scores") or {}
+        dims = dims if isinstance(dims, dict) else {}
         cov = m.get("coverage")
         out_runs.append({"id": h["id"], "run_at": h["run_at"], "label": h["label"], "run_number": h["run_number"],
                          "system_id": h["system_id"], "system_name": names.get(str(h["system_id"])),

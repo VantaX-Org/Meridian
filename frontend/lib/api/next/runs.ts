@@ -26,6 +26,8 @@ export interface RunsQuery {
   limit?: number;
   offset?: number;
   sort?: string;
+  /** True also lists the runs archived from the run page. */
+  include_archived?: boolean;
 }
 
 export interface RunsPage {
@@ -121,7 +123,7 @@ export function downloadCleaningWorkbook(runId: string, module: string): Promise
 }
 
 export const nextRunKeys = {
-  page: (fx: boolean, q: RunsQuery) => ["next", "runs", fx, q.system_id ?? null, q.module ?? null, q.status ?? null, q.limit ?? 50, q.offset ?? 0, q.sort ?? null] as const,
+  page: (fx: boolean, q: RunsQuery) => ["next", "runs", fx, q.system_id ?? null, q.module ?? null, q.status ?? null, q.limit ?? 50, q.offset ?? 0, q.sort ?? null, q.include_archived ?? false] as const,
   infinite: (fx: boolean, system: string | null, module: string | null) => ["next", "runs-inf", fx, system, module] as const,
   run: (fx: boolean, id: string) => ["next", "run", fx, id] as const,
   summary: (fx: boolean, a: string, b: string) => ["next", "sets-summary", fx, a, b] as const,
@@ -222,8 +224,16 @@ export function useTemplatesFor(modules: readonly string[]) {
 /** Heads of several runs at once, in the order asked. A run that does not exist (deleted, or a mistyped link) comes back null. */
 export function useRuns(ids: readonly string[]) {
   const fx = useFixture();
-  const results = useQueries({ queries: ids.map((id) => ({ queryKey: nextRunKeys.run(fx, id), queryFn: () => getRun(id).catch(() => null), staleTime: 60_000 })) });
-  return { heads: results.map((r) => r.data ?? null), loading: results.some((r) => r.isLoading) };
+  // A missing run (404) is null; any other failure is an error the screen offers to retry.
+  const notFound = (e: unknown) => { if ((e as { response?: { status?: number } }).response?.status === 404) return null; throw e; };
+  const results = useQueries({ queries: ids.map((id) => ({ queryKey: nextRunKeys.run(fx, id), queryFn: () => getRun(id).catch(notFound), staleTime: 60_000, retry: false })) });
+  const failed = results.find((r) => r.isError);
+  return {
+    heads: results.map((r) => r.data ?? null),
+    loading: results.some((r) => r.isLoading),
+    error: failed ? failed.error : null,
+    retry: () => { for (const r of results) if (r.isError) void r.refetch(); },
+  };
 }
 
 export type RuleChange = "newly_failing" | "fixed" | "worse" | "better";

@@ -513,6 +513,9 @@ class RoundTripCheckResponse(BaseModel):
     parent_version_id: str
     latest_version_id: Optional[str] = None
     edits: int = 0
+    # cells that fail a value check: table, key, field, reason (long | type | formula, or the refused-cell text)
+    flagged: list[dict] = []
+    flagged_total: int = 0
 
 
 @router.post(
@@ -529,6 +532,7 @@ async def upload_roundtrip(
     role: str = Depends(require_permission("upload")),
     module: str = Form(None),
     confirm_warnings: bool = Form(False),
+    skip_flagged: bool = Form(False),
 ):
     """An edited export (filled template or cleaning workbook) comes back as the next run of the same lineage
     and is analysed at once. The hidden marker names the parent run; without one the caller sends it.
@@ -537,7 +541,7 @@ async def upload_roundtrip(
     accumulate; the new run is tagged ``cleaned_overlay``. A file from an extraction that a newer one of the same
     object has replaced is refused (409). Status, Owner and Comment on cleaning rows update the record issues."""
     return await _roundtrip_one(request, file, parent_version_id, db, tenant, role=role, module=module,
-                                confirm_warnings=confirm_warnings)
+                                confirm_warnings=confirm_warnings, skip_flagged=skip_flagged)
 
 
 @router.post("/upload/roundtrip/check", response_model=RoundTripCheckResponse, dependencies=[Depends(_upload_rate_limit)])
@@ -549,10 +553,12 @@ async def upload_roundtrip_check(
     tenant: Tenant = Depends(get_tenant),
     role: str = Depends(require_permission("upload")),
     module: str = Form(None),
+    skip_flagged: bool = Form(False),
 ):
     """Run every check on an edited file and change nothing: fingerprint, run, template version, columns, rows,
     record keys, value types and lengths, formulas. Each check is pass, warn or fail; no cell value is returned."""
-    return await _roundtrip_one(request, file, parent_version_id, db, tenant, role=role, module=module, check_only=True)
+    return await _roundtrip_one(request, file, parent_version_id, db, tenant, role=role, module=module, check_only=True,
+                                skip_flagged=skip_flagged)
 
 
 class RoundTripBatchItem(BaseModel):
@@ -582,6 +588,8 @@ async def upload_roundtrip_batch(
     tenant: Tenant = Depends(get_tenant),
     role: str = Depends(require_permission("upload")),
     module: str = Form(None),
+    confirm_warnings: bool = Form(False),
+    skip_flagged: bool = Form(False),
 ):
     """Several edited files in one call (one per object). Each goes through the same checks as a single upload
     (parent_mismatch, stale_run, notes, newest cleaned copy) and builds on the copies before it, so the files of
@@ -591,7 +599,8 @@ async def upload_roundtrip_batch(
     items: list[RoundTripBatchItem] = []
     for f in files:
         try:
-            r = await _roundtrip_one(request, f, parent_version_id, db, tenant, role=role, module=module)
+            r = await _roundtrip_one(request, f, parent_version_id, db, tenant, role=role, module=module,
+                                     confirm_warnings=confirm_warnings, skip_flagged=skip_flagged)
             items.append(RoundTripBatchItem(file_name=f.filename or "", ok=True, parent_version_id=r.parent_version_id,
                                             result=r))
         except HTTPException as e:
@@ -609,7 +618,8 @@ MAX_ROUNDTRIP_BATCH = 20
 
 async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: Optional[str], db: AsyncSession,
                          tenant: Tenant, role: str = "", module: Optional[str] = None, check_only: bool = False,
-                         confirm_warnings: bool = False):
+                         confirm_warnings: bool = False, skip_flagged: bool = False):
+    """``skip_flagged`` leaves out the cells that fail a value check and applies the rest (values turns warn)."""
     from starlette.concurrency import run_in_threadpool
 
     from api.middleware.licence import enforce_licensed_modules
@@ -690,6 +700,18 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
     tip = (await db.execute(text(_TIP_SQL), {"t": tenant.id, "b": base})).fetchone()
     path = str(dict(tip[1] or {}).get("dataset_path") or meta["dataset_path"]) if tip else meta["dataset_path"]
     dictionary = await run_in_threadpool(_dictionary, tenant.id, system_id) if edits else None
+    flags = uc.flagged(edits, dictionary) if edits else \
+        [{"table": "", "key": f"{r['sheet']}!{r['row']}", "field": r["field"], "description": "", "reason": r["reason"]}
+         for r in refused]
+    skipped = 0
+    if skip_flagged and edits and flags:
+        bad = {(f["table"], f["key"], f["field"]) for f in flags}
+        kept = [e for e in edits if (e["table"], e["key"], e["field"]) not in bad]
+        skipped, edits = len(edits) - len(kept), kept
+        if not edits and not notes:
+            raise HTTPException(status_code=422, detail={"error": "no_edits", "detail":
+                                "Every corrected value in the file failed a value check.", "fix":
+                                "Fix the flagged cells and upload again."})
     dry = await run_in_threadpool(rt.apply_edits, path, "", edits, dictionary, dry=True) if edits else {}
     run_check = uc.check_run(marker, parent, modules, None)
     if newer:
@@ -697,18 +719,21 @@ async def _roundtrip_one(request: Request, file: UploadFile, parent_version_id: 
                      "this file was exported. Download the workbook from the latest run."}
     checks = [uc.check_fingerprint(marker, str(tenant.id)), run_check, uc.check_template(marker, kind),
               uc.check_columns(parsed["sheets"], marker, kind, marker.get("map")), uc.check_rows(parsed["sheets"], marker, kind),
-              uc.check_keys(dry), uc.check_values(edits, dictionary), uc.check_formulas(edits)]
+              uc.check_keys(dry), uc.check_values(edits, dictionary, skipped), uc.check_formulas(edits)]
     if refused:
         checks[-3:] = uc.check_refused(refused)
     verdict = uc.verdict(checks)
     if check_only:
         return RoundTripCheckResponse(verdict=verdict, checks=[RoundTripCheck(**c) for c in checks], parent_version_id=parent,
-                                      latest_version_id=str(newer[0]) if newer else None, edits=len(edits))
+                                      latest_version_id=str(newer[0]) if newer else None, edits=len(edits),
+                                      flagged=flags[:200], flagged_total=len(flags))
     if verdict == "fail" and not newer:
         raise HTTPException(status_code=422, detail={"error": "checks_failed", "checks": checks,
+                            "flagged": flags[:200], "flagged_total": len(flags),
                             "detail": "The file did not pass its checks. Fix the failed checks and upload again."})
     if verdict == "warn" and not confirm_warnings:
         raise HTTPException(status_code=422, detail={"error": "confirm_required", "checks": checks,
+                            "flagged": flags[:200], "flagged_total": len(flags),
                             "detail": "The file passed with warnings. Confirm to continue."})
     if newer:
         raise HTTPException(status_code=409, detail={
@@ -821,6 +846,78 @@ def _dictionary(tenant_id, system_id):
 
     with tenant_session(get_sync_engine(), tenant_id) as s:
         return dictionary_for(s, system_id)
+
+
+class AgreementResponse(BaseModel):
+    version_id: str
+    base_version_id: str
+    run_id: str
+    run_at: Optional[str] = None
+    total: int
+    matched: int
+    different: int
+    missing: int
+    score: Optional[float] = None
+    fields: list[dict]
+    rows: list[dict]
+    rows_total: int
+
+
+@router.get("/upload/roundtrip/{version_id}/agreement", response_model=AgreementResponse)
+async def roundtrip_agreement(
+    version_id: str,
+    request: Request,
+    run: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("view")),
+):
+    """How far a later extraction agrees with an uploaded cleaned file: each corrected cell matched, still
+    different or missing in that run. ``run`` defaults to the newest finished extraction after the file's base."""
+    from starlette.concurrency import run_in_threadpool
+
+    from api.middleware.licence import enforce_licensed_modules
+    from api.services import clean_agreement as ca
+
+    try:
+        version_id = str(uuid.UUID(version_id))
+        run = str(uuid.UUID(run)) if run else None
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
+    row = (await db.execute(text("SELECT metadata FROM analysis_versions WHERE id = CAST(:v AS uuid) AND tenant_id = :t"),
+                            {"v": version_id, "t": tenant.id})).fetchone()
+    meta = dict(row[0] or {}) if row else {}
+    if meta.get("source") != "roundtrip" or not meta.get("cleaned_overlay") or not meta.get("dataset_path"):
+        raise HTTPException(status_code=404, detail="Cleaned upload not found.")
+    enforce_licensed_modules(request, list(meta.get("modules") or []))
+    base = str((meta.get("roundtrip") or {}).get("base_version_id") or meta["cleaned_overlay"].get("base_version_id") or "")
+    if not run:
+        newer = (await db.execute(text(_NEWER_RUN_SQL), {"t": tenant.id, "b": base, "m": None})).fetchone() if base else None
+        if not newer:
+            raise HTTPException(status_code=404, detail={"error": "no_later_run", "detail":
+                                "No extraction has finished since this file's run.", "fix":
+                                "Extract the object again once the corrections are in SAP."})
+        run = str(newer[0])
+    later = (await db.execute(text("SELECT run_at, metadata FROM analysis_versions WHERE id = CAST(:v AS uuid) "
+                                   "AND tenant_id = :t AND status IN ('complete', 'agents_complete')"),
+                              {"v": run, "t": tenant.id})).fetchone()
+    later_path = str(dict(later[1] or {}).get("dataset_path") or "") if later else ""
+    if not later_path.endswith(("/", ".parquet")):
+        raise HTTPException(status_code=404, detail="That run has no stored data to compare.")
+    cells = await _cells(db, tenant.id, version_id, meta)
+    dictionary = await run_in_threadpool(_dictionary, tenant.id, meta.get("system_id"))
+    keys_of = (lambda t: list(dictionary.keys(t))) if dictionary is not None else (lambda t: [])
+
+    def describe(table: str, field: str) -> str:
+        f = dictionary.field(table, field) if dictionary is not None else None
+        return getattr(f, "description", "") or ""
+
+    cleaned = await run_in_threadpool(ca.read_cells, meta["dataset_path"], cells, keys_of)
+    current = await run_in_threadpool(ca.read_cells, later_path, cells, keys_of)
+    out = ca.agreement(cells, cleaned, current, describe)
+    return AgreementResponse(version_id=version_id, base_version_id=base, run_id=run,
+                             run_at=later[0].isoformat() if later[0] else None, **out)
 
 
 async def _tenant_system(db: AsyncSession, tenant_id: uuid.UUID, system_id: str) -> str:

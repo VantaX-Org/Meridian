@@ -20,8 +20,8 @@ its new place (`next.config.ts`, table in `docs/guide/redirects.md`).
 
 | | |
 |---|---|
-| `app/(v2)/` | the routes of the shell; `app/(auth)/` the signed-out pages; `app/(v2status)/` the status page |
-| `design/v2/` | the shell, the screens, the inspector panels and their CSS over `design/v2/tokens.css` |
+| `app/(app)/` | the routes of the interface (the status page included); `app/(auth)/` the signed-out pages |
+| `ui/` | the kit (`ui/kit`), the screens (`ui/screens`), the sheets and their CSS over `ui/tokens.css` |
 | `lib/v2/` | pure logic, queries, the i18n catalogues (`lib/v2/i18n`, English, German, Japanese) and help |
 | `lib/api/v2/` | typed API clients; `?fixture=1` answers every read from `lib/api/v2/fixtures` without a backend |
 | `docs/guide/` | the guide: chapters, tours, what's new; `docs/help-videos/` its recordings |

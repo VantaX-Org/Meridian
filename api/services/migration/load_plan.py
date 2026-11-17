@@ -25,10 +25,12 @@ from sap.ddic import Dictionary
 
 # Employee Central loads in this order inside the object: foundation objects, then Position, then Person, then
 # Employment, then Job. SuccessFactors canonical tables (sap/dictionaries/canonical/successfactors.yaml).
+# Pay component and pay component group check each other (BASE_PAY_COMPONENT_GROUP / PAY_COMPONENT): components
+# load first, then groups, and a component's base group is filled on a second pass.
 EC_LOAD_ORDER: tuple[str, ...] = (
     "FOCOMPANY", "FO_LEGAL_ENTITY_LOCAL", "FOBUSINESSUNIT", "FODIVISION", "FODEPARTMENT", "FOCOSTCENTER",
-    "FOLOCATIONGROUP", "FOGEOZONE", "FOLOCATION", "FOCORPORATEADDRESSDEFLT", "FOJOBFUNCTION", "FOJOBCODE",
-    "FO_JOB_CLASS_LOCAL", "FOPAYGRADE", "FOPAYRANGE", "FOPAYGROUP", "FOFREQUENCY", "FOPAYCOMPONENT",
+    "FOLOCATIONGROUP", "FOGEOZONE", "FOLOCATION", "FOCORPORATEADDRESSDEFLT", "FOJOBFUNCTION", "FOPAYGRADE",
+    "FOJOBCODE", "FO_JOB_CLASS_LOCAL", "FOPAYRANGE", "FOPAYGROUP", "FOFREQUENCY", "FOPAYCOMPONENT",
     "FOPAYCOMPONENTGROUP", "FOPAYSCALETYPE", "FOPAYSCALEAREA", "FOEVENTREASON",
     "POSITION",
     "USERACCOUNT", "PERINFO", "PER_GLOBAL_INFO", "PEREMAIL", "PERPHONE", "PERADDRESS", "PEREMERGENCY",
@@ -63,6 +65,10 @@ OWNED_TABLES: dict[str, tuple[str, ...]] = {
     "benefits": ("BENEFITENROLLMENT", "DEPENDENT"),
     "performance_goals": ("GOALPLAN", "PMREVIEWRESULT"),
     "succession_planning": ("SUCCESSIONCANDIDATE",),
+    "time_attendance": ("TIMESHEET",),
+    "learning_management": ("LEARNINGASSIGNMENT", "LEARNINGCOMPLETION"),
+    "recruiting_onboarding": ("JOBREQUISITION", "JOBAPPLICATION", "JOBOFFER", "ONBOARDINGCANDIDATEINFO"),
+    "payroll_integration": ("PAYRESULT",),
 }
 
 # SuccessFactors has no DDIC check tables between objects (a compensation record points at its user by USERID, which
@@ -83,6 +89,16 @@ SF_EDGES: dict[tuple[str, str], list[tuple[str, str, bool, str]]] = {
         ("SUCCESSIONCANDIDATE.POSITION_ID", "POSITION", True, "A nomination is rejected for a position that does not exist")],
     ("compensation", "succession_planning"): [
         ("SUCCESSIONCANDIDATE.NOMINEE_ID", "COMPINFO", False, "Talent data loads after the full employee record, compensation included")],
+    ("employee_central", "time_attendance"): [
+        ("TIMESHEET.USERID", "EMPEMPLOYMENT", True, "Time off and time sheets are rejected for a user with no employment")],
+    ("employee_central", "learning_management"): [
+        ("LEARNINGASSIGNMENT.USERID", "EMPEMPLOYMENT", True, "A learning assignment needs the user loaded from Employee Central")],
+    ("employee_central", "recruiting_onboarding"): [
+        ("JOBREQUISITION.POSITION_NUMBER", "POSITION", True, "A requisition opened against a position needs the position loaded")],
+    ("employee_central", "payroll_integration"): [
+        ("PAYRESULT.USERID", "EMPEMPLOYMENT", True, "Payroll results belong to an employee with employment and job data")],
+    ("compensation", "payroll_integration"): [
+        ("PAYRESULT.USERID", "COMPINFO", False, "Payroll results follow the compensation they were paid from")],
 }
 
 _CUSTOMIZING = {"C", "G", "E", "S"}

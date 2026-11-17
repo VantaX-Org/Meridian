@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { requestPasswordReset } from "@/lib/api/auth";
-import { AuthField, AuthFrame, AuthNote } from "@/design/v2/auth/AuthFrame";
+import { AuthField, AuthFrame, AuthNote } from "@/ui/auth/AuthFrame";
 import { t } from "@/lib/v2/i18n";
 
 export default function ForgotPasswordPage() {
@@ -37,19 +37,19 @@ export default function ForgotPasswordPage() {
           <AuthNote tone="info" title={t("Check your email")}>
             {t("If an account uses {email}, a reset link is on its way. The link is valid for one hour.", { email: email.trim() })}
           </AuthNote>
-          <p className="m2-auth-lead">{t("No email after a few minutes? Check spam, or ask your administrator to reset the password for you.")}</p>
+          <p className="mx-auth-lead">{t("No email after a few minutes? Check spam, or ask your administrator to reset the password for you.")}</p>
         </>
       ) : (
-        <form className="m2-auth-form" onSubmit={onSubmit} noValidate>
+        <form className="mx-auth-form" onSubmit={onSubmit} noValidate>
           <AuthField label={t("Work email")} error={error ?? undefined}>
             {(p) => <input {...p} type="email" required autoComplete="email" autoFocus value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} />}
           </AuthField>
-          <button type="submit" className="nx-btn nx-btn-primary m2-wide" disabled={submitting}>
+          <button type="submit" className="mx-btn" data-variant="primary" data-wide="" disabled={submitting}>
             {submitting ? t("Sending…") : t("Send link")}
           </button>
         </form>
       )}
-      <Link className="m2-auth-link" href="/sign-in">{t("Back to sign in")}</Link>
+      <Link className="mx-auth-link" href="/sign-in">{t("Back to sign in")}</Link>
     </AuthFrame>
   );
 }

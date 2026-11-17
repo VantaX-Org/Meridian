@@ -1575,6 +1575,23 @@ rules:
     __other__: FOCORPORATEADDRESSDEFLT.STATE '{invalid_value}' is not defined in the picklist STATE_USA. Correct it there
       or add the missing entry.
   record_fix_template: FOCORPORATEADDRESSDEFLT.STATE points at a picklist STATE_USA entry that does not exist.
+- id: DXR32edba51
+  enabled: false
+  field: FOCOSTCENTER.PARENT
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Parent cost centre must exist in the check table FOCostCenter.externalCode
+  why_it_matters: PARENT (Parent cost centre) is defined in the SAP Data Dictionary with check table FOCostCenter.externalCode
+    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read PARENT resolve it through check table FOCostCenter.externalCode; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOCOSTCENTER.PARENT '{invalid_value}' is not defined in the check table FOCostCenter.externalCode. Correct
+      it there or add the missing entry.
+  record_fix_template: FOCOSTCENTER.PARENT points at a check table FOCostCenter.externalCode entry that does not exist.
 - id: DXR072aeebe
   enabled: false
   field: FODEPARTMENT.PARENT_DEPARTMENT
@@ -1713,6 +1730,23 @@ rules:
     __other__: FOLOCATION.GEOZONE '{invalid_value}' is not defined in the check table FOGeozone.externalCode. Correct it there
       or add the missing entry.
   record_fix_template: FOLOCATION.GEOZONE points at a check table FOGeozone.externalCode entry that does not exist.
+- id: DXR24d45f7a
+  enabled: false
+  field: FOLOCATION.LEGAL_ENTITY
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Parent legal entity must exist in the check table FOCompany.externalCode
+  why_it_matters: LEGAL_ENTITY (Parent legal entity) is defined in the SAP Data Dictionary with check table FOCompany.externalCode
+    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read LEGAL_ENTITY resolve it through check table FOCompany.externalCode; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOLOCATION.LEGAL_ENTITY '{invalid_value}' is not defined in the check table FOCompany.externalCode. Correct
+      it there or add the missing entry.
+  record_fix_template: FOLOCATION.LEGAL_ENTITY points at a check table FOCompany.externalCode entry that does not exist.
 - id: DXR63b5fd8c
   enabled: false
   field: FOPAYCOMPONENT.BASE_PAY_COMPONENT_GROUP
@@ -1783,6 +1817,57 @@ rules:
       Correct it there or add the missing entry.
   record_fix_template: FOPAYCOMPONENTGROUP.PAY_COMPONENT points at a check table FOPayComponent.externalCode entry that does
     not exist.
+- id: DXR14f04c2b
+  enabled: false
+  field: FOPAYRANGE.LEGAL_ENTITY
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Legal entity must exist in the check table FOCompany.externalCode
+  why_it_matters: LEGAL_ENTITY (Legal entity) is defined in the SAP Data Dictionary with check table FOCompany.externalCode
+    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read LEGAL_ENTITY resolve it through check table FOCompany.externalCode; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOPAYRANGE.LEGAL_ENTITY '{invalid_value}' is not defined in the check table FOCompany.externalCode. Correct
+      it there or add the missing entry.
+  record_fix_template: FOPAYRANGE.LEGAL_ENTITY points at a check table FOCompany.externalCode entry that does not exist.
+- id: DXRf2bfb73c
+  enabled: false
+  field: FOPAYRANGE.GEOZONE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Geozone must exist in the check table FOGeozone.externalCode
+  why_it_matters: GEOZONE (Geozone) is defined in the SAP Data Dictionary with check table FOGeozone.externalCode on domain
+    n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it
+    depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read GEOZONE resolve it through check table FOGeozone.externalCode; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOPAYRANGE.GEOZONE '{invalid_value}' is not defined in the check table FOGeozone.externalCode. Correct it there
+      or add the missing entry.
+  record_fix_template: FOPAYRANGE.GEOZONE points at a check table FOGeozone.externalCode entry that does not exist.
+- id: DXRfed788c8
+  enabled: false
+  field: FOPAYRANGE.PAY_GRADE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Pay grade must exist in the check table FOPayGrade.externalCode
+  why_it_matters: PAY_GRADE (Pay grade) is defined in the SAP Data Dictionary with check table FOPayGrade.externalCode on
+    domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read PAY_GRADE resolve it through check table FOPayGrade.externalCode; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOPAYRANGE.PAY_GRADE '{invalid_value}' is not defined in the check table FOPayGrade.externalCode. Correct it
+      there or add the missing entry.
+  record_fix_template: FOPAYRANGE.PAY_GRADE points at a check table FOPayGrade.externalCode entry that does not exist.
 - id: DXRffc7ee61
   enabled: false
   field: PERADDRESS.PROVINCE

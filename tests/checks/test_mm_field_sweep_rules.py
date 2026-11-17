@@ -107,6 +107,23 @@ CASES = {
     "MM1166": {"TVKOV": _f("TVKOV", VKORG=["1000", "1000"], VTWEG=["10", "20"], VTWKO=["10", "30"])},
     "MM1167": {"MARC": _f("MARC", MATNR=["OK", "BAD"], WERKS=["1000", "1000"], SERNP=["S1", ""]),
                "MARA": _f("MARA", MATNR=["OK", "BAD"], SERLV=["3", "3"])},
+    "MM1168": mara(EANNR=["", "4006381333931"]),
+    "MM1169": keyed("MARM", {"MEINH": ["EA", "EA"]}, EANNR=["", "4006381333931"]),
+    "MM1170": mara(GEWTO=["5", "5"], ERGEW=["100", ""]),
+    "MM1171": mara(VOLTO=["5", "5"], ERVOL=["2", "0"]),
+    "MM1172": mara(DATAB=[_day(-100), _day(-100)], LIQDT=[_day(100), _day(-200)]),
+    "MM1173": {"MARD": _f("MARD", MATNR=["OK", "BAD"], WERKS=["1000", "1000"], LGORT=["0001", "0001"],
+                          PRCTL=["PC1", "PC2"]),
+               "MARC": _f("MARC", MATNR=["OK", "BAD"], WERKS=["1000", "1000"], PRCTR=["PC1", "PC1"])},
+    "MM1174": marc(VBEAZ=["2", "2"], VBAMG=["10", ""]),
+    "MM1175": marc(PRFRQ=["30", "30"], XCHPF=["X", ""]),
+    "MM1176": keyed("MVKE", {"VKORG": ["1000", "1000"], "VTWEG": ["10", "10"]}, VAVME=["X", "X"],
+                    VRKME=["BOX", ""]),
+    "MM1177": keyed("MVKE", {"VKORG": ["1000", "1000"], "VTWEG": ["10", "10"]}, SCMNG=["10", "10"],
+                    SCHME=["EA", ""]),
+    "MM1178": {"KSSK": _f("KSSK", OBJEK=["OK", "BAD"], MAFID=["O", "O"], KLART=["001", "001"],
+                          CLINT=["1", "1"], STATU=["1", "2"])},
+    "MM1179": mara(LAEDA=[_day(-100), _day(-2500)], LVORM=["", ""], MSTAE=["", ""]),
 }
 
 
@@ -122,6 +139,15 @@ def test_mm1163_duplicate_customer_material_flags_both_rows():
     frames = {"KNMT": _f("KNMT", MATNR=["OK", "BAD", "BAD2"], KUNNR=["C1"] * 3, VKORG=["1000"] * 3,
                          VTWEG=["10"] * 3, KDMAT=["P1", "P2", "P2"])}
     rule = {**next(r for r in module_rules(M) if r["id"] == "MM1163"), "module": M}
+    _, res = run_rule(rule, TableFrames(frames, D, module=M))
+    assert res.error is None, res.error
+    assert (res.total_count, res.affected_count) == (3, 2)
+
+
+def test_mm1180_two_main_eans_on_one_unit_flags_both_rows():
+    frames = {"MEAN": _f("MEAN", MATNR=["OK", "BAD", "BAD"], MEINH=["EA"] * 3, LFNUM=["1", "1", "2"],
+                         EAN11=["4006381333931", "4006381333948", "4006381333955"], HPEAN=["X", "X", "X"])}
+    rule = {**next(r for r in module_rules(M) if r["id"] == "MM1180"), "module": M}
     _, res = run_rule(rule, TableFrames(frames, D, module=M))
     assert res.error is None, res.error
     assert (res.total_count, res.affected_count) == (3, 2)

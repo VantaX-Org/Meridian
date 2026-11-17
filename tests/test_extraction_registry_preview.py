@@ -26,6 +26,7 @@ EXPECTED = {
     ("successfactors", "payroll_integration", "EmpPayrollRunResults"),
     ("successfactors", "succession_planning", "SuccessionNominee"),
     ("successfactors", "learning_management", "LearningHistoryV1"),
+    ("successfactors", "employee_central", "PositionMatrixRelationship"),
     ("ewms", "grc_compliance", "/api/v1/grc/risks"),
     ("ewms", "fleet_management", "VLCVEHICLE"),
     ("ewms", "transport_management", "/api/v1/tm/freightorders"),
@@ -100,7 +101,7 @@ def test_connectivity_modules_route_exposes_preview_sources() -> None:
     by_module = {m["module"]: m for m in out}
     assert by_module["learning_management"]["preview_sources"] == [
         {"source": "LearningHistoryV1", "reason": preview_sources("successfactors", "learning_management")[0]["reason"]}]
-    assert by_module["employee_central"]["preview_sources"] == []
+    assert [p["source"] for p in by_module["employee_central"]["preview_sources"]] == ["PositionMatrixRelationship"]
     assert all("preview_sources" in m for m in out)
 
 
@@ -135,7 +136,7 @@ def test_system_objects_catalogue_exposes_preview_sources(monkeypatch) -> None:
                                       tenant=SimpleNamespace(id=uuid.uuid4())))
     objs = {o["object"]: o for o in out["objects"]}
     assert [p["source"] for p in objs["payroll_integration"]["preview_sources"]] == ["EmpPayrollRunResults"]
-    assert objs["employee_central"]["preview_sources"] == []
+    assert [p["source"] for p in objs["employee_central"]["preview_sources"]] == ["PositionMatrixRelationship"]
 
 
 # ── extraction: logged and reported as preview, never as verified ────────────

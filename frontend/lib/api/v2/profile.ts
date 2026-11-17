@@ -4,6 +4,7 @@
  * (api/routes/rules.py, manage_rules) turns a mined dependency into a rule every later run checks.
  */
 import { v2Get, v2Send } from "./client";
+import { v2Download } from "./download";
 
 export interface FieldStats {
   rows: number;
@@ -62,3 +63,7 @@ export type Severity = "critical" | "high" | "medium" | "low";
 export const getProfile = (versionId: string, object: string): Promise<Profile> => v2Get(`/versions/${encodeURIComponent(versionId)}/profile`, { object });
 export const acceptMinedRule = (body: { module: string; determinant: string; dependent: string; severity: Severity }): Promise<{ id: string; name: string; module: string; severity: Severity; enabled: boolean }> =>
   v2Send("POST", "/rules/mined", body);
+
+/** GET /{system_id}/versions/{version_id}/profile/export: one sheet per table plus a Dependencies sheet. Masked fields show "masked". Needs the export permission. */
+export const exportVersionProfile = (systemId: string, versionId: string, object: string, format: "csv" | "xlsx"): Promise<string> =>
+  v2Download(`/systems/${encodeURIComponent(systemId)}/versions/${encodeURIComponent(versionId)}/profile/export`, { object, format }, `profile.${format}`);

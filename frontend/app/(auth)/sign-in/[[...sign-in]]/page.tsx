@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
-import { AuthField, AuthFrame, AuthNote, PasswordField } from "@/design/v2/auth/AuthFrame";
-import { safeNext, ssoErrorSentence, ssoStartHref, takeSsoSession } from "@/design/v2/auth/sso";
+import { AuthField, AuthFrame, AuthNote, PasswordField } from "@/ui/auth/AuthFrame";
+import { safeNext, ssoErrorSentence, ssoStartHref, takeSsoSession } from "@/ui/auth/sso";
 import { getOidcPublicConfig, type OidcPublicConfig } from "@/lib/api/sso";
 import { t } from "@/lib/v2/i18n";
 import { useDocumentAccent, useTenantTheme } from "@/lib/v2/theme";
@@ -97,13 +97,13 @@ export default function SignInPage() {
     <AuthFrame title={t("Sign in")}>
       {ssoError ? <AuthNote tone="danger">{ssoError}</AuthNote> : null}
       {sso?.enabled ? (
-        <a className="nx-btn nx-btn-secondary m2-wide" href={ssoStartHref(next)}>
+        <a className="mx-btn" data-variant="secondary" data-wide="" href={ssoStartHref(next)}>
           {t("Continue with {provider}", { provider: sso.display_name ?? t("single sign-on") })}
         </a>
       ) : null}
-      {sso?.enabled && showForm ? <p className="m2-auth-meta">{t("Or use your email and password")}</p> : null}
+      {sso?.enabled && showForm ? <p className="mx-auth-meta">{t("Or use your email and password")}</p> : null}
       {showForm ? (
-        <form className="m2-auth-form" onSubmit={handleSubmit} noValidate>
+        <form className="mx-auth-form" onSubmit={handleSubmit} noValidate>
           {notice && !error ? <AuthNote tone="info">{notice}</AuthNote> : null}
           {error ? (
             <AuthNote ref={noticeRef} focusable tone="danger" title={error.title}>
@@ -116,13 +116,13 @@ export default function SignInPage() {
             )}
           </AuthField>
           <PasswordField label={t("Password")} value={password} onChange={setPassword} autoComplete="current-password" error={passwordError} readOnly={loading} />
-          <Link className="m2-auth-link" href="/forgot-password">{t("Forgot password?")}</Link>
-          <button type="submit" className="nx-btn nx-btn-primary m2-wide" disabled={loading}>
+          <Link className="mx-auth-link" href="/forgot-password">{t("Forgot password?")}</Link>
+          <button type="submit" className="mx-btn" data-variant="primary" data-wide="" disabled={loading}>
             {loading ? t("Signing in…") : t("Sign in")}
           </button>
         </form>
       ) : (
-        <button type="button" className="m2-auth-link" onClick={() => setAdminForm(true)}>
+        <button type="button" className="mx-auth-link" onClick={() => setAdminForm(true)}>
           {t("Administrator sign-in")}
         </button>
       )}

@@ -19,6 +19,7 @@ import { NOT_MINE, resetSys6b, sys6bRead, sys6bWrite, withSystems } from "./sys6
 import { NONE_ROLES, resetRolesFixture, rolesFixtureResponse, rolesFixtureWrite } from "./roles";
 import { adminFixtureResponse, adminFixtureWrite, fixtureDownload as adminFixtureDownload, NONE_ADMIN } from "./admin";
 import { subjectRead, subjectWrite, NONE_SUBJECT } from "./subject-requests";
+import { b8Read, NONE_B8 } from "./b8";
 import { dqFirewallRead, dqFirewallWrite, NONE_DQ_FIREWALL } from "./dq-firewall";
 import { enterpriseFixtureDownload, enterpriseFixtureResponse, enterpriseFixtureWrite, NONE_ENTERPRISE } from "./enterprise";
 import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, step9Read, step9Write, withContractMarks } from "./step9";
@@ -35,6 +36,7 @@ import { insightsRead, insightsWrite, NONE_INSIGHTS, NONE_INSIGHTS_WRITE } from 
 import { analyticsRead, NONE_ANALYTICS } from "./analytics";
 import { NONE_S4, s4Read } from "./s4";
 import { NONE_SCORE, scoreRead } from "./score";
+import { NONE_RECORDS, recordsRead, recordsWrite } from "./records";
 import { designRead, designWrite, NONE_DESIGN } from "./design";
 import { linksRead, NONE_LINKS } from "./links";
 import { catalogueRead, NONE_CATALOGUE } from "./catalogue";
@@ -43,6 +45,8 @@ import { materialsRead, NONE_MATERIALS } from "./materials";
 import { issuesRead, issuesWrite, NONE_ISSUES, resetIssuesFixture } from "./issues";
 import { exceptionsRead, exceptionsWrite, NONE_EXCEPTIONS, resetExceptionsFixture } from "./exceptions";
 import { NONE_TRIAGE, resetTriageFixture, triageRead, triageWrite } from "./triage";
+import { NONE_STEWARD, resetStewardFixture, stewardRead, stewardWrite } from "./stewardship";
+import { automationRead, NONE_AUTOMATION } from "./automation";
 import { NONE_MAINTENANCE, maintenanceRead, maintenanceWrite, resetMaintenanceFixture } from "./maintenance";
 import { NONE_LLM, llmRead, llmWrite, resetLlmFixture } from "./llm";
 import { NONE_PROFILE, profileRead, profileWrite, resetProfileFixture } from "./profile";
@@ -52,6 +56,7 @@ import { NONE_SIMULATIONS, simulationsRead, simulationsWrite, resetSimulationsFi
 import { miningRead, miningWrite, NONE_MINING } from "./mining";
 import { rulePromotionRead, rulePromotionWrite, NONE_RULE_PROMOTION } from "./rulePromotion";
 import { ruleImpactWrite, NONE_RULE_IMPACT } from "./ruleImpact";
+import { ruleVersionsRead, ruleVersionsWrite, NONE_RULE_VERSIONS } from "./ruleVersions";
 import { migrationScenariosRead, NONE_MIGRATION_SCENARIOS } from "./migrationScenarios";
 import { survivorshipRead, survivorshipWrite, NONE_SURVIVORSHIP } from "./survivorship";
 import { referenceDataRead, referenceDataWrite, NONE_REFERENCE_DATA } from "./reference-data";
@@ -164,6 +169,8 @@ const fxWritebacks = [
   { id: "wb-2", finding_id: "f-2", version_id: null, requested_by: "u-me", records_updated: 4, sap_host: "sap-ecc.example.com", created_at: "2026-10-16T09:00:00Z", check_id: "MM031", module: "material_master", rule_message: "Base unit is blank.", requested_by_name: "Demo user" },
 ];
 export function fixtureWrite<T>(method: string, path: string, body: unknown, params: Params): T {
+  const recw = recordsWrite(method, path, body);
+  if (recw !== NONE_RECORDS) return recw as T;
   const wbw = wbWrite(method, path, body);
   if (wbw !== NONE_WB) return wbw as T;
   const pfw = portfolioWrite(method, path, body);
@@ -195,6 +202,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (rpw !== NONE_RULE_PROMOTION) return rpw as T;
   const riw = ruleImpactWrite(method, path, body);
   if (riw !== NONE_RULE_IMPACT) return riw as T;
+  const rvw = ruleVersionsWrite(method, path, body);
+  if (rvw !== NONE_RULE_VERSIONS) return rvw as T;
   const fdw = fixDraftsWrite(method, path, body);
   if (fdw !== NONE_FIX_DRAFTS) return fdw as T;
   const dcw = dataRequestsWrite(method, path, body);
@@ -223,6 +232,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (xw !== NONE_EXCEPTIONS) return xw as T;
   const tw = triageWrite(method, path, body);
   if (tw !== NONE_TRIAGE) return tw as T;
+  const swq = stewardWrite(method, path, body);
+  if (swq !== NONE_STEWARD) return swq as T;
   const mw = maintenanceWrite(method, path, body);
   if (mw !== NONE_MAINTENANCE) return mw as T;
   const lw = llmWrite(method, path, body);
@@ -304,6 +315,7 @@ export const resetWorkFixture = (): void => {
   resetIssuesFixture();
   resetExceptionsFixture();
   resetTriageFixture();
+  resetStewardFixture();
   resetMaintenanceFixture();
   resetLlmFixture();
   resetProfileFixture();
@@ -411,6 +423,8 @@ function forecastRead(path: string): unknown {
 }
 
 export function fixtureResponse<T>(path: string, params: Params): T {
+  const rec = recordsRead(path, params);
+  if (rec !== NONE_RECORDS) return rec as T;
   const wbq = wbRead(path, params);
   if (wbq !== NONE_WB) return wbq as T;
   const pfr = portfolioRead(path, params);
@@ -441,6 +455,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (pd !== NONE_DISCOVERY) return pd as T;
   const rpr = rulePromotionRead(path, params);
   if (rpr !== NONE_RULE_PROMOTION) return rpr as T;
+  const rvr = ruleVersionsRead(path);
+  if (rvr !== NONE_RULE_VERSIONS) return rvr as T;
   const fdr = fixDraftsRead(path);
   if (fdr !== NONE_FIX_DRAFTS) return fdr as T;
   const dcr = dataRequestsRead(path);
@@ -491,6 +507,10 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (exc !== NONE_EXCEPTIONS) return exc as T;
   const tri = triageRead(path, params);
   if (tri !== NONE_TRIAGE) return tri as T;
+  const stw = stewardRead(path, params);
+  if (stw !== NONE_STEWARD) return stw as T;
+  const aut = automationRead(path);
+  if (aut !== NONE_AUTOMATION) return aut as T;
   const mnt = maintenanceRead(path);
   if (mnt !== NONE_MAINTENANCE) return mnt as T;
   const llm = llmRead(path);
@@ -513,6 +533,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (rolesStep !== NONE_ROLES) return rolesStep as T;
   const ent = enterpriseFixtureResponse(path);
   if (ent !== NONE_ENTERPRISE) return ent as T;
+  const b8 = b8Read(path, params);
+  if (b8 !== NONE_B8) return b8 as T;
   const dqr = dqFirewallRead(path);
   if (dqr !== NONE_DQ_FIREWALL) return dqr as T;
   const sbr = subjectRead(path);

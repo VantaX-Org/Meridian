@@ -10,7 +10,7 @@ import { t as tr } from "@/lib/v2/i18n";
  * replaces the data hue (--m2-data: selected cell, current run, the next-step button, links, the focus ring) and must
  * read at 4.5:1 or better on the light ground; on the dark ground Meridian uses the lightest-needed tint of it that
  * reads at 4.5:1, so one accent works in both themes. An accent stored before the check, or one the server measured on
- * another ground, is never dropped and never drawn below AA: the shell clamps it to the first shade that passes. The grounds' luminances are those of --m2-sheet in design/v2/tokens.css (white, and
+ * another ground, is never dropped and never drawn below AA: the shell clamps it to the first shade that passes. The grounds' luminances are those of --mx-surface in ui/tokens.css (white, and
  * the dark sheet); tokens.test.ts holds them to the file, so no colour literal lives here.
  */
 

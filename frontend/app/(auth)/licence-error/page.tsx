@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { AuthFrame, AuthNote } from "@/design/v2/auth/AuthFrame";
-import { Mono, Skeleton } from "@/design/v2/parts";
+import { AuthFrame, AuthNote } from "@/ui/auth/AuthFrame";
+import { Button, Skeleton } from "@/ui/kit";
 import { getLicenceManifest, type LicenceManifest } from "@/lib/api/licence";
 import { formatDate } from "@/lib/format";
 import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
-import { Button } from "@/design/next/kit";
 
 /** Meridian HQ's address comes from the deployment's environment; without it there is no button, only the id to quote. */
 const HQ_URL = process.env.NEXT_PUBLIC_MERIDIAN_HQ_URL;
@@ -45,21 +44,21 @@ export default function LicenceErrorPage() {
         </AuthNote>
       )}
       {licence === null ? (
-        <Skeleton width="100%" height={64} />
+        <Skeleton lines={3} label={t("Loading")} />
       ) : (
-        <dl className="m2-auth-facts" aria-label={t("Licence")}>
+        <dl className="mx-auth-facts" aria-label={t("Licence")}>
           <dt>{t("Status")}</dt>
           <dd>{licence.status === "checking" ? t("Not validated yet") : labelText(licence.status)}</dd>
           <dt>{t("Expiry")}</dt>
           <dd>{licence.expiry_date ? formatDate(licence.expiry_date) : t("Not known")}</dd>
           <dt>{t("Deployment")}</dt>
-          <dd>{licence.tenant_id ? <Mono>{licence.tenant_id}</Mono> : t("Not known yet")}</dd>
+          <dd>{licence.tenant_id ? <code className="mx-code">{licence.tenant_id}</code> : t("Not known yet")}</dd>
         </dl>
       )}
-      {licence?.tenant_id ? <p className="m2-auth-meta">{t("Contact Meridian with this id.")}</p> : null}
-      <div className="m2-auth-row">
+      {licence?.tenant_id ? <p className="mx-auth-meta">{t("Contact Meridian with this id.")}</p> : null}
+      <div className="mx-auth-row">
         {HQ_URL ? (
-          <a className="nx-btn nx-btn-secondary" href={HQ_URL} target="_blank" rel="noopener noreferrer">
+          <a className="mx-btn" data-variant="secondary" href={HQ_URL} target="_blank" rel="noopener noreferrer">
             {t("Open Meridian HQ")}
           </a>
         ) : null}

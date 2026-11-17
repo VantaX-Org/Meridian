@@ -1467,3 +1467,20 @@ rules:
       Update via Recruiting > Requisition Management.
   record_fix_template: 'Requisition {JOBREQUISITION.TITLE}: status is {JOBREQUISITION.STATUS} but close date {JOBREQUISITION.CLOSE_DATE}
     is set.'
+- id: REC087
+  field: JOBREQUISITION.INTERNAL_STATUS
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.INTERNAL_STATUS`.str.lower().isin([''pre-approved'',''preapproved'']) & (`JOBREQUISITION.OPENINGS_FILLED`
+    > 0)'
+  severity: high
+  dimension: consistency
+  message: Openings are filled on a requisition that is only pre-approved
+  why_it_matters: A pre-approved requisition has not completed the approval route, so the headcount and budget behind it are
+    not confirmed. Filling openings against it means candidates were hired before the position was approved.
+  rule_authority: best_practice
+  sap_impact: Hires are made against unapproved headcount, and position and budget control in Employee Central is bypassed.
+  fix_map:
+    __other__: Complete the approval route on the requisition in Recruiting Management, or reverse the hire if the headcount
+      is not approved.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: pre-approved with {JOBREQUISITION.OPENINGS_FILLED} openings
+    filled.'
