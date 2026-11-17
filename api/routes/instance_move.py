@@ -23,7 +23,6 @@ from api.services.migration import instance_move as im
 from api.services.rbac import current_user_id, require_permission, scope_from_path, write_audit
 
 router = APIRouter(prefix="/api/v1/migration/move", tags=["migration"], dependencies=[Depends(licensed_module())])
-_WRITE = Depends(require_permission("trigger_sync", scope=scope_from_path))
 _SYSTEM_COLS = "id, name, system_type, host, client, sysnr, base_url, company_id, migration_target"
 
 
@@ -82,7 +81,7 @@ def _plan_out(row: dict) -> dict:
     return out
 
 
-@router.post("/plans", dependencies=[_WRITE])
+@router.post("/plans", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def create_plan(body: PlanBody, request: Request, db: AsyncSession = Depends(get_db),
                       tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
@@ -124,20 +123,20 @@ async def _queue_plan(db: AsyncSession, tenant: Tenant, body: PlanBody, pid: str
           plan_move.si(str(tenant.id), pid)).delay()
 
 
-@router.get("/plans")
+@router.get("/plans", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_plans(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> list[dict]:
     await _rls(db, tenant)
     rows = (await db.execute(text("SELECT * FROM move_plans ORDER BY created_at DESC LIMIT 200"))).mappings().all()
     return [_plan_out(dict(r)) for r in rows]
 
 
-@router.get("/plans/{plan_id}")
+@router.get("/plans/{plan_id}", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_plan(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
     return _plan_out(await _one(db, "SELECT * FROM move_plans WHERE id = :i", i=str(plan_id)))
 
 
-@router.post("/plans/{plan_id}/preflight", dependencies=[_WRITE])
+@router.post("/plans/{plan_id}/preflight", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def preflight(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
     """Queues the pre-flight and returns the issues of the last one (empty until it has run once)."""
     await _rls(db, tenant)
@@ -176,14 +175,14 @@ async def _start(db, request, tenant, plan_id, kind: str, dry_run: bool, waves=N
     return {"id": rid, "status": "queued", "dry_run": dry_run, "kind": kind}
 
 
-@router.post("/plans/{plan_id}/runs", dependencies=[_WRITE])
+@router.post("/plans/{plan_id}/runs", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def start_run(plan_id: uuid.UUID, body: RunBody, request: Request, db: AsyncSession = Depends(get_db),
                     tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
     return await _start(db, request, tenant, plan_id, "load", body.dry_run, body.waves)
 
 
-@router.post("/plans/{plan_id}/delta", dependencies=[_WRITE])
+@router.post("/plans/{plan_id}/delta", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def start_delta(plan_id: uuid.UUID, body: DeltaBody, request: Request, db: AsyncSession = Depends(get_db),
                       tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
@@ -198,7 +197,7 @@ def _run_out(row: dict) -> dict:
             "finished_at": row.get("finished_at"), "cleansing": row.get("cleansing")}
 
 
-@router.get("/runs/{run_id}")
+@router.get("/runs/{run_id}", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_run(run_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
     row = await _one(db, "SELECT * FROM move_runs WHERE id = :i", i=str(run_id))
@@ -218,7 +217,7 @@ async def _run_for_write(db, run_id) -> dict:
     return await _one(db, "SELECT * FROM move_runs WHERE id = :i", i=str(run_id))
 
 
-@router.post("/runs/{run_id}/stop", dependencies=[_WRITE])
+@router.post("/runs/{run_id}/stop", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def stop_run(run_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
     """The loader checks for 'stopping' before each batch and ends after the batch in flight."""
     await _rls(db, tenant)
@@ -229,7 +228,7 @@ async def stop_run(run_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant
     return {"id": str(run_id), "status": (await _run_for_write(db, run_id))["status"]}
 
 
-@router.post("/runs/{run_id}/resume", dependencies=[_WRITE])
+@router.post("/runs/{run_id}/resume", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def resume_run(run_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
                      tenant: Tenant = Depends(get_tenant)) -> dict:
     """Re-queues a stopped or failed run; batches with a checkpoint are skipped."""
@@ -253,7 +252,7 @@ async def resume_run(run_id: uuid.UUID, request: Request, db: AsyncSession = Dep
     return {"id": str(run_id), "status": "queued"}
 
 
-@router.post("/runs/{run_id}/retry-failed", dependencies=[_WRITE])
+@router.post("/runs/{run_id}/retry-failed", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def retry_failed(run_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
                        tenant: Tenant = Depends(get_tenant)) -> dict:
     """A new run (kind retry) that sends only the records that failed in this one."""
@@ -268,11 +267,21 @@ async def retry_failed(run_id: uuid.UUID, request: Request, db: AsyncSession = D
     return {**out, "records": n}
 
 
+class RunErrorsOut(BaseModel):
+    errors: list[dict]
+    total: int
+
+
+class CleansingLogOut(BaseModel):
+    log: list[dict]
+    unfixable: list = []
+
+
 _ERROR_COLS = [ColumnSpec("entity", "Entity"), ColumnSpec("pass", "Pass", "int"), ColumnSpec("record_key", "Record"),
                ColumnSpec("http_code", "HTTP code", "int"), ColumnSpec("message", "Message")]
 
 
-@router.get("/runs/{run_id}/errors")
+@router.get("/runs/{run_id}/errors", response_model=RunErrorsOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def run_errors(run_id: uuid.UUID, entity: Optional[str] = None, format: Literal["json", "csv"] = "json",
                      db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
@@ -290,7 +299,7 @@ _LOG_COLS = [ColumnSpec("record_key", "Record"), ColumnSpec("field", "Field"), C
              ColumnSpec("new_value", "New value"), ColumnSpec("rule_id", "Rule"), ColumnSpec("source", "Source")]
 
 
-@router.get("/runs/{run_id}/cleansing-log")
+@router.get("/runs/{run_id}/cleansing-log", response_model=CleansingLogOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def cleansing_log(run_id: uuid.UUID, format: Literal["json", "csv"] = "csv",
                         db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
@@ -303,7 +312,7 @@ async def cleansing_log(run_id: uuid.UUID, format: Literal["json", "csv"] = "csv
     return {"log": rows, "unfixable": (run.get("cleansing") or {}).get("unfixable", [])}
 
 
-@router.post("/plans/{plan_id}/reconcile", dependencies=[_WRITE])
+@router.post("/plans/{plan_id}/reconcile", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def reconcile(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)
     await _one(db, "SELECT id FROM move_plans WHERE id = :i", i=str(plan_id))
@@ -316,7 +325,7 @@ async def reconcile(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db), tena
     return {"id": rid}
 
 
-@router.get("/reconciliations/{recon_id}")
+@router.get("/reconciliations/{recon_id}", dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_reconciliation(recon_id: uuid.UUID, db: AsyncSession = Depends(get_db),
                              tenant: Tenant = Depends(get_tenant)) -> dict:
     await _rls(db, tenant)

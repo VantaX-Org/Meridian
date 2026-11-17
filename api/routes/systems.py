@@ -623,7 +623,12 @@ class MigrationTargetBody(BaseModel):
     enabled: bool
 
 
-@router.patch("/systems/{system_id}/migration-target")
+class MigrationTargetOut(BaseModel):
+    id: str
+    migration_target: bool
+
+
+@router.patch("/systems/{system_id}/migration-target", response_model=MigrationTargetOut)
 async def set_migration_target(
     system_id: str,
     body: MigrationTargetBody,
