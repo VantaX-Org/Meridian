@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { getOperational } from "@/lib/api/v2/analytics";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getBurndown, getProposalQuality, getRecurrence, getRootCauses, getRuleFeedback, getRunChange, getThroughput, getTimeToFix } from "@/lib/api/v2/work-analytics";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
@@ -31,7 +32,9 @@ export function WorkAnalytics() {
   const rec = useQuery({ queryKey: k("rec"), queryFn: getRecurrence, retry: false });
   const qual = useQuery({ queryKey: k("qual"), queryFn: getProposalQuality, retry: false });
   const fb = useQuery({ queryKey: k("fb"), queryFn: () => getRuleFeedback(), retry: false });
+  const ops = useQuery({ queryKey: k("ops"), queryFn: getOperational, retry: false });
   const b = burn.data;
+  const o = ops.data?.kpis;
 
   useAletheiaScope({
     key: "work-analytics", label: t("Asking about the work pace"), suggestions: [t("When will the backlog be clear?")],
@@ -61,6 +64,26 @@ export function WorkAnalytics() {
           </>
         ) : null}
       </Wait>
+      <Card title={t("Cleaning engine pace")} sub={t("Every cleaning day on file")}>
+        <Wait q={ops}>
+          {o ? (
+            <div className="mx-col" data-testid="cleaning-pace">
+              <dl className="mx-tiles">
+                <StatTile label={t("Cleaned per day")} value={fixed(o.throughput, 1)} />
+                <StatTile label={t("Cleaned")} value={whole(o.total_processed)} note={t("of {n} found", { n: whole(o.total_detected) })} />
+                <StatTile label={t("In flight")} value={whole(o.items_in_flight)} />
+                <StatTile label={t("Hours to repair")} value={fixed(o.mttr_hours, 1)} note={t("Mean")} />
+              </dl>
+              <BarList label={t("Cleaning outcome rates")} max={100} items={[
+                { id: "auto", label: t("Cleaned without a person"), value: o.automation_rate, display: pct(o.automation_rate) },
+                { id: "rej", label: t("Rejected"), value: o.rejection_rate, display: pct(o.rejection_rate), sev: "medium" },
+                { id: "back", label: t("Rolled back"), value: o.rollback_rate, display: pct(o.rollback_rate), sev: "high" },
+              ]} />
+              {o.top_object_type ? <p>{t("Most cleaned object")} <ObjChip code={o.top_object_type} /></p> : null}
+            </div>
+          ) : null}
+        </Wait>
+      </Card>
       <div className="mx-split">
         <div className="mx-col">
           <Card title={t("Since the last run")} sub={t("New, fixed and still failing, by object")}>
