@@ -22,6 +22,7 @@ import { subjectRead, subjectWrite, NONE_SUBJECT } from "./subject-requests";
 import { b8Read, NONE_B8 } from "./b8";
 import { dqFirewallRead, dqFirewallWrite, NONE_DQ_FIREWALL } from "./dq-firewall";
 import { enterpriseFixtureDownload, enterpriseFixtureResponse, enterpriseFixtureWrite, NONE_ENTERPRISE } from "./enterprise";
+import { NONE_MOVE, moveRead } from "./move";
 import { NONE_STEP9, receiptContractBreaches, resetStep9Fixture, step9Download, step9Read, step9Write, withContractMarks } from "./step9";
 import { NONE_REQ, requestsDownload, requestsRead, requestsWrite, resetRequestsFixture } from "./requests";
 import { externalDbRead, externalDbWrite, NONE_EXTERNAL_DB } from "./external-db";
@@ -439,6 +440,8 @@ export function fixtureResponse<T>(path: string, params: Params): T {
   if (step10 !== NONE_STEP10) return step10 as T;
   const xdb = externalDbRead(path);
   if (xdb !== NONE_EXTERNAL_DB) return xdb as T;
+  const mv = moveRead(path);
+  if (mv !== NONE_MOVE) return mv as T;
   const step9 = step9Read(path, params);
   if (step9 !== NONE_STEP9) return step9 as T;
   const lin = lineageRead(path, params);

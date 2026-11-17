@@ -43,6 +43,9 @@ logger = logging.getLogger(__name__)
 
 _RATE_LIMIT_BACKOFF_SECONDS = 2.0
 _MAX_RETRIES = 3
+UPSERT_CHUNK = 200
+# LGN0014 account locked, LGN0015 wrong username or password, LGN0016 password expired, LGN0022 user inactive.
+_LOCKOUT_CODES = re.compile(r"LGN00(?:14|15|16|22)")
 
 
 _ODATA_DATE = re.compile(r"^/Date\((-?\d+)([+-]\d{4})?\)/$")
@@ -68,6 +71,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         self._client: httpx.Client | None = None
         self._params: CloudConnectionParams | None = None
         self._access_token: str | None = None
+        self._auth_failed: str | None = None  # set on the first refused sign-in; no request is sent after it
 
     # ------------------------------------------------------------------
     # Connection
@@ -194,6 +198,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
         top: int = 0,
         from_date: str | None = None,
         expand: list[str] | None = None,
+        to_date: str | None = None,
+        on_page: Callable[[list[dict[str, Any]]], None] | None = None,
     ) -> pd.DataFrame:
         """Read an OData V2 entity set with pagination and rate-limit handling.
 
@@ -204,10 +210,15 @@ class SuccessFactorsConnector(CloudSAPConnector):
             top:        Maximum rows to return. 0 = no limit (all pages).
             from_date:  OData fromDate for effective-dated entities. None = as of today
                         (current record only); "1900-01-01" = full history.
+            to_date:    OData toDate; with from_date "1900-01-01" and "9999-12-31" every past,
+                        current and future-dated record is returned.
             expand:     Navigation properties for $expand. Their selected properties
                         ("nav/prop" in ``select``) come back as "nav/prop" columns: from the
                         related record in the row's defaultLanguage when both that and
                         "nav/locale" are selected, else the first non-blank one.
+            on_page:    Called with each server page's records, in place, before they are kept: a
+                        caller can move a large property (Attachment fileContent) out to storage so
+                        only one page of it is ever held in memory.
 
         Returns:
             pd.DataFrame with the entity set data.
@@ -227,6 +238,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
             params["$filter"] = filter_expr
         if from_date:
             params["fromDate"] = from_date
+        if to_date:
+            params["toDate"] = to_date
         if top > 0:
             params["$top"] = str(top)
         # no $top otherwise: SF reads $top as a client limit and then returns no __next,
@@ -265,6 +278,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
                     if isinstance(v, str) and v.startswith("/Date("):
                         rec[k] = odata_date(v)
 
+            if on_page is not None:
+                on_page(results)
             rows_to_take = len(results) if top <= 0 else min(len(results), remaining)
             all_records.extend(results[:rows_to_take])
             remaining -= rows_to_take
@@ -296,6 +311,36 @@ class SuccessFactorsConnector(CloudSAPConnector):
         path = f"/odata/v2/{entity}/$metadata" if entity else "/odata/v2/$metadata"
         # the client's default Accept is JSON; $metadata is XML-only and answers 406 to it
         return self._request_with_retry("GET", path, params={}, headers={"Accept": "application/xml"}).text
+
+    def upsert(self, entity: str, records: list[dict], purge_type: str | None = None,
+               chunk_size: int = UPSERT_CHUNK) -> list[dict]:
+        """Write ``records`` to ``entity`` through /odata/v2/upsert, ``chunk_size`` records per call.
+
+        Each record gets ``__metadata.uri`` set to the entity name when absent. ``purge_type="full"`` replaces
+        every effective-dated row of the person with the rows sent. Returns one status per record in the order
+        sent: {index, key, status: "ok"|"failed", http_code, message}. A chunk whose call fails outright marks
+        all its records failed with the masked error; transient errors are retried by ``_request_with_retry``."""
+        self._ensure_connected()
+        params = {"$format": "json"}
+        if purge_type:
+            params["purgeType"] = purge_type
+        out: list[dict] = []
+        for start in range(0, len(records), max(1, chunk_size)):
+            chunk = [r if "__metadata" in r else {"__metadata": {"uri": entity}, **r}
+                     for r in records[start:start + chunk_size]]
+            try:
+                resp = self._request_with_retry("POST", "/odata/v2/upsert", params=params, json_body=chunk,
+                                                headers={"Content-Type": "application/json"})
+                rows = parse_upsert(resp.json())
+            except (SAPConnectorError, ValueError) as exc:
+                msg = self._mask(str(exc))[:500]
+                rows = [{"key": None, "status": "failed", "http_code": None, "message": msg}] * len(chunk)
+            missing = {"key": None, "status": "failed", "http_code": None,
+                       "message": "No status returned for this record."}
+            rows = rows[:len(chunk)] + [missing] * (len(chunk) - len(rows))
+            for i, row in enumerate(rows):
+                out.append({"index": start + i, **row, "message": self._mask(row.get("message") or "")[:500]})
+        return out
 
     # ------------------------------------------------------------------
     # Report reading
@@ -342,16 +387,23 @@ class SuccessFactorsConnector(CloudSAPConnector):
         """Test connectivity by fetching the OData metadata document.
 
         Returns:
-            True if the service responds. Never raises.
+            True if the service responds.
+
+        Raises:
+            SAPConnectorError: when SF refuses the credentials, so callers record auth_failed and stop.
         """
         if not self._client:
             return False
         try:
-            resp = self._client.get(
-                "/odata/v2/$metadata",
-                headers={"Accept": "application/xml"},
+            resp = self._request_with_retry(
+                "GET", "/odata/v2/$metadata", headers={"Accept": "application/xml"}, retries=1,
             )
             return resp.status_code == 200
+        except SAPConnectorError:
+            if self._auth_failed:
+                raise
+            logger.debug("SuccessFactors ping failed", exc_info=True)
+            return False
         except Exception:
             logger.debug("SuccessFactors ping failed", exc_info=True)
             return False
@@ -398,6 +450,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         params: Optional[dict[str, str]] = None,
         headers: Optional[dict[str, str]] = None,
         retries: int = _MAX_RETRIES,
+        json_body: Any = None,
     ) -> httpx.Response:
         """Execute an HTTP request with rate-limit handling and retries.
 
@@ -407,11 +460,14 @@ class SuccessFactorsConnector(CloudSAPConnector):
             SAPConnectorError: after exhausting retries.
         """
         assert self._client is not None
+        if self._auth_failed:
+            # SF locks the account after a few refused sign-ins: never send another request on refused credentials.
+            raise SAPConnectorError(self._auth_failed)
         last_exc: Exception | None = None
 
         for attempt in range(1, retries + 1):
             try:
-                resp = self._client.request(method, url, params=params, headers=headers)
+                resp = self._client.request(method, url, params=params, headers=headers, json=json_body)
 
                 # Check rate limit headers
                 remaining = resp.headers.get("X-RateLimit-Remaining")
@@ -448,6 +504,16 @@ class SuccessFactorsConnector(CloudSAPConnector):
                     self._access_token = self._get_oauth_token(self._params)
                     self._client.headers["Authorization"] = f"Bearer {self._access_token}"
                     continue
+
+                code = _LOCKOUT_CODES.search(resp.text[:2000]) if resp.status_code >= 400 else None
+                if resp.status_code == 401 or code:
+                    self._auth_failed = (
+                        f"SuccessFactors refused the sign-in (HTTP {resp.status_code}"
+                        + (f", {code.group(0)}" if code else "")
+                        + "). No further requests are sent with these credentials, to avoid locking the account; "
+                        "correct the username or password and test again."
+                    )
+                    raise SAPConnectorError(self._auth_failed)
 
                 resp.raise_for_status()
                 return resp
@@ -497,6 +563,19 @@ class SuccessFactorsConnector(CloudSAPConnector):
         ) from last_exc
 
 
+def parse_upsert(body: Any) -> list[dict]:
+    """Per-record rows of an SF upsert response: {key, status: "ok"|"failed", http_code, message}.
+    SF answers {"d": [{"key", "status": "OK"|"ERROR", "editStatus", "message", "httpCode"}]}."""
+    items = body.get("d", body) if isinstance(body, dict) else body
+    items = items.get("results", items) if isinstance(items, dict) else items
+    rows = []
+    for it in items or []:
+        ok = str(it.get("status", "")).upper() == "OK"
+        rows.append({"key": it.get("key"), "status": "ok" if ok else "failed",
+                     "http_code": it.get("httpCode"), "message": it.get("message") or ""})
+    return rows
+
+
 def error_body(resp: httpx.Response, mask: Callable[[str], str] = str, limit: int = 300) -> str:
     """The SF error message of a failed response ('[COE0003]Bad property expression: ...'), truncated.
     A body that is not SF's JSON/XML error (an HTML or proxy page) gives its content-type and a short snippet."""
@@ -544,6 +623,37 @@ def entity_model(edmx: str, entity: str) -> tuple[set[str], dict[str, set[str] |
             target = types.get(ends.get(name(c.get("Relationship", "")), {}).get(c.get("ToRole"), ""))
             navs[c.get("Name", "")] = props(target) if target is not None else None
     return props(t), navs
+
+
+# Key properties that make an entity effective dated: one record per key per validity start.
+HISTORY_DATES = ("effectiveStartDate", "startDate")
+FULL_HISTORY = {"from_date": "1900-01-01", "to_date": "9999-12-31"}
+
+
+def entity_keys(edmx: str, entity: str) -> list[str] | None:
+    """The key property names of ``entity`` (entity set or type) in an OData V2 $metadata
+    document, in document order; None if the document does not describe it."""
+    def local(el: ET.Element) -> str:
+        return el.tag.rsplit("}", 1)[-1]
+
+    root = ET.fromstring(edmx)
+    typ = next((el.get("EntityType", "").rsplit(".", 1)[-1] for el in root.iter()
+                if local(el) == "EntitySet" and el.get("Name") == entity), entity)
+    t = next((el for el in root.iter() if local(el) == "EntityType" and el.get("Name") == typ), None)
+    if t is None:
+        return None
+    return [r.get("Name", "") for k in t if local(k) == "Key" for r in k if local(r) == "PropertyRef"]
+
+
+def history_props(keys: list[str] | None, props: set[str]) -> list[str]:
+    """The properties that tell one effective-dated record from another: the start date that is
+    part of the $metadata key (plus seqNumber when keyed). Without a key list, the first
+    HISTORY_DATES name the entity has. Empty for an entity that is not effective dated."""
+    if keys is not None:
+        date = next((k for k in keys if k in HISTORY_DATES), None)
+        return [date] + [k for k in keys if k == "seqNumber"] if date else []
+    date = next((d for d in HISTORY_DATES if d in props), None)
+    return [date] + (["seqNumber"] if "seqNumber" in props else []) if date else []
 
 
 _SYNONYMS = {"effectivestartdate": "startdate", "effectiveenddate": "enddate", "effectivestatus": "status"}

@@ -256,27 +256,27 @@ edges:
   - {parent: JOBREQUISITION, child: JOBAPPLICATION, join: {JOB_REQ_ID: JOB_REQ_ID}, cardinality: many}
   - {parent: JOBREQUISITION, child: JOBOFFER, join: {JOB_REQ_ID: JOB_REQ_ID}, cardinality: many}
   # foundation objects and the position an employment points at (attributes of the employment)
-  - {parent: EMPEMPLOYMENT, child: POSITION, join: {CODE: POSITION}, cardinality: one}
-  - {parent: EMPEMPLOYMENT, child: FOCOMPANY, join: {EXTERNAL_CODE: COMPANY}, cardinality: one}
-  - {parent: EMPEMPLOYMENT, child: FODEPARTMENT, join: {EXTERNAL_CODE: DEPARTMENT}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: POSITION, join: {CODE: POSITION}, cardinality: one, prefer: {IS_CURRENT: "true"}}
+  - {parent: EMPEMPLOYMENT, child: FOCOMPANY, join: {EXTERNAL_CODE: COMPANY}, cardinality: one, prefer: {IS_CURRENT: "true"}}
+  - {parent: EMPEMPLOYMENT, child: FODEPARTMENT, join: {EXTERNAL_CODE: DEPARTMENT}, cardinality: one, prefer: {IS_CURRENT: "true"}}
   - {parent: EMPEMPLOYMENT, child: EMPJOBHIST, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: EMPWORKPERMIT, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: EMPGLOBALASSIGNMENT, join: {USERID: USERID}, cardinality: one}
   - {parent: PERINFO, child: PEREMERGENCY, join: {PERSON_ID: PERSON_ID}, cardinality: many}
-  - {parent: EMPEMPLOYMENT, child: FOEVENTREASON, join: {EXTERNAL_CODE: EVENT_REASON}, cardinality: one}
-  - {parent: EMPJOBHIST, child: FOEVENTREASON, join: {EXTERNAL_CODE: EVENT_REASON}, cardinality: one}
-  - {parent: EMPEMPLOYMENT, child: FOLOCATION, join: {EXTERNAL_CODE: LOCATION}, cardinality: one}
-  - {parent: EMPEMPLOYMENT, child: FOJOBCODE, join: {EXTERNAL_CODE: JOB_CODE}, cardinality: one}
-  - {parent: EMPEMPLOYMENT, child: FODIVISION, join: {EXTERNAL_CODE: DIVISION}, cardinality: one}
-  - {parent: EMPEMPLOYMENT, child: FOBUSINESSUNIT, join: {EXTERNAL_CODE: BUSINESS_UNIT}, cardinality: one}
-  - {parent: EMPEMPLOYMENT, child: FOCOSTCENTER, join: {EXTERNAL_CODE: COST_CENTER}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: FOEVENTREASON, join: {EXTERNAL_CODE: EVENT_REASON}, cardinality: one, prefer: {IS_CURRENT: "true"}}
+  - {parent: EMPJOBHIST, child: FOEVENTREASON, join: {EXTERNAL_CODE: EVENT_REASON}, cardinality: one, prefer: {IS_CURRENT: "true"}}
+  - {parent: EMPEMPLOYMENT, child: FOLOCATION, join: {EXTERNAL_CODE: LOCATION}, cardinality: one, prefer: {IS_CURRENT: "true"}}
+  - {parent: EMPEMPLOYMENT, child: FOJOBCODE, join: {EXTERNAL_CODE: JOB_CODE}, cardinality: one, prefer: {IS_CURRENT: "true"}}
+  - {parent: EMPEMPLOYMENT, child: FODIVISION, join: {EXTERNAL_CODE: DIVISION}, cardinality: one, prefer: {IS_CURRENT: "true"}}
+  - {parent: EMPEMPLOYMENT, child: FOBUSINESSUNIT, join: {EXTERNAL_CODE: BUSINESS_UNIT}, cardinality: one, prefer: {IS_CURRENT: "true"}}
+  - {parent: EMPEMPLOYMENT, child: FOCOSTCENTER, join: {EXTERNAL_CODE: COST_CENTER}, cardinality: one, prefer: {IS_CURRENT: "true"}}
   # USERACCOUNT and EMPJOBHIST's own foundation-object attributes (EC239+ depth pack):
   # EMPEMPLOYMENT stays the anchor/first parent for POSITION and FOJOBCODE (unchanged
   # resolution for all pre-existing rules), these are additional cardinality-one edges
   # that only extend reachability for rules that explicitly need the EMPJOBHIST/USERACCOUNT grain.
   - {parent: EMPEMPLOYMENT, child: USERACCOUNT, join: {USER_ID: USERID}, cardinality: one}
-  - {parent: EMPJOBHIST, child: FOJOBCODE, join: {EXTERNAL_CODE: JOB_CODE}, cardinality: one}
-  - {parent: EMPJOBHIST, child: POSITION, join: {CODE: POSITION}, cardinality: one}
+  - {parent: EMPJOBHIST, child: FOJOBCODE, join: {EXTERNAL_CODE: JOB_CODE}, cardinality: one, prefer: {IS_CURRENT: "true"}}
+  - {parent: EMPJOBHIST, child: POSITION, join: {CODE: POSITION}, cardinality: one, prefer: {IS_CURRENT: "true"}}
   - {parent: EMPEMPLOYMENT, child: EMPJOBRELATIONSHIPS, join: {USERID: USERID}, cardinality: many}
 
   # Concur Expense and SAP Ariba (canonical views, sap/dictionaries/canonical)

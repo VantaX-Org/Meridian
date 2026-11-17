@@ -50,6 +50,13 @@ CLOUD_SYSTEM_TYPES = ("successfactors", "concur", "ariba", "s4hana_cloud", "btp"
 RELATED = "@related"
 
 
+def _put_blob(name: str, data: bytes) -> None:
+    """Instance-move file content into the uploads bucket; raises so a lost file fails the set, not the load."""
+    from api.config import settings
+    from api.services.storage import upload_file
+    upload_file(settings.minio_bucket_uploads, name, data, suppress=False)
+
+
 def _not_found(e: Exception) -> bool:
     """An OData 404: the entity is not enabled in this tenant. The HTTP status decides when the
     error carries one; the message (which includes the URL) is only a fallback."""
@@ -84,6 +91,32 @@ def _primary_first(df: pd.DataFrame, col: str) -> pd.DataFrame:
     flag = vals.astype(str).str.strip().str.lower().isin({"true", "1", "y", "yes", "x"})
     return df.iloc[(~flag).to_numpy().argsort(kind="stable")]
 
+
+_START_NAMES = ("START_DATE", "EFFECTIVE_DATE", "EFFECTIVE_START_DATE")
+
+
+def _mark_current(df: pd.DataFrame, table: str, key_cols: list[str], hist_keys: list[str]) -> pd.DataFrame:
+    """Add ``{table}.IS_CURRENT`` ('true'/'false'). Every historic row is kept; per business key (the
+    table key without its date and sequence columns) the current row is the latest start on or before
+    today, highest seqNumber on a tie. SF effective dating is gapless, so that is the row whose
+    effectiveEndDate is 9999-12-31 or covers today. A key with only future rows has no current row.
+    Undated tables and undated rows are current. Rules and DQS score the current row; the move loads all."""
+    col = f"{table}.IS_CURRENT"
+    starts = [c for c in dict.fromkeys(hist_keys + [f"{table}.{n}" for n in _START_NAMES]) if c in df.columns]
+    if not len(df) or not starts:
+        return df.assign(**{col: "true"})
+    seq = f"{table}.SEQ_NUMBER"
+    biz = [c for c in key_cols if c in df.columns and c not in starts and c != seq]
+    s = df[starts[0]].astype("string").str[:10]
+    in_force = s.where(s <= pd.Timestamp.today().strftime("%Y-%m-%d"))
+    w = pd.DataFrame({"s": in_force, "q": pd.to_numeric(df[seq], errors="coerce") if seq in df.columns else 0,
+                      "k": list(zip(*[df[c].astype("string").fillna("") for c in biz])) if biz else 0},
+                     index=df.index)
+    w = w.dropna(subset=["s"]).sort_values(["s", "q"], ascending=False, kind="stable")
+    current = pd.Series(False, index=df.index)
+    current[w.index[~w["k"].duplicated().to_numpy()]] = True
+    current |= s.isna()
+    return df.assign(**{col: current.map({True: "true", False: "false"})})
 
 def _status(e: Exception) -> int | None:
     """The HTTP status behind a connector error, when it carries one."""
@@ -356,8 +389,14 @@ class ConnectivityManager:
                 scope: Optional[dict] = None,
                 progress: Optional[Callable[[dict], None]] = None,
                 sink: Optional[Callable[[str, pd.DataFrame, dict], None]] = None,
-                delta: Optional[DeltaRequest] = None) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+                delta: Optional[DeltaRequest] = None,
+                history: Optional[str] = None) -> tuple[dict[str, pd.DataFrame], list[dict]]:
         """Extract everything the rules of ``modules`` need from one system.
+
+        ``history="full"`` reads every record ever held, for loading into a new system: SF effective-dated
+        entities from 1900-01-01 to 9999-12-31 keyed on their $metadata date key, the Foundation objects
+        and picklists the tables link to, and, on ABAP, the CDHDR/CDPOS change documents of the read
+        tables' object classes (archive only). None reads as today.
 
         Returns ``({TABLE: frame with TABLE.FIELD columns}, coverage)``. The
         coverage list says, per table, whether it was read live, how many rows,
@@ -595,10 +634,12 @@ class ConnectivityManager:
                         frames[table] = framed
                 i = len(order)
                 report()  # final state of every table
+                if history == "full":
+                    self._change_document_archive(connector, dictionary, plans, coverage, frames, sink)
             elif set(modules) & set(PROCESS_EVENT_CLOUD_MODULES):
                 frames, coverage = self._extract_process_cloud(connector, modules, system_type, scope)
             elif system_type == "successfactors":
-                frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id, sink)
+                frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id, history, sink)
             elif system_type == "s4hana_cloud":
                 frames, coverage = self._extract_s4hc(connector, modules, dictionary)
             elif system_type in ("concur", "ariba"):
@@ -956,8 +997,9 @@ class ConnectivityManager:
                              "detail": f"no {system_type} entity mapping for {', '.join(modules)}"})
         return frames, coverage
 
-    def _extract_successfactors(self, connector, modules, dictionary, system_id, sink=None):
-        """Assemble SF canonical tables from their source entities (see canonical/successfactors.yaml)."""
+    def _extract_successfactors(self, connector, modules, dictionary, system_id, history=None, sink=None):
+        """Assemble SF canonical tables from their source entities (see canonical/successfactors.yaml).
+        ``history="full"``: see ``extract``."""
         from checks.frames import tables_of
         from checks.runner import _find_module_yaml, extract_target_columns, rule_columns
         from api.services.source_design import latest_snapshot_id, load_overlay
@@ -974,6 +1016,12 @@ class ConnectivityManager:
         self._sf_edmx = None  # whole-service $metadata, read once per extraction when a family needs it
         wanted |= {t.name for t in dictionary.tables.values()
                    if any(f.provenance == "workbook" for f in t.fields.values())}
+        full = history == "full"
+        if full:
+            # every SF canonical table, so each effective-dated entity's history comes along (FO, picklist users)
+            wanted |= {t.name for t in dictionary.tables.values()
+                       if t.provenance.startswith("canonical:successfactors")}
+            self._sf_family(connector, "")  # the service $metadata: every entity's key properties
         snap = latest_snapshot_id(self.session, system_id)
         live = load_overlay(self.session, snap)[0] if snap else {}
         frames, coverage = {}, []
@@ -996,7 +1044,7 @@ class ConnectivityManager:
             unavailable: set[str] = set()
             by_entity: dict[str, dict[str, list[str]]] = {}
             from api.services.source_overrides import resolve_source
-            from sap.successfactors import entity_model, resolve_property
+            from sap.successfactors import FULL_HISTORY, entity_keys, entity_model, history_props, resolve_property
             for f in t.fields.values():
                 # A tenant's API surface differs from the canonical map: entity sets can be
                 # suffixed per tenant and spellings vary. The override for this system wins,
@@ -1019,18 +1067,29 @@ class ConnectivityManager:
             # A table keyed on a start or effective date is a history table: the entity feeding that date
             # is read with every record. Other entities in the table stay current and join first row per key.
             all_records = "all records" in (t.note or "")
-            date_keys = set(t.keys) & {"START_DATE", "EFFECTIVE_DATE"}
+            date_keys = set(t.keys) & {"START_DATE", "EFFECTIVE_DATE", "EFFECTIVE_START_DATE"}
             merged = None
             absent: list[str] = []
             absent_keys: set[str] = set()
             failed = refused = False
-            def read_one(ent: str, props: dict[str, list[str]], related: bool):
-                """One entity set as table columns: (frame or None, names it cannot give, status)."""
+            def model_of(ent: str):
                 if ent not in models:
                     # a family member is described by the whole-service $metadata already read for the family
                     models[ent] = ((entity_model(self._sf_edmx, ent) or f"{ent} not in tenant $metadata")
                                    if self._sf_edmx else self._sf_entity_model(connector, ent))
+                return models[ent]
+
+            def dated_props(ent: str, props: dict[str, list[str]]) -> list[str]:
+                """History mode: the effective-date key (+ seqNumber) of ``ent``, from its $metadata keys."""
+                if not full or isinstance(model_of(ent), str):
+                    return []
                 model = models[ent]
+                keys = entity_keys(self._sf_edmx, ent) if self._sf_edmx else None
+                return history_props(keys, model[0] if isinstance(model, tuple) else set(props))
+
+            def read_one(ent: str, props: dict[str, list[str]], related: bool):
+                """One entity set as table columns: (frame or None, names it cannot give, status)."""
+                model = model_of(ent)
                 every = {n for names in props.values() for n in names}
                 if isinstance(model, str):  # the tenant does not have this entity
                     return None, every, ("not_in_system", model)
@@ -1057,6 +1116,9 @@ class ConnectivityManager:
                 # takes the values in force on its date (as-of join below)
                 asof = bool(date_keys) and not base and model is not None and "startDate" in model[0]
                 history = {"from_date": "1900-01-01"} if all_records or base or asof else {}
+                hprops = dated_props(ent, props)
+                if hprops:  # full history: every record ever held, its date key always read
+                    history, asof = FULL_HISTORY, "startDate" in hprops and not base
                 # merge keys only when several entities feed the table (FO objects and Position carry neither)
                 join = [p for p in ("userId", "personIdExternal") if p not in props
                         and (model is None or p in model[0])] if len(by_entity) > 1 else []
@@ -1070,7 +1132,8 @@ class ConnectivityManager:
                                 and "locale" in (model[1].get(nav) or ()) for s in (f"{nav}/locale", "defaultLanguage")}
                         try:
                             df = connector.read_entity_set(
-                                ent, select=sorted(set(sel.values()) | set(join) | lang | ({"startDate"} if asof else set())),
+                                ent, select=sorted(set(sel.values()) | set(join) | lang | set(hprops)
+                                                   | ({"startDate"} if asof else set())),
                                 **history,
                                 **({"expand": expand} if expand else {}))
                             break
@@ -1102,6 +1165,16 @@ class ConnectivityManager:
                     if j in df.columns:
                         out[f"__{j}"] = df[j]
                 dated = next((f"{table}.{n}" for p in sel for n in props[p] if n in date_keys), None) if base else None
+                # history keys: the dictionary column the date key maps to, else the SF property under its own name
+                hcols = []
+                for hp in hprops:
+                    named = [f"{table}.{n}" for p in sel if sel[p] == hp for n in props[p]]
+                    if not named:
+                        named = [f"{table}.{hp}"]
+                        out[named[0]] = df.get(hp)
+                    hcols.append(named[0])
+                dated = dated or (hcols[0] if hcols else None)
+                out.attrs["history_keys"] = hcols
                 if dated or (asof and "startDate" in df.columns):
                     out["__asof"] = pd.to_datetime(out[dated] if dated else df["startDate"], errors="coerce")
                 if related:  # the related person's own id meets the relationship's relatedPersonIdExternal
@@ -1110,8 +1183,11 @@ class ConnectivityManager:
                 return out, missing, None
 
             # the entity holding the date key is the base frame, so its history rows survive the left joins
-            for key, props in sorted(by_entity.items(),
-                                     key=lambda kv: not any(set(n) & date_keys for n in kv[1].values())):
+            # in history mode an effective-dated entity leads, so the undated ones join onto its history rows
+            hist_keys: list[str] = []
+            for key, props in sorted(by_entity.items(), key=lambda kv: (
+                    full and (kv[0].endswith("*") or not dated_props(kv[0].removesuffix(RELATED), kv[1])),
+                    not any(set(n) & date_keys for n in kv[1].values()))):
                 ent, related = key.removesuffix(RELATED), key.endswith(RELATED)
                 # "Family*": every per-country entity set of one object (PerGlobalInfoBRA, …), rows stacked
                 members = self._sf_family(connector, ent.rstrip("*")) if ent.endswith("*") else [ent]
@@ -1143,6 +1219,7 @@ class ConnectivityManager:
                 out = pd.concat(outs, ignore_index=True) if len(outs) > 1 else outs[0]
                 if merged is None:
                     merged = out
+                    hist_keys = outs[0].attrs.get("history_keys", [])
                 else:
                     on = [c for c in ("__userId", "__personIdExternal", "__relatedPersonIdExternal")
                           if c in merged.columns and c in out.columns]
@@ -1174,6 +1251,11 @@ class ConnectivityManager:
                                             + ", ".join(k.split(".", 1)[1] for k in key_cols))})
                 continue
             merged = merged.drop(columns=[c for c in merged.columns if c.startswith("__")])
+            extra = {}
+            if full:  # the load key: business key + effective date (+ seqNumber); a repeat is reported
+                keys = [c for c in dict.fromkeys(key_cols + hist_keys) if c in merged.columns]
+                extra = {"history": "full", "keys": [k.split(".", 1)[1] for k in keys],
+                         "duplicate_keys": int(merged.duplicated(subset=keys).sum()) if keys else 0}
             # BOOLEAN fields arrive as Python bool from OData V2 JSON; astype("string") would give
             # "True"/"False", but rules match the lowercase 'true'/'false' form (same normalisation
             # as _extract_rest below, so a rule's target_when/applies_when 'true' match works for
@@ -1189,11 +1271,129 @@ class ConnectivityManager:
                 opts = (options.get(f.picklist) or options.get("")) if f.picklist else None
                 if opts and col in merged.columns:
                     merged[col] = merged[col].map(lambda v: opts.get(str(v).strip(), v) if v is not None else v)
+            merged = _mark_current(merged, table, key_cols, hist_keys)
             frames[table] = merged
             coverage.append({"table": table, "status": "live", "rows": len(merged),
-                             "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable)})
-        coverage += self._sf_every_entity_set(connector, set(models), frames, sink)
+                             "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable), **extra})
+        if full:
+            self._sf_raw_sets(connector, modules, frames, coverage)
+            self._sf_picklists(connector, dictionary, wanted, frames, coverage)
+        # every other entity set, skipping what the canonical tables and the move's raw sets already read
+        read = set(models) | {e for c in coverage for e in [c.get("entity"), *(c.get("entities") or ())] if e}
+        coverage += self._sf_every_entity_set(connector, read, frames, sink)
         return frames, coverage
+
+    def _sf_raw_sets(self, connector, modules, frames, coverage, put=None) -> None:
+        """History mode: every move-sequence entity set (instance_move.SF_MOVE_STAGES) of ``modules`` that no
+        canonical table read, copied whole as SFRAW_<set>: every property, every effective-dated record, oldest
+        first, with its $metadata key in ``__raw_key__``. One set failing never stops the others. File content
+        (instance_move.SF_BLOB_PROPS) is written to object storage as each page arrives, via ``put``."""
+        from api.services.migration import instance_move as im
+        from sap.successfactors import FULL_HISTORY, entity_keys, history_props
+
+        covered = {e for c in coverage for e in c.get("entities") or ()}
+        names: list[str] = []
+        for _, mods, sets in im.SF_MOVE_STAGES:
+            if not set(modules) & set(mods):
+                continue
+            for pattern in sets:
+                names += self._sf_family(connector, pattern[:-1]) if pattern.endswith("*") else [pattern]
+        every = self._sf_family(connector, "")  # also reads $metadata when no family pattern did
+        known = set(every) if self._sf_edmx else None
+        for ent in dict.fromkeys(names):
+            table = im.RAW_PREFIX + ent
+            if ent in covered or im.not_reachable(ent):
+                continue
+            if known is not None and ent not in known:
+                coverage.append({"table": table, "status": "not_in_system", "entities": [ent], "raw": True})
+                continue
+            keys = entity_keys(self._sf_edmx, ent) if self._sf_edmx else None
+            kw: dict[str, Any] = dict(FULL_HISTORY) if history_props(keys, set()) else {}
+            if ent in im.SF_BLOB_PROPS:  # file content goes to storage page by page; the frame keeps refs only
+                kw["on_page"] = im.spool_blobs(f"move-blobs/{self.tenant_id}/{ent}/", im.SF_BLOB_PROPS[ent],
+                                               put or _put_blob)
+            try:
+                df = connector.read_entity_set(ent, **kw)
+            except Exception as e:
+                coverage.append({"table": table, "status": "not_in_system" if _not_found(e) else "failed",
+                                 "entities": [ent], "detail": str(e)[:300], "raw": True})
+                continue
+            df = df.drop(columns=[c for c in df.columns if c.startswith("__")
+                                  or df[c].map(lambda v: isinstance(v, (dict, list))).any()])
+            eff = next((c for c in im._EFFECTIVE_PROPS if c in df.columns), None)
+            if eff:
+                df = df.iloc[pd.to_datetime(df[eff], errors="coerce", utc=True).argsort(kind="stable")]
+            kcols = [k for k in keys or () if k in df.columns]
+            df = df.rename(columns=lambda c: f"{table}.{c}")
+            if kcols:
+                df["__raw_key__"] = ["|".join(f"{k}={v}" for k, v in zip(kcols, row))
+                                     for row in df[[f"{table}.{k}" for k in kcols]].itertuples(index=False)]
+            frames[table] = df.reset_index(drop=True)
+            coverage.append({"table": table, "status": "live", "rows": len(df), "entities": [ent], "raw": True,
+                             "history": "full", "keys": kcols,
+                             "duplicate_keys": int(df["__raw_key__"].duplicated().sum()) if kcols else 0})
+
+    @staticmethod
+    def _sf_picklists(connector, dictionary, tables, frames, coverage) -> None:
+        """History mode: every option, active or not, of each picklist the read tables reference, as table
+        PICKLIST_OPTION (the PickListValueV2 properties discovery reads)."""
+        names = sorted({f.picklist for n in tables if (t := dictionary.table(n)) is not None
+                        and t.provenance.startswith("canonical:successfactors")
+                        for f in t.fields.values() if f.picklist})
+        reads = []
+        for pl in names:
+            for select in (["PickListV2_id", "externalCode", "status", "optionId"],
+                           ["PickListV2_id", "externalCode", "status"]):  # optionId: legacy picklists only
+                try:
+                    reads.append(connector.read_entity_set("PickListValueV2", select=select,
+                                                           filter_expr=f"PickListV2_id eq '{pl}'"))
+                    break
+                except Exception as e:
+                    err = str(e)[:300]
+            else:
+                coverage.append({"table": f"PICKLIST_OPTION←{pl}", "status": "failed", "detail": err})
+        if reads:
+            df = pd.concat(reads, ignore_index=True)
+            frames["PICKLIST_OPTION"] = df.rename(columns=lambda c: f"PICKLIST_OPTION.{c}")
+            coverage.append({"table": "PICKLIST_OPTION", "status": "live", "rows": len(df),
+                             "entities": ["PickListValueV2"], "history": "full",
+                             "keys": ["PickListV2_id", "externalCode"], "picklists": names})
+
+    @staticmethod
+    def _change_document_archive(connector, dictionary, plans, coverage, frames, sink) -> None:
+        """History mode on ABAP: every CDPOS row logged against a planned table (by TABNAME, any module),
+        then every CDHDR row of the object classes those rows and sap/change_documents.py name; every DDIC
+        field but the client. Archive only: kept for reference, never replayed into the target."""
+        from sap.change_documents import delta_tables
+
+        tables = sorted(plans)
+        classes = {c for c, _ in delta_tables(tables, dictionary).values()}
+        for table, by, values in (("CDPOS", "TABNAME", tables), ("CDHDR", "OBJECTCLAS", None)):
+            t = dictionary.table(table)
+            base = {"table": table, "purpose": "data", "archive_only": True, "history": "full"}
+            values = sorted(classes) if values is None else values
+            if t is None or not values:
+                coverage.append({**base, "status": "not_in_system",
+                                 "detail": f"{table} not in this system's dictionary" if t is None
+                                 else "no change document names a planned table"})
+                continue
+            try:
+                # ponytail: CDPOS by TABNAME is not prefix-indexed, a full scan per table on a big system
+                df = pd.concat([connector.read_table_full(table, [f for f in t.fields if f != "MANDANT"],
+                                                          list(t.keys), where=f"{by} = '{v}'")
+                                for v in values], ignore_index=True)
+            except SAPConnectorError as e:
+                coverage.append({**base, "status": "failed", "detail": str(e)[:300]})
+                continue
+            if table == "CDPOS" and "OBJECTCLAS" in df.columns:
+                classes |= set(df["OBJECTCLAS"].dropna().astype(str))
+            entry = {**base, "status": "live", "rows": len(df), by.lower(): values, "complete": True}
+            coverage.append(entry)
+            framed = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
+            if sink is not None:
+                sink(table, framed, entry)
+            else:
+                frames[table] = framed
 
     def _sf_every_entity_set(self, connector, already: set[str], frames: dict, sink=None) -> list[dict]:
         """Every entity set of the tenant's $metadata the canonical tables did not read, as its own raw table

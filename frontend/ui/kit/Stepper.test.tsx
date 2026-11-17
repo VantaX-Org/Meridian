@@ -8,5 +8,6 @@ describe("Stepper", () => {
     const li = screen.getAllByRole("listitem");
     expect(li.map((x) => x.getAttribute("data-state"))).toEqual(["done", "current", "todo"]);
     expect(li[1].getAttribute("aria-current")).toBe("step");
+    expect(li.map((x) => x.querySelector(".mx-step-n")?.textContent)).toEqual(["\u2713", "2", "3"]);
   });
 });

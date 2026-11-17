@@ -134,6 +134,7 @@ class SystemResponse(BaseModel):
     sap_release: Optional[str] = None
     last_analysis_at: Optional[str] = None
     role: str = "source"
+    migration_target: bool = False
     target_system_id: Optional[str] = None
     extraction_path: str = "table_reader"
     read_function: Optional[str] = None
@@ -392,7 +393,8 @@ async def list_systems(
                    (SELECT max(v.run_at)::text FROM analysis_versions v
                     WHERE v.metadata->>'system_id' = s.id::text AND {finished_sql('v.status')}) AS last_analysis_at,
                    s.role, s.target_system_id::text, s.token_url, s.extraction_path, s.read_function,
-                   s.saprouter, s.snc_mode, s.snc_partnername, s.snc_qop, s.snc_myname
+                   s.saprouter, s.snc_mode, s.snc_partnername, s.snc_qop, s.snc_myname,
+                   COALESCE(s.migration_target, false)
             FROM sap_systems s
             WHERE s.tenant_id = :tid
             ORDER BY s.created_at DESC
@@ -414,6 +416,7 @@ async def list_systems(
             role=r[26], target_system_id=r[27], token_url=r[28],
             extraction_path=r[29] or "table_reader", read_function=r[30],
             saprouter=r[31], snc_mode=bool(r[32]), snc_partnername=r[33], snc_qop=r[34], snc_myname=r[35],
+            migration_target=bool(r[36]),
         )
         for r in rows
     ]
@@ -583,6 +586,12 @@ async def update_system(
             text(f"UPDATE sap_systems SET {set_clause} WHERE id = :sid AND tenant_id = :tid"),
             {**cloud_secret_updates, "sid": system_id, "tid": str(tenant.id)},
         )
+    if password or cloud_secret_updates:
+        await db.execute(  # new credentials: the scheduled health check may try this system again
+            text("UPDATE sap_systems SET health_status = NULL, consecutive_failures = 0 "
+                 "WHERE id = :sid AND tenant_id = :tid AND health_status = 'auth_failed'"),
+            {"sid": system_id, "tid": str(tenant.id)},
+        )
 
     await db.commit()
 
@@ -608,6 +617,41 @@ async def update_system(
         token_url=row[17], extraction_path=row[18] or "table_reader", read_function=row[19],
         saprouter=row[20], snc_mode=bool(row[21]), snc_partnername=row[22], snc_qop=row[23], snc_myname=row[24],
     )
+
+
+class MigrationTargetBody(BaseModel):
+    enabled: bool
+
+
+class MigrationTargetOut(BaseModel):
+    id: str
+    migration_target: bool
+
+
+@router.patch("/systems/{system_id}/migration-target", response_model=MigrationTargetOut)
+async def set_migration_target(
+    system_id: str,
+    body: MigrationTargetBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
+):
+    """Flag or unflag a system as a migration target. A move writes only to a flagged system."""
+    from api.services.rbac import write_audit
+
+    await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
+    p = {"sid": system_id, "tid": str(tenant.id)}
+    found = (await db.execute(text("SELECT id, name, migration_target FROM sap_systems WHERE id = :sid AND tenant_id = :tid"),
+                              p)).fetchone()
+    if not found:
+        raise HTTPException(status_code=404, detail="System not found")
+    await db.execute(text("UPDATE sap_systems SET migration_target = :on WHERE id = :sid AND tenant_id = :tid"),
+                     {**p, "on": body.enabled})
+    await write_audit(db, tenant.id, request, "migration_target", "sap_system", system_id,
+                      {"migration_target": bool(found[2])}, {"migration_target": body.enabled})
+    await db.commit()
+    return {"id": system_id, "migration_target": body.enabled}
 
 
 @router.delete("/systems/{system_id}")

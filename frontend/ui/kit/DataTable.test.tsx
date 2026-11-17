@@ -8,6 +8,12 @@ const rows: R[] = Array.from({ length: 500 }, (_, i) => ({ id: `r${i}`, name: `R
 const names = () => screen.getAllByRole("row").slice(1).map((r) => r.textContent);
 
 describe("DataTable", () => {
+  it("caps its height instead of fixing it, so a short table has no empty space", () => {
+    render(<DataTable columns={cols} rows={rows.slice(0, 2)} rowKey={(r) => r.id} label="Records" height={200} />);
+    const box = screen.getByRole("group", { name: "Records" }) as HTMLElement;
+    expect(box.style.maxBlockSize).toBe("200px");
+    expect(box.style.blockSize).toBe("");
+  });
   it("renders only the rows in view", () => {
     render(<DataTable columns={cols} rows={rows} rowKey={(r) => r.id} label="Records" height={200} rowHeight={40} />);
     expect(screen.getAllByRole("row").length).toBeLessThan(20);

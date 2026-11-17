@@ -221,6 +221,15 @@
 .mx-root .mx-skip a:focus { transform: none; }
 .mx-root .mx-main:focus { outline: none; }
 
+/* Stacked progress (ok, failed, pending) and the move journey's wave rows. */
+.mx-root .mx-seg { display: flex; block-size: var(--mx-s2); border-radius: var(--mx-r-pill); background: var(--mx-surface-2); overflow: hidden; }
+.mx-root .mx-seg > span[data-k="ok"] { background: var(--mx-good); }
+.mx-root .mx-seg > span[data-k="failed"] { background: var(--mx-bad); }
+.mx-root .mx-wavebar { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--mx-s3); }
+.mx-root .mx-wavebar li { display: grid; grid-template-columns: minmax(6rem, 10rem) 1fr auto; gap: var(--mx-s3); align-items: center; }
+.mx-root .mx-actions { display: flex; flex-wrap: wrap; gap: var(--mx-s3); align-items: center; }
+.mx-root .mx-issues { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--mx-s2); }
+
 /* Object overview: the score receipt and the old-run action gate. */
 .mx-root .mx-receipt { margin-block-start: var(--mx-s3); display: grid; gap: var(--mx-s2); }
 .mx-root .mx-receipt > summary { cursor: pointer; color: var(--mx-ink-2); }

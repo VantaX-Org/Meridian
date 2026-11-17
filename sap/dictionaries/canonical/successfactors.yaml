@@ -19,6 +19,7 @@ tables:
     source: EmpEmployment, EmpJob (effective-dated, current record)
     keys: [USERID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:          {source: EmpEmployment.userId, type: STRING, length: 100, description: User ID}
       PERSON_ID:       {source: EmpEmployment.personIdExternal, type: STRING, length: 100, description: Person ID (external)}
       START_DATE:      {source: EmpEmployment.startDate, type: DATE, description: Employment start date}
@@ -204,6 +205,7 @@ tables:
     source: PerPersonal, PerPerson, PerNationalId
     keys: [PERSON_ID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       PERSON_ID:      {source: PerPersonal.personIdExternal, type: STRING, length: 100, description: Person ID}
       FIRSTNAME:      {source: PerPersonal.firstName, type: STRING, length: 128, description: First name}
       LASTNAME:       {source: PerPersonal.lastName, type: STRING, length: 128, description: Last name}
@@ -268,6 +270,7 @@ tables:
     source: PerEmail
     keys: [PERSON_ID, EMAIL_TYPE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       PERSON_ID:     {source: PerEmail.personIdExternal, type: STRING, length: 100}
       EMAIL_TYPE:    {source: PerEmail.emailType, type: STRING, length: 128, picklist: ecEmailType, description: E-mail type}
       EMAIL_ADDRESS: {source: PerEmail.emailAddress, type: STRING, length: 100, description: E-mail address}
@@ -278,6 +281,7 @@ tables:
     source: PerPhone
     keys: [PERSON_ID, PHONE_TYPE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       PERSON_ID:    {source: PerPhone.personIdExternal, type: STRING, length: 100}
       PHONE_TYPE:   {source: PerPhone.phoneType, type: STRING, length: 128, picklist: ecPhoneType, description: Phone type}
       PHONE_NUMBER: {source: PerPhone.phoneNumber, type: STRING, length: 256, description: Phone number}
@@ -296,6 +300,7 @@ tables:
     # needs a migration or re-run; it is not auto-migrated here.
     keys: [PERSON_ID, ADDRESS_TYPE, START_DATE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       PERSON_ID:     {source: PerAddressDEFLT.personIdExternal, type: STRING, length: 100}
       ADDRESS_TYPE:  {source: PerAddressDEFLT.addressType, type: STRING, length: 128, picklist: addressType}
       START_DATE:    {source: PerAddressDEFLT.startDate, type: DATE, verify: true, description: Effective start date of the address record}
@@ -330,6 +335,7 @@ tables:
     source: EmpCompensation, EmpPayCompRecurring, EmpCompensationCalculated, FOPayRange
     keys: [USERID, EFFECTIVE_DATE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:              {source: EmpCompensation.userId, type: STRING, length: 100}
       EFFECTIVE_DATE:      {source: EmpCompensation.startDate, type: DATE}
       EFFECTIVE_DATE_COMP: {source: EmpPayCompRecurring.startDate, type: DATE, description: Pay component effective date}
@@ -379,6 +385,7 @@ tables:
     source: EmpPayCompNonRecurring
     keys: [USERID, PAY_COMPONENT, PAY_DATE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:          {source: EmpPayCompNonRecurring.userId, type: STRING, length: 100}
       PAY_COMPONENT:   {source: EmpPayCompNonRecurring.payComponentCode, type: STRING, length: 32, verify: true, description: One-time pay component}
       PAY_DATE:        {source: EmpPayCompNonRecurring.payDate, type: DATE}
@@ -413,6 +420,7 @@ tables:
     source: EmployeeTimeSheet, EmployeeTimeSheetEntry, EmployeeTime, TimeAccount
     keys: [USERID, DATE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:            {source: EmployeeTimeSheet.userId, type: STRING, length: 100}
       DATE:              {source: EmployeeTimeSheetEntry.startDate, type: DATE}
       HOURS:             {source: EmployeeTimeSheetEntry.quantityInHours, type: DECIMAL}
@@ -454,6 +462,7 @@ tables:
     source: BenefitEnrollment
     keys: [USERID, PLAN_ID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:         {source: BenefitEnrollment.userId, type: STRING, length: 100, verify: true}
       PLAN_ID:        {source: BenefitEnrollment.benefit, type: STRING, length: 128, verify: true}
       PLAN_TYPE:      {source: Benefit.benefitType, type: STRING, length: 128, verify: true}
@@ -470,6 +479,7 @@ tables:
     source: PerPersonRelationship, PerPerson, PerPersonal, PerNationalId
     keys: [PERSON_ID, RELATED_PERSON_ID, START_DATE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       PERSON_ID:         {source: PerPersonRelationship.personIdExternal, type: STRING, length: 100}
       RELATED_PERSON_ID: {source: PerPersonRelationship.relatedPersonIdExternal, type: STRING, length: 100}
       RELATIONSHIP_TYPE: {source: PerPersonRelationship.relationshipType, type: STRING, length: 128, verify: true, description: 'Picklist relation (spouse, child, ...)'}
@@ -491,6 +501,7 @@ tables:
     source: Goal_<planId>
     keys: [GOAL_ID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       GOAL_ID:     {source: Goal_1.id, type: STRING, length: 38}
       USERID:      {source: Goal_1.userId, type: STRING, length: 100}
       GOAL_NAME:   {source: Goal_1.name, type: STRING, length: 4000}
@@ -516,6 +527,7 @@ tables:
     source: FormHeader, FormSummarySection
     keys: [USERID, REVIEW_PERIOD, FORM_DATA_ID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:         {source: FormHeader.formSubjectId, type: STRING, length: 100, verify: true}
       REVIEW_PERIOD:  {source: FormHeader.formReviewStartDate, type: DATE, verify: true}
       REVIEW_DATE:    {source: FormHeader.formLastModifiedDate, type: DATETIME, verify: true}
@@ -541,6 +553,7 @@ tables:
     source: NominationTarget / Successor
     keys: [NOMINEE_ID, POSITION_ID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       NOMINEE_ID:     {source: Successor.nomineeUserId, type: STRING, length: 100, verify: true}
       POSITION_ID:    {source: NominationTarget.positionCode, type: STRING, length: 128, verify: true}
       NOMINATED_DATE: {source: Successor.lastModifiedDateTime, type: DATETIME, verify: true}
@@ -573,6 +586,7 @@ tables:
     source: JobRequisition
     keys: [JOB_REQ_ID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       JOB_REQ_ID:     {source: JobRequisition.jobReqId, type: INTEGER}
       TITLE:          {source: JobRequisition.jobReqLocale.jobTitle, type: STRING, verify: true}
       STATUS:         {source: JobRequisition.status.externalCode, type: STRING, verify: true, description: 'Requisition status (navigation property, picklist option code)'}
@@ -599,6 +613,7 @@ tables:
     source: JobApplication
     keys: [CANDIDATE_ID, JOB_REQ_ID, APPLICATION_ID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       CANDIDATE_ID:     {source: JobApplication.candidateId, type: INTEGER}
       JOB_REQ_ID:       {source: JobApplication.jobReqId, type: INTEGER}
       STATUS:           {source: JobApplication.status, type: STRING}
@@ -616,6 +631,7 @@ tables:
     source: ONB2Process
     keys: [USERID, PROCESS_ID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:                  {source: ONB2Process.user, type: STRING, length: 100, verify: true}
       HIRE_DATE:               {source: ONB2Process.onboardingHiredDate, type: DATE, verify: true}
       STATUS:                  {source: ONB2Process.processStatus, type: STRING, verify: true}
@@ -634,6 +650,7 @@ tables:
     source: JobOffer
     keys: [OFFER_ID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       OFFER_ID:      {source: JobOffer.offerId, type: INTEGER}
       CANDIDATE_ID:  {source: JobOffer.jobApplication.candidateId, type: INTEGER}
       JOB_REQ_ID:    {source: JobOffer.jobApplication.jobReqId, type: INTEGER}
@@ -650,6 +667,7 @@ tables:
     source: Learning assignments API
     keys: [USERID, COURSE_ID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:        {source: learning.studentID, type: STRING, length: 90, verify: true}
       COURSE_ID:     {source: learning.componentID, type: STRING, length: 90, verify: true}
       COURSE_TITLE:  {source: learning.title, type: STRING, verify: true}
@@ -674,6 +692,7 @@ tables:
     source: Learning history API
     keys: [USERID, COURSE_ID, COMPLETION_DATE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:          {source: learningHistory.studentID, type: STRING, length: 90, verify: true}
       COURSE_ID:       {source: learningHistory.componentID, type: STRING, length: 90, verify: true}
       COMPLETION_DATE: {source: learningHistory.completionDate, type: DATETIME, verify: true}
@@ -688,17 +707,17 @@ tables:
       CPE_HOURS:       {source: learningHistory.cpeHours, type: DECIMAL, verify: true, description: Continuing professional education hours}
       GRADE:           {source: learningHistory.grade, type: STRING, length: 90, verify: true, description: Grade awarded}
 
-  # I1 (review): Position extracts with from_date=None (no fromDate sent, see
-  # sap/successfactors.py), so SF returns only the as-of-today row per position code and
-  # keys: [CODE] never collides even though effectiveStartDate/effectiveEndDate are selected.
-  # This is safe only because of that current-record-only extraction: the moment Position is
-  # extracted with an effective-dated from_date, multiple rows per CODE become live and
-  # EC299 (uniqueness on POSITION.CODE) will mass-fire on every position ever changed.
+  # I1 (review): an analysis run reads Position with no fromDate (sap/successfactors.py), so SF
+  # returns only the as-of-today row per position code and keys: [CODE] never collides. The
+  # full-history read for an instance move (history="full") sends fromDate 1900-01-01 and keeps
+  # every row; its load key is CODE + effectiveStartDate (coverage "keys") and IS_CURRENT marks
+  # the row in force today. That version is never analysed, so EC299 still sees one row per CODE.
   POSITION:
     description: Positions (Position Management), current record
     source: Position
     keys: [CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       CODE:             {source: Position.code, type: STRING, length: 128, description: Position code}
       COMPANY:          {source: Position.company, type: STRING, length: 128, description: Legal entity of the position}
       DEPARTMENT:       {source: Position.department, type: STRING, length: 128, description: Department of the position}
@@ -730,17 +749,17 @@ tables:
       RIGHT_TO_RETURN:             {source: Position.rightToReturn, type: STRING, verify: true, description: Right to return}
 
   # I4 (review): every FO* target below (FOCompany, FODepartment, FODivision, FOLocation,
-  # FOJobCode, FOCostCenter, FOBusinessUnit, FOEventReason, ...) also extracts with
-  # from_date=None, so each selects exactly one current row per externalCode and none of
-  # them carries an effective-start date. Rules written against these tables implicitly
-  # assume "current" and that assumption holds today. No effective-dated FO* rule is
-  # possible until a from_date is set on these targets; see the coverage-gap list for the
-  # rules that gap blocks.
+  # FOJobCode, FOCostCenter, FOBusinessUnit, FOEventReason, ...) is read current-only by an
+  # analysis run, so rules see one row per externalCode. The instance-move read (history="full")
+  # keeps every effective-dated row, keyed externalCode + startDate, with IS_CURRENT marking the
+  # row in force today; joins.yaml prefers IS_CURRENT=true on every FO edge so a history frame
+  # still resolves one row per code.
   FOCOMPANY:
     description: Legal entities (Foundation Object), current record
     source: FOCompany
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE: {source: FOCompany.externalCode, type: STRING, length: 128, description: Legal entity code}
       COUNTRY:       {source: FOCompany.country, type: STRING, length: 128, description: Country of the legal entity}
       CURRENCY:      {source: FOCompany.currency, type: STRING, length: 20, description: Default currency of the legal entity}
@@ -754,6 +773,7 @@ tables:
     source: FODepartment
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE: {source: FODepartment.externalCode, type: STRING, length: 128, description: Department code}
       COST_CENTER:   {source: FODepartment.costCenter, type: STRING, length: 128, verify: true, description: Default cost centre of the department}
       STATUS:        {source: FODepartment.status, type: STRING, length: 2, description: A active / I inactive}
@@ -770,6 +790,7 @@ tables:
     source: EmpJob (all records, asOfDate not applied)
     keys: [USERID, START_DATE, SEQ_NUMBER]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:       {source: EmpJob.userId, type: STRING, length: 100, verify: true}
       START_DATE:   {source: EmpJob.startDate, type: DATE, verify: true, description: Record effective start}
       SEQ_NUMBER:   {source: EmpJob.seqNumber, type: INTEGER, verify: true, description: Sequence on the same start date}
@@ -931,6 +952,7 @@ tables:
     source: EmpWorkPermit
     keys: [USERID, COUNTRY, DOCUMENT_TYPE, DOCUMENT_NUMBER]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:          {source: EmpWorkPermit.userId, type: STRING, length: 100, verify: true}
       COUNTRY:         {source: EmpWorkPermit.country, type: STRING, length: 128, verify: true, check_table: Country}
       DOCUMENT_TYPE:   {source: EmpWorkPermit.documentType, type: STRING, length: 128, verify: true, picklist: documentType}
@@ -947,6 +969,7 @@ tables:
     source: PaymentInformationDetailV3
     keys: [USERID, EFFECTIVE_DATE, EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:         {source: PaymentInformationDetailV3.PaymentInformationV3_worker, type: STRING, length: 100, verify: true}
       EFFECTIVE_DATE: {source: PaymentInformationDetailV3.PaymentInformationV3_effectiveStartDate, type: DATE, verify: true}
       EXTERNAL_CODE:  {source: PaymentInformationDetailV3.externalCode, type: STRING, length: 128, verify: true}
@@ -971,6 +994,7 @@ tables:
     source: PerEmergencyContacts
     keys: [PERSON_ID, NAME, RELATIONSHIP]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       PERSON_ID:    {source: PerEmergencyContacts.personIdExternal, type: STRING, length: 100, verify: true}
       NAME:         {source: PerEmergencyContacts.name, type: STRING, length: 256, verify: true}
       RELATIONSHIP: {source: PerEmergencyContacts.relationship, type: STRING, length: 128, verify: true, picklist: relation}
@@ -1005,6 +1029,7 @@ tables:
     source: EmpGlobalAssignment
     keys: [USERID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:           {source: EmpGlobalAssignment.userId, type: STRING, length: 100, verify: true}
       ASSIGNMENT_TYPE:  {source: EmpGlobalAssignment.assignmentType, type: STRING, length: 128, verify: true}
       START_DATE:       {source: EmpGlobalAssignment.startDate, type: DATE, verify: true}
@@ -1016,6 +1041,7 @@ tables:
     source: FOEventReason
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE: {source: FOEventReason.externalCode, type: STRING, length: 128, verify: true}
       EVENT:         {source: FOEventReason.event, type: STRING, length: 128, verify: true, picklist: event}
       EMPL_STATUS:   {source: FOEventReason.emplStatus, type: STRING, length: 128, verify: true, description: Employee status the reason sets}
@@ -1026,6 +1052,7 @@ tables:
     source: FOLocation
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE:  {source: FOLocation.externalCode, type: STRING, length: 128, verify: true}
       STATUS:         {source: FOLocation.status, type: STRING, length: 2, verify: true}
       TIMEZONE:       {source: FOLocation.timezone, type: STRING, length: 128, verify: true}
@@ -1047,6 +1074,7 @@ tables:
     source: FOJobCode
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE:  {source: FOJobCode.externalCode, type: STRING, length: 128, verify: true}
       STATUS:         {source: FOJobCode.status, type: STRING, length: 2, verify: true}
       IS_FULLTIME:    {source: FOJobCode.isFulltimeEmployee, type: BOOLEAN, verify: true}
@@ -1068,6 +1096,7 @@ tables:
     source: FODivision
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE: {source: FODivision.externalCode, type: STRING, length: 128, verify: true}
       STATUS:        {source: FODivision.status, type: STRING, length: 2, verify: true}
       EFFECTIVE_START_DATE:        {source: FODivision.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
@@ -1080,6 +1109,7 @@ tables:
     source: FOBusinessUnit
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE: {source: FOBusinessUnit.externalCode, type: STRING, length: 128, verify: true}
       STATUS:        {source: FOBusinessUnit.status, type: STRING, length: 2, verify: true}
       EFFECTIVE_START_DATE:        {source: FOBusinessUnit.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
@@ -1092,6 +1122,7 @@ tables:
     source: FOCostCenter
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE: {source: FOCostCenter.externalCode, type: STRING, length: 128, verify: true}
       STATUS:        {source: FOCostCenter.status, type: STRING, length: 2, verify: true}
       LEGAL_ENTITY:  {source: FOCostCenter.cust_toLegalEntity.externalCode, type: STRING, length: 128, verify: true}
@@ -1110,6 +1141,7 @@ tables:
     source: User
     keys: [USER_ID]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USER_ID:       {source: User.userId, type: STRING, length: 100, description: User ID}
       USERNAME:      {source: User.username, type: STRING, length: 128, verify: true, description: Login username}
       STATUS:        {source: User.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
@@ -1132,6 +1164,7 @@ tables:
     source: EmpJobRelationships
     keys: [USERID, RELATIONSHIP_TYPE, START_DATE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       USERID:            {source: EmpJobRelationships.userId, type: STRING, length: 100, verify: true, description: User ID of the employee}
       RELATIONSHIP_TYPE: {source: EmpJobRelationships.relationshipType, type: STRING, length: 128, verify: true, picklist: relationshipType, description: 'Type of relationship (e.g. matrix manager, HR partner)'}
       START_DATE:        {source: EmpJobRelationships.startDate, type: DATE, verify: true, description: Effective start date of the relationship}
@@ -1147,6 +1180,7 @@ tables:
     source: PerSocialAccount
     keys: [PERSON_ID, DOMAIN]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       PERSON_ID:                   {source: PerSocialAccount.personIdExternal, type: STRING, length: 100, verify: true, description: Person id}
       DOMAIN:                      {source: PerSocialAccount.domain, type: STRING, length: 100, verify: true, description: Domain}
       URL:                         {source: PerSocialAccount.url, type: STRING, length: 256, verify: true, description: Url}
@@ -1157,6 +1191,7 @@ tables:
     source: FOCorporateAddressDEFLT
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE:               {source: FOCorporateAddressDEFLT.addressId, type: STRING, length: 32, verify: true, description: External code}
       ADDRESS1:                    {source: FOCorporateAddressDEFLT.address1, type: STRING, length: 256, verify: true, description: Address1 (country-specific)}
       ADDRESS2:                    {source: FOCorporateAddressDEFLT.address2, type: STRING, length: 256, verify: true, description: Address2 (country-specific)}
@@ -1176,6 +1211,7 @@ tables:
     source: FOLocationGroup
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE:               {source: FOLocationGroup.externalCode, type: STRING, length: 32, verify: true, description: External code}
       END_DATE:                    {source: FOLocationGroup.endDate, type: DATE, verify: true, description: End date}
       NAME:                        {source: FOLocationGroup.name, type: STRING, length: 32, verify: true, description: Name}
@@ -1187,6 +1223,7 @@ tables:
     source: FOGeozone
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE:               {source: FOGeozone.externalCode, type: STRING, length: 32, verify: true, description: External code}
       END_DATE:                    {source: FOGeozone.endDate, type: DATE, verify: true, description: End date}
       NAME:                        {source: FOGeozone.name, type: STRING, length: 32, verify: true, description: Name}
@@ -1200,6 +1237,7 @@ tables:
     source: FOJobFunction
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE:               {source: FOJobFunction.externalCode, type: STRING, length: 32, verify: true, description: External code}
       EFFECTIVE_START_DATE:        {source: FOJobFunction.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
       NAME:                        {source: FOJobFunction.name, type: STRING, verify: true, description: Name}
@@ -1211,6 +1249,7 @@ tables:
     source: FOPayGrade
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE:               {source: FOPayGrade.externalCode, type: STRING, length: 32, verify: true, description: External code}
       END_DATE:                    {source: FOPayGrade.endDate, type: DATE, verify: true, description: End date}
       NAME:                        {source: FOPayGrade.name, type: STRING, length: 32, verify: true, description: Name}
@@ -1224,6 +1263,7 @@ tables:
     source: FOPayGroup
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE:               {source: FOPayGroup.externalCode, type: STRING, length: 32, verify: true, description: External code}
       EFFECTIVE_START_DATE:        {source: FOPayGroup.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
       NAME:                        {source: FOPayGroup.name, type: STRING, verify: true, description: Name}
@@ -1247,6 +1287,7 @@ tables:
     source: FOFrequency
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE:               {source: FOFrequency.externalCode, type: STRING, length: 32, verify: true, description: External code}
       NAME:                        {source: FOFrequency.name, type: STRING, length: 32, verify: true, description: Name}
       DESCRIPTION:                 {source: FOFrequency.description, type: STRING, length: 128, verify: true, description: Description}
@@ -1257,6 +1298,7 @@ tables:
     source: FOPayComponent
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE:               {source: FOPayComponent.externalCode, type: STRING, length: 32, verify: true, description: External code}
       END_DATE:                    {source: FOPayComponent.endDate, type: DATE, verify: true, description: End date}
       NAME:                        {source: FOPayComponent.name, type: STRING, length: 32, verify: true, description: Name}
@@ -1285,6 +1327,7 @@ tables:
     source: FOPayComponentGroup
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE:               {source: FOPayComponentGroup.externalCode, type: STRING, length: 32, verify: true, description: External code}
       END_DATE:                    {source: FOPayComponentGroup.endDate, type: DATE, verify: true, description: End date}
       NAME:                        {source: FOPayComponentGroup.name, type: STRING, length: 32, verify: true, description: Name}
@@ -1304,6 +1347,7 @@ tables:
     source: PayScaleType
     keys: [CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       CODE:                        {source: PayScaleType.code, type: STRING, length: 128, verify: true, description: Code}
       PAY_SCALE_TYPE:              {source: PayScaleType.payScaleType, type: STRING, length: 128, verify: true, description: Pay scale type}
       EXTERNAL_NAME:               {source: PayScaleType.externalName_defaultValue, type: STRING, verify: true, description: External name}
@@ -1314,6 +1358,7 @@ tables:
     source: PayScaleArea
     keys: [CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       CODE:                        {source: PayScaleArea.code, type: STRING, length: 128, verify: true, description: Code}
       PAY_SCALE_AREA:              {source: PayScaleArea.payScaleArea, type: STRING, length: 128, verify: true, description: Pay scale area}
       EXTERNAL_NAME:               {source: PayScaleArea.externalName_defaultValue, type: STRING, verify: true, description: External name}
@@ -1324,6 +1369,7 @@ tables:
     source: FOPayRange
     keys: [EXTERNAL_CODE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE:               {source: FOPayRange.externalCode, type: STRING, length: 32, verify: true, description: External code}
       STATUS:                      {source: FOPayRange.status, type: STRING, verify: true, description: Status}
       MINIMUM_PAY:                 {source: FOPayRange.minimumPay, type: DECIMAL, verify: true, description: Minimum pay}
@@ -1345,6 +1391,7 @@ tables:
     source: PerGlobalInfo* (all records)
     keys: [PERSON_ID, COUNTRY, START_DATE]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       PERSON_ID:  {source: PerGlobalInfo*.personIdExternal, type: STRING, length: 100, description: Person ID}
       COUNTRY:    {source: PerGlobalInfo*.country, type: STRING, length: 128, description: Country}
       START_DATE: {source: PerGlobalInfo*.startDate, type: DATE, description: Effective start date}
@@ -1355,6 +1402,7 @@ tables:
     source: FOLegalEntityLocal*
     keys: [EXTERNAL_CODE, COUNTRY]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE: {source: FOLegalEntityLocal*.externalCode, type: STRING, length: 128, description: Legal entity code}
       COUNTRY:       {source: FOLegalEntityLocal*.country, type: STRING, length: 128, description: Country}
       START_DATE:    {source: FOLegalEntityLocal*.startDate, type: DATE, description: Effective start date}
@@ -1382,6 +1430,7 @@ tables:
     source: FOJobClassLocal*
     keys: [EXTERNAL_CODE, COUNTRY]
     fields:
+      IS_CURRENT: {source: derived.isCurrent, type: BOOLEAN, verify: true, description: "true on the record in force today (end date 9999-12-31, else the latest start on or before today); history rows are false"}
       EXTERNAL_CODE: {source: FOJobClassLocal*.externalCode, type: STRING, length: 128, description: Job classification code}
       COUNTRY:       {source: FOJobClassLocal*.country, type: STRING, length: 128, description: Country}
       START_DATE:    {source: FOJobClassLocal*.startDate, type: DATE, description: Effective start date}

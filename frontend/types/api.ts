@@ -1071,6 +1071,7 @@ export interface SAPSystemExtended {
   sap_release: string | null;
   last_analysis_at: string | null;
   role: "source" | "target";
+  migration_target?: boolean;
   target_system_id: string | null;
   /** ABAP systems: how tables are read (sap/extraction_plan.py EXTRACTION_PATHS). Others: table_reader. */
   extraction_path?: ExtractionPath;

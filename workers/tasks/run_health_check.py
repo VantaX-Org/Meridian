@@ -57,7 +57,10 @@ def check_all_systems(self):
         for (tid,) in session.execute(text("SELECT id FROM tenants")).fetchall():
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tid)})
             systems += session.execute(
-                text("SELECT id, tenant_id FROM sap_systems WHERE is_active = true")
+                text("SELECT id, tenant_id FROM sap_systems WHERE is_active = true "
+                     # A refused sign-in is not retried on a timer: SF and SAP lock the account after a few
+                     # failures. The status clears when the credentials are saved again.
+                     "AND health_status IS DISTINCT FROM 'auth_failed'")
             ).fetchall()
 
     for system_id, tenant_id in systems:
