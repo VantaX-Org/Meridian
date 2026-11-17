@@ -2,7 +2,7 @@
 /**
  * Token guard: raw hex colours, gradients and backdrop blur belong in the
  * token files only, and every padding, margin and gap of the interface
- * (design/v2 and app/) sits on the spacing grid: a --m2-s* token, a
+ * (ui/ and app/) sits on the spacing grid: a --mx-s* token, a
  * layout token, or a calc() of them, never a raw px value.
  * lint-tokens.allow.txt stays empty.
  */
@@ -11,14 +11,14 @@ import { join, relative } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const ALLOW_FILE = join(ROOT, "scripts/lint-tokens.allow.txt");
-// The v2 interface (design/v2) keeps its raw colour, shadow and motion in its own tokens file; the allowlist stays empty.
-const TOKEN_FILES = new Set(["design/tokens.css", "design/v2/tokens.css", "design/next/tokens.css", "design/next/motion.css"]);
+// The interface (ui/tokens.css) keeps its raw colour, shadow and motion in its own tokens file; the allowlist stays empty.
+const TOKEN_FILES = new Set(["design/tokens.css", "ui/tokens.css"]);
 const SKIP_DIRS = new Set(["node_modules", ".next", "out", "public", "scripts", "e2e", "__tests__"]);
 // Colour-pass allow sets live here, never in lint-tokens.allow.txt. The files that named the domain tokens
 // (design/tokens.ts, DomainChip) and drew the glow (design/charts/Graph.tsx) left with the retired interface.
 const DOMAIN_ALLOW = new Set();
-// The spacing grid (DESIGN.md, Tokens; tokens.css "Spacing on a 4px grid"). Checked under design/v2 and app/ only.
-const GRID_SCOPE = /^(?:design\/v2|app)\//;
+// The spacing grid (DESIGN.md, Tokens; tokens.css "Spacing on a 4px grid"). Checked under ui/ and app/ only.
+const GRID_SCOPE = /^(?:ui|app)\//;
 const CSS_SPACING = /(?<![\w-])(?:padding|margin|gap|row-gap|column-gap|padding-[a-z-]+|margin-[a-z-]+)\s*:\s*([^;}]*)/g;
 const JS_SPACING = /\b(?:padding|margin|gap|rowGap|columnGap)(?:Top|Bottom|Left|Right|Inline|Block|InlineStart|InlineEnd)?\s*:\s*(?:-?[1-9]\d*(?=\s*[,}])|"[^"]*\b[1-9]\d*px[^"]*")/;
 const TW_SPACING = /\b-?(?:p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y)-\[\d+(?:\.\d+)?px\]/;
@@ -84,8 +84,8 @@ for (const abs of walk(ROOT)) {
     for (const r of RULES) if (!r.skip?.has(file) && r.re.test(line)) add(i + 1, r.name);
     if (GRID_SCOPE.test(file)) {
       if (file.endsWith(".css")) {
-        for (const m of line.matchAll(CSS_SPACING)) if (rawPx(m[1])) add(i + 1, "spacing off the grid: use a --m2-s* token");
-      } else if (JS_SPACING.test(line) || TW_SPACING.test(line)) add(i + 1, "spacing off the grid: use a --m2-s* token");
+        for (const m of line.matchAll(CSS_SPACING)) if (rawPx(m[1])) add(i + 1, "spacing off the grid: use a --mx-s* token");
+      } else if (JS_SPACING.test(line) || TW_SPACING.test(line)) add(i + 1, "spacing off the grid: use a --mx-s* token");
     }
   });
   if (file.endsWith(".css")) {

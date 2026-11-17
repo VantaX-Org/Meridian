@@ -43,7 +43,6 @@ const eslintConfig = defineConfig([
     files: [
       "app/**/*.{ts,tsx}",
       "lib/**/*.{ts,tsx}",
-      "design/v2/**/*.{ts,tsx}",
     ],
     ignores: [
       "**/*.test.{ts,tsx}",

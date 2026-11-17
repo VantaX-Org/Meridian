@@ -3,7 +3,7 @@
  * notification's link goes.
  */
 import type { Notification } from "@/types/api";
-import type { SeverityKey } from "@/design/v2/marks";
+type SeverityKey = "critical" | "high" | "medium" | "low" | "info";
 import { t } from "@/lib/v2/i18n";
 import { isAppPath } from "./paths";
 

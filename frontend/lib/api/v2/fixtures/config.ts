@@ -311,6 +311,12 @@ export function configDownload(path: string): { name: string; text: string } | n
 
 export function configRead(path: string): unknown {
   if (!path.startsWith("/config/") || path === "/config/drift") return NONE_CONFIG;
+  const pm = /^\/config\/processes\/([^/]+)$/.exec(path);
+  if (pm) {
+    const found = PROCESSES.find((x) => x.process_id === decodeURIComponent(pm[1]));
+    if (found) return found;
+    throw Object.assign(new Error("Process not found"), { status: 404, response: { status: 404, data: { detail: "Process not found" } } });
+  }
   switch (path) {
     case "/config/health-score":
       return { run_id: RUN, scores: healthScores() };

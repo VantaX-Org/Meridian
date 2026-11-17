@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import { resetPassword } from "@/lib/api/auth";
-import { SetPasswordForm } from "@/design/v2/auth/SetPassword";
+import { SetPasswordForm } from "@/ui/auth/SetPassword";
 import { t } from "@/lib/v2/i18n";
 
 export default function ResetPasswordPage() {
