@@ -44,14 +44,16 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
   const href = (path: string) => withFixture(path, fx);
   const fixHref = (seg: "proposed" | "manual", rule?: string) => href(d.fixPath(seg, rule));
 
-  // The one shell chat, scoped to this object. Answers come from the object's rule data in every mode;
-  // the live backend plugs in by replacing `answer` here (see AletheiaScope).
+  // The one shell chat, scoped to this object. The suggested prompts answer from the object's rule data;
+  // a typed question streams from /assistant/ask/stream scoped to this module and run (aggregates only).
   useAletheiaScope({
     key: `${system}/${module}`,
     label: t("Asking about {object}", { object: o.label }),
     suggestions: PROMPTS.map((p) => p.text()),
+    context: { module: o.module, ...(o.runId ? { version_id: o.runId } : {}) },
     answer: (prompt) => {
-      const id = PROMPTS.find((p) => p.text() === prompt)?.id ?? "worst";
+      const id = PROMPTS.find((p) => p.text() === prompt)?.id;
+      if (!id) return null;
       return answerFor(id, d, fixHref, (rid) => { setPick(rid); setTab("why"); setSheet(true); chat.setOpen(false); });
     },
   });

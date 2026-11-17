@@ -14,7 +14,7 @@ import { v2Get } from "@/lib/api/v2/client";
 import { fixtureActive, useFixture } from "@/lib/api/v2/fixture";
 import { downloadAuthenticated } from "@/lib/api/download";
 import type { VersionHead } from "@/lib/api/v2/runs";
-import { fixtureCycles, fixtureTemplates, fixtureRun, fixtureRunsPage, fixtureSets, fixtureSummary } from "./runs-fixture";
+import { fixtureCycles, fixtureMultiCompare, fixtureTemplates, fixtureRun, fixtureRunsPage, fixtureSets, fixtureSummary } from "./runs-fixture";
 
 export type Change = "new" | "resolved" | "regressed" | "persisting";
 export type RunStatusFilter = "failed" | "complete" | "active";
@@ -234,4 +234,66 @@ export function useRuns(ids: readonly string[]) {
     error: failed ? failed.error : null,
     retry: () => { for (const r of results) if (r.isError) void r.refetch(); },
   };
+}
+
+export type RuleChange = "newly_failing" | "fixed" | "worse" | "better";
+
+/** One run's column of GET /runs/compare. A null score means the run did not score the object. */
+export interface MultiRun {
+  id: string;
+  run_at: string | null;
+  label: string | null;
+  run_number: number | null;
+  system_id: string | null;
+  system_name: string | null;
+  score: number | null;
+  raw_score: number | null;
+  capped: boolean;
+  coverage: number | null;
+  dimension_scores: Record<string, number>;
+  records_checked: number | null;
+}
+
+export interface MultiRule {
+  check_id: string;
+  title: string | null;
+  severity: string | null;
+  dimension: string | null;
+  /** Failing records per run, in the order of `runs`; null where the rule did not run cleanly. */
+  failing: Array<number | null>;
+  /** Per step (run i to i+1). */
+  change: Array<RuleChange | null>;
+}
+
+export interface MultiStep {
+  a: string;
+  b: string;
+  newly_failing: number;
+  fixed: number;
+  worse: number;
+  better: number;
+}
+
+export interface MultiCompare {
+  module: string;
+  label: string;
+  runs: MultiRun[];
+  rules: MultiRule[];
+  steps: MultiStep[];
+}
+
+/** GET /runs/compare: two to six runs of one object, oldest first, from any systems. */
+export async function getMultiCompare(ids: readonly string[], module: string): Promise<MultiCompare> {
+  if (fixtureActive()) return fixtureMultiCompare(ids, module);
+  return v2Get<MultiCompare>("/runs/compare", { runs: ids.join(","), module });
+}
+
+export function useMultiCompare(ids: readonly string[], module: string | null) {
+  const fx = useFixture();
+  return useQuery({
+    queryKey: ["next", "multi-compare", fx, ids.join(","), module] as const,
+    queryFn: () => getMultiCompare(ids, module as string),
+    enabled: ids.length >= 2 && !!module,
+    staleTime: 60_000,
+  });
 }

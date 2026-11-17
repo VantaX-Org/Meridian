@@ -43,6 +43,14 @@ describe("runs screens in fixture mode", () => {
     wrap(<RunCompare a={id(499)} b={id(498)} />);
     expect(await screen.findByRole("heading", { level: 1, name: "Compare runs" })).toBeTruthy();
   });
+  it("RunCompare shows one object across three runs", async () => {
+    at(`/run/${id(497)}/vs/${id(499)}`);
+    wrap(<RunCompare a={id(497)} b={id(499)} runs={[id(497), id(498), id(499)]} />);
+    expect(await screen.findByTestId("compare-object")).toBeTruthy();
+    expect(await screen.findByTestId("compare-side")).toBeTruthy();
+    expect(await screen.findByTestId("compare-rules")).toBeTruthy();
+    expect(await screen.findByTestId("compare-step-1")).toBeTruthy();
+  });
   it("Agreement shows its title", async () => {
     at(`/run/${id(499)}/agreement`);
     wrap(<Agreement id={id(499)} />);
