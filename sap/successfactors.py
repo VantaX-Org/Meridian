@@ -197,6 +197,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         top: int = 0,
         from_date: str | None = None,
         expand: list[str] | None = None,
+        to_date: str | None = None,
     ) -> pd.DataFrame:
         """Read an OData V2 entity set with pagination and rate-limit handling.
 
@@ -207,6 +208,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
             top:        Maximum rows to return. 0 = no limit (all pages).
             from_date:  OData fromDate for effective-dated entities. None = as of today
                         (current record only); "1900-01-01" = full history.
+            to_date:    OData toDate; with from_date "1900-01-01" and "9999-12-31" every past,
+                        current and future-dated record is returned.
             expand:     Navigation properties for $expand. Their selected properties
                         ("nav/prop" in ``select``) come back as "nav/prop" columns: from the
                         related record in the row's defaultLanguage when both that and
@@ -230,6 +233,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
             params["$filter"] = filter_expr
         if from_date:
             params["fromDate"] = from_date
+        if to_date:
+            params["toDate"] = to_date
         if top > 0:
             params["$top"] = str(top)
         # no $top otherwise: SF reads $top as a client limit and then returns no __next,
@@ -611,6 +616,37 @@ def entity_model(edmx: str, entity: str) -> tuple[set[str], dict[str, set[str] |
             target = types.get(ends.get(name(c.get("Relationship", "")), {}).get(c.get("ToRole"), ""))
             navs[c.get("Name", "")] = props(target) if target is not None else None
     return props(t), navs
+
+
+# Key properties that make an entity effective dated: one record per key per validity start.
+HISTORY_DATES = ("effectiveStartDate", "startDate")
+FULL_HISTORY = {"from_date": "1900-01-01", "to_date": "9999-12-31"}
+
+
+def entity_keys(edmx: str, entity: str) -> list[str] | None:
+    """The key property names of ``entity`` (entity set or type) in an OData V2 $metadata
+    document, in document order; None if the document does not describe it."""
+    def local(el: ET.Element) -> str:
+        return el.tag.rsplit("}", 1)[-1]
+
+    root = ET.fromstring(edmx)
+    typ = next((el.get("EntityType", "").rsplit(".", 1)[-1] for el in root.iter()
+                if local(el) == "EntitySet" and el.get("Name") == entity), entity)
+    t = next((el for el in root.iter() if local(el) == "EntityType" and el.get("Name") == typ), None)
+    if t is None:
+        return None
+    return [r.get("Name", "") for k in t if local(k) == "Key" for r in k if local(r) == "PropertyRef"]
+
+
+def history_props(keys: list[str] | None, props: set[str]) -> list[str]:
+    """The properties that tell one effective-dated record from another: the start date that is
+    part of the $metadata key (plus seqNumber when keyed). Without a key list, the first
+    HISTORY_DATES name the entity has. Empty for an entity that is not effective dated."""
+    if keys is not None:
+        date = next((k for k in keys if k in HISTORY_DATES), None)
+        return [date] + [k for k in keys if k == "seqNumber"] if date else []
+    date = next((d for d in HISTORY_DATES if d in props), None)
+    return [date] + (["seqNumber"] if "seqNumber" in props else []) if date else []
 
 
 _SYNONYMS = {"effectivestartdate": "startdate", "effectiveenddate": "enddate", "effectivestatus": "status"}
