@@ -566,11 +566,6 @@ async def update_system(
             """),
             {"epw": encrypted, "sid": system_id},
         )
-        await db.execute(  # new credentials: the scheduled health check may try this system again
-            text("UPDATE sap_systems SET health_status = NULL, consecutive_failures = 0 "
-                 "WHERE id = :sid AND tenant_id = :tid AND health_status = 'auth_failed'"),
-            {"sid": system_id, "tid": str(tenant.id)},
-        )
 
     cloud_secret_columns = {
         "client_id": "client_id_encrypted",
@@ -587,6 +582,12 @@ async def update_system(
         await db.execute(
             text(f"UPDATE sap_systems SET {set_clause} WHERE id = :sid AND tenant_id = :tid"),
             {**cloud_secret_updates, "sid": system_id, "tid": str(tenant.id)},
+        )
+    if password or cloud_secret_updates:
+        await db.execute(  # new credentials: the scheduled health check may try this system again
+            text("UPDATE sap_systems SET health_status = NULL, consecutive_failures = 0 "
+                 "WHERE id = :sid AND tenant_id = :tid AND health_status = 'auth_failed'"),
+            {"sid": system_id, "tid": str(tenant.id)},
         )
 
     await db.commit()
