@@ -12,13 +12,13 @@ import { join, relative } from "node:path";
 const ROOT = new URL("..", import.meta.url).pathname;
 const ALLOW_FILE = join(ROOT, "scripts/lint-tokens.allow.txt");
 // The v2 interface (design/v2) keeps its raw colour, shadow and motion in its own tokens file; the allowlist stays empty.
-const TOKEN_FILES = new Set(["design/tokens.css", "design/v2/tokens.css", "design/next/tokens.css", "design/next/motion.css"]);
+const TOKEN_FILES = new Set(["design/tokens.css", "design/v2/tokens.css", "design/next/tokens.css", "design/next/motion.css", "ui/tokens.css"]);
 const SKIP_DIRS = new Set(["node_modules", ".next", "out", "public", "scripts", "e2e", "__tests__"]);
 // Colour-pass allow sets live here, never in lint-tokens.allow.txt. The files that named the domain tokens
 // (design/tokens.ts, DomainChip) and drew the glow (design/charts/Graph.tsx) left with the retired interface.
 const DOMAIN_ALLOW = new Set();
 // The spacing grid (DESIGN.md, Tokens; tokens.css "Spacing on a 4px grid"). Checked under design/v2 and app/ only.
-const GRID_SCOPE = /^(?:design\/v2|app)\//;
+const GRID_SCOPE = /^(?:design\/v2|app|ui)\//;
 const CSS_SPACING = /(?<![\w-])(?:padding|margin|gap|row-gap|column-gap|padding-[a-z-]+|margin-[a-z-]+)\s*:\s*([^;}]*)/g;
 const JS_SPACING = /\b(?:padding|margin|gap|rowGap|columnGap)(?:Top|Bottom|Left|Right|Inline|Block|InlineStart|InlineEnd)?\s*:\s*(?:-?[1-9]\d*(?=\s*[,}])|"[^"]*\b[1-9]\d*px[^"]*")/;
 const TW_SPACING = /\b-?(?:p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y)-\[\d+(?:\.\d+)?px\]/;
