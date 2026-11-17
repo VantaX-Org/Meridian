@@ -51,7 +51,7 @@ EXAMPLES = (
 )
 
 INTENTS = ("help", "score", "weakest_objects", "top_rules", "critical", "readiness", "root_causes", "fixes",
-           "owners", "changes", "rule", "value_at_risk", "forecast", "progress", "found", "retrieval", "refused")
+           "owners", "changes", "rule", "record", "value_at_risk", "forecast", "progress", "found", "retrieval", "refused")
 
 #: Retrieval answers from the matching figures only when they cover at least this share of the question's words.
 MIN_COVERAGE = 0.5
@@ -175,6 +175,9 @@ class Match:
     question: str = ""
     #: the page shows the current state, not one run
     current: bool = False
+    #: the chat is scoped to one rule check / one record (never sent to the model)
+    check_id: Optional[str] = None
+    record_key: Optional[str] = None
 
 
 def match(question: str, module: Optional[str] = None) -> Match:
@@ -242,6 +245,7 @@ class Sources(Protocol):
     async def forecast(self, module: Optional[str]) -> dict: ...
     async def burndown(self, vid: Optional[str], module: Optional[str]) -> Optional[dict]: ...
     async def findings(self, module: Optional[str]) -> Optional[dict]: ...
+    async def record_checks(self, vid: str, record_key: str) -> list[str]: ...
 
 
 class DbSources:
@@ -341,6 +345,21 @@ class DbSources:
         from api.routes.insights import get_findings
 
         return await get_findings(module, self.db, self.tenant)
+
+    async def record_checks(self, vid: str, record_key: str) -> list[str]:
+        """The check ids that fail one record in one run: identifiers only, never ``field_values``."""
+        import uuid
+
+        from sqlalchemy import text
+
+        from api.routes.record_issues import _rls
+
+        await _rls(self.db, self.tenant)
+        res = await self.db.execute(
+            text("SELECT DISTINCT check_id FROM finding_records "
+                 "WHERE tenant_id = :t AND version_id = :v AND record_key = :k ORDER BY check_id"),
+            {"t": str(self.tenant.id), "v": str(uuid.UUID(vid)), "k": record_key})
+        return [r[0] for r in res.all()]
 
 
 # ── answer helpers ───────────────────────────────────────────────────────────
@@ -725,7 +744,7 @@ async def _changes(src: Sources, vid: Optional[str], m: Match) -> dict:
 
 
 async def _rule(src: Sources, vid: Optional[str], m: Match) -> dict:
-    cid = find_rule_id(m.question or "") or ""
+    cid = m.check_id or find_rule_id(m.question or "") or ""
     res = _need(await src.rules(vid, None, None, 500))
     run = _vid(res, vid)
     row = next((r for r in res.get("rows") or [] if str(r.get("check_id")).lower() == cid.lower()), None)
@@ -900,11 +919,32 @@ async def _found(src: Sources, vid: Optional[str], m: Match) -> dict:
     return _answer("found", text, vid, links=[link], facts=facts)
 
 
+async def _record(src: Sources, vid: Optional[str], m: Match) -> dict:
+    """One record's failing checks, narrowed from the rule ranking's aggregates by the check ids that fail it."""
+    res = _need(await src.rules(vid, None, None, 500))
+    run = _vid(res, vid)
+    ids = {c.lower() for c in await src.record_checks(run, m.record_key or "")} if run else set()
+    if m.check_id:
+        ids &= {m.check_id.lower()}
+    rows = [r for r in res.get("rows") or [] if str(r.get("check_id")).lower() in ids]
+    link = {"label": "Open the rule ranking", "href": _href("/insights/rules", run)}
+    if not rows:
+        return _answer("record", "No rule in this run fails that record.", run, links=[link])
+    facts = [fact(f"{r['check_id']} ({rc._short(r.get('name'), r['check_id'])}) fails this record, severity "
+                  f"{r.get('severity')}, and {_n(r.get('affected'))} records in {module_name(r['module'])}",
+                  "Rule ranking", _href(f"/rules/{r['check_id']}", run), int(r.get("affected") or 0),
+                  checks=[check(r["check_id"], r.get("module"))]) for r in rows[:TOP_N]]
+    names = [f"{r['check_id']} in {module_name(r['module'])}" for r in rows[:3]]
+    text = f"This record fails {_n(len(rows))} {_plural(len(rows), 'rule')}, led by {_oxford(names)}."
+    return _answer("record", text, run, links=[link], facts=facts + [
+        fact(f"This record fails {_n(len(rows))} rules", "Record findings", link["href"], len(rows))])
+
+
 _HANDLERS = {
     "score": _score, "weakest_objects": _weakest, "top_rules": _top_rules, "critical": _critical,
     "readiness": _readiness, "root_causes": _root_causes, "fixes": _fixes, "owners": _owners, "changes": _changes,
     "rule": _rule, "value_at_risk": _value_at_risk, "forecast": _forecast, "progress": _progress,
-    "found": _found,
+    "found": _found, "record": _record,
 }
 
 
@@ -1022,12 +1062,17 @@ def _supported(out: dict) -> dict:
 
 
 async def ask(question: str, version_id: Optional[str], module: Optional[str], src: Sources,
-              tenant_id: str, current: bool = False) -> dict:
+              tenant_id: str, current: bool = False, check_id: Optional[str] = None,
+              record_key: Optional[str] = None) -> dict:
     """Answer ``question`` for the run ``version_id`` (default the latest finished run). ``current``: the page shows
     the current state, so the score is read across every object at its latest run, the number beside the panel.
     Never raises."""
     m = match(question, module)
     m.current = current and not version_id
+    m.check_id, m.record_key = check_id, record_key
+    if m.intent != "help":
+        # a scope the caller names overrides what the words suggest
+        m.intent = "record" if record_key else "rule" if check_id else m.intent
     try:
         if m.intent == "help":
             return help_answer(version_id)
@@ -1041,3 +1086,32 @@ async def ask(question: str, version_id: Optional[str], module: Optional[str], s
         logger.exception("assistant failed to answer (intent %s)", m.intent)
         return _answer(m.intent or "unknown", _FAILED, version_id,
                        links=[{"label": "Open Insights", "href": _href("/insights", version_id)}])
+
+
+def _chunks(text: str, words: int = 4) -> list[str]:
+    """``text`` in pieces of a few words, whitespace kept, so they join back to ``text``."""
+    parts = re.findall(r"\S+\s*", text)
+    return ["".join(parts[i:i + words]) for i in range(0, len(parts), words)]
+
+
+async def suggestions(src: Sources, version_id: Optional[str], module: Optional[str],
+                      check_id: Optional[str] = None) -> list[str]:
+    """3 to 6 questions to ask next, built from the scope's top failing rules. No model. Each one matches an
+    intent, so asking it returns a grounded answer. With no run, the stock examples."""
+    mod = module if module in known_modules() else None
+    try:
+        res = _need(await src.rules(version_id, mod, None, 3))
+    except NoRun:
+        return list(EXAMPLES[:3])
+    except Exception:
+        logger.exception("assistant could not build suggestions")
+        return list(EXAMPLES[:3])
+    where = f" in {module_name(mod)}" if mod else ""
+    out: list[str] = []
+    if check_id:
+        out += [f"How many records fail {check_id}?"]
+    out += [f"How many records fail {r['check_id']}?" for r in (res.get("rows") or [])
+            if str(r["check_id"]).lower() != (check_id or "").lower()]
+    out += [f"What should I fix first{where}?", f"What are the root causes{where}?",
+            "What changed since the last run?"]
+    return list(dict.fromkeys(out))[:6]

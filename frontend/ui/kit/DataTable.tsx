@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 export interface Column<T> {
   key: string;
@@ -16,9 +16,11 @@ export interface Column<T> {
  * A table that renders only the rows in view (fixed `rowHeight`, scroll box `height`), with a sticky header, sortable
  * columns, one selected row and arrow-key navigation (Up, Down, Home, End; Enter or Space selects).
  */
-export function DataTable<T>({ columns, rows, rowKey, label, selected, onSelect, height = 360, rowHeight = 40 }: {
+export function DataTable<T>({ columns, rows, rowKey, label, selected, onSelect, height = 360, rowHeight = 40, expand }: {
   columns: Column<T>[]; rows: T[]; rowKey: (row: T) => string; label: string;
   selected?: string | null; onSelect?: (row: T) => void; height?: number; rowHeight?: number;
+  /** Opens one row in place: the row with key `id` gets a full-width panel of fixed `height` under it. */
+  expand?: { id: string | null; height: number; render: (row: T) => ReactNode };
 }) {
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
   const [top, setTop] = useState(0);
@@ -31,8 +33,11 @@ export function DataTable<T>({ columns, rows, rowKey, label, selected, onSelect,
     return [...rows].sort((a, b) => (f(a) < f(b) ? -sort.dir : f(a) > f(b) ? sort.dir : 0));
   }, [rows, sort, columns]);
 
-  const per = Math.ceil(height / rowHeight) + 4;
-  const first = Math.max(0, Math.min(Math.floor(top / rowHeight) - 2, Math.max(0, sorted.length - per)));
+  const exp = expand?.id != null ? sorted.findIndex((r) => rowKey(r) === expand.id) : -1;
+  const extra = exp >= 0 && expand ? expand.height : 0;
+  const per = Math.ceil(height / rowHeight) + 4 + Math.ceil(extra / rowHeight);
+  const eff = exp >= 0 && exp * rowHeight < top ? Math.max(0, top - extra) : top;
+  const first = Math.max(0, Math.min(Math.floor(eff / rowHeight) - 2, Math.max(0, sorted.length - per)));
   const last = Math.min(sorted.length, first + per);
   const cur = Math.min(at, Math.max(0, sorted.length - 1));
 
@@ -41,8 +46,9 @@ export function DataTable<T>({ columns, rows, rowKey, label, selected, onSelect,
     setAt(n);
     const el = box.current;
     if (el) {
-      if (n * rowHeight < el.scrollTop) el.scrollTop = n * rowHeight;
-      else if ((n + 1) * rowHeight > el.scrollTop + height - rowHeight) el.scrollTop = (n + 1) * rowHeight - height + rowHeight;
+      const off = exp >= 0 && exp < n ? extra : 0;
+      if (n * rowHeight + off < el.scrollTop) el.scrollTop = n * rowHeight + off;
+      else if ((n + 1) * rowHeight + off > el.scrollTop + height - rowHeight) el.scrollTop = (n + 1) * rowHeight + off - height + rowHeight;
     }
   };
   const key = (e: KeyboardEvent) => {
@@ -67,16 +73,19 @@ export function DataTable<T>({ columns, rows, rowKey, label, selected, onSelect,
           </tr>
         </thead>
         <tbody>
-          {first > 0 ? <tr aria-hidden="true" style={{ blockSize: first * rowHeight }} /> : null}
+          {first > 0 ? <tr aria-hidden="true" style={{ blockSize: first * rowHeight + (exp >= 0 && exp < first ? extra : 0) }} /> : null}
           {sorted.slice(first, last).map((r, j) => {
             const id = rowKey(r);
             return (
-              <tr key={id} id={`mx-row-${id}`} style={{ blockSize: rowHeight }} aria-rowindex={first + j + 2} aria-selected={selected === id} data-active={first + j === cur ? "" : undefined} onClick={() => { setAt(first + j); onSelect?.(r); }}>
+              <Fragment key={id}>
+              <tr id={`mx-row-${id}`} style={{ blockSize: rowHeight }} aria-rowindex={first + j + 2} aria-selected={selected === id} data-active={first + j === cur ? "" : undefined} onClick={() => { setAt(first + j); onSelect?.(r); }}>
                 {columns.map((c) => <td key={c.key} data-align={c.align}>{c.render ? c.render(r) : String((r as Record<string, unknown>)[c.key] ?? "")}</td>)}
               </tr>
+              {expand && expand.id === id ? <tr className="mx-expand" style={{ blockSize: expand.height }}><td colSpan={columns.length}>{expand.render(r)}</td></tr> : null}
+              </Fragment>
             );
           })}
-          {last < sorted.length ? <tr aria-hidden="true" style={{ blockSize: (sorted.length - last) * rowHeight }} /> : null}
+          {last < sorted.length ? <tr aria-hidden="true" style={{ blockSize: (sorted.length - last) * rowHeight + (exp >= last ? extra : 0) }} /> : null}
         </tbody>
       </table>
     </div>

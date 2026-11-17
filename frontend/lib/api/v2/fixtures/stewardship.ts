@@ -58,6 +58,13 @@ function metrics() {
     overdue_count: overdue,
     sla_compliance_rate: done.length ? Math.round((onTime / done.length) * 1000) / 10 : 100,
     ai_acceptance_rate: 82.4,
+    steward_breakdown: Object.entries(all.reduce<Record<string, StewardItem[]>>((m, i) => (i.assigned_to ? { ...m, [i.assigned_to]: [...(m[i.assigned_to] ?? []), i] } : m), {})).map(([user_id, items]) => ({
+      user_id,
+      name: user_id,
+      open: items.filter((i) => OPEN.includes(i.status)).length,
+      resolved: items.filter((i) => !OPEN.includes(i.status)).length,
+      overdue: items.filter((i) => OPEN.includes(i.status) && i.due_at && Date.parse(i.due_at) < Date.now()).length,
+    })),
   };
 }
 

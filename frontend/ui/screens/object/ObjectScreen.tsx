@@ -8,7 +8,7 @@ import { describeField } from "@/lib/v2/sap-fields";
 import type { RuleRow } from "@/lib/api/v2/types";
 import {
   Button, Card, DetailPanel, DimensionBars, DqsPair, EmptyState, ErrorState, MasterList, PageHeader, ScoreRing,
-  SeverityStrip, Sheet, Skeleton, StatTile, TrendArea, FieldChip, useAletheia, useAletheiaScope, useStacked, type Severity,
+  SeverityPill, SeverityStrip, Sheet, Skeleton, StatTile, TrendArea, FieldChip, useAletheia, useAletheiaScope, useStacked, type Severity,
 } from "@/ui/kit";
 import { answerFor, type PromptId } from "./answers";
 import { compactCount, signed } from "./format";
@@ -83,7 +83,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
               idBase="mx-rule"
               label={t("Selected rule")}
               tabsLabel={t("Rule detail")}
-              header={<><span className="mx-sev" data-sev={r.severity}><i className="mx-dot" aria-hidden="true" />{sevLabel(r.severity)}</span> <h2 className="mx-card-t"><code className="mx-code">{r.check_id}</code> {r.name}</h2></>}
+              header={<><SeverityPill sev={r.severity} label={sevLabel(r.severity)} /> <h2 className="mx-card-t"><code className="mx-code">{r.check_id}</code> {r.name}</h2></>}
               tabs={[{ id: "overview", label: t("Overview") }, { id: "fix", label: t("Fix"), badge: g ? compactCount(g.open) : undefined }, { id: "why", label: t("Why") }]}
               value={tab}
               onChange={setTab}
