@@ -43,6 +43,8 @@ logger = logging.getLogger(__name__)
 _RATE_LIMIT_BACKOFF_SECONDS = 2.0
 _MAX_RETRIES = 3
 UPSERT_CHUNK = 200
+# LGN0014 account locked, LGN0015 wrong username or password, LGN0016 password expired, LGN0022 user inactive.
+_LOCKOUT_CODES = re.compile(r"LGN00(?:14|15|16|22)")
 
 
 _ODATA_DATE = re.compile(r"^/Date\((-?\d+)([+-]\d{4})?\)/$")
@@ -68,6 +70,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         self._client: httpx.Client | None = None
         self._params: CloudConnectionParams | None = None
         self._access_token: str | None = None
+        self._auth_failed: str | None = None  # set on the first refused sign-in; no request is sent after it
 
     # ------------------------------------------------------------------
     # Connection
@@ -372,16 +375,23 @@ class SuccessFactorsConnector(CloudSAPConnector):
         """Test connectivity by fetching the OData metadata document.
 
         Returns:
-            True if the service responds. Never raises.
+            True if the service responds.
+
+        Raises:
+            SAPConnectorError: when SF refuses the credentials, so callers record auth_failed and stop.
         """
         if not self._client:
             return False
         try:
-            resp = self._client.get(
-                "/odata/v2/$metadata",
-                headers={"Accept": "application/xml"},
+            resp = self._request_with_retry(
+                "GET", "/odata/v2/$metadata", headers={"Accept": "application/xml"}, retries=1,
             )
             return resp.status_code == 200
+        except SAPConnectorError:
+            if self._auth_failed:
+                raise
+            logger.debug("SuccessFactors ping failed", exc_info=True)
+            return False
         except Exception:
             logger.debug("SuccessFactors ping failed", exc_info=True)
             return False
@@ -438,6 +448,9 @@ class SuccessFactorsConnector(CloudSAPConnector):
             SAPConnectorError: after exhausting retries.
         """
         assert self._client is not None
+        if self._auth_failed:
+            # SF locks the account after a few refused sign-ins: never send another request on refused credentials.
+            raise SAPConnectorError(self._auth_failed)
         last_exc: Exception | None = None
 
         for attempt in range(1, retries + 1):
@@ -479,6 +492,16 @@ class SuccessFactorsConnector(CloudSAPConnector):
                     self._access_token = self._get_oauth_token(self._params)
                     self._client.headers["Authorization"] = f"Bearer {self._access_token}"
                     continue
+
+                code = _LOCKOUT_CODES.search(resp.text[:2000]) if resp.status_code >= 400 else None
+                if resp.status_code == 401 or code:
+                    self._auth_failed = (
+                        f"SuccessFactors refused the sign-in (HTTP {resp.status_code}"
+                        + (f", {code.group(0)}" if code else "")
+                        + "). No further requests are sent with these credentials, to avoid locking the account; "
+                        "correct the username or password and test again."
+                    )
+                    raise SAPConnectorError(self._auth_failed)
 
                 resp.raise_for_status()
                 return resp
