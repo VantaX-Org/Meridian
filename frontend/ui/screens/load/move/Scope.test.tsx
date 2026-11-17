@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderScreen } from "../test-utils";
-import { stubLayout } from "@/design/v2/__tests__/layout-stub";
+import { stubLayout } from "@/ui/testing/layout-stub";
 import { Scope } from "./Scope";
 import { route } from "./move-fixture";
 
-vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
+vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 vi.mock("@/lib/api/client", async (orig) => {
   const m = await orig<typeof import("@/lib/api/client")>();
   const mk = () => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() });
@@ -31,6 +31,12 @@ describe("Scope", () => {
     expect(screen.getByText("Full history")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Make the plan" }));
     await waitFor(() => expect(onPlan).toHaveBeenCalledWith("p9"));
-    expect(calls[0].body).toEqual({ source_system_id: "s1", target_system_id: "s2", modules: ["employee_central", "material_master"], mode: "cleansed" });
+    expect(calls[0].body).toEqual({ source_system_id: "s1", target_system_id: "s2", modules: ["employee_central", "material_master"], mode: "cleansed", history: "full" });
+  });
+  it("shows the server reason when the plan is refused", async () => {
+    route({ "POST /api/v1/migration/move/plans": () => { throw Object.assign(new Error("422"), { response: { status: 422, data: { detail: "Source and target are the same system." } } }); } });
+    renderScreen(<Scope pick={{ source: "s1", target: "s1" }} scope={{ modules: [], mode: "cleansed" }} onScope={() => undefined} onBack={() => undefined} onPlan={() => undefined} />);
+    fireEvent.click(screen.getByRole("button", { name: "Make the plan" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Source and target are the same system.");
   });
 });

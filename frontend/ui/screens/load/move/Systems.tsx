@@ -16,7 +16,7 @@ export function Systems({ pick, onPick, onNext }: { pick: Pick; onPick: (p: Pick
   const all = q.data ?? [];
   const target = all.find((s) => s.id === pick.target);
   const opts = (skip: string) => [{ value: "", label: t("Choose a system") }, ...all.filter((s) => s.id !== skip).map((s) => ({ value: s.id, label: `${s.name} (${s.environment})` }))];
-  const ready = !!pick.source && !!target && target.role === "target";
+  const ready = !!pick.source && !!target && !!target.migration_target;
 
   return (
     <Card title={t("Choose the two systems")} sub={t("Everything moves from the source system to the new target system.")}>
@@ -30,8 +30,8 @@ export function Systems({ pick, onPick, onNext }: { pick: Pick; onPick: (p: Pick
           </Field>
           {target ? (
             <>
-              <Toggle label={t("Use {name} as a migration target", { name: target.name })} checked={target.role === "target"} onChange={(v) => flag.mutate({ id: target.id, target: v })} />
-              {target.role !== "target" ? <p className="mx-muted" role="status">{t("Switch this on. A system must be flagged as a migration target before anything can be written to it.")}</p> : null}
+              <Toggle label={t("Use {name} as a migration target", { name: target.name })} checked={!!target.migration_target} onChange={(v) => flag.mutate({ id: target.id, target: v })} />
+              {!target.migration_target ? <p className="mx-muted" role="status">{t("Switch this on. A system must be flagged as a migration target before anything can be written to it.")}</p> : null}
               {flag.isError ? <p className="mx-field-e" role="alert">{t("The flag could not be saved.")}</p> : null}
             </>
           ) : null}

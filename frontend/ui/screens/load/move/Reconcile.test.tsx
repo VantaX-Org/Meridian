@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 import { renderScreen } from "../test-utils";
-import { stubLayout } from "@/design/v2/__tests__/layout-stub";
+import { stubLayout } from "@/ui/testing/layout-stub";
 import { Reconcile } from "./Reconcile";
 import { RECON, route } from "./move-fixture";
 
-vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
+vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 vi.mock("@/lib/api/client", async (orig) => {
   const m = await orig<typeof import("@/lib/api/client")>();
   const mk = () => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() });

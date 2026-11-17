@@ -1,36 +1,41 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderScreen } from "../test-utils";
-import { stubLayout } from "@/design/v2/__tests__/layout-stub";
+import { stubLayout } from "@/ui/testing/layout-stub";
 import { Systems } from "./Systems";
+import { route } from "./move-fixture";
 
-vi.mock("next/navigation", async () => (await import("@/design/v2/__tests__/nav-store")).navigationMock);
+vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 
-const state = { role: "source" };
+const state = { target: false };
 const list = vi.fn(async () => [
-  { id: "s1", name: "Dev ECC", environment: "dev", role: "source" },
-  { id: "s2", name: "New S4", environment: "prod", role: state.role },
+  { id: "s1", name: "Dev ECC", environment: "dev", role: "source", migration_target: false },
+  { id: "s2", name: "New S4", environment: "prod", role: "source", migration_target: state.target },
 ]);
-const update = vi.fn(async (_id: string, body: { role: string }) => { state.role = body.role; return {}; });
 vi.mock("@/lib/api/v2/runs", async (orig) => ({ ...(await orig<object>()), getSystemsExtended: () => list() }));
-vi.mock("@/lib/api/v2/sys", async (orig) => ({ ...(await orig<object>()), updateSystem: (id: string, b: { role: string }) => update(id, b) }));
+vi.mock("@/lib/api/client", async (orig) => {
+  const m = await orig<typeof import("@/lib/api/client")>();
+  const mk = () => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() });
+  return { ...m, default: mk(), uploadApiClient: mk() };
+});
 
 let undo: () => void = () => undefined;
 beforeEach(() => {
   undo = stubLayout();
-  state.role = "source";
+  state.target = false;
   window.history.replaceState(null, "", "/load/move");
 });
 afterEach(() => undo());
 
 describe("Systems", () => {
   it("blocks Continue until the target is flagged, then flags it", async () => {
+    const calls = route({ "PATCH /api/v1/systems/s2/migration-target": (b: unknown) => { state.target = (b as { enabled: boolean }).enabled; return { id: "s2", migration_target: state.target }; } });
     const onNext = vi.fn();
     renderScreen(<Systems pick={{ source: "s1", target: "s2" }} onPick={() => undefined} onNext={onNext} />);
     const toggle = await screen.findByRole("switch");
     expect((screen.getByRole("button", { name: "Continue to scope" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(toggle);
-    await waitFor(() => expect(update).toHaveBeenCalledWith("s2", { role: "target" }));
+    await waitFor(() => expect(calls[0]).toEqual({ key: "PATCH /api/v1/systems/s2/migration-target", body: { enabled: true } }));
     await waitFor(() => expect((screen.getByRole("button", { name: "Continue to scope" }) as HTMLButtonElement).disabled).toBe(false));
   });
 });
