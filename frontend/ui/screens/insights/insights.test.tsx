@@ -35,3 +35,27 @@ describe("insight and monitor screens in fixture mode", () => {
     expect(container.textContent ?? "").not.toContain(String.fromCharCode(0xb7));
   });
 });
+
+describe("forecast engine cards", () => {
+  it("shows the foresight band, go-live line and the reason ranking with evidence", async () => {
+    renderWithQuery(wrap(<Forecast />));
+    const fore = await screen.findByTestId("foresight", {}, { timeout: 5000 });
+    expect(fore).toBeTruthy();
+    expect(await screen.findByTestId("foresight-evidence")).toBeTruthy();
+    const reason = await screen.findByTestId("reason", {}, { timeout: 5000 });
+    expect(reason).toBeTruthy();
+    expect(await screen.findByTestId("reason-risk-evidence")).toBeTruthy();
+  });
+});
+
+describe("monitor after a clean", () => {
+  it("lists each system since its last clean with the rules that got worse", async () => {
+    window.history.replaceState(null, "", "/insights/monitor?fixture=1&view=after-clean");
+    renderWithQuery(wrap(<Monitor />));
+    const box = await screen.findByTestId("since-clean", {}, { timeout: 5000 });
+    expect(box.textContent).toContain("ECC production");
+    expect(box.textContent).toContain("MM142");
+    expect(box.textContent).toContain("B-236");
+    expect(screen.getAllByRole("table", { name: "Rules that got worse" }).length).toBeGreaterThan(0);
+  });
+});
