@@ -20,7 +20,14 @@ export const s9Keys = {
   objectContracts: (f: boolean, module: string, run: string | null) => ["v2", "s9", "object-contracts", f, module, run] as const,
   changes: (f: boolean, version: string) => ["v2", "s9", "changes", f, version] as const,
   semantic: (f: boolean, version: string) => ["v2", "s9", "semantic", f, version] as const,
+  simulate: (f: boolean, body: s9.SimulateBody | null) => ["v2", "s9", "simulate", f, body] as const,
 };
+
+/** A read-only rescore of one object as if the given records were fixed; nothing is changed. */
+export function useSimulation(body: s9.SimulateBody | null) {
+  const f = useFixture();
+  return useQuery({ queryKey: s9Keys.simulate(f, body), queryFn: () => s9.simulateFix(body!), enabled: body !== null, retry: false, staleTime: 30_000 });
+}
 
 export function useTopFixes(module: string, systemId: string | null, run: string | null, enabled = true) {
   const f = useFixture();

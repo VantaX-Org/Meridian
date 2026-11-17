@@ -1998,6 +1998,23 @@ rules:
     __other__: PERADDRESS.ADDRESS16 '{invalid_value}' is not defined in the picklist PLANSTRUCTURETYPE_RUS. Correct it there
       or add the missing entry.
   record_fix_template: PERADDRESS.ADDRESS16 points at a picklist PLANSTRUCTURETYPE_RUS entry that does not exist.
+- id: DXRbcdfafa0
+  enabled: false
+  field: PEREMERGENCY.ADDRESS_COUNTRY
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Country must exist in the check table Country.externalCode
+  why_it_matters: ADDRESS_COUNTRY (Country) is defined in the SAP Data Dictionary with check table Country.externalCode on
+    domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read ADDRESS_COUNTRY resolve it through check table Country.externalCode; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PEREMERGENCY.ADDRESS_COUNTRY '{invalid_value}' is not defined in the check table Country.externalCode. Correct
+      it there or add the missing entry.
+  record_fix_template: PEREMERGENCY.ADDRESS_COUNTRY points at a check table Country.externalCode entry that does not exist.
 - id: DXR8d590558
   enabled: false
   field: PERINFO.COUNTRY_OF_BIRTH

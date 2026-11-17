@@ -86,3 +86,46 @@ def test_held_rows_carry_the_detail():
     import tests.test_migration_workbook as m
     _, report = wb.fill(wb.parse_workbook(m.sample()), m.frames())
     assert report["held"] and all(h["detail"].startswith(f"Column {h['field']}") for h in report["held"])
+
+
+def test_country_rows_keep_their_own_picklist():
+    head = ("Country", "Field ID", "SF Label", "Type", "Max Length", "Visibility", "Mandatory", "Picklist")
+    rows = [head,
+            ("Botswana (BWA)", "address7", "District", "PICKLIST", 256, "Edit", "No", "District_BWA"),
+            ("South Africa (ZAF)", "address7", "District", "PICKLIST", 256, "Edit", "Yes", "District_ZAF"),
+            ("Namibia (NAM)", "address7", "District", "STRING", 256, "Edit", "No", "")]
+    head_map = {wb._norm(c): i for i, c in enumerate(head)}
+    sheet = wb._definition("Addresses", rows, 0, head_map[wb._norm("Field ID")])
+    (col,) = sheet.columns
+    assert col.picklist == ""  # no one list holds for every country
+    assert col.country_picklists["BWA"] == "District_BWA" and col.country_picklists["ZAF"] == "District_ZAF"
+    assert col.country_picklists["NAM"] == ""
+    assert "ZAF" in col.country_mandatory and "BWA" not in col.country_mandatory
+    assert bad(col, ["anything"]) == {}  # the static check no longer applies one country's list to all rows
+
+
+@pytest.mark.parametrize("value,allowed,want", [
+    ("Home", {"home", "business"}, "home"),
+    ("1", {"01", "02"}, "01"),
+    ("1611_R", {"R", "S"}, "R"),
+    ("zz", {"R", "S"}, "zz"),        # no match: left alone
+    ("a", {"A", "a2"}, "A"),
+    ("x", {"X", "x"}, "x"),          # already allowed: untouched
+])
+def test_snap_to_picklist(value, allowed, want):
+    assert wb.snap_to_picklist(pd.Series([value], dtype="object"), allowed).iloc[0] == want
+
+
+def test_snap_refuses_ambiguous_match():
+    assert wb.snap_to_picklist(pd.Series(["ab"], dtype="object"), {"AB", "Ab"}).iloc[0] == "ab"
+
+
+def test_boolean_length_and_word_numeric():
+    assert bad(C("BOOLEAN", max_length=1), ["true", "false"]) == {}
+    assert bad(C("DOUBLE", id="payComponentType"), ["Amount", "Percentage"]) == {}
+
+
+def test_primary_first_tolerates_duplicate_columns():
+    from api.services.connectivity_manager import _primary_first
+    df = pd.DataFrame([["false", "a"], ["true", "b"]], columns=["P.IS_PRIMARY", "P.IS_PRIMARY"])
+    assert list(_primary_first(df, "P.IS_PRIMARY").iloc[:, 1]) == ["b", "a"]

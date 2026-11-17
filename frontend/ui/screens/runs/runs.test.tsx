@@ -26,6 +26,13 @@ describe("runs screens in fixture mode", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Runs" })).toBeTruthy();
     expect((await screen.findAllByRole("row")).length).toBeGreaterThan(1);
   });
+  it("Runs timeline lists finished runs with each object's name beside its code", async () => {
+    at("/runs?view=full");
+    wrap(<Runs />);
+    expect(await screen.findByRole("tab", { name: "Timeline", selected: true })).toBeTruthy();
+    expect((await screen.findAllByRole("row")).length).toBeGreaterThan(1);
+    expect(screen.getAllByText(/Material master/).length).toBeGreaterThan(0);
+  });
   it("Run shows a heading", async () => {
     at(`/run/${id(499)}`);
     wrap(<Run id={id(499)} />);

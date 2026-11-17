@@ -33,4 +33,17 @@ describe("CommandPalette", () => {
     fireEvent.keyDown(box, { key: "Escape" });
     expect(close).toHaveBeenCalled();
   });
+  it("puts server hits first while text is typed and reports each keystroke", () => {
+    const onQuery = vi.fn();
+    const hit = vi.fn();
+    render(<CommandPalette open onClose={vi.fn()} onAsk={vi.fn()} label="Command palette" placeholder="Type" askLabel={(q) => `Ask: ${q}`} emptyLabel="None"
+      commands={[{ id: "home", label: "Go to Home", run: vi.fn() }]} onQuery={onQuery} extra={[{ id: "m1", label: "Material 100", hint: "Records", run: hit }]} />);
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+    const box = screen.getByRole("combobox");
+    fireEvent.change(box, { target: { value: "100" } });
+    expect(onQuery).toHaveBeenCalledWith("100");
+    expect(screen.getAllByRole("option")[0].textContent).toMatch(/Material 100/);
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(hit).toHaveBeenCalled();
+  });
 });

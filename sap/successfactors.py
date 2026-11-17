@@ -21,6 +21,7 @@ Usage:
 
 from __future__ import annotations
 
+import functools
 import json
 import logging
 import re
@@ -701,3 +702,21 @@ def resolve_property(wanted: str, props: set[str], navs: dict[str, set[str] | No
 def entity_sets(edmx: str, prefix: str) -> list[str]:
     """Entity set names in a $metadata document that start with ``prefix`` (a per-country family)."""
     return sorted(n for n in re.findall(r'<EntitySet\b[^>]*\bName="([^"]+)"', edmx) if n.startswith(prefix))
+
+
+@functools.lru_cache(maxsize=2)
+def binary_properties(edmx: str) -> dict[str, set[str]]:
+    """{entity set: its Edm.Binary property names} from a $metadata document, parsed once per document.
+    Binary properties (Attachment.fileContent, Photo.photo) are files, not migration fields."""
+    def local(el: ET.Element) -> str:
+        return el.tag.rsplit("}", 1)[-1]
+
+    try:
+        root = ET.fromstring(edmx)
+    except ET.ParseError:
+        return {}
+    types = {el.get("Name", ""): {c.get("Name", "") for c in el
+                                  if local(c) == "Property" and c.get("Type") == "Edm.Binary"}
+             for el in root.iter() if local(el) == "EntityType"}
+    return {el.get("Name", ""): types.get(el.get("EntityType", "").rsplit(".", 1)[-1], set())
+            for el in root.iter() if local(el) == "EntitySet"}
