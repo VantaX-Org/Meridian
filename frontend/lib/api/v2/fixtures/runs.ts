@@ -12,6 +12,7 @@ import runsJson from "./runs.json";
 import { fixtureParam } from "../fixture";
 import { LIBRARY, type LibraryRule } from "./library";
 import { formatDate } from "@/lib/format";
+import { fixtureMultiCompare } from "@/lib/api/next/runs-fixture";
 import type { Landscape, LandscapeCell } from "../types";
 import type { ChangeKind, CheckChange, CompareObject, CompareSide, CompareSummary, ScoreContribution, ScoreDelta, TimelineRun, VersionCompare, VersionHead } from "../runs";
 import type { Job, JobStage, JobTable } from "@/types/jobs";
@@ -703,6 +704,7 @@ function fixtureLiveRun() {
 
 /** The answer to one step 3 read, or NONE when the path is not one of this step's. */
 export function runsFixtureResponse(path: string, params: Params): unknown {
+  if (path === "/runs/compare") return fixtureMultiCompare(String(params.runs ?? "").split(","), String(params.module ?? ""));
   if (path === "/runs/rule-trend") return fixtureRuleTrend(String(params.system_id), Number(params.limit ?? 8));
   if (path === "/runs/timeline") return fixtureTimeline(params.system_id ? String(params.system_id) : undefined, Number(params.limit ?? 8), params.module ? String(params.module) : undefined, params.version_id ? String(params.version_id) : undefined);
   const vs = /^\/runs\/([^/]+)\/vs\/([^/]+)\/summary$/.exec(path);

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Message } from "./aletheia/Message";
+import { AletheiaMarkImg } from "./Evidence";
 
 export interface ChatAction { id: string; label: string; href?: string; onClick?: () => void }
 export interface ChatMessage {
@@ -57,7 +58,7 @@ export function AletheiaSheet({ open, onClose, labels, thread, suggestions, onAs
       <aside className="mx-sheet" role="dialog" aria-modal="true" aria-label={labels.title}>
         <header className="mx-sheet-h">
           <div>
-            <h2 className="mx-card-t"><span className="mx-aletheia-mark" aria-hidden="true" />{labels.title}</h2>
+            <h2 className="mx-card-t"><AletheiaMarkImg />{labels.title}</h2>
             <p className="mx-card-s">{labels.scope}</p>
           </div>
           <button type="button" className="mx-btn" data-variant="ghost" onClick={onClose}>{labels.close}</button>

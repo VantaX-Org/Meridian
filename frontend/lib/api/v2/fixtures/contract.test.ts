@@ -126,7 +126,7 @@ const QUERY: Record<string, string> = {
   node: "check:MM142", q: "material", route: "work",
   v2: L.cells[0].run_id, version_id: L.cells[0].run_id, from_snapshot: "ds-1", to_snapshot: "ds-2",
 };
-const ROUTE_QUERY: Record<string, Record<string, string>> = { "/api/v1/lineage/guards": { node: "kpi:dpo" }, "/api/v1/compare/comparisons/{cid}/pair": { table: "MARA", key: "MATNR=000000000000000232" } };
+const ROUTE_QUERY: Record<string, Record<string, string>> = { "/api/v1/lineage/guards": { node: "kpi:dpo" }, "/api/v1/runs/compare": { runs: `${L.cells[0].run_id},${L.cells[1].run_id}` }, "/api/v1/compare/comparisons/{cid}/pair": { table: "MARA", key: "MATNR=000000000000000232" } };
 
 /** The fixtures' own id for a path parameter the demo ids do not name: the first item of the list one level up. */
 function listedId(prefix: string, param: string): string | undefined {

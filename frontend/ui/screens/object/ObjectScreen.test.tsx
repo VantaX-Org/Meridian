@@ -15,6 +15,7 @@ const screenWithChat = () => (
 );
 
 vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
 let undo: () => void = () => undefined;
 beforeEach(() => {
@@ -25,6 +26,14 @@ beforeEach(() => {
 afterEach(() => undo());
 
 describe("ObjectScreen", () => {
+  it("turns an old as_of link into run", async () => {
+    window.history.replaceState(null, "", "/o/ecc-production/material-master?fixture=1&as_of=b0500000-0000-4000-8000-000000000005");
+    renderWithQuery(screenWithChat());
+    const { getUrl } = await import("@/ui/testing/nav-store");
+    await waitFor(() => expect(getUrl()).toMatch(/[?&]run=b0500000-0000-4000-8000-000000000005/));
+    expect(getUrl()).not.toMatch(/as_of=/);
+  });
+
   it("shows the header, the score ring and the rule list, and a selected rule opens its tabs", async () => {
     renderWithQuery(screenWithChat());
     expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
@@ -75,5 +84,20 @@ describe("ObjectScreen", () => {
       // @ts-expect-error jsdom has no matchMedia by default
       delete window.matchMedia;
     }
+  });
+
+  it("explains how the score is made", async () => {
+    renderWithQuery(screenWithChat());
+    const receipt = await screen.findByTestId("score-receipt");
+    expect(receipt.querySelector("summary")?.textContent ?? "").toMatch(/^How [\d.]+ is made$/);
+    expect(within(receipt).getByText("Records checked")).toBeTruthy();
+  });
+
+  it("on an older run the actions are gated and point to the current run", async () => {
+    window.history.replaceState(null, "", "/o/ecc-production/material-master?fixture=1&run=b0500000-0000-4000-8000-000000000005");
+    renderWithQuery(screenWithChat());
+    const old = await screen.findByTestId("old-run");
+    expect(within(old).getByRole("link", { name: "Open the current run to act" }).getAttribute("href")).toMatch(/[?&]run=(?!b0500000)/);
+    expect(screen.queryByRole("link", { name: "Fix records" })).toBeNull();
   });
 });

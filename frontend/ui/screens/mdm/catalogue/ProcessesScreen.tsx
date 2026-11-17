@@ -6,15 +6,19 @@ import { exportBpmn, exportSignavio, getCase, getCases, getCatalogue, getConform
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Code, DataTable, DetailPanel, Split, Tabs, useToast } from "@/ui/kit";
 import { Async, Empty, Head, num, useRead, useScreenScope, useSystemPick, when } from "./shared";
+import { FlowGraph } from "./FlowGraph";
 
 const pct = (n: number | null | undefined) => (n === null || n === undefined ? t("n/a") : `${Math.round(n * 100)}%`);
 const secs = (n: number | null | undefined) => (n === null || n === undefined ? t("n/a") : n >= 86400 ? `${(n / 86400).toFixed(1)} ${t("days")}` : n >= 3600 ? `${(n / 3600).toFixed(1)} ${t("hours")}` : `${Math.round(n / 60)} ${t("minutes")}`);
+
+const stepName = (nodes: readonly NodeStats[], id: string) => nodes.find((n) => n.id === id)?.name ?? t("No description");
 
 function RunDetail({ runId }: { runId: string }) {
   const toast = useToast();
   const [tab, setTab] = useState("map");
   const [node, setNode] = useState<string | null>(null);
   const [variant, setVariant] = useState<string | undefined>();
+  const [path, setPath] = useState<readonly string[] | null>(null);
   const [caseId, setCaseId] = useState("");
   const dfg = useRead(["pd", "dfg", runId, node], () => getDfg(runId, node), tab === "map");
   const vars = useRead(["pd", "vars", runId], () => getVariants(runId), tab === "variants");
@@ -40,11 +44,14 @@ function RunDetail({ runId }: { runId: string }) {
                     { key: "f", label: t("Fitness"), align: "end", render: (n) => pct(n.fitness) },
                   ]} />
               </Card>
+              <Card title={t("Process map")}>
+                <FlowGraph dfg={d} variant={path} onOpen={(n) => setNode(n.id)} testId="pd-flow" />
+              </Card>
               <Card title={t("Flows between steps")}>
                 <DataTable label={t("Flows")} rows={d.edges} rowKey={(e) => `${e.source}>${e.target}`} height={220}
                   columns={[
-                    { key: "a", label: t("From"), render: (e) => <Code code={e.source} /> },
-                    { key: "b", label: t("To"), render: (e) => <Code code={e.target} /> },
+                    { key: "a", label: t("From"), render: (e) => <Code code={e.source} description={stepName(d.nodes, e.source)} /> },
+                    { key: "b", label: t("To"), render: (e) => <Code code={e.target} description={stepName(d.nodes, e.target)} /> },
                     { key: "c", label: t("Cases"), align: "end", sort: (e) => e.count, render: (e) => num(e.count) },
                     { key: "m", label: t("Median time"), render: (e) => secs(e.median_seconds) },
                   ]} />
@@ -56,7 +63,7 @@ function RunDetail({ runId }: { runId: string }) {
       {tab === "variants" ? (
         <Async q={vars}>
           {(d) => d.items.length ? (
-            <DataTable<Variant> label={t("Variants")} rows={d.items} rowKey={(v) => v.hash} height={420} onSelect={(v) => { setVariant(v.hash); setTab("cases"); }}
+            <DataTable<Variant> label={t("Variants")} rows={d.items} rowKey={(v) => v.hash} height={420} onSelect={(v) => { setVariant(v.hash); setPath(v.activities); setTab("cases"); }}
               columns={[
                 { key: "p", label: t("Path"), render: (v) => v.activities.map((a) => <Code key={a} code={a} />) },
                 { key: "c", label: t("Cases"), align: "end", sort: (v) => v.case_count, render: (v) => num(v.case_count) },

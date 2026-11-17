@@ -5,6 +5,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { downloadWorkbook, downloadWorkbooks, startObjects, usePortfolio, type CycleStep, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { useLandscape } from "@/lib/v2/queries";
+import { useRunParam } from "@/lib/v2/hooks";
+import type { LandscapeCell } from "@/lib/api/v2/types";
+import { Lead } from "@/ui/screens/object-tabs/Lead";
 import { formatDate } from "@/lib/format";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, Search, Skeleton, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
@@ -25,8 +28,14 @@ export function Objects() {
   const [ask, setAsk] = useState(false);
   const pf = usePortfolio({ q, step: step ?? undefined }, true);
   const all = usePortfolio({}, true);
-  const land = useLandscape(null);
+  const pinned = useRunParam();
+  const land = useLandscape(pinned);
   const systems = land.data?.systems ?? [];
+  const cells = land.data?.cells ?? [];
+  const nameOf = (m: string) => land.data?.objects.find((o) => o.module === m)?.label ?? m;
+  const sysOf = (id: string) => systems.find((s) => s.id === id)?.name ?? t("n/a");
+  const scores = cells.map((c) => c.raw_score ?? c.score);
+  const within = (test: (v: number) => boolean) => scores.filter((v) => v !== null && test(v)).length;
   const rows = useMemo(() => pf.data?.objects ?? [], [pf.data]);
   const key = (r: PortfolioRow) => `${r.system_id}/${r.module}`;
   const sel = rows.find((r) => key(r) === pick) ?? null;
@@ -60,6 +69,41 @@ export function Objects() {
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />
+      {pinned ? (
+        <p className="mx-muted" role="status" data-testid="objects-pinned">
+          {t("Pinned to one run. Pinned scores come from that run only.")} <a href={href("/o")}>{t("Show each object at its newest run")}</a>
+        </p>
+      ) : null}
+      <Lead
+        tab="objects"
+        title={t("How the scores spread")}
+        sentence={t("{n} objects by measured score, out of 100.", { n: cells.length })}
+        bars={[
+          { id: "good", label: t("90 or more"), value: within((v) => v >= 90), tone: "good" },
+          { id: "warn", label: t("70 to 90"), value: within((v) => v >= 70 && v < 90), tone: "warn" },
+          { id: "bad", label: t("Under 70"), value: within((v) => v < 70), tone: "bad" },
+          { id: "none", label: t("Not scored"), value: scores.filter((v) => v === null).length },
+        ]}
+      />
+      {pinned ? (
+        land.isLoading ? <Skeleton lines={8} label={t("Loading objects")} />
+          : land.isError ? <ErrorState heading={t("The objects could not be loaded")} retryLabel={t("Try again")} onRetry={() => void land.refetch()} />
+          : !cells.length ? <EmptyState heading={t("No object has a finished run yet, so there is nothing to score.")} body={t("Extract a system and run an analysis to score its objects.")} />
+          : (
+            <DataTable<LandscapeCell>
+              label={t("Objects in the pinned run")}
+              rows={cells}
+              rowKey={(c) => `${c.system_id}/${c.module}`}
+              height={440}
+              columns={[
+                { key: "label", label: t("Object"), sort: (c) => nameOf(c.module), render: (c) => <><a href={href(`${objectPath(c, systems)}?run=${encodeURIComponent(c.run_id)}`)}>{nameOf(c.module)}</a> <FieldChip code={c.module} description={nameOf(c.module)} /></> },
+                { key: "system", label: t("System"), sort: (c) => sysOf(c.system_id), render: (c) => sysOf(c.system_id) },
+                { key: "score", label: t("Score"), align: "end", sort: (c) => c.score ?? -1, render: (c) => <span className="mx-num">{c.score === null ? t("n/a") : Math.round(c.score)}</span> },
+                { key: "records", label: t("Records checked"), align: "end", sort: (c) => c.records_checked ?? -1, render: (c) => <span className="mx-num">{c.records_checked === null ? t("n/a") : c.records_checked.toLocaleString()}</span> },
+              ]}
+            />
+          )
+      ) : <>
       <Card title={t("Find an object")}>
         <Search value={q} onChange={setQ} label={t("Search objects")} clearLabel={t("Clear search")} placeholder={t("Search by object name")} />
         <div className="mx-chips" role="group" aria-label={t("Filter by cycle step")}>
@@ -99,6 +143,7 @@ export function Objects() {
           </div>
         </Card>
       ) : null}
+      </>}
       <Confirm open={ask} title={t("Pull {object} again?", { object: sel?.label ?? "" })} confirmLabel={t("Pull now")} cancelLabel={t("Cancel")} onConfirm={() => sel && void run(() => startObjects([sel.module]), t("Pull queued."))} onCancel={() => setAsk(false)}>
         <p>{t("The object is read again from its system and scored as a new run.")}</p>
       </Confirm>

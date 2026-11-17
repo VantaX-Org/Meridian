@@ -1,6 +1,9 @@
 import { RunCompare } from "@/ui/screens/runs/RunCompare";
 
-export default async function Page({ params }: { params: Promise<{ id: string; b: string }> }) {
+const list = (v: string | string[] | undefined) => (typeof v === "string" ? v.split(",").filter(Boolean) : undefined);
+
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string; b: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id, b } = await params;
-  return <RunCompare a={id} b={b} />;
+  const q = await searchParams;
+  return <RunCompare a={id} b={b} runs={list(q.runs)} objects={list(q.objects)} />;
 }
