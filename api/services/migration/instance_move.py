@@ -159,10 +159,12 @@ def build_move_plan(modules: Iterable[str], dictionary, frames=None, columns_of=
                               "method": "archive_only" if t in _CHANGE_DOCS else
                               ("bapi" if o.module == "material_master" else "file_load"),
                               "rows": rows, "history_rows": hist, "purge_type": None, "pass": 1, "fields": None})
-    if config_lists:
-        create = sum(len(v["create_values"]) for v in config_lists.values())
-        steps.insert(0, {"module": "config", "table": None, "entity": _PICKLIST, "wave": 0, "method": "config_create",
-                         "rows": create, "history_rows": 0, "purge_type": None, "pass": 1, "fields": None})
+    loaded = {s["entity"] for s in steps}
+    for name, v in sorted((config_lists or {}).items()):
+        if name not in loaded and v["create_values"]:  # lists with a data step are narrowed by config_filter
+            steps.insert(0, {"module": "config", "table": None, "entity": name, "wave": 0, "method": "config_create",
+                             "rows": len(v["create_values"]), "history_rows": 0, "purge_type": None, "pass": 1,
+                             "fields": None})
     waves: dict[int, list[dict]] = {}
     for s in steps:
         waves.setdefault(s["wave"], []).append(s)
@@ -279,8 +281,26 @@ def config_diff(source_lists: dict[str, list[dict]], target_lists: dict[str, lis
             (conflict.append({"key": dict(zip(keys, k)), "differs": diff}) if diff else present.append(r))
         out[name] = {"present": len(present), "create": len(create), "conflict": len(conflict),
                      "create_values": create, "conflicts": conflict, "keys": keys,
-                     "target_codes": {k for k in tgt} | {tuple(str(r.get(c)) for c in keys) for r in create}}
+                     "target_keys": sorted(list(k) for k in tgt),
+                     "target_codes": sorted([list(k) for k in tgt] + [[str(r.get(c)) for c in keys] for r in create])}
     return out
+
+
+def config_filter(step: dict, records: list[tuple[str, dict]], config: dict) -> list[tuple[str, dict]]:
+    """The step's records minus the values the target already holds (present or conflicting); nothing in the
+    target is overwritten. Steps whose entity the diff does not know pass through unchanged."""
+    c = config.get(step["entity"])
+    if not c:
+        return records
+    have = {tuple(k) for k in c["target_keys"]}
+    return [(k, r) for k, r in records if tuple(str(r.get(x)) for x in c["keys"]) not in have]
+
+
+def config_records(name: str, config: dict) -> list[tuple[str, dict]]:
+    """(key, payload) for the values of one list the target lacks."""
+    c = config[name]
+    return [("|".join(f"{k}={r.get(k)}" for k in c["keys"]), {p: v for p, v in r.items() if p != "__metadata"})
+            for r in c["create_values"]]
 
 
 def reference_issues(step: dict, records: list[tuple[str, dict]], dictionary, config: dict) -> list[dict]:
@@ -577,6 +597,8 @@ def load(plan_steps: list[dict], connector, store: Store, dry_run: bool = True, 
                 else:
                     res = connector.upsert(s["entity"], [r for _, r in batch], purge_type=s.get("purge_type"))
                     rows = [{**x, "key": batch[i][0]} for i, x in enumerate(res)]
+                for (_, payload), r in zip(batch, rows):
+                    r["row_hash"] = row_hash(payload)
                 store.record(s["entity"], srep["pass"], b, rows)
                 store.checkpoint(w, s["entity"], srep["pass"], b)
                 srep["sent"] += len(rows)
@@ -615,11 +637,12 @@ def reconcile_entity(entity: str, source: list[dict], target: list[dict], key_pr
 
 def dqs_block(source_results, projected_results, actual_results, weights=None, cells_changed: int = 0,
               failed_records: int = 0) -> dict:
-    """Source, projected target and actual target DQS with the reasons they differ."""
+    """Source, projected target and actual target DQS with the reasons they differ. Each input is a list of
+    check results, an already computed score, or None."""
     from api.services.fix_simulation import dqs_summary
 
     def score(r):
-        return None if r is None else dqs_summary(r, weights).get("overall")
+        return r if r is None or isinstance(r, (int, float)) else dqs_summary(r, weights).get("composite")
     src, proj, act = score(source_results), score(projected_results), score(actual_results)
     reasons = []
     if cells_changed:
