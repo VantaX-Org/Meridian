@@ -95,6 +95,9 @@ export function useAletheia(): Api {
   return c;
 }
 
+/** The chat when a provider is above, otherwise null (the standalone share view has none). */
+export const useAletheiaIfAny = (): Api | null => useContext(Ctx);
+
 /** A screen calls this once to scope the shared chat to itself; the scope clears when the screen unmounts. */
 export function useAletheiaScope(scope: AletheiaScope): void {
   const { register } = useAletheia();

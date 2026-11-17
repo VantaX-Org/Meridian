@@ -14404,4 +14404,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Exporting needs the export permission.": "エクスポートにはエクスポート権限が必要です。",
   "Loading the process models": "プロセスモデルを読み込み中",
   "Loading the model": "モデルを読み込み中",
+  "This link points to {kind}, which has no page yet.": "このリンクは {kind} を指していますが、まだページがありません。",
 };
