@@ -55,7 +55,7 @@ SHEET_ENTITIES = {
     "csfjobclassification": {"FOJobClassLocal*"},
     "paymentinfo": {"PaymentInformationDetailV3"},
     "emergencycontact": {"PerEmergencyContacts"},
-    "dependents": {"PerPersonRelationship", "PerPersonal", "PerNationalId"},
+    "dependents": {"PerPersonRelationship", "PerPerson", "PerPersonal", "PerNationalId"},
     "workpermit": {"EmpWorkPermit"},
     "employmentinfoathire": {"EmpEmployment"},
     "employmentinfoatterm": {"EmpEmployment"},
@@ -541,6 +541,9 @@ def _matched(sheet: Sheet, dictionary: Dictionary) -> dict[str, dict[str, Field]
         keys = {_norm(k): table.fields[k] for k in table.keys}
         keys |= {_norm(f.source.split(".", 1)[1]): table.fields[k]
                  for k in table.keys for f in [table.fields[k]] if f.source and "." in f.source}
+        # PaymentInformationV3_worker is the parent's worker reached from the detail; a load file heads it worker
+        keys |= {_norm(f.source.rsplit("_", 1)[1]): f for k in table.keys for f in [table.fields[k]]
+                 if f.source and "_" in f.source.split(".")[-1]}
         index = dict(keys)
         index |= {_norm((f.source or "").split(".", 1)[1].split(" ")[0]): f for f in fields}
         if "status" in index:  # foundation load files call the status field effectiveStatus
@@ -793,10 +796,12 @@ def _pick(options: dict, sheet, dictionary) -> Optional[str]:
     """The sheet's main table. A sheet that carries every key of a table keyed on a start or effective date takes
     that history table (EmpJob history for Job Info) over a current-record table with more matched columns,
     unless the sheet names its table."""
-    def dated(t: str) -> bool:
+    def dated(t: str, full: bool) -> bool:
         keys = set(dictionary.keys(t))
-        return bool(keys & {"START_DATE", "EFFECTIVE_DATE"}) and keys <= {f.name for f in options[t].values()}
-    return max(options, key=lambda t: (t == _named_table(sheet), dated(t), len(options[t])), default=None)
+        return bool(keys & {"START_DATE", "EFFECTIVE_DATE"}) and (not full or keys <= {f.name for f in options[t].values()})
+    # a field-list sheet carries no key columns (the fill adds them), so on a tie the history table still wins
+    return max(options, key=lambda t: (t == _named_table(sheet), dated(t, True), len(options[t]), dated(t, False)),
+               default=None)
 
 
 LOAD_MODES = {"full": "Full Purge", "incremental": "Incremental Load"}  # SuccessFactors Import Employee Data purge types

@@ -961,9 +961,7 @@ tables:
       CURRENCY:       {source: PaymentInformationDetailV3.currency, type: STRING, length: 20, verify: true}
       PERCENT:        {source: PaymentInformationDetailV3.percent, type: DECIMAL, verify: true}
       AMOUNT:         {source: PaymentInformationDetailV3.amount, type: DECIMAL, verify: true}
-      WORKER:                      {source: PaymentInformationDetailV3.worker, type: STRING, length: 100, verify: true, description: Worker}
       JOB_COUNTRY:                 {source: PaymentInformationDetailV3.jobCountry, type: STRING, length: 38, verify: true, description: Job country}
-      EFFECTIVE_START_DATE:        {source: PaymentInformationDetailV3.effectiveStartDate, type: DATE, verify: true, description: Effective start date}
       EFFECTIVE_END_DATE:          {source: PaymentInformationDetailV3.effectiveEndDate, type: DATE, verify: true, description: Effective end date}
       PURPOSE:                     {source: PaymentInformationDetailV3.purpose, type: STRING, length: 40, verify: true, description: Purpose}
 

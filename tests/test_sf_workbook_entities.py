@@ -92,3 +92,23 @@ def test_a_navigation_id_matches_only_a_key_by_its_tail():
 def test_operation_is_an_import_control_column_not_a_gap():
     assert "operation" in wb.IMPORT_CONTROL
     assert wb._norm("OPERATION") in wb.IMPORT_CONTROL
+
+
+def test_job_info_takes_the_dated_job_history_over_employment():
+    s = wb.Sheet("Job Info", "definition", [wb.Column(header=i, id=i) for i in
+                 ["company", "department", "job-code", "position", "hireDate",
+                  "payScaleArea", "payScaleType", "pay-grade", "payScaleLevel"]])
+    m = wb._matched(s, D)
+    assert {"EMPJOBHIST", "EMPEMPLOYMENT"} <= set(m)
+    assert wb._pick(m, s, D) == "EMPJOBHIST"
+
+
+def test_payment_info_worker_and_start_date_map_to_the_parent_keys():
+    hits = cands("Payment Info", ["worker", "effectiveStartDate", "bank", "accountNumber"])
+    got = {h: f.name for h, f in hits.get("PAYMENTINFO", {}).items()}
+    assert got.get("worker") == "USERID" and got.get("effectiveStartDate") == "EFFECTIVE_DATE", got
+
+
+def test_dependents_date_of_birth_is_the_dependants_own():
+    hits = cands("Dependents", ["person-id-external", "related-person-id-external", "date-of-birth"])
+    assert hits["DEPENDENT"]["date-of-birth"].name == "DEPENDENT_BIRTH"
