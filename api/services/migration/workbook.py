@@ -993,20 +993,33 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         countries = _row_countries(df[country.qualified]) if country else None
         values: dict[str, pd.Series] = {}
 
+        blanked = 0
+        cells = pd.Series(False, index=df.index)
+
         def hold(mask: pd.Series, col: Column, reason: str) -> None:
-            nonlocal bad
+            """A broken value in a mandatory or key column, or an unmapped strict value, holds the whole row back.
+            Anywhere else only that cell is left empty, so one bad optional value never costs the row its other
+            fields; both are reported."""
+            nonlocal bad, cells, blanked
             count = int(mask.sum())
             if not count:
                 return
-            bad |= mask
+            whole = (col.mandatory or col.country_mandatory or col.header in added
+                     or reason in ("value_map", "mandatory_for_country"))
+            if whole:
+                bad |= mask
+            else:
+                cells |= mask
+                blanked += count
             reasons[reason] += count
             why = explain(col, reason)
-            held.extend({"sheet": sheet.name, "record": k, "field": col.id, "reason": reason, "detail": why}
-                        for k in keys[mask])
+            held.extend({"sheet": sheet.name, "record": k, "field": col.id, "reason": reason, "detail": why,
+                         "scope": "row" if whole else "cell"} for k in keys[mask])
 
         for col in columns:
             if col.header not in hits:
                 continue
+            cells = pd.Series(False, index=df.index)
             f = hits[col.header]
             value = df[f.qualified]
             text = value.astype("string")
@@ -1047,6 +1060,8 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
                 else:
                     blank = value.astype("string").fillna("").str.strip() == ""
                     hold(blank & countries.isin(tokens), col, "mandatory_for_country")
+            if cells.any():  # optional column: drop only the broken cells
+                values[col.header] = value.astype(object).where(~cells, None)
 
         out = pd.DataFrame({c.header: values[c.header][~bad].values if c.header in hits else None
                             for c in columns}, index=range(int((~bad).sum())))
@@ -1057,7 +1072,7 @@ def fill(workbook: Workbook, frames: TableFrames, value_maps: Optional[dict[str,
         same = same and sheet.kind == "grid" and all(c.pos >= 0 for c in columns if c.header in hits)
         missing = {c.id: int((values[c.header].astype("string").fillna("").str.strip() == "").sum())
                    if c.header in values else len(df) for c in columns if c.mandatory and not c.country}
-        row.update(rows=len(df), ready=int((~bad).sum()), held=int(bad.sum()),
+        row.update(rows=len(df), ready=int((~bad).sum()), held=int(bad.sum()), blanked_cells=blanked,
                    mandatory_missing={k: v for k, v in missing.items() if v},
                    people=int(df[key_cols[0]].nunique()) if key_cols else len(df))
 

@@ -83,13 +83,16 @@ def test_fills_workbook_columns_and_holds_back_only_rule_breakers():
     tab = tabs["Personal Info"]
     assert list(tab.columns) == ["person-id-external", "first-name", "gender", "second-title"]
     assert tab.iloc[0]["first-name"] == "First Name"  # label row, then data
-    assert tab["person-id-external"].tolist()[1:] == ["P1"]
+    # a broken mandatory value holds the row; a broken optional value blanks only that cell
+    assert tab["person-id-external"].tolist()[1:] == ["P1", "P4"]
+    assert pd.isna(tab.iloc[2]["gender"])
     row = next(s for s in report["sheets"] if s["name"] == "Personal Info")
-    assert (row["rows"], row["ready"], row["held"]) == (4, 1, 3)
+    assert (row["rows"], row["ready"], row["held"], row["blanked_cells"]) == (4, 2, 2, 1)
     assert row["added_keys"] == ["person-id-external"]
     assert report["reasons"] == {"too_long": 1, "mandatory": 1, "not_in_picklist": 1}
     assert {"id": "second-title", "label": "Second Title", "mandatory": True} in row["unmapped"]
-    assert {h["record"] for h in report["held"]} == {"PERSON_ID=P2", "PERSON_ID=P3", "PERSON_ID=P4"}
+    scopes = {h["record"]: h["scope"] for h in report["held"]}
+    assert scopes == {"PERSON_ID=P2": "row", "PERSON_ID=P3": "row", "PERSON_ID=P4": "cell"}
     assert all("value" not in h for h in report["held"])  # personal data stays out of the report
 
 
