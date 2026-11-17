@@ -50,14 +50,30 @@ def _steward_fixes(session: Session, tid: str) -> list[dict]:
            AND i.field IS NOT NULL AND i.proposed_value IS NOT NULL"""), {"t": tid}).mappings().all()]
 
 
+FULL_HISTORY_SQL = """SELECT id FROM analysis_versions
+    WHERE metadata->>'system_id' = :sid AND metadata->>'history' = 'full' AND metadata ? 'dataset_path'
+      AND status <> 'failed' AND COALESCE(metadata->'modules', '[]'::jsonb) @> CAST(:mods AS jsonb)
+    ORDER BY run_at DESC LIMIT 1"""
+
+
+def full_history_version(session: Session, system_id, modules) -> Optional[str]:
+    """The latest full-history download (run_extraction history="full") of ``system_id`` covering ``modules``."""
+    vid = session.execute(text(FULL_HISTORY_SQL), {"sid": str(system_id), "mods": json.dumps(list(modules))}).scalar()
+    return str(vid) if vid else None
+
+
 def _prepare(session: Session, engine, tid: str, plan: dict) -> dict:
-    """The source frames (cleansed in cleansed mode), the rules and the dictionary for one plan."""
-    from workers.tasks.run_migration import resolve_source_version
+    """The source frames (cleansed in cleansed mode), the rules and the dictionary for one plan.
+
+    A move never loses history: the frames come from a full-history download of the source, never from the
+    latest analysis (which holds the current records only). POST /plans queues that download when none exists.
+    """
     from workers.tasks.run_simulation import _load, _run
 
-    version_id, _ = resolve_source_version(session, plan["source_system_id"], None)
+    version_id = full_history_version(session, plan["source_system_id"], plan["modules"])
     if not version_id:
-        raise ValueError("The source system has no complete analysis with a stored dataset.")
+        raise ValueError("The source system has no full-history download of these objects yet. "
+                         "Create the plan again to start one.")
     ctx = _load(session, engine, tid, version_id, list(plan["modules"]))
     ctx["version_id"] = version_id
     ctx["dictionary"] = ctx["frames"].dictionary

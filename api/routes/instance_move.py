@@ -7,6 +7,7 @@ flag, source differs from target) and audited before it is queued.
 from __future__ import annotations
 
 import datetime
+import json
 import uuid
 from typing import Literal, Optional
 
@@ -32,6 +33,8 @@ class PlanBody(BaseModel):
     modules: list[str] = Field(min_length=1)
     mode: Literal["cleansed", "as_is"] = "cleansed"
     id_map_upload_id: Optional[uuid.UUID] = None
+    # A move always carries every record ever held; "full" is the only value and the default.
+    history: Literal["full"] = "full"
 
 
 class RunBody(BaseModel):
@@ -93,9 +96,30 @@ async def create_plan(body: PlanBody, request: Request, db: AsyncSession = Depen
                       "idm": str(body.id_map_upload_id) if body.id_map_upload_id else None,
                       "u": current_user_id(request)})
     await db.commit()
-    from workers.tasks.run_instance_move import plan_move
-    plan_move.delay(str(tenant.id), pid)
+    await _queue_plan(db, tenant, body, pid)
     return _plan_out(await _one(db, "SELECT * FROM move_plans WHERE id = :i", i=pid))
+
+
+async def _queue_plan(db: AsyncSession, tenant: Tenant, body: PlanBody, pid: str) -> None:
+    """Build the plan from a full-history download of the source; download it first when none covers the objects."""
+    from workers.tasks.run_instance_move import FULL_HISTORY_SQL, plan_move
+
+    have = (await db.execute(text(FULL_HISTORY_SQL), {"sid": str(body.source_system_id),
+                                                      "mods": json.dumps(body.modules)})).scalar()
+    if have:
+        plan_move.delay(str(tenant.id), pid)
+        return
+    from celery import chain
+    from api.services import jobs
+    from workers.tasks.run_extraction import run_extraction
+
+    jobs.ensure_no_extraction(str(tenant.id), str(body.source_system_id))
+    vid = str(uuid.uuid4())
+    jobs.start_job(str(tenant.id), f"dl-{vid}", "extraction", ", ".join(body.modules), status="queued",
+                   system_id=str(body.source_system_id), modules=body.modules, version_id=vid)
+    chain(run_extraction.si(str(tenant.id), str(body.source_system_id), body.modules, True, "both", None, False,
+                            "Full history for move", vid, history="full"),
+          plan_move.si(str(tenant.id), pid)).delay()
 
 
 @router.get("/plans")
