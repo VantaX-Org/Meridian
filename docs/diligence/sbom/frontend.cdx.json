@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:5c0f4c33-6d3f-44fa-a5de-f448623f0c4f",
+  "serialNumber": "urn:uuid:b8e955d8-36f1-44db-bfa6-5fec613b5513",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-11-17T06:30:27.408Z",
+    "timestamp": "2026-11-17T06:32:22.158Z",
     "lifecycles": [
       {
         "phase": "pre-build"
@@ -15,7 +15,7 @@
       {
         "vendor": "npm",
         "name": "cli",
-        "version": "11.19.0"
+        "version": "10.9.10"
       }
     ],
     "component": {
@@ -26,6 +26,10 @@
       "scope": "required",
       "purl": "pkg:npm/frontend@0.1.0",
       "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": ""
+        },
         {
           "name": "cdx:npm:package:private",
           "value": "true"
@@ -42,7 +46,12 @@
       "version": "1.3.0",
       "scope": "required",
       "purl": "pkg:npm/%40base-ui/react@1.3.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@base-ui/react"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -70,7 +79,12 @@
       "version": "0.2.6",
       "scope": "required",
       "purl": "pkg:npm/%40base-ui/utils@0.2.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@base-ui/utils"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -98,7 +112,12 @@
       "version": "1.1.8",
       "scope": "required",
       "purl": "pkg:npm/%40dagrejs/dagre@1.1.8",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@dagrejs/dagre"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -126,7 +145,12 @@
       "version": "2.2.4",
       "scope": "required",
       "purl": "pkg:npm/%40dagrejs/graphlib@2.2.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@dagrejs/graphlib"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -154,7 +178,12 @@
       "version": "1.7.5",
       "scope": "required",
       "purl": "pkg:npm/%40floating-ui/core@1.7.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@floating-ui/core"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -182,7 +211,12 @@
       "version": "1.7.6",
       "scope": "required",
       "purl": "pkg:npm/%40floating-ui/dom@1.7.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@floating-ui/dom"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -210,7 +244,12 @@
       "version": "2.1.8",
       "scope": "required",
       "purl": "pkg:npm/%40floating-ui/react-dom@2.1.8",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@floating-ui/react-dom"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -238,7 +277,12 @@
       "version": "0.2.11",
       "scope": "required",
       "purl": "pkg:npm/%40floating-ui/utils@0.2.11",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@floating-ui/utils"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -266,7 +310,12 @@
       "version": "1.1.0",
       "scope": "optional",
       "purl": "pkg:npm/%40img/colour@1.1.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/colour"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -294,7 +343,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-darwin-arm64@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-darwin-arm64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -322,7 +376,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-darwin-x64@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-darwin-x64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -350,7 +409,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-freebsd-wasm32@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-freebsd-wasm32"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -378,7 +442,12 @@
       "version": "1.3.4",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-libvips-darwin-arm64@1.3.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-libvips-darwin-arm64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -406,7 +475,12 @@
       "version": "1.3.4",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-libvips-darwin-x64@1.3.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-libvips-darwin-x64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -434,7 +508,12 @@
       "version": "1.3.4",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-libvips-linux-arm@1.3.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-libvips-linux-arm"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -462,7 +541,12 @@
       "version": "1.3.4",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-libvips-linux-arm64@1.3.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-libvips-linux-arm64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -490,7 +574,12 @@
       "version": "1.3.4",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-libvips-linux-ppc64@1.3.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-libvips-linux-ppc64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -518,7 +607,12 @@
       "version": "1.3.4",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-libvips-linux-riscv64@1.3.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-libvips-linux-riscv64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -546,7 +640,12 @@
       "version": "1.3.4",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-libvips-linux-s390x@1.3.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-libvips-linux-s390x"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -574,7 +673,12 @@
       "version": "1.3.4",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-libvips-linux-x64@1.3.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-libvips-linux-x64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -602,7 +706,12 @@
       "version": "1.3.4",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-libvips-linuxmusl-arm64@1.3.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-libvips-linuxmusl-arm64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -630,7 +739,12 @@
       "version": "1.3.4",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-libvips-linuxmusl-x64@1.3.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-libvips-linuxmusl-x64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -658,7 +772,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-linux-arm@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-linux-arm"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -686,7 +805,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-linux-arm64@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-linux-arm64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -714,7 +838,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-linux-ppc64@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-linux-ppc64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -742,7 +871,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-linux-riscv64@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-linux-riscv64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -770,7 +904,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-linux-s390x@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-linux-s390x"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -798,7 +937,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-linux-x64@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-linux-x64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -826,7 +970,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-linuxmusl-arm64@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-linuxmusl-arm64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -854,7 +1003,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-linuxmusl-x64@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-linuxmusl-x64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -882,7 +1036,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-wasm32@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-wasm32"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -908,7 +1067,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-webcontainers-wasm32@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-webcontainers-wasm32"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -936,7 +1100,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-win32-arm64@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-win32-arm64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -962,7 +1131,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-win32-ia32@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-win32-ia32"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -988,7 +1162,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/%40img/sharp-win32-x64@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@img/sharp-win32-x64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1014,7 +1193,12 @@
       "version": "16.4.6",
       "scope": "required",
       "purl": "pkg:npm/%40next/env@16.4.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@next/env"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1042,7 +1226,12 @@
       "version": "16.4.6",
       "scope": "optional",
       "purl": "pkg:npm/%40next/swc-darwin-arm64@16.4.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@next/swc-darwin-arm64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1070,7 +1259,12 @@
       "version": "16.4.6",
       "scope": "optional",
       "purl": "pkg:npm/%40next/swc-darwin-x64@16.4.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@next/swc-darwin-x64"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1098,7 +1292,12 @@
       "version": "16.4.6",
       "scope": "optional",
       "purl": "pkg:npm/%40next/swc-linux-arm64-gnu@16.4.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@next/swc-linux-arm64-gnu"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1126,7 +1325,12 @@
       "version": "16.4.6",
       "scope": "optional",
       "purl": "pkg:npm/%40next/swc-linux-arm64-musl@16.4.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@next/swc-linux-arm64-musl"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1154,7 +1358,12 @@
       "version": "16.4.6",
       "scope": "optional",
       "purl": "pkg:npm/%40next/swc-linux-x64-gnu@16.4.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@next/swc-linux-x64-gnu"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1182,7 +1391,12 @@
       "version": "16.4.6",
       "scope": "optional",
       "purl": "pkg:npm/%40next/swc-linux-x64-musl@16.4.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@next/swc-linux-x64-musl"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1210,7 +1424,12 @@
       "version": "16.4.6",
       "scope": "optional",
       "purl": "pkg:npm/%40next/swc-win32-arm64-msvc@16.4.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@next/swc-win32-arm64-msvc"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1238,7 +1457,12 @@
       "version": "16.4.6",
       "scope": "optional",
       "purl": "pkg:npm/%40next/swc-win32-x64-msvc@16.4.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@next/swc-win32-x64-msvc"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1266,7 +1490,12 @@
       "version": "1.1.3",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/primitive@1.1.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/primitive"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1294,7 +1523,12 @@
       "version": "1.1.2",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-compose-refs@1.1.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-compose-refs"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1322,7 +1556,12 @@
       "version": "1.1.2",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-context@1.1.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-context"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1350,7 +1589,12 @@
       "version": "1.1.15",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-dialog@1.1.15",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-dialog"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1378,7 +1622,12 @@
       "version": "2.1.3",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-primitive@2.1.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-dialog/node_modules/@radix-ui/react-primitive"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1406,7 +1655,12 @@
       "version": "1.1.11",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-dismissable-layer@1.1.11",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-dismissable-layer"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1428,13 +1682,51 @@
       ]
     },
     {
+      "bom-ref": "@radix-ui/react-primitive@2.1.3",
+      "type": "library",
+      "name": "@radix-ui/react-primitive",
+      "version": "2.1.3",
+      "scope": "required",
+      "purl": "pkg:npm/%40radix-ui/react-primitive@2.1.3",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-dismissable-layer/node_modules/@radix-ui/react-primitive"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@radix-ui/react-primitive/-/react-primitive-2.1.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "9bd813c11921cb696f08f7ba409a787771b54d81141e7fc5cc952dabd3231f8e9a9f5c0953e19da060b954ba1ff115fc16dfc3969b21029921b300cb6731c871"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
       "bom-ref": "@radix-ui/react-focus-guards@1.1.3",
       "type": "library",
       "name": "@radix-ui/react-focus-guards",
       "version": "1.1.3",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-focus-guards@1.1.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-focus-guards"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1462,7 +1754,12 @@
       "version": "1.1.7",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-focus-scope@1.1.7",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-focus-scope"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1484,13 +1781,51 @@
       ]
     },
     {
+      "bom-ref": "@radix-ui/react-primitive@2.1.3",
+      "type": "library",
+      "name": "@radix-ui/react-primitive",
+      "version": "2.1.3",
+      "scope": "required",
+      "purl": "pkg:npm/%40radix-ui/react-primitive@2.1.3",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-focus-scope/node_modules/@radix-ui/react-primitive"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@radix-ui/react-primitive/-/react-primitive-2.1.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "9bd813c11921cb696f08f7ba409a787771b54d81141e7fc5cc952dabd3231f8e9a9f5c0953e19da060b954ba1ff115fc16dfc3969b21029921b300cb6731c871"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
       "bom-ref": "@radix-ui/react-id@1.1.1",
       "type": "library",
       "name": "@radix-ui/react-id",
       "version": "1.1.1",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-id@1.1.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-id"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1518,7 +1853,12 @@
       "version": "1.1.9",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-portal@1.1.9",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-portal"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1540,13 +1880,51 @@
       ]
     },
     {
+      "bom-ref": "@radix-ui/react-primitive@2.1.3",
+      "type": "library",
+      "name": "@radix-ui/react-primitive",
+      "version": "2.1.3",
+      "scope": "required",
+      "purl": "pkg:npm/%40radix-ui/react-primitive@2.1.3",
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-portal/node_modules/@radix-ui/react-primitive"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@radix-ui/react-primitive/-/react-primitive-2.1.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "9bd813c11921cb696f08f7ba409a787771b54d81141e7fc5cc952dabd3231f8e9a9f5c0953e19da060b954ba1ff115fc16dfc3969b21029921b300cb6731c871"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
       "bom-ref": "@radix-ui/react-presence@1.1.5",
       "type": "library",
       "name": "@radix-ui/react-presence",
       "version": "1.1.5",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-presence@1.1.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-presence"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1574,7 +1952,12 @@
       "version": "2.1.4",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-primitive@2.1.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-primitive"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1602,7 +1985,12 @@
       "version": "1.2.4",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-slot@1.2.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-slot"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1630,7 +2018,12 @@
       "version": "1.2.3",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-slot@1.2.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-slot"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1658,7 +2051,12 @@
       "version": "1.1.1",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-use-callback-ref@1.1.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-use-callback-ref"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1686,7 +2084,12 @@
       "version": "1.2.2",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-use-controllable-state@1.2.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-use-controllable-state"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1714,7 +2117,12 @@
       "version": "0.0.2",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-use-effect-event@0.0.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-use-effect-event"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1742,7 +2150,12 @@
       "version": "1.1.1",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-use-escape-keydown@1.1.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-use-escape-keydown"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1770,7 +2183,12 @@
       "version": "1.1.1",
       "scope": "required",
       "purl": "pkg:npm/%40radix-ui/react-use-layout-effect@1.1.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@radix-ui/react-use-layout-effect"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1798,7 +2216,12 @@
       "version": "2.11.2",
       "scope": "required",
       "purl": "pkg:npm/%40reduxjs/toolkit@2.11.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@reduxjs/toolkit"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1826,7 +2249,12 @@
       "version": "1.1.0",
       "scope": "required",
       "purl": "pkg:npm/%40standard-schema/spec@1.1.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@standard-schema/spec"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1854,7 +2282,12 @@
       "version": "0.3.0",
       "scope": "required",
       "purl": "pkg:npm/%40standard-schema/utils@0.3.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@standard-schema/utils"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1882,7 +2315,12 @@
       "version": "0.5.23",
       "scope": "required",
       "purl": "pkg:npm/%40swc/helpers@0.5.23",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@swc/helpers"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1910,7 +2348,12 @@
       "version": "5.91.2",
       "scope": "required",
       "purl": "pkg:npm/%40tanstack/react-query@5.91.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@tanstack/react-query"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1938,7 +2381,12 @@
       "version": "5.91.2",
       "scope": "required",
       "purl": "pkg:npm/%40tanstack/query-core@5.91.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@tanstack/react-query/node_modules/@tanstack/query-core"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1966,7 +2414,12 @@
       "version": "8.21.3",
       "scope": "required",
       "purl": "pkg:npm/%40tanstack/react-table@8.21.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@tanstack/react-table"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -1994,7 +2447,12 @@
       "version": "3.13.24",
       "scope": "required",
       "purl": "pkg:npm/%40tanstack/react-virtual@3.13.24",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@tanstack/react-virtual"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2022,7 +2480,12 @@
       "version": "8.21.3",
       "scope": "required",
       "purl": "pkg:npm/%40tanstack/table-core@8.21.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@tanstack/table-core"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2050,7 +2513,12 @@
       "version": "3.14.0",
       "scope": "required",
       "purl": "pkg:npm/%40tanstack/virtual-core@3.14.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@tanstack/virtual-core"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2078,7 +2546,12 @@
       "version": "7.4.3",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3@7.4.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2106,7 +2579,12 @@
       "version": "3.2.2",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-array@3.2.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-array"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2134,7 +2612,12 @@
       "version": "3.0.6",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-axis@3.0.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-axis"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2162,7 +2645,12 @@
       "version": "3.0.6",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-brush@3.0.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-brush"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2190,7 +2678,12 @@
       "version": "3.0.6",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-chord@3.0.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-chord"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2218,7 +2711,12 @@
       "version": "3.1.3",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-color@3.1.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-color"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2246,7 +2744,12 @@
       "version": "3.0.6",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-contour@3.0.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-contour"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2274,7 +2777,12 @@
       "version": "6.0.4",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-delaunay@6.0.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-delaunay"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2302,7 +2810,12 @@
       "version": "3.0.7",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-dispatch@3.0.7",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-dispatch"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2330,7 +2843,12 @@
       "version": "3.0.7",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-drag@3.0.7",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-drag"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2358,7 +2876,12 @@
       "version": "3.0.7",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-dsv@3.0.7",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-dsv"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2386,7 +2909,12 @@
       "version": "3.0.2",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-ease@3.0.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-ease"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2414,7 +2942,12 @@
       "version": "3.0.7",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-fetch@3.0.7",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-fetch"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2442,7 +2975,12 @@
       "version": "3.0.10",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-force@3.0.10",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-force"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2470,7 +3008,12 @@
       "version": "3.0.4",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-format@3.0.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-format"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2498,7 +3041,12 @@
       "version": "3.1.0",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-geo@3.1.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-geo"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2526,7 +3074,12 @@
       "version": "3.1.7",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-hierarchy@3.1.7",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-hierarchy"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2554,7 +3107,12 @@
       "version": "3.0.4",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-interpolate@3.0.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-interpolate"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2582,7 +3140,12 @@
       "version": "3.1.1",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-path@3.1.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-path"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2610,7 +3173,12 @@
       "version": "3.0.2",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-polygon@3.0.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-polygon"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2638,7 +3206,12 @@
       "version": "3.0.6",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-quadtree@3.0.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-quadtree"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2666,7 +3239,12 @@
       "version": "3.0.3",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-random@3.0.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-random"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2694,7 +3272,12 @@
       "version": "4.0.9",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-scale@4.0.9",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-scale"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2722,7 +3305,12 @@
       "version": "3.1.0",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-scale-chromatic@3.1.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-scale-chromatic"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2750,7 +3338,12 @@
       "version": "3.0.11",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-selection@3.0.11",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-selection"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2778,7 +3371,12 @@
       "version": "3.1.8",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-shape@3.1.8",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-shape"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2806,7 +3404,12 @@
       "version": "3.0.4",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-time@3.0.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-time"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2834,7 +3437,12 @@
       "version": "4.0.3",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-time-format@4.0.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-time-format"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2862,7 +3470,12 @@
       "version": "3.0.2",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-timer@3.0.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-timer"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2890,7 +3503,12 @@
       "version": "3.0.9",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-transition@3.0.9",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-transition"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2918,7 +3536,12 @@
       "version": "3.0.8",
       "scope": "required",
       "purl": "pkg:npm/%40types/d3-zoom@3.0.8",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/d3-zoom"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2946,7 +3569,12 @@
       "version": "7946.0.16",
       "scope": "required",
       "purl": "pkg:npm/%40types/geojson@7946.0.16",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/geojson"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -2974,7 +3602,12 @@
       "version": "0.0.6",
       "scope": "required",
       "purl": "pkg:npm/%40types/use-sync-external-store@0.0.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/use-sync-external-store"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3002,7 +3635,12 @@
       "version": "12.10.2",
       "scope": "required",
       "purl": "pkg:npm/%40xyflow/react@12.10.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@xyflow/react"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3030,7 +3668,12 @@
       "version": "0.0.76",
       "scope": "required",
       "purl": "pkg:npm/%40xyflow/system@0.0.76",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@xyflow/system"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3058,7 +3701,12 @@
       "version": "1.2.6",
       "scope": "required",
       "purl": "pkg:npm/aria-hidden@1.2.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/aria-hidden"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3086,7 +3734,12 @@
       "version": "0.4.0",
       "scope": "required",
       "purl": "pkg:npm/asynckit@0.4.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/asynckit"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3114,7 +3767,12 @@
       "version": "1.20.0",
       "scope": "required",
       "purl": "pkg:npm/axios@1.20.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/axios"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3142,7 +3800,12 @@
       "version": "6.0.2",
       "scope": "required",
       "purl": "pkg:npm/agent-base@6.0.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/axios/node_modules/agent-base"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3170,7 +3833,12 @@
       "version": "5.0.1",
       "scope": "required",
       "purl": "pkg:npm/https-proxy-agent@5.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/axios/node_modules/https-proxy-agent"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3198,7 +3866,12 @@
       "version": "0.7.1",
       "scope": "required",
       "purl": "pkg:npm/class-variance-authority@0.7.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/class-variance-authority"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3226,7 +3899,12 @@
       "version": "5.0.5",
       "scope": "required",
       "purl": "pkg:npm/classcat@5.0.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/classcat"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3254,7 +3932,12 @@
       "version": "0.0.1",
       "scope": "required",
       "purl": "pkg:npm/client-only@0.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/client-only"
+        }
+      ],
       "externalReferences": [],
       "licenses": [
         {
@@ -3271,7 +3954,12 @@
       "version": "2.1.1",
       "scope": "required",
       "purl": "pkg:npm/clsx@2.1.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/clsx"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3299,7 +3987,12 @@
       "version": "1.1.1",
       "scope": "required",
       "purl": "pkg:npm/cmdk@1.1.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/cmdk"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3327,7 +4020,12 @@
       "version": "1.0.8",
       "scope": "required",
       "purl": "pkg:npm/combined-stream@1.0.8",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/combined-stream"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3355,7 +4053,12 @@
       "version": "7.2.0",
       "scope": "required",
       "purl": "pkg:npm/commander@7.2.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/commander"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3383,7 +4086,12 @@
       "version": "7.9.0",
       "scope": "required",
       "purl": "pkg:npm/d3@7.9.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3411,7 +4119,12 @@
       "version": "3.2.4",
       "scope": "required",
       "purl": "pkg:npm/d3-array@3.2.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-array"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3439,7 +4152,12 @@
       "version": "3.0.0",
       "scope": "required",
       "purl": "pkg:npm/d3-axis@3.0.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-axis"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3467,7 +4185,12 @@
       "version": "3.0.0",
       "scope": "required",
       "purl": "pkg:npm/d3-brush@3.0.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-brush"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3495,7 +4218,12 @@
       "version": "3.0.1",
       "scope": "required",
       "purl": "pkg:npm/d3-chord@3.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-chord"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3523,7 +4251,12 @@
       "version": "3.1.0",
       "scope": "required",
       "purl": "pkg:npm/d3-color@3.1.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-color"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3551,7 +4284,12 @@
       "version": "4.0.2",
       "scope": "required",
       "purl": "pkg:npm/d3-contour@4.0.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-contour"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3579,7 +4317,12 @@
       "version": "6.0.4",
       "scope": "required",
       "purl": "pkg:npm/d3-delaunay@6.0.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-delaunay"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3607,7 +4350,12 @@
       "version": "3.0.1",
       "scope": "required",
       "purl": "pkg:npm/d3-dispatch@3.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-dispatch"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3635,7 +4383,12 @@
       "version": "3.0.0",
       "scope": "required",
       "purl": "pkg:npm/d3-drag@3.0.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-drag"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3663,7 +4416,12 @@
       "version": "3.0.1",
       "scope": "required",
       "purl": "pkg:npm/d3-dsv@3.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-dsv"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3691,7 +4449,12 @@
       "version": "3.0.1",
       "scope": "required",
       "purl": "pkg:npm/d3-ease@3.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-ease"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3719,7 +4482,12 @@
       "version": "3.0.1",
       "scope": "required",
       "purl": "pkg:npm/d3-fetch@3.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-fetch"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3747,7 +4515,12 @@
       "version": "3.0.0",
       "scope": "required",
       "purl": "pkg:npm/d3-force@3.0.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-force"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3775,7 +4548,12 @@
       "version": "3.1.2",
       "scope": "required",
       "purl": "pkg:npm/d3-format@3.1.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-format"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3803,7 +4581,12 @@
       "version": "3.1.1",
       "scope": "required",
       "purl": "pkg:npm/d3-geo@3.1.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-geo"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3831,7 +4614,12 @@
       "version": "3.1.2",
       "scope": "required",
       "purl": "pkg:npm/d3-hierarchy@3.1.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-hierarchy"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3859,7 +4647,12 @@
       "version": "3.0.1",
       "scope": "required",
       "purl": "pkg:npm/d3-interpolate@3.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-interpolate"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3887,7 +4680,12 @@
       "version": "3.1.0",
       "scope": "required",
       "purl": "pkg:npm/d3-path@3.1.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-path"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3915,7 +4713,12 @@
       "version": "3.0.1",
       "scope": "required",
       "purl": "pkg:npm/d3-polygon@3.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-polygon"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3943,7 +4746,12 @@
       "version": "3.0.1",
       "scope": "required",
       "purl": "pkg:npm/d3-quadtree@3.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-quadtree"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3971,7 +4779,12 @@
       "version": "3.0.1",
       "scope": "required",
       "purl": "pkg:npm/d3-random@3.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-random"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -3999,7 +4812,12 @@
       "version": "4.0.2",
       "scope": "required",
       "purl": "pkg:npm/d3-scale@4.0.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-scale"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4027,7 +4845,12 @@
       "version": "3.1.0",
       "scope": "required",
       "purl": "pkg:npm/d3-scale-chromatic@3.1.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-scale-chromatic"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4055,7 +4878,12 @@
       "version": "3.0.0",
       "scope": "required",
       "purl": "pkg:npm/d3-selection@3.0.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-selection"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4083,7 +4911,12 @@
       "version": "3.2.0",
       "scope": "required",
       "purl": "pkg:npm/d3-shape@3.2.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-shape"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4111,7 +4944,12 @@
       "version": "3.1.0",
       "scope": "required",
       "purl": "pkg:npm/d3-time@3.1.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-time"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4139,7 +4977,12 @@
       "version": "4.1.0",
       "scope": "required",
       "purl": "pkg:npm/d3-time-format@4.1.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-time-format"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4167,7 +5010,12 @@
       "version": "3.0.1",
       "scope": "required",
       "purl": "pkg:npm/d3-timer@3.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-timer"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4195,7 +5043,12 @@
       "version": "3.0.1",
       "scope": "required",
       "purl": "pkg:npm/d3-transition@3.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-transition"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4223,7 +5076,12 @@
       "version": "3.0.0",
       "scope": "required",
       "purl": "pkg:npm/d3-zoom@3.0.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/d3-zoom"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4251,7 +5109,12 @@
       "version": "2.5.1",
       "scope": "required",
       "purl": "pkg:npm/decimal.js-light@2.5.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/decimal.js-light"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4279,7 +5142,12 @@
       "version": "5.0.1",
       "scope": "required",
       "purl": "pkg:npm/delaunator@5.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/delaunator"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4307,7 +5175,12 @@
       "version": "1.0.0",
       "scope": "required",
       "purl": "pkg:npm/delayed-stream@1.0.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/delayed-stream"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4335,7 +5208,12 @@
       "version": "1.1.0",
       "scope": "required",
       "purl": "pkg:npm/detect-node-es@1.1.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/detect-node-es"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4363,7 +5241,12 @@
       "version": "1.45.1",
       "scope": "required",
       "purl": "pkg:npm/es-toolkit@1.45.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/es-toolkit"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4391,7 +5274,12 @@
       "version": "5.0.4",
       "scope": "required",
       "purl": "pkg:npm/eventemitter3@5.0.4",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/eventemitter3"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4419,7 +5307,12 @@
       "version": "1.16.2",
       "scope": "required",
       "purl": "pkg:npm/follow-redirects@1.16.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/follow-redirects"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4447,7 +5340,12 @@
       "version": "4.0.6",
       "scope": "required",
       "purl": "pkg:npm/form-data@4.0.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/form-data"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4475,7 +5373,12 @@
       "version": "1.0.1",
       "scope": "required",
       "purl": "pkg:npm/get-nonce@1.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/get-nonce"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4503,7 +5406,12 @@
       "version": "0.6.3",
       "scope": "required",
       "purl": "pkg:npm/iconv-lite@0.6.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/iconv-lite"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4531,7 +5439,12 @@
       "version": "11.1.21",
       "scope": "required",
       "purl": "pkg:npm/immer@11.1.21",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/immer"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4559,7 +5472,12 @@
       "version": "2.0.3",
       "scope": "required",
       "purl": "pkg:npm/internmap@2.0.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/internmap"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4587,7 +5505,12 @@
       "version": "1.52.0",
       "scope": "required",
       "purl": "pkg:npm/mime-db@1.52.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/mime-db"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4615,7 +5538,12 @@
       "version": "2.1.35",
       "scope": "required",
       "purl": "pkg:npm/mime-types@2.1.35",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/mime-types"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4643,7 +5571,12 @@
       "version": "16.4.6",
       "scope": "required",
       "purl": "pkg:npm/next@16.4.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/next"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4671,7 +5604,12 @@
       "version": "0.4.6",
       "scope": "required",
       "purl": "pkg:npm/next-themes@0.4.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/next-themes"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4699,7 +5637,12 @@
       "version": "2.1.0",
       "scope": "required",
       "purl": "pkg:npm/proxy-from-env@2.1.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/proxy-from-env"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4727,7 +5670,12 @@
       "version": "9.2.0",
       "scope": "required",
       "purl": "pkg:npm/react-redux@9.2.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/react-redux"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4755,7 +5703,12 @@
       "version": "2.7.2",
       "scope": "required",
       "purl": "pkg:npm/react-remove-scroll@2.7.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/react-remove-scroll"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4783,7 +5736,12 @@
       "version": "2.3.8",
       "scope": "required",
       "purl": "pkg:npm/react-remove-scroll-bar@2.3.8",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/react-remove-scroll-bar"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4811,7 +5769,12 @@
       "version": "2.2.3",
       "scope": "required",
       "purl": "pkg:npm/react-style-singleton@2.2.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/react-style-singleton"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4839,7 +5802,12 @@
       "version": "3.10.1",
       "scope": "required",
       "purl": "pkg:npm/recharts@3.10.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/recharts"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4867,7 +5835,12 @@
       "version": "5.0.1",
       "scope": "required",
       "purl": "pkg:npm/redux@5.0.1",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/redux"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4895,7 +5868,12 @@
       "version": "3.1.0",
       "scope": "required",
       "purl": "pkg:npm/redux-thunk@3.1.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/redux-thunk"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4923,7 +5901,12 @@
       "version": "5.2.0",
       "scope": "required",
       "purl": "pkg:npm/reselect@5.2.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/reselect"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4951,7 +5934,12 @@
       "version": "3.0.2",
       "scope": "required",
       "purl": "pkg:npm/robust-predicates@3.0.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/robust-predicates"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -4979,7 +5967,12 @@
       "version": "1.3.3",
       "scope": "required",
       "purl": "pkg:npm/rw@1.3.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/rw"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5007,7 +6000,12 @@
       "version": "2.1.2",
       "scope": "required",
       "purl": "pkg:npm/safer-buffer@2.1.2",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/safer-buffer"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5035,7 +6033,12 @@
       "version": "0.35.5",
       "scope": "optional",
       "purl": "pkg:npm/sharp@0.35.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/sharp"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5063,7 +6066,12 @@
       "version": "7.8.5",
       "scope": "optional",
       "purl": "pkg:npm/semver@7.8.5",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/sharp/node_modules/semver"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5091,7 +6099,12 @@
       "version": "2.0.7",
       "scope": "required",
       "purl": "pkg:npm/sonner@2.0.7",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/sonner"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5119,7 +6132,12 @@
       "version": "5.1.6",
       "scope": "required",
       "purl": "pkg:npm/styled-jsx@5.1.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/styled-jsx"
+        }
+      ],
       "externalReferences": [],
       "licenses": [
         {
@@ -5136,7 +6154,12 @@
       "version": "6.4.0",
       "scope": "required",
       "purl": "pkg:npm/tabbable@6.4.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/tabbable"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5164,7 +6187,12 @@
       "version": "3.5.0",
       "scope": "required",
       "purl": "pkg:npm/tailwind-merge@3.5.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/tailwind-merge"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5192,7 +6220,12 @@
       "version": "1.3.3",
       "scope": "required",
       "purl": "pkg:npm/tiny-invariant@1.3.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/tiny-invariant"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5220,7 +6253,12 @@
       "version": "1.4.0",
       "scope": "required",
       "purl": "pkg:npm/tw-animate-css@1.4.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/tw-animate-css"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5248,7 +6286,12 @@
       "version": "1.3.3",
       "scope": "required",
       "purl": "pkg:npm/use-callback-ref@1.3.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/use-callback-ref"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5276,7 +6319,12 @@
       "version": "1.1.3",
       "scope": "required",
       "purl": "pkg:npm/use-sidecar@1.1.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/use-sidecar"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5304,7 +6352,12 @@
       "version": "1.6.0",
       "scope": "required",
       "purl": "pkg:npm/use-sync-external-store@1.6.0",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/use-sync-external-store"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5332,7 +6385,12 @@
       "version": "37.3.6",
       "scope": "required",
       "purl": "pkg:npm/victory-vendor@37.3.6",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/victory-vendor"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5358,7 +6416,12 @@
       "version": "0.20.3",
       "scope": "required",
       "purl": "pkg:npm/xlsx@0.20.3",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/xlsx"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5386,7 +6449,12 @@
       "version": "4.5.7",
       "scope": "required",
       "purl": "pkg:npm/zustand@4.5.7",
-      "properties": [],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/zustand"
+        }
+      ],
       "externalReferences": [
         {
           "type": "distribution",
@@ -5700,6 +6768,12 @@
       ]
     },
     {
+      "ref": "@radix-ui/react-primitive@2.1.3",
+      "dependsOn": [
+        "@radix-ui/react-slot@1.2.3"
+      ]
+    },
+    {
       "ref": "@radix-ui/react-focus-guards@1.1.3",
       "dependsOn": []
     },
@@ -5709,6 +6783,12 @@
         "@radix-ui/react-compose-refs@1.1.2",
         "@radix-ui/react-primitive@2.1.3",
         "@radix-ui/react-use-callback-ref@1.1.1"
+      ]
+    },
+    {
+      "ref": "@radix-ui/react-primitive@2.1.3",
+      "dependsOn": [
+        "@radix-ui/react-slot@1.2.3"
       ]
     },
     {
@@ -5722,6 +6802,12 @@
       "dependsOn": [
         "@radix-ui/react-primitive@2.1.3",
         "@radix-ui/react-use-layout-effect@1.1.1"
+      ]
+    },
+    {
+      "ref": "@radix-ui/react-primitive@2.1.3",
+      "dependsOn": [
+        "@radix-ui/react-slot@1.2.3"
       ]
     },
     {
