@@ -17,6 +17,7 @@ import hashlib
 import json
 import xml.etree.ElementTree as ET
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any, Callable, Iterable, Optional, Protocol
 
@@ -115,6 +116,7 @@ _CHANGE_DOCS = ("CDHDR", "CDPOS")
 _PICKLIST = "PickListValueV2"
 _CLOUD_KEYS = {_PICKLIST: ["PickListV2_id", "externalCode"]}  # mirrors sap/config_loader._CLOUD_KEYS
 BATCH_PERSONS = 200
+UPSERT_WORKERS = 4  # batches upserted at once within one step; steps and waves stay in order
 ERROR_THRESHOLD = 0.05
 SAMPLE_CAP = 100
 MAX_PASSES = 3
@@ -1232,13 +1234,13 @@ def cleanse(frames, rules: dict[str, dict], check_fn: Callable, steward_fixes: I
         cur = patched
         human = {}  # applied once; later passes only see what the rules still propose
         results = check_fn(cur)
-    unfixable = []
+    unfixable, cell = [], _cells(cur)
     for r in results:
         if r.passed or r.error:
             continue
         for k in r.failing_record_keys or []:
             unfixable.append({"rule": r.check_id, "field": r.field, "record_key": k,
-                              "current_value": _cell(cur, r.field, k),
+                              "current_value": cell(r.field, k),
                               "reason": "no high-confidence rule fix or approved value; loaded as it is"})
     per_rule = Counter(c["rule_id"] or c["source"] for c in log)
     return {"frames": cur, "log": log, "unfixable": unfixable, "passes": passes,
@@ -1248,15 +1250,24 @@ def cleanse(frames, rules: dict[str, dict], check_fn: Callable, steward_fixes: I
             "before_results": before_results, "after_results": results}
 
 
-def _cell(frames, field: Optional[str], key: str):
-    if not field or "." not in field:
-        return None
-    t, c = field.split(".", 1)
-    df = frames.plain(t)
-    if df is None or c not in df.columns:
-        return None
-    hit = df.loc[df["__key__"] == key, c]
-    return None if hit.empty else hit.iat[0]
+def _cells(frames) -> Callable:
+    """Cell lookup by (TABLE.FIELD, record key). Each table is unprefixed and each column mapped
+    once; a per-call ``frames.plain`` copied the whole table for every failing record."""
+    plains: dict[str, Any] = {}
+    cols: dict[str, dict] = {}
+
+    def cell(field: Optional[str], key: str):
+        if not field or "." not in field:
+            return None
+        if field not in cols:
+            t, c = field.split(".", 1)
+            if t not in plains:
+                df = frames.plain(t)
+                plains[t] = None if df is None else df.drop_duplicates("__key__")
+            df = plains[t]
+            cols[field] = {} if df is None or c not in df.columns else dict(zip(df["__key__"], df[c]))
+        return cols[field].get(key)
+    return cell
 
 
 # ── loader ───────────────────────────────────────────────────────────────────
@@ -1292,7 +1303,7 @@ class MemoryStore:
 
 def load(plan_steps: list[dict], connector, store: Store, dry_run: bool = True, waves: Optional[set] = None,
          threshold: float = ERROR_THRESHOLD, only: Optional[set] = None,
-         fetch: Callable[[str], bytes] = _fetch_blob) -> dict:
+         fetch: Callable[[str], bytes] = _fetch_blob, workers: int = UPSERT_WORKERS) -> dict:
     """Send the steps' batches wave by wave. ``plan_steps`` carry ``batches`` (lists of (key, payload)).
 
     A dry run never touches the target and marks every record validated. A live run sends one ping first and
@@ -1314,31 +1325,41 @@ def load(plan_steps: list[dict], connector, store: Store, dry_run: bool = True, 
         for s in by_wave[w]:
             srep: dict[str, Any] = {"entity": s["entity"], "pass": s.get("pass", 1), "sent": 0, "ok": 0, "failed": 0, "error_rate": 0.0}
             wrep["steps"].append(srep)
+            todo = []
             for b, batch in enumerate(s.get("batches") or []):
-                if store.stopped():
-                    wrep["status"] = report["status"] = "stopped"
-                    return report
                 if only is not None:
                     batch = [kr for kr in batch if (s["entity"], kr[0]) in only]
                 elif store.done(s["entity"], srep["pass"], b):
                     continue
-                if not batch:
-                    continue
-                if dry_run or s["method"] not in ("upsert", "config_create"):
+                if batch:
+                    todo.append((b, batch))
+            live = not dry_run and s["method"] in ("upsert", "config_create")
+
+            def send(item, s=s, live=live):
+                _, batch = item
+                if not live:
                     status = "validated" if dry_run else "exported"
-                    rows = [{"key": k, "status": status, "http_code": None, "message": ""} for k, _ in batch]
-                else:
-                    res = connector.upsert(s["entity"], with_blobs([r for _, r in batch], fetch),
-                                           purge_type=s.get("purge_type"))
-                    rows = [{**x, "key": batch[i][0]} for i, x in enumerate(res)]
-                for (_, payload), r in zip(batch, rows):
-                    r["row_hash"] = row_hash(payload)
-                store.record(s["entity"], srep["pass"], b, rows)
-                store.checkpoint(w, s["entity"], srep["pass"], b)
-                srep["sent"] += len(rows)
-                srep["failed"] += sum(r["status"] == "failed" for r in rows)
-                srep["ok"] = srep["sent"] - srep["failed"]
-                srep["error_rate"] = round(srep["failed"] / srep["sent"], 4)
+                    return [{"key": k, "status": status, "http_code": None, "message": ""} for k, _ in batch]
+                res = connector.upsert(s["entity"], with_blobs([r for _, r in batch], fetch),
+                                       purge_type=s.get("purge_type"))
+                return [{**x, "key": batch[i][0]} for i, x in enumerate(res)]
+            # ponytail: windows of `workers` batches in flight; the store is written only here, in batch order
+            n = workers if live else 1
+            with ThreadPoolExecutor(max_workers=n) as pool:
+                for i in range(0, len(todo), n):
+                    if store.stopped():
+                        wrep["status"] = report["status"] = "stopped"
+                        return report
+                    chunk = todo[i:i + n]
+                    for (b, batch), rows in zip(chunk, pool.map(send, chunk)):
+                        for (_, payload), r in zip(batch, rows):
+                            r["row_hash"] = row_hash(payload)
+                        store.record(s["entity"], srep["pass"], b, rows)
+                        store.checkpoint(w, s["entity"], srep["pass"], b)
+                        srep["sent"] += len(rows)
+                        srep["failed"] += sum(r["status"] == "failed" for r in rows)
+                        srep["ok"] = srep["sent"] - srep["failed"]
+                        srep["error_rate"] = round(srep["failed"] / srep["sent"], 4)
             sent = sum(x["sent"] for x in wrep["steps"])
             failed = sum(x["failed"] for x in wrep["steps"])
             if sent and failed / sent > threshold:

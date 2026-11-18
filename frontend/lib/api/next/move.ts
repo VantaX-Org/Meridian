@@ -39,7 +39,7 @@ export interface MovePlan {
   reason?: string;
   config?: Record<string, ConfigListCounts>;
   cleansing?: CleansingSummary;
-  preflight?: { status: string | null; issues: MoveIssue[] };
+  preflight?: { status: string | null; issues?: MoveIssue[]; step?: number; of?: number; wave?: number; entity?: string; rows?: number; issues_so_far?: number; errors_so_far?: number; at?: string };
 }
 export interface MoveStepRun { entity: string; sent: number; ok: number; failed: number; error_rate: number }
 export interface MoveWaveRun { wave: number; status: string; steps: MoveStepRun[] }
@@ -139,7 +139,7 @@ export const usePlan = (id: string | null) =>
     queryKey: moveKeys.plan(id),
     queryFn: () => getPlan(id as string),
     enabled: !!id,
-    refetchInterval: (q) => (q.state.data && (q.state.data.status === "building" || q.state.data.preflight?.status === "queued") ? 2000 : false),
+    refetchInterval: (q) => (q.state.data && (q.state.data.status === "building" || ["queued", "running"].includes(q.state.data.preflight?.status ?? "")) ? 2000 : false),
   });
 /** The run, read every 2 seconds until it is over. */
 export const useRun = (id: string | null) =>
