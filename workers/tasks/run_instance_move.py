@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import text
@@ -195,6 +196,20 @@ def plan_move(self, tenant_id: str, plan_id: str) -> str:
     return "ok"
 
 
+def _preflight_progress(session: Session, tid: str, plan_id: str, i: int, n: int, step: dict, rows: int,
+                        issues: list[dict]) -> None:
+    """Log the step and store a running status, so a long preflight shows where it is and what it found so far."""
+    p = {"status": "running", "step": i, "of": n, "wave": step.get("wave"), "entity": step.get("entity"),
+         "rows": rows, "issues_so_far": len(issues),
+         "errors_so_far": sum(1 for x in issues if x.get("severity") == "error"), "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    log.info("move preflight %s step %d/%d wave %s %s rows=%d issues=%d", plan_id, i, n, p["wave"], p["entity"],
+             rows, len(issues))
+    session.execute(text("UPDATE move_plans SET preflight = CAST(:p AS jsonb) WHERE id = :id"),
+                    {"p": json.dumps(p, default=str), "id": plan_id})
+    session.commit()
+    _rls(session, tid)
+
+
 @celery_app.task(name="workers.tasks.run_instance_move.preflight_move", **_OPTS)
 def preflight_move(self, tenant_id: str, plan_id: str) -> str:
     """Ping the target once; diff config lists; check fields, required values, references and key conflicts."""
@@ -227,10 +242,11 @@ def preflight_move(self, tenant_id: str, plan_id: str) -> str:
                 built = im.build_move_plan(plan["modules"], ctx["dictionary"], ctx["frames"], config_lists=config,
                                            mode=plan["mode"])
                 meta = im.parse_metadata(conn.metadata())
-                for s in _steps({**plan, "plan": built}, ctx, config):
-                    if s["method"] not in ("upsert", "config_create"):
-                        continue
+                steps = [s for s in _steps({**plan, "plan": built}, ctx, config)
+                         if s["method"] in ("upsert", "config_create")]
+                for i, s in enumerate(steps, 1):
                     recs = [kr for b in s["batches"] for kr in b]
+                    _preflight_progress(session, tenant_id, plan_id, i, len(steps), s, len(recs), issues)
                     issues += im.metadata_issues(s, recs, meta)
                     issues += im.reference_issues(s, recs, ctx["dictionary"], config)
                     keys = im._key_props(ctx["dictionary"].table(s["table"]), s["entity"]) if s.get("table") and not s.get("raw") else []

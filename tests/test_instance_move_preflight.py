@@ -81,3 +81,20 @@ def test_unresolved_reference_blocks():
     assert im.reference_issues(step, ok, dic, cfg) == []
     [e] = im.reference_issues(step, ok + [("u3", {"eventReason": "TOY_NOWHERE"})], dic, cfg)
     assert e["severity"] == "error" and e["records"] == ["u3"]
+
+
+def test_preflight_progress_stores_a_running_status_with_the_step_and_issue_counts():
+    import json
+    from unittest import mock
+
+    from workers.tasks import run_instance_move as task
+
+    session = mock.MagicMock()
+    issues = [{"severity": "error"}, {"severity": "warning"}]
+    with mock.patch.object(task, "_rls"):
+        task._preflight_progress(session, "t", "p", 3, 9, {"wave": 4, "entity": "ToyEntity"}, 120, issues)
+    p = json.loads(session.execute.call_args.args[1]["p"])
+    assert {k: p[k] for k in ("status", "step", "of", "wave", "entity", "rows", "issues_so_far", "errors_so_far")} == {
+        "status": "running", "step": 3, "of": 9, "wave": 4, "entity": "ToyEntity", "rows": 120,
+        "issues_so_far": 2, "errors_so_far": 1}
+    session.commit.assert_called_once()
