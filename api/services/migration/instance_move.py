@@ -1234,13 +1234,13 @@ def cleanse(frames, rules: dict[str, dict], check_fn: Callable, steward_fixes: I
         cur = patched
         human = {}  # applied once; later passes only see what the rules still propose
         results = check_fn(cur)
-    unfixable = []
+    unfixable, cell = [], _cells(cur)
     for r in results:
         if r.passed or r.error:
             continue
         for k in r.failing_record_keys or []:
             unfixable.append({"rule": r.check_id, "field": r.field, "record_key": k,
-                              "current_value": _cell(cur, r.field, k),
+                              "current_value": cell(r.field, k),
                               "reason": "no high-confidence rule fix or approved value; loaded as it is"})
     per_rule = Counter(c["rule_id"] or c["source"] for c in log)
     return {"frames": cur, "log": log, "unfixable": unfixable, "passes": passes,
@@ -1250,15 +1250,24 @@ def cleanse(frames, rules: dict[str, dict], check_fn: Callable, steward_fixes: I
             "before_results": before_results, "after_results": results}
 
 
-def _cell(frames, field: Optional[str], key: str):
-    if not field or "." not in field:
-        return None
-    t, c = field.split(".", 1)
-    df = frames.plain(t)
-    if df is None or c not in df.columns:
-        return None
-    hit = df.loc[df["__key__"] == key, c]
-    return None if hit.empty else hit.iat[0]
+def _cells(frames) -> Callable:
+    """Cell lookup by (TABLE.FIELD, record key). Each table is unprefixed and each column mapped
+    once; a per-call ``frames.plain`` copied the whole table for every failing record."""
+    plains: dict[str, Any] = {}
+    cols: dict[str, dict] = {}
+
+    def cell(field: Optional[str], key: str):
+        if not field or "." not in field:
+            return None
+        if field not in cols:
+            t, c = field.split(".", 1)
+            if t not in plains:
+                df = frames.plain(t)
+                plains[t] = None if df is None else df.drop_duplicates("__key__")
+            df = plains[t]
+            cols[field] = {} if df is None or c not in df.columns else dict(zip(df["__key__"], df[c]))
+        return cols[field].get(key)
+    return cell
 
 
 # ── loader ───────────────────────────────────────────────────────────────────

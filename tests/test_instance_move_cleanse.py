@@ -47,3 +47,12 @@ def test_steward_value_beats_rule_and_workbook():
     src = {c["record_key"]: c["source"] for c in out["log"]}
     assert src == {"LIFNR=V3": "steward", "LIFNR=V4": "workbook"}
     assert [u["record_key"] for u in out["unfixable"]] == ["LIFNR=V2"]
+
+
+def test_unfixable_current_value_reads_each_table_once(monkeypatch):
+    calls = []
+    real = TableFrames.plain
+    monkeypatch.setattr(TableFrames, "plain", lambda self, t: calls.append(t) or real(self, t))
+    out = im.cleanse(_frames(), {"T1": RULE}, _check)
+    assert {u["record_key"]: u["current_value"] for u in out["unfixable"]} == {"LIFNR=V2": "", "LIFNR=V4": "XX1"}
+    assert calls.count("LFA1") <= 3  # two from the fix pass, one for the unfixable list; per record would be 4
