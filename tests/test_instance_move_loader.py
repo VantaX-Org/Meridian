@@ -43,8 +43,27 @@ def test_live_run_sends_batches_and_records_status():
     c, store = FakeConnector(), im.MemoryStore()
     rep = im.load(_steps(), c, store, dry_run=False)
     assert rep["status"] == "completed" and c.pings == 1
-    assert c.calls == [("ToyEntity", ["T0", "T1"], "full"), ("ToyEntity", ["T2", "T3"], "full")]
+    assert sorted(c.calls) == [("ToyEntity", ["T0", "T1"], "full"), ("ToyEntity", ["T2", "T3"], "full")]
     assert len(store.checkpoints) == 2 and all(r["row_hash"] for r in store.rows)
+
+
+def test_parallel_upserts_overlap_but_record_in_batch_order():
+    import threading, time
+    live, peak, lock = [0], [0], threading.Lock()
+
+    class Slow(FakeConnector):
+        def upsert(self, entity, records, purge_type=None):
+            with lock:
+                live[0] += 1
+                peak[0] = max(peak[0], live[0])
+            time.sleep(0.05)
+            with lock:
+                live[0] -= 1
+            return super().upsert(entity, records, purge_type)
+    store = im.MemoryStore()
+    rep = im.load(_steps(n=16, batch=2), Slow(), store, dry_run=False, workers=4)
+    assert rep["status"] == "completed" and peak[0] > 1
+    assert [r["key"] for r in store.rows] == [f"toyId=T{i}" for i in range(16)]
 
 
 def test_error_rate_past_threshold_stops():
