@@ -83,11 +83,12 @@ def _prepare(session: Session, engine, tid: str, plan: dict) -> dict:
     excl = plan.get("exclude_countries")
     scope = im.move_scope(ctx["frames"], ctx["dictionary"], plan.get("sample"),
                           im.EXCLUDED_COUNTRIES if excl is None else excl)
+    # Scope first: excluded countries are never cleansed (a full-history cleanse of every country took 60+ min).
+    ctx["frames"], ctx["scope"] = im.apply_scope(ctx["frames"], ctx["dictionary"], scope)
     if plan.get("mode", "cleansed") == "cleansed":
         ctx["cleansing"] = im.cleanse(ctx["frames"], ctx["rules"], ctx["check"], _steward_fixes(session, tid),
                                       weights=ctx["weights"])
         ctx["frames"] = ctx["cleansing"]["frames"]
-    ctx["frames"], ctx["scope"] = im.apply_scope(ctx["frames"], ctx["dictionary"], scope)
     ctx["frames"], review, ctx["scope"]["defaults"] = im.apply_defaults(ctx["frames"], ctx["dictionary"], scope)
     ctx["scope"]["needs_review"] += review
     return ctx
