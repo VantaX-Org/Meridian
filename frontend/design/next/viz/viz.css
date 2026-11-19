@@ -21,3 +21,22 @@
 .nx-viz-h2 { fill: var(--nx-chart-1); fill-opacity: 0.4; stroke: none; }
 .nx-viz-h3 { fill: var(--nx-chart-1); fill-opacity: 0.65; stroke: none; }
 .nx-viz-h4 { fill: var(--nx-chart-1); fill-opacity: 0.9; stroke: none; }
+.nx-viz-dot-last { fill: var(--nx-accent); }
+.nx-viz-ranked { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.nx-viz-ranked li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; gap: var(--nx-s2); align-items: center; min-height: 24px; font-size: var(--nx-fs-small); color: var(--nx-ink-2); }
+.nx-viz-ranked-n { display: inline-block; min-width: 1.5em; color: var(--nx-ink-3); font-size: var(--nx-fs-micro); font-variant-numeric: tabular-nums; }
+.nx-viz-ranked-bar { display: block; height: var(--nx-s2); border-radius: var(--nx-r-control); background: var(--nx-surface-2); overflow: hidden; }
+.nx-viz-ranked-bar > span { display: block; height: 100%; background: var(--nx-chart-1); opacity: 0.45; }
+.nx-viz-ranked-v { font-variant-numeric: tabular-nums; }
+.nx-viz-ranked li[data-hot] { color: var(--nx-ink-2); font-weight: 600; }
+.nx-viz-ranked li[data-hot] .nx-viz-ranked-bar > span { background: var(--nx-accent); opacity: 1; }
+.nx-viz-ranked li[data-hot] .nx-viz-ranked-v { color: var(--nx-ink); }
+.nx-viz-stat { display: flex; flex-direction: column; gap: var(--nx-s1); }
+.nx-viz-stat-row { display: flex; gap: var(--nx-s6, 32px); flex-wrap: wrap; }
+.nx-viz-stat-row > div { display: flex; flex-direction: column; }
+.nx-viz-stat b { font-size: var(--nx-fs-display); font-weight: var(--nx-w-heading); font-variant-numeric: tabular-nums; color: var(--nx-ink); line-height: 1.1; }
+.nx-viz-stat-row > div[data-accent] b { color: var(--nx-accent); }
+.nx-viz-stat span, .nx-viz-stat small { color: var(--nx-ink-2); font-size: var(--nx-fs-small); }
+.nx-viz-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--nx-s1) var(--nx-s3); font-size: var(--nx-fs-small); color: var(--nx-ink-2); }
+.nx-viz-legend li { display: inline-flex; align-items: center; gap: var(--nx-s1); }
+.nx-viz-legend b { color: var(--nx-ink); font-weight: 400; font-variant-numeric: tabular-nums; }
