@@ -242,8 +242,8 @@ describe("errors and feedback", () => {
 
 describe("LivingVizCard", () => {
   it.each([
-    ["ranked", answer, "Biggest first"],
-    ["trend", { ...answer, chart: "line" as const, data: [{ label: "2026-01-01", value: 70 }, { label: "2026-02-01", value: 75 }, { label: "2026-03-01", value: 81 }] }, "How it moved"],
+    ["bars", answer, "Biggest first"],
+    ["line", { ...answer, chart: "line" as const, data: [{ label: "2026-01-01", value: 70 }, { label: "2026-02-01", value: 75 }, { label: "2026-03-01", value: 81 }] }, "How it moved"],
     ["stat", { ...answer, chart: null, data: [{ label: "Score", value: 81 }] }, "Score"],
   ])("renders the %s card with its title and source line", async (kind, a, title) => {
     play(a);

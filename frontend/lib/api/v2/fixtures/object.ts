@@ -445,6 +445,24 @@ export function fixturePost<T>(path: string, body: unknown, params: Record<strin
   if (path === "/stewardship/handoff") return { task_id: "t-001", exception_id: "e-001", assigned_to: (body as { assignee_id: string }).assignee_id, due_at: (body as { due_date: string }).due_date } as T;
   if (path === "/assistant/ask") {
     const question = (body as { question: string }).question;
+    if (/compare|spreadsheet|pace/i.test(question)) {
+      // Demo of the living rail: role-tagged data (compare) and pace_pct (pace). Fixture only, the live contract sends neither yet (gaps E5, P1).
+      return {
+        answer: "Net revenue moved less than a simple count suggests (-2.2%).",
+        intent: "summary",
+        data: [{ label: "Simple count", value: -38, role: "naive" }, { label: "Net of returns", value: -2.2, role: "true" }],
+        chart: null,
+        links: [],
+        ai: false,
+        phrased: false,
+        version_id: CURRENT_RUN,
+        facts: [{ statement: "Net revenue change", value: -2.2, source: "VBRK.NETWR", href: "/", checks: [{ check_id: "MM-001", module: MM }] }],
+        coverage: 0.92,
+        pace_pct: 96,
+        grounded: true,
+        citations: [],
+      } as T;
+    }
     return {
       answer: `Held objects are limited by critical rules over tolerance (question: ${question}).`,
       intent: "summary",

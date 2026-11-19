@@ -17,10 +17,14 @@ import "./connect-native.css";
 export interface AskAnswer {
   answer: string;
   intent: string;
-  data?: { label: string; value: number }[] | null;
+  data?: { label: string; value: number; role?: "naive" | "true" }[] | null;
   chart?: "bar" | "line" | null;
   links: { label: string; href: string }[];
   phrased: boolean;
+  pace_pct?: number;
+  signals?: number;
+  sampling?: "none" | "sampled";
+  value_found?: number;
   version_id?: string | null;
   facts: { statement: string; value?: number | null; source: string; href?: string | null; checks: { check_id: string; module?: string | null }[] }[];
   coverage: number;
@@ -190,7 +194,7 @@ function vizCard(v: Viz, a: AskAnswer, scrollToRecord: () => void): { icon: Icon
   switch (v.kind) {
     case "none":
       return null;
-    case "trend": {
+    case "line": {
       const f = v.points[0];
       const l = v.points[v.points.length - 1];
       const text = v.points.every((p) => p.value === f.value)
@@ -208,21 +212,21 @@ function vizCard(v: Viz, a: AskAnswer, scrollToRecord: () => void): { icon: Icon
         caption: cap(text),
       };
     }
-    case "stack": {
-      const tot = v.total.value;
+    case "share": {
+      const tot = v.total;
       const pct = (n: number) => (tot ? Math.round((n / tot) * 100) : 0);
       const last = v.segs[v.segs.length - 1];
-      const text = tot === 0 ? t("Nothing in the funnel yet") : t("{total} {label}: {last} {value} ({pct}%)", { total: vizNum(tot), label: v.total.label, last: last.label, value: vizNum(last.value), pct: pct(last.value) });
+      const text = tot === 0 ? t("Nothing in the funnel yet") : t("{total} {label}: {last} {value} ({pct}%)", { total: vizNum(tot), label: v.segs[0].label, last: last.label, value: vizNum(last.value), pct: pct(last.value) });
       const tones = ["chart1", "chart2", "chart3"] as const;
       const segs = v.segs.map((s, i) => ({ id: s.label, label: s.label, value: s.value, tone: tones[i] ?? ("mute" as const) }));
       return {
         icon: "columns",
-        title: t("Where the {total} go", { total: v.total.label }),
-        body: <><StackedBar segs={segs} label={text} /><VizLegend items={segs.map((s) => ({ ...s, note: t("({pct}% of {total})", { pct: pct(s.value), total: v.total.label }) }))} /></>,
+        title: t("Where the {total} go", { total: v.segs[0].label }),
+        body: <><StackedBar segs={segs} label={text} /><VizLegend items={segs.map((s) => ({ ...s, note: t("({pct}% of {total})", { pct: pct(s.value), total: v.segs[0].label }) }))} /></>,
         caption: cap(text),
       };
     }
-    case "ranked": {
+    case "bars": {
       const zero = v.items.every((d) => d.value === 0);
       const top = v.items[0];
       const text = zero ? t("All {n} are zero", { n: v.items.length }) : t("Highest: {label}, {value}", { label: top.label, value: vizNum(top.value) }) + (v.more ? t(", {n} more in the facts", { n: v.more }) : "");
@@ -238,6 +242,13 @@ function vizCard(v: Viz, a: AskAnswer, scrollToRecord: () => void): { icon: Icon
         ),
       };
     }
+    case "pace":
+    case "compare":
+    case "source":
+    case "findings":
+    case "ledger":
+    case "map":
+      return null; // rendered by the rail (builder C), not the lead card
     case "stat": {
       const text = v.figures.map((f) => `${f.label} ${vizNum(f.value)}`).join(", ");
       const two = v.figures.length === 2;

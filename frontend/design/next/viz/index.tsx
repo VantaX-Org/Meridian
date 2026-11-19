@@ -1,6 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { t } from "@/lib/v2/i18n";
+import { Icon, type IconName } from "@/design/next/Icon";
+import { Chip } from "@/design/next/kit";
+import type { Viz } from "../shell/pickViz";
 import "./viz.css";
 
 /** Shared chart parts for the Story feed cards. Inline SVG, token colours, a native tooltip (<title>) on every mark and an aria label that says the same in words. */
@@ -152,4 +156,143 @@ export function VizLegend({ items }: { items: { label: string; value: number; to
       ))}
     </ul>
   );
+}
+
+/* ---- Living rail widgets (.nx-wg-*): one component per pickViz kind, fed only from the grounded Viz. ---- */
+
+const TONES = ["chart1", "chart2", "chart3"] as const;
+const MAX_SOURCES = 6;
+
+function Wg({ kind, icon, title, children }: { kind: string; icon: IconName; title: string; children: ReactNode }) {
+  return (
+    <section className={`nx-wg nx-wg-${kind}`} data-viz={kind} aria-label={title}>
+      <header className="nx-wg-head"><Icon name={icon} /><h4 className="nx-wg-title">{title}</h4></header>
+      {children}
+    </section>
+  );
+}
+
+/** SIGNATURE: the naive read struck through against the true one. Labels are the backend's, never fixed text. */
+export function WgCompare({ naive, truth }: { naive: { label: string; value: number }; truth: { label: string; value: number } }) {
+  const max = Math.max(Math.abs(naive.value), Math.abs(truth.value)) || 1;
+  const label = t("{naive} by simple count, {truth} by Aletheia", { naive: `${naive.label} ${signed(naive.value)}`, truth: `${truth.label} ${signed(truth.value)}` });
+  return (
+    <Wg kind="compare" icon="columns" title={t("Two ways to read it")}>
+      <div className="nx-wg-cmp" role="img" aria-label={label}>
+        <div><small>{t("A spreadsheet sees")}</small><b className="nx-wg-cmp-naive">{signed(naive.value)}</b><small>{naive.label}</small></div>
+        <div><small>{t("Aletheia sees")}</small><b className="nx-wg-cmp-true">{signed(truth.value)}</b><small>{truth.label}</small></div>
+      </div>
+      <div className="nx-wg-cmp-track" aria-hidden="true">
+        <span className="nx-wg-cmp-ink" data-role="naive" style={{ width: `${(Math.abs(naive.value) / max) * 100}%` }} />
+        <span className="nx-wg-cmp-ink" data-role="true" style={{ width: `${(Math.abs(truth.value) / max) * 100}%` }} />
+      </div>
+    </Wg>
+  );
+}
+
+export function WgPace({ pct, coverage }: { pct: number; coverage: number }) {
+  const tone = pct > 100 ? "good" : pct < 80 ? "warn" : "ink";
+  return (
+    <Wg kind="pace" icon="refresh" title={t("Pace")}>
+      <div className="nx-wg-pace-row">
+        <ScoreRing value={coverage * 100} size={56} label={`${t("Pace")} ${fmt(pct)}%`} center=" " />
+        <div><b className="nx-wg-pace-pct" data-tone={tone}>{fmt(pct)}%</b><small>{t("of last month's run rate")}</small></div>
+      </div>
+    </Wg>
+  );
+}
+
+export function WgLine({ points }: { points: { label: string; value: number }[] }) {
+  const label = t("Trend of {label}", { label: points[0].label });
+  return (
+    <Wg kind="line" icon="history" title={t("Trend")}>
+      <span className="nx-wg-line-path"><AreaTrend points={points} label={label} height={96} empty={label} emphasisLast /></span>
+      <small className="nx-wg-cap">{t("Now")}</small>
+    </Wg>
+  );
+}
+
+export function WgBars({ items, keepOrder, more }: { items: { label: string; value: number }[]; keepOrder: boolean; more: number }) {
+  const zero = items.every((d) => d.value === 0);
+  return (
+    <Wg kind="bars" icon="columns" title={t("Ranked")}>
+      <RankedBars items={items} label={t("Ranked")} emphasis={zero ? "none" : keepOrder ? "first" : "top"} />
+      {more > 0 ? <small className="nx-wg-cap">{t("{n} more", { n: more })}</small> : null}
+    </Wg>
+  );
+}
+
+export function WgShare({ segs, total }: { segs: { label: string; value: number }[]; total: number }) {
+  const parts = segs.map((s, i) => ({ id: s.label, label: s.label, value: s.value, tone: TONES[i] ?? ("mute" as const) }));
+  const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
+  return (
+    <Wg kind="share" icon="columns" title={t("Share")}>
+      <StackedBar segs={parts} label={t("Share of {label}", { label: segs[0].label })} />
+      <VizLegend items={parts.map((s) => ({ ...s, note: t("{p}% of total", { p: pct(s.value) }) }))} />
+    </Wg>
+  );
+}
+
+export function WgStat({ figures, delta }: { figures: { label: string; value: number }[]; delta?: number }) {
+  return (
+    <Wg kind="stat" icon="info" title={figures[0].label}>
+      <Stat figures={figures} label={figures.map((f) => `${f.label} ${fmt(f.value)}`).join(", ")} delta={delta} />
+    </Wg>
+  );
+}
+
+/** Sources grouped as the backend sends them. A row opens the first fact's href when `hrefFor` returns one. */
+export function WgSource({ rows, onPick }: { rows: { source: string; checks: string[]; n: number }[]; onPick?: (source: string) => void }) {
+  const shown = rows.slice(0, MAX_SOURCES);
+  return (
+    <Wg kind="source" icon="file" title={t("Where these numbers come from")}>
+      <table className="nx-wg-src">
+        <tbody>
+          {shown.map((r) => (
+            <tr key={r.source}>
+              <td>{onPick ? <button type="button" className="nx-ask-link" onClick={() => onPick(r.source)}>{r.source}</button> : r.source}</td>
+              <td>{r.checks.join(", ")}</td>
+              <td>{t("{n} {n, plural, one {fact} other {facts}}", { n: r.n })}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {rows.length > shown.length ? <small className="nx-wg-cap">{t("{n} more sources", { n: rows.length - shown.length })}</small> : null}
+    </Wg>
+  );
+}
+
+export function WgFindings({ items, onAsk }: { items: string[]; onAsk: (q: string) => void }) {
+  return (
+    <Wg kind="findings" icon="alert" title={t("What needs attention")}>
+      <ul className="nx-wg-find">
+        {items.map((q) => <li key={q}><span>{q}</span><Chip tone="aletheia" onClick={() => onAsk(q)}>{t("Ask Vera")}</Chip></li>)}
+      </ul>
+    </Wg>
+  );
+}
+
+export function WgLedger({ value, unit }: { value: number; unit: string }) {
+  return (
+    <Wg kind="ledger" icon="check" title={t("Value found")}>
+      <b className="nx-wg-big">{unit ? `${unit} ` : ""}{fmt(value)}</b>
+      <small>{t("Proof of value in this run")}</small>
+    </Wg>
+  );
+}
+
+/** One widget for one picked Viz. `none` and `map` (gap M1) render nothing. */
+export function RailWidget({ viz, onAsk, onPickSource }: { viz: Viz; onAsk: (q: string) => void; onPickSource?: (source: string) => void }) {
+  switch (viz.kind) {
+    case "pace": return <WgPace pct={viz.pct} coverage={viz.coverage} />;
+    case "line": return <WgLine points={viz.points} />;
+    case "bars": return <WgBars items={viz.items} keepOrder={viz.keepOrder} more={viz.more} />;
+    case "share": return <WgShare segs={viz.segs} total={viz.total} />;
+    case "stat": return <WgStat figures={viz.figures} delta={viz.delta} />;
+    case "compare": return <WgCompare naive={viz.naive} truth={viz.truth} />;
+    case "source": return <WgSource rows={viz.rows} onPick={onPickSource} />;
+    case "findings": return <WgFindings items={viz.items} onAsk={onAsk} />;
+    case "ledger": return <WgLedger value={viz.value} unit={viz.unit} />;
+    default: return null;
+  }
 }
