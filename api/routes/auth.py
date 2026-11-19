@@ -678,14 +678,39 @@ def forgot_password(body: ForgotPasswordRequest):
         conn.execute(text(f"SET app.tenant_id = '{str(DEV_TENANT_ID)}'"))
         row = conn.execute(
             text(
-                "SELECT id, name, token_version FROM users "
-                "WHERE LOWER(email) = :em AND tenant_id = :tid "
-                "  AND is_active = true AND password_hash IS NOT NULL"
+                "SELECT id, name, token_version, password_hash IS NOT NULL, role FROM users "
+                "WHERE LOWER(email) = :em AND tenant_id = :tid AND is_active = true"
             ),
             {"em": email, "tid": DEV_TENANT_ID},
         ).fetchone()
 
-        if row:
+        if row and not row[3]:
+            # Invited but never set a password: a reset link would have nothing to reset, so send a
+            # fresh invite (new 7-day token, same as Admin > Users > Resend) to the same address.
+            from api.services.local_auth import INVITE_TTL_DAYS, create_invite_token
+
+            invite_token = create_invite_token(str(row[0]), DEV_TENANT_ID, secret_row[0])
+            conn.execute(
+                text("UPDATE users SET invite_expires_at = now() + make_interval(days => :days), "
+                     "invite_status = 'queued', invite_sent_at = now() WHERE id = :uid AND tenant_id = :tid"),
+                {"days": INVITE_TTL_DAYS, "uid": str(row[0]), "tid": DEV_TENANT_ID},
+            )
+            conn.commit()
+            try:
+                from workers.tasks.send_user_invitation import send_invitation_email
+
+                send_invitation_email.delay(
+                    user_id=str(row[0]),
+                    tenant_id=DEV_TENANT_ID,
+                    recipient_email=email,
+                    recipient_name=row[1] or email.split("@")[0],
+                    role=row[4] or "viewer",
+                    invite_token=invite_token,
+                )
+            except Exception as e:
+                import logging
+                logging.getLogger("meridian.auth").error(f"Could not queue invite email: {e}")
+        elif row:
             from api.services.local_auth import create_password_reset_token
 
             reset_token = create_password_reset_token(
