@@ -14466,6 +14466,7 @@ export const en = {
   "Proof of value in this run": "Proof of value in this run",
   "Share of {label}": "Share of {label}",
   "{naive} by simple count, {truth} by Aletheia": "{naive} by simple count, {truth} by Aletheia",
+  "{n} live signals": "{n} live signals",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

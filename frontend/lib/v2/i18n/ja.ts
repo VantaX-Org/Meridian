@@ -14467,4 +14467,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Proof of value in this run": "この実行での価値の証明",
   "Share of {label}": "{label} の構成比",
   "{naive} by simple count, {truth} by Aletheia": "単純集計では {naive}、Aletheia では {truth}",
+  "{n} live signals": "ライブシグナル {n} 件",
 };

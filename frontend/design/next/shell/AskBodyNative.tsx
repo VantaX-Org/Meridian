@@ -7,10 +7,12 @@ import { failureText } from "@/lib/v2/errors";
 import { Mono, V2Link } from "@/design/v2/parts";
 import { Button, Chip } from "@/design/next/kit";
 import { Skeleton } from "@/design/next/kit/Skeleton";
-import { Icon, type IconName } from "@/design/next/Icon";
+import { Icon } from "@/design/next/Icon";
 import { t } from "@/lib/v2/i18n";
-import { AreaTrend, RankedBars, Stat, StackedBar, VizLegend, vizNum, vizSigned } from "../viz";
-import { pickViz, type Viz } from "./pickViz";
+import { vizNum } from "../viz";
+import { RailWidget } from "../viz/index";
+import { pickRail } from "./pickViz";
+import { VeraStage, type VoiceId } from "./VeraStage";
 import "./connect-native.css";
 
 /** POST /assistant/ask: an answer assembled from this run's facts, the model only rewords it. */
@@ -184,102 +186,20 @@ function VerifyChip({ a }: { a: AskAnswer }) {
         {refused ? t("Withheld, coverage {c}, {n} facts, not grounded", { c: cov, n: a.facts.length }) : t("Verified, coverage {c}, {n} facts, grounded", { c: cov, n: a.facts.length })}
       </Chip>
       {a.version_id ? <Mono className="nx-ask-run">{a.version_id}</Mono> : null}
+      {!refused && typeof a.signals === "number" && Number.isFinite(a.signals) ? <Chip>{t("{n} live signals", { n: a.signals })}</Chip> : null}
     </div>
   );
 }
 
-/** One card per pickViz kind: icon and title, the chart, the caption in words. */
-function vizCard(v: Viz, a: AskAnswer, scrollToRecord: () => void): { icon: IconName; title: string; body: ReactNode; caption: ReactNode } | null {
-  const cap = (text: string) => <small className="nx-ask-cap">{text}</small>;
-  switch (v.kind) {
-    case "none":
-      return null;
-    case "line": {
-      const f = v.points[0];
-      const l = v.points[v.points.length - 1];
-      const text = v.points.every((p) => p.value === f.value)
-        ? t("Unchanged across {n} runs", { n: v.points.length })
-        : t("{from} to {to}: {a} → {b} ({change})", { from: f.label, to: l.label, a: vizNum(f.value), b: vizNum(l.value), change: vizSigned(l.value - f.value) });
-      return {
-        icon: "arrow-up-right",
-        title: t("How it moved"),
-        body: (
-          <>
-            <p className="nx-ask-annot"><b>{vizNum(l.value)}</b><span>{vizSigned(l.value - f.value)}</span></p>
-            <AreaTrend points={v.points} label={text} height={96} empty={text} emphasisLast />
-          </>
-        ),
-        caption: cap(text),
-      };
-    }
-    case "share": {
-      const tot = v.total;
-      const pct = (n: number) => (tot ? Math.round((n / tot) * 100) : 0);
-      const last = v.segs[v.segs.length - 1];
-      const text = tot === 0 ? t("Nothing in the funnel yet") : t("{total} {label}: {last} {value} ({pct}%)", { total: vizNum(tot), label: v.segs[0].label, last: last.label, value: vizNum(last.value), pct: pct(last.value) });
-      const tones = ["chart1", "chart2", "chart3"] as const;
-      const segs = v.segs.map((s, i) => ({ id: s.label, label: s.label, value: s.value, tone: tones[i] ?? ("mute" as const) }));
-      return {
-        icon: "columns",
-        title: t("Where the {total} go", { total: v.segs[0].label }),
-        body: <><StackedBar segs={segs} label={text} /><VizLegend items={segs.map((s) => ({ ...s, note: t("({pct}% of {total})", { pct: pct(s.value), total: v.segs[0].label }) }))} /></>,
-        caption: cap(text),
-      };
-    }
-    case "bars": {
-      const zero = v.items.every((d) => d.value === 0);
-      const top = v.items[0];
-      const text = zero ? t("All {n} are zero", { n: v.items.length }) : t("Highest: {label}, {value}", { label: top.label, value: vizNum(top.value) }) + (v.more ? t(", {n} more in the facts", { n: v.more }) : "");
-      return {
-        icon: "arrow-down",
-        title: v.keepOrder ? t("In order") : t("Biggest first"),
-        body: <RankedBars items={v.items} label={text} emphasis={zero ? "none" : v.keepOrder ? "first" : "top"} />,
-        caption: (
-          <>
-            {cap(text)}
-            {v.more > 0 ? <> <button type="button" className="nx-ask-link" onClick={scrollToRecord}>{t("see all in the record")}</button></> : null}
-          </>
-        ),
-      };
-    }
-    case "pace":
-    case "compare":
-    case "source":
-    case "findings":
-    case "ledger":
-    case "map":
-      return null; // rendered by the rail (builder C), not the lead card
-    case "stat": {
-      const text = v.figures.map((f) => `${f.label} ${vizNum(f.value)}`).join(", ");
-      const two = v.figures.length === 2;
-      return {
-        icon: two ? "columns" : "info",
-        title: two ? t("{a} against {b}", { a: v.figures[0].label, b: v.figures[1].label }) : v.figures[0].label,
-        body: <Stat figures={v.figures} label={text} delta={v.delta} />,
-        caption: cap(text),
-      };
-    }
-  }
-  void a;
-}
-
-/** 5. The one lead visual, chosen from the real result. Never for a refusal. */
-function LivingVizCard({ a, scrollToRecord }: { a: AskAnswer; scrollToRecord: () => void }) {
+/** 5. The living rail: up to four widgets, each grounded in a real field of the result. Never for a refusal. */
+function LivingRail({ a, suggestions, onAsk, onPickSource }: { a: AskAnswer; suggestions: string[]; onAsk: (q: string) => void; onPickSource: (source: string) => void }) {
   if (isRefused(a)) return null;
-  const v = pickViz(a);
-  const card = vizCard(v, a, scrollToRecord);
-  if (!card) return null;
-  const src = [a.intent, t("{n} facts", { n: a.facts.length }), a.version_id ?? t("current run")];
-  if (a.facts[0]?.source) src.push(a.facts[0].source);
+  const rail = pickRail(a, suggestions);
+  if (!rail.length) return null;
   return (
-    <section className="nx-ask-card nx-ask-viz" data-viz={v.kind} aria-label={card.title}>
-      <header className="nx-ask-head">
-        <h3 className="nx-ask-title"><Icon name={card.icon} />{card.title}</h3>
-      </header>
-      <small className="nx-ask-src">{src.join(", ")}</small>
-      {card.body}
-      {card.caption}
-    </section>
+    <div className="nx-wg-rail" data-testid="ask-rail">
+      {rail.map((v) => <RailWidget key={v.kind} viz={v} onAsk={onAsk} onPickSource={onPickSource} />)}
+    </div>
   );
 }
 
@@ -325,14 +245,18 @@ function OnTheRecord({ turn, a, cited, hot }: { turn: number; a: AskAnswer; cite
   );
 }
 
-function TurnView({ turn, hot, onPick, onRetry, busy }: { turn: Turn; hot: string | null; onPick: (turn: number, n: number) => void; onRetry: () => void; busy: boolean }) {
+function TurnView({ turn, hot, onPick, onRetry, busy, suggestions, onAsk }: { turn: Turn; hot: string | null; onPick: (turn: number, n: number) => void; onRetry: () => void; busy: boolean; suggestions: string[]; onAsk: (q: string) => void }) {
   const a = turn.answer;
   const facts = a?.facts ?? turn.evidence?.facts ?? [];
   const coverage = a?.coverage ?? turn.evidence?.coverage ?? 0;
   const refused = a ? isRefused(a) : turn.evidence ? !turn.evidence.grounded : false;
   const cited = a && !refused ? citeFacts(a.answer, facts).cited : new Set<number>();
   const pick = (n: number) => onPick(turn.id, n);
-  const record = () => document.getElementById(`ask-${turn.id}-record`)?.scrollIntoView?.({ block: "nearest" });
+  // A source names a fact: open the first one that carries it, the same path as an F-n marker.
+  const pickSource = (source: string) => {
+    const i = facts.findIndex((f) => f.source === source);
+    if (i >= 0) pick(i + 1);
+  };
   return (
     <div className="nx-ask-turn">
       <p className="nx-ask-q">{turn.question}</p>
@@ -353,7 +277,7 @@ function TurnView({ turn, hot, onPick, onRetry, busy }: { turn: Turn; hot: strin
             <Prose text="" answer={a} facts={facts} turn={turn.id} streaming={false} onPick={pick} />
           )}
           <VerifyChip a={a} />
-          <LivingVizCard a={a} scrollToRecord={record} />
+          <LivingRail a={a} suggestions={suggestions} onAsk={onAsk} onPickSource={pickSource} />
           <OnTheRecord turn={turn.id} a={a} cited={cited} hot={hot} />
           <Feedback runId={a.version_id ?? null} />
           {a.links.length ? (
@@ -373,12 +297,13 @@ function TurnView({ turn, hot, onPick, onRetry, busy }: { turn: Turn; hot: strin
 }
 
 /** Ask Aletheia: the thread, the landing and the dock. Answers use only the current run's facts. */
-export function AskBodyNative({ hero = true, scope, module, versionId }: { hero?: boolean; scope?: string; module?: string; versionId?: string }) {
+export function AskBodyNative({ hero = true, density = hero ? "hero" : "compact", scope, module, versionId }: { hero?: boolean; density?: "hero" | "compact"; scope?: string; module?: string; versionId?: string }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [chips, setChips] = useState<string[]>(() => SUGGESTIONS.map((s) => s()));
   const [hot, setHot] = useState<string | null>(null);
+  const [voice, setVoice] = useState<VoiceId>("vera");
   const input = useRef<HTMLInputElement>(null);
   const next = useRef(0);
   const hotTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -460,17 +385,17 @@ export function AskBodyNative({ hero = true, scope, module, versionId }: { hero?
   const landing = turns.length === 0;
 
   return (
-    <div className="nx-ask">
+    <div className="nx-ask" data-density={density}>
+      <VeraStage density={density} state={busy ? "speaking" : "idle"} scope={(scope ?? t("this run")).toLowerCase()} voice={voice} onVoice={setVoice} onTalk={() => input.current?.focus()} />
       {landing ? (
         <div className="nx-ask-landing">
-          {hero ? <div className="nx-ask-hero" aria-hidden="true"><Icon name="sparkles" size={28} /></div> : null}
           <p className="nx-ask-promise">{t("I only say what I can prove, and I show where every number comes from.")}</p>
           <h2 className="nx-ask-h">{t("Ask Aletheia about {scope}", { scope: scope ?? t("this run") })}</h2>
           <p className="nx-ask-sub">{t("Answers come from this run's verified facts. Never a probability, never a guess.")}</p>
         </div>
       ) : (
         <div className="nx-ask-log" aria-live="polite" aria-busy={busy}>
-          {turns.map((x) => <TurnView key={x.id} turn={x} hot={hot} onPick={pick} onRetry={() => retry(x)} busy={busy} />)}
+          {turns.map((x) => <TurnView key={x.id} turn={x} hot={hot} onPick={pick} onRetry={() => retry(x)} busy={busy} suggestions={chips} onAsk={seed} />)}
         </div>
       )}
       <form className="nx-ask-dock" onSubmit={submit}>

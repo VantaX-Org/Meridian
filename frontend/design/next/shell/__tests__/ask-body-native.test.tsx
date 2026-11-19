@@ -161,7 +161,8 @@ describe("a grounded answer", () => {
     renderWithQuery(<AskBodyNative />);
     const a = await ask("Q");
     expect(a).toHaveTextContent("No facts in this run speak to that.");
-    expect(a.querySelector("[data-viz]")).toBeNull();
+    expect(a.querySelector('[data-viz="source"]')).toBeNull();
+    expect(a.querySelector('[data-viz="bars"]')).toBeNull();
   });
 
   it("falls back to the plain endpoint when the stream fails before evidence", async () => {
@@ -240,38 +241,40 @@ describe("errors and feedback", () => {
   });
 });
 
-describe("LivingVizCard", () => {
+describe("living rail", () => {
   it.each([
-    ["bars", answer, "Biggest first"],
-    ["line", { ...answer, chart: "line" as const, data: [{ label: "2026-01-01", value: 70 }, { label: "2026-02-01", value: 75 }, { label: "2026-03-01", value: 81 }] }, "How it moved"],
-    ["stat", { ...answer, chart: null, data: [{ label: "Score", value: 81 }] }, "Score"],
-  ])("renders the %s card with its title and source line", async (kind, a, title) => {
+    ["bars", answer],
+    ["line", { ...answer, chart: "line" as const, data: [{ label: "2026-01-01", value: 70 }, { label: "2026-02-01", value: 75 }, { label: "2026-03-01", value: 81 }] }],
+    ["stat", { ...answer, chart: null, data: [{ label: "Score", value: 81 }] }],
+  ])("renders the %s lead and the source widget", async (kind, a) => {
     play(a);
     renderWithQuery(<AskBodyNative />);
     const root = await ask("Q");
-    const card = root.querySelector(`[data-viz="${kind}"]`) as HTMLElement;
-    expect(card).not.toBeNull();
-    expect(card).toHaveTextContent(title);
-    expect(card).toHaveTextContent("score_drivers, 3 facts, v-1, run v-1");
+    expect(root.querySelector(`[data-viz="${kind}"]`)).not.toBeNull();
+    expect(root.querySelector('[data-viz="source"]')).not.toBeNull();
   });
 
-  it("the source line says current run without a version", async () => {
-    play({ ...answer, version_id: null, facts: [{ ...answer.facts[0], source: "" }] });
+  it("a source click opens its first fact on the record", async () => {
+    play(answer);
     renderWithQuery(<AskBodyNative />);
     const root = await ask("Q");
-    expect(root.querySelector("[data-viz]")).toHaveTextContent("score_drivers, 1 facts, current run");
+    const src = answer.facts[0].source;
+    const row = root.querySelector("#ask-0-fact-1") as HTMLElement;
+    row.scrollIntoView = vi.fn();
+    fireEvent.click(within(root.querySelector('[data-viz="source"]') as HTMLElement).getByRole("button", { name: src }));
+    expect(row.scrollIntoView).toHaveBeenCalled();
   });
 
-  it("ranked 'see all in the record' appears when rows are cut and scrolls to the record", async () => {
-    const data = Array.from({ length: 12 }, (_, i) => ({ label: `L${i}`, value: 100 - i }));
-    play({ ...answer, data });
+  it("shows live signals only when the answer carries a count", async () => {
+    play({ ...answer, signals: 4 });
     renderWithQuery(<AskBodyNative />);
-    const root = await ask("Q");
-    const scroll = vi.fn();
-    const rec = root.querySelector("#ask-0-record") as HTMLElement;
-    rec.scrollIntoView = scroll;
-    fireEvent.click(within(root).getByRole("button", { name: "see all in the record" }));
-    expect(scroll).toHaveBeenCalled();
+    expect(await ask("Q")).toHaveTextContent("4 live signals");
+  });
+
+  it("no signals field, no chip", async () => {
+    play(answer);
+    renderWithQuery(<AskBodyNative />);
+    expect(await ask("Q")).not.toHaveTextContent("live signals");
   });
 });
 

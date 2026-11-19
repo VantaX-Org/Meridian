@@ -14467,4 +14467,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Proof of value in this run": "Wertnachweis in diesem Lauf",
   "Share of {label}": "Anteil von {label}",
   "{naive} by simple count, {truth} by Aletheia": "{naive} nach einfacher Zählung, {truth} nach Aletheia",
+  "{n} live signals": "{n} Live-Signale",
 };
