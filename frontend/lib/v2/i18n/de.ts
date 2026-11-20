@@ -14704,4 +14704,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "New failures": "Neue Fehler",
   "No rule got worse since the clean.": "Seit der Bereinigung hat sich keine Regel verschlechtert.",
   "No run since the clean yet.": "Seit der Bereinigung noch kein Lauf.",
+  "{n} facts, {r} rules": "{n} Fakten, {r} Regeln",
+  "{n} more not shown": "{n} weitere nicht angezeigt",
+  "Share of {n}": "Anteil an {n}",
+  "{n} against the second figure": "{n} gegenüber der zweiten Zahl",
 };

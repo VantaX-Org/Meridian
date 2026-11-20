@@ -14703,6 +14703,10 @@ export const en = {
   "New failures": "New failures",
   "No rule got worse since the clean.": "No rule got worse since the clean.",
   "No run since the clean yet.": "No run since the clean yet.",
+  "{n} facts, {r} rules": "{n} facts, {r} rules",
+  "{n} more not shown": "{n} more not shown",
+  "Share of {n}": "Share of {n}",
+  "{n} against the second figure": "{n} against the second figure",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

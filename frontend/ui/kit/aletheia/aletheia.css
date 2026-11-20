@@ -6,3 +6,4 @@
 .mx-root .mx-ans-scope { display: inline-flex; gap: var(--mx-s2); align-items: center; padding: var(--mx-s1) var(--mx-s3); border-radius: var(--mx-r-pill); background: var(--mx-aletheia-soft); border: 1px solid var(--mx-aletheia-edge); color: var(--mx-aletheia-ink); font-size: var(--mx-fs-small); }
 .mx-root .mx-ans-scope button { border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .mx-root .mx-ans-pending { color: var(--mx-ink-2); font-size: var(--mx-fs-small); }
+.mx-root .mx-ans-stats { display: flex; gap: var(--mx-s3); margin: 0; }

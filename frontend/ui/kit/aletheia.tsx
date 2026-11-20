@@ -39,10 +39,12 @@ interface Api {
 const NONE: ChatMessage[] = [];
 const Ctx = createContext<Api | null>(null);
 
-const factsOf = (e: AskEvidence): ChatFact[] => e.facts.map((f) => ({ statement: f.statement, value: f.value, href: f.href, checks: f.checks }));
+const factsOf = (e: AskEvidence): ChatFact[] => e.facts.map((f) => ({ statement: f.statement, value: f.value, href: f.href, source: f.source, checks: f.checks }));
 const evidenceFields = (e: AskEvidence): Partial<ChatMessage> => ({
   facts: factsOf(e),
   chart: e.chart && e.data?.length ? { kind: e.chart, data: e.data } : undefined,
+  intent: e.intent,
+  grounded: e.grounded,
   links: e.links,
   footer: { n: e.facts.length, coverage: e.coverage, phrased: false },
 });
