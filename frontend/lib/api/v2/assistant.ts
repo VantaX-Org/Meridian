@@ -24,7 +24,11 @@ export interface AskEvidence {
   version_id: string | null;
   facts: AskFact[];
   citations: AskCitation[];
-  data: { label: string; value: number }[] | null;
+  data: { label: string; value: number; role?: "naive" | "true" }[] | null;
+  pace_pct?: number;
+  signals?: number;
+  sampling?: "none" | "sampled";
+  value_found?: number;
   chart: "bar" | "line" | null;
   links: { label: string; href: string }[];
   coverage: number;

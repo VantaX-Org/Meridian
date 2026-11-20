@@ -23,6 +23,7 @@
 @keyframes nx-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes nx-sheet-down { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
 @keyframes nx-count { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes nx-grow { from { transform: scaleX(0); } to { transform: none; } }
 @keyframes nx-draw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
 
 .nx-enter { animation: nx-fade-up var(--nx-dur-base) var(--nx-ease) both; }
@@ -85,6 +86,7 @@
   }
   .nx-enter, .nx-panel, .nx-toast, .nx-dialog, .nx-sheet, .nx-sheet-top, .nx-popover { animation: nx-fade 1ms both; }
   .nx-count { animation: none; }
+  .nx-viz-ranked-bar > span, .nx-viz-stat, .nx-ask-viz .nx-viz-trend { animation: none; }
   .nx-skeleton-bar, .nx-spinner, .nx-bar-indeterminate { animation: none; }
   .nx-skeleton-bar { background: var(--nx-surface-2); }
   .nx-bar-indeterminate { width: 100%; transform: none; opacity: 0.5; }
@@ -124,7 +126,21 @@ html[data-motion="off"] .nx-live-seg-busy { animation: none; }
   .nx-live-seg-busy { animation: none; opacity: 0.3; }
 }
 
+.nx-viz-ranked-bar > span { transform-origin: left; animation: nx-grow var(--nx-dur-slow) var(--nx-ease) both; }
+.nx-viz-stat, .nx-ask-viz .nx-viz-trend { animation: nx-fade var(--nx-dur-slow) var(--nx-ease) both; }
+
 /* Chart parts: the ring arc eases to its value; reduced motion and the app switch both make the duration 1 ms. */
 .nx-ring-arc, .nx-vring-arc { transition: stroke-dashoffset var(--nx-dur-slow) var(--nx-ease); }
 .nx-area-line, .nx-varea-line { animation: nx-draw var(--nx-dur-slow) var(--nx-ease) both; }
 @media (prefers-reduced-motion: reduce) { .nx-area-line, .nx-varea-line { animation: none; } }
+
+/* Aletheia ask: fact cells fade in, the coverage track grows, the caret blinks, a picked record row fades its tint. */
+@keyframes nx-blink { 50% { opacity: 0; } }
+.nx-ask-cell { animation: nx-fade var(--nx-dur-base) var(--nx-ease) both; }
+.nx-ask-cov > span { transform-origin: left; animation: nx-grow var(--nx-dur-slow) var(--nx-ease) both; }
+.nx-ask-caret { animation: nx-blink 1s steps(2) infinite; }
+.nx-ask-row { transition: background var(--nx-dur-slow) var(--nx-ease); }
+@media (prefers-reduced-motion: reduce) {
+  .nx-ask-caret { animation: none; }
+  .nx-ask-row { transition: none; }
+}

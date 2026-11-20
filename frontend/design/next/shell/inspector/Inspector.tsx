@@ -48,7 +48,7 @@ const Rule = group(() => import("./rule").then((m) => m.RULE_BODIES));
 function AskPanelNative({ onClose }: BodyProps) {
   return (
     <InspectorFrame title={t("Ask Meridian")} status={t("Answers use only this run's facts. The model rewords them; any number that is not a fact is refused.")} onClose={onClose}>
-      <AskBodyNative />
+      <AskBodyNative density="compact" />
     </InspectorFrame>
   );
 }

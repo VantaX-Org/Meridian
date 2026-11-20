@@ -1,0 +1,21 @@
+/* Vera stage: orb, caption, Talk, voice bar. Tokens only; motion lives in tokens.css. */
+.nx-vera { display: flex; flex-direction: column; align-items: center; gap: var(--nx-s4); padding: var(--nx-s6) var(--nx-s4) var(--nx-s4); background: transparent; }
+.nx-vera-3d { display: flex; flex-direction: column; align-items: center; gap: var(--nx-s5); min-width: 0; }
+.nx-orb { position: relative; width: var(--nx-orb-size); height: var(--nx-orb-size); flex: none; }
+.nx-orb-core { position: absolute; inset: 0; border-radius: var(--nx-r-pill); background: var(--nx-grad-orb); box-shadow: var(--nx-elev-orb); }
+.nx-orb-ring { position: absolute; inset: 0; border: 1px solid var(--nx-aletheia); border-radius: var(--nx-r-pill); opacity: 0; pointer-events: none; }
+.nx-orb[data-state="speaking"] .nx-orb-ring { opacity: 1; }
+.nx-vera-caption { display: flex; flex-direction: column; align-items: center; gap: var(--nx-s4); min-width: 0; }
+.nx-vera-hint { margin: 0; max-width: 36ch; text-align: center; font-size: var(--nx-fs-body); line-height: var(--nx-lh-body); color: var(--nx-ink-2); }
+.nx-vera-controls { display: flex; align-items: center; gap: var(--nx-s2); }
+.nx-vera-voicebar { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--nx-s3); font-size: var(--nx-fs-small); color: var(--nx-ink-2); }
+.nx-vera-voice { display: inline-flex; align-items: center; gap: var(--nx-s2); }
+.nx-vera-voice .nx-input { border-radius: var(--nx-r-pill); }
+.nx-vera-tier { font-family: var(--nx-mono); font-size: var(--nx-fs-micro); color: var(--nx-ink-3); }
+
+.nx-vera[data-density="compact"] { align-items: stretch; padding: var(--nx-s3) var(--nx-s4); }
+.nx-vera[data-density="compact"] .nx-vera-3d { flex-direction: row; align-items: center; gap: var(--nx-s3); }
+.nx-vera[data-density="compact"] .nx-orb { width: var(--nx-orb-size-sm); height: var(--nx-orb-size-sm); }
+.nx-vera[data-density="compact"] .nx-orb-core { box-shadow: none; }
+.nx-vera[data-density="compact"] .nx-vera-caption { align-items: flex-start; gap: var(--nx-s2); }
+.nx-vera[data-density="compact"] .nx-vera-hint { text-align: left; max-width: none; font-size: var(--nx-fs-small); line-height: var(--nx-lh-small); }
