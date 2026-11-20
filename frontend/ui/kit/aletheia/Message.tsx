@@ -7,8 +7,10 @@ import { t } from "@/lib/v2/i18n";
 import { BarList } from "../BarList";
 import { Confirm } from "../Confirm";
 import { FieldChip } from "../FieldChip";
+import { StatTile } from "../StatTile";
 import { TrendArea } from "../TrendArea";
 import type { ChatMessage } from "../AletheiaSheet";
+import { pickViz, sourcesOf, type Viz } from "./pickViz";
 import "./aletheia.css";
 
 type Pending = { kind: "batch" | "acted"; module: string; check_id: string } | null;
@@ -31,16 +33,11 @@ export function Message({ m, evidenceLabel, onAsk }: { m: ChatMessage; evidenceL
     }
   };
   const mod = first?.module ?? "";
+  const sources = sourcesOf(m.facts ?? []);
   return (
     <div className="mx-msg" data-role={m.role}>
       {m.text ? <p>{m.text}</p> : m.pending ? <p className="mx-ans-pending">{t("Aletheia is reading the figures.")}</p> : null}
-      {m.chart && m.chart.data.length ? (
-        <div className="mx-ans-chart">
-          {m.chart.kind === "line"
-            ? <TrendArea label={t("Trend in the answer")} emptyLabel={t("Too few points to draw a trend.")} points={m.chart.data.map((d) => ({ axis: d.label, title: d.label, value: d.value }))} />
-            : <BarList label={t("Figures in the answer")} items={m.chart.data.map((d) => ({ id: d.label, label: d.label, value: d.value }))} />}
-        </div>
-      ) : null}
+      <LeadViz viz={pickViz({ grounded: m.grounded ?? true, intent: m.intent ?? "", chart: m.chart?.kind ?? null, data: m.chart?.data ?? null })} />
       {m.facts?.length ? (
         <div>
           <p className="mx-evidence-l">{evidenceLabel}</p>
@@ -54,6 +51,9 @@ export function Message({ m, evidenceLabel, onAsk }: { m: ChatMessage; evidenceL
             ))}
           </ul>
         </div>
+      ) : null}
+      {sources.length ? (
+        <div><p className="mx-evidence-l">{t("Read from")}</p><ul className="mx-evidence" aria-label={t("Read from")}>{sources.map((g) => <li key={g.source}><code>{g.source}</code> {t("{n} facts, {r} rules", { n: g.n, r: g.checks.length })}</li>)}</ul></div>
       ) : null}
       {m.evidence?.length ? (
         <div><p className="mx-evidence-l">{evidenceLabel}</p><ul className="mx-evidence" aria-label={evidenceLabel}>{m.evidence.map((x) => <li key={x}>{x}</li>)}</ul></div>
@@ -87,6 +87,24 @@ export function Message({ m, evidenceLabel, onAsk }: { m: ChatMessage; evidenceL
       >
         <p className="mx-muted">{t("This writes to the ledger. Nothing is sent to SAP.")}</p>
       </Confirm>
+    </div>
+  );
+}
+
+/** The one lead visual pickViz chose: a trend, ranked bars, a share of a total, or one or two figures. */
+function LeadViz({ viz }: { viz: Viz }) {
+  if (viz.kind === "none") return null;
+  return (
+    <div className="mx-ans-chart">
+      {viz.kind === "line" ? <TrendArea label={t("Trend in the answer")} emptyLabel={t("Too few points to draw a trend.")} points={viz.points.map((d) => ({ axis: d.label, title: d.label, value: d.value }))} /> : null}
+      {viz.kind === "bars" ? <>
+        <BarList label={t("Figures in the answer")} items={viz.items.map((d) => ({ id: d.label, label: d.label, value: Math.abs(d.value), display: String(d.value) }))} />
+        {viz.more ? <p className="mx-muted">{t("{n} more not shown", { n: viz.more })}</p> : null}
+      </> : null}
+      {viz.kind === "share" ? <BarList label={t("Share of {n}", { n: viz.total })} max={viz.total} items={viz.segs.map((d) => ({ id: d.label, label: d.label, value: d.value, display: `${d.value} (${Math.round((d.value / viz.total) * 100)}%)` }))} /> : null}
+      {viz.kind === "stat" ? <dl className="mx-ans-stats">
+        {viz.figures.map((d, i) => <StatTile key={d.label} label={d.label} value={d.value} note={i === 0 && viz.delta !== undefined ? t("{n} against the second figure", { n: viz.delta > 0 ? `+${viz.delta}` : viz.delta }) : undefined} />)}
+      </dl> : null}
     </div>
   );
 }

@@ -14704,4 +14704,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "New failures": "新たな不合格",
   "No rule got worse since the clean.": "クレンジング以降、悪化したルールはありません。",
   "No run since the clean yet.": "クレンジング以降の実行はまだありません。",
+  "{n} facts, {r} rules": "{n} 件の事実、{r} 件のルール",
+  "{n} more not shown": "ほか {n} 件は非表示",
+  "Share of {n}": "{n} に占める割合",
+  "{n} against the second figure": "2 番目の数値との差 {n}",
 };

@@ -15,11 +15,14 @@ export interface ChatMessage {
   /** Streamed answers: the figures with their rule codes, an inline chart, a grounding footer, links and a pending flag. */
   facts?: ChatFact[];
   chart?: { kind: "bar" | "line"; data: { label: string; value: number }[] };
+  /** What the backend classed the question as, and whether the figures were found; they pick the lead visual. */
+  intent?: string;
+  grounded?: boolean;
   footer?: { n: number; coverage: number; phrased: boolean };
   links?: { label: string; href: string }[];
   pending?: boolean;
 }
-export interface ChatFact { statement: string; value?: number | null; href?: string | null; checks: { check_id: string; module?: string | null }[] }
+export interface ChatFact { statement: string; value?: number | null; href?: string | null; source?: string; checks: { check_id: string; module?: string | null }[] }
 export interface AletheiaLabels {
   title: string;
   scope: string;
