@@ -135,7 +135,7 @@ export function WorkTriage() {
           <span>{x.check_id ? <Code code={x.check_id} text={x.module ? moduleText(x.module) : undefined} /> : x.module ? moduleText(x.module) : null}</span>
           <small className="nx-tg-dim">
             {x.kind === "queue" ? t("Stewardship item") : t("Issue")}{x.ref ? <> <Code code={x.ref} /></> : null}
-            {x.check_id === "golden_writeback" && x.ref ? <>, <a href={hrefFor({ kind: "golden", id: x.ref })}>{t("Open the golden record to approve")}</a></> : null}
+            {x.check_id === "golden_writeback" && x.ref ? <>, <Link href={hrefFor({ kind: "golden", id: x.ref })}>{t("Open the golden record to approve")}</Link></> : null}
             {x.snoozed_until ? <>, {t("snoozed until {d}", { d: formatDate(x.snoozed_until, "date") })}</> : null}
             {x.sla_paused_at ? <>, {x.status === "waiting_requester" ? t("waiting for the requester") : t("waiting for SAP")}</> : null}
           </small>
