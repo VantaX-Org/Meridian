@@ -10,6 +10,8 @@ picklist fields carry external codes. Dates that timeliness rules judge against
 
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 import pandas as pd
 import yaml
 
@@ -574,7 +576,8 @@ def test_time_attendance_golden():
     rows = [
         entry("100101", "2026-09-21"),
         entry("100101", "2026-09-22", "9.5", OVERTIME_HOURS="1.5"),
-        entry("100102", "2026-09-21", status="PENDING", COST_CENTER="410200"),
+        # recent, so TIME046 (pending more than 60 days) stays quiet whatever day the suite runs
+        entry("100102", (date.today() - timedelta(days=1)).isoformat(), status="PENDING", COST_CENTER="410200"),
         entry("100103", "2026-09-21", ABSENCE_TYPE="VACATION", TIME_ACCOUNT_TYPE="VAC_ANNUAL", BALANCE="18.5",
               COST_CENTER="520300"),
         entry("100105", "2026-09-28", status="CANCELLED", COST_CENTER="610100"),
