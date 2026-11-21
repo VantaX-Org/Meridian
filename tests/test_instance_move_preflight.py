@@ -98,3 +98,12 @@ def test_preflight_progress_stores_a_running_status_with_the_step_and_issue_coun
         "status": "running", "step": 3, "of": 9, "wave": 4, "entity": "ToyEntity", "rows": 120,
         "issues_so_far": 2, "errors_so_far": 1}
     session.commit.assert_called_once()
+
+
+def test_snapshot_entities_maps_picklist_to_sf_entity() -> None:
+    from workers.tasks.run_instance_move import _snapshot_entities
+    out = _snapshot_entities({"PICKLIST": [{"ecJobFunction": "A1"}, {"ecJobFunction": "B2"}],
+                              "PICKLIST_OPTION": [{"picklist": "x", "optionId": "1", "externalCode": "A1"}]})
+    assert out == {"PickListValueV2": [{"PickListV2_id": "ecJobFunction", "externalCode": "A1"},
+                                       {"PickListV2_id": "ecJobFunction", "externalCode": "B2"}]}
+    assert _snapshot_entities({"PICKLIST_OPTION": []}) == {}

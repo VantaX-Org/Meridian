@@ -32,6 +32,14 @@ def _system(session: Session, sid) -> dict:
     return dict(row) if row else {"id": str(sid)}
 
 
+def _snapshot_entities(src: dict[str, list]) -> dict[str, list]:
+    """Discovery stores picklists as PICKLIST ({list id: code}) and PICKLIST_OPTION (decode only); the
+    target is read by SF entity name, so map PICKLIST to PickListValueV2 rows and drop the rest."""
+    rows = [{"PickListV2_id": k, "externalCode": v} for d in src.get("PICKLIST", []) for k, v in d.items()]
+    out = {n: v for n, v in src.items() if n not in ("PICKLIST", "PICKLIST_OPTION")}
+    return {**out, "PickListValueV2": rows} if rows else out
+
+
 def _plan_row(session: Session, plan_id: str) -> dict:
     row = session.execute(text("SELECT * FROM move_plans WHERE id = :p"), {"p": plan_id}).mappings().first()
     if row is None:
@@ -238,6 +246,7 @@ def preflight_move(self, tenant_id: str, plan_id: str) -> str:
                         "SELECT config_table, config_data FROM config_snapshots WHERE system_id = :s "
                         "AND config_table <> 'ODATA_ENTITY'"), {"s": str(plan["source_system_id"])}).fetchall():
                     src.setdefault(name, []).extend(data if isinstance(data, list) else [data])
+                src = _snapshot_entities(src)
                 tgt = {n: conn.read_entity_set(n).to_dict("records") for n in src}
                 config = im.config_diff(src, tgt, ctx["dictionary"])
                 built = im.build_move_plan(plan["modules"], ctx["dictionary"], ctx["frames"], config_lists=config,
