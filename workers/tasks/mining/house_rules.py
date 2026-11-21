@@ -45,8 +45,13 @@ def _parent_lookup(path: str, parent: str, on: tuple[tuple[str, str], ...],
              if c.split(".", 1)[1] not in keys][:PARENT_CODES]
     want = keys | {c.split(".", 1)[1] for c in codes}
     # ponytail: holds parent keys + <=10 category columns in memory; partition by key hash if parents pass ~20M rows
-    parts = [_qualified(c, parent) for c in iter_parquet_chunks(bundle_object(path, parent), keep=lambda c: c in want)]
-    df = pd.concat(parts, ignore_index=True).drop_duplicates([f"{parent}.{k}" for k in sorted(keys)])
+    parts = [_qualified(c, parent) for c in iter_parquet_chunks(
+        bundle_object(path, parent), keep=lambda c: c.removeprefix(f"{parent}.") in want)]
+    key_cols = [f"{parent}.{k}" for k in sorted(keys)]
+    # A parent without its join keys (or no matching columns at all) has nothing to join.
+    if not parts or any(k not in parts[0] for k in key_cols):
+        return pd.DataFrame()
+    df = pd.concat(parts, ignore_index=True).drop_duplicates(key_cols)
     return df.astype({c: "category" for c in codes})
 
 
