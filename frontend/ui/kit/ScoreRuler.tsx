@@ -21,7 +21,15 @@ const tone = (s: number): RulerTone => (s >= 85 ? "go" : s >= 70 ? "watch" : "st
  * Score ruler: 0 to 100 (or `from` to 100), gates at 70 and 85. A solid mark is the shown score. When the measured score is higher
  * (the score is capped) a hollow mark sits at the measured score, tethered to the solid one. Takes translated strings, no i18n inside.
  */
-export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width }: { marks: RulerMark[]; labels: RulerLabels; ariaLabel: string; from?: 0 | 50; width?: number }) {
+export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width, zones, first, showName = true }: {
+  marks: RulerMark[]; labels: RulerLabels; ariaLabel: string; from?: 0 | 50; width?: number;
+  /** Header variant: names the three zones under the axis. */
+  zones?: { noGo: string; atRisk: string; go: string };
+  /** Header variant: a faint mark at the first run's score, on the first mark's row. */
+  first?: { value: number; label: string } | null;
+  /** False when the page already names the object (the header ruler). */
+  showName?: boolean;
+}) {
   const W = width ?? (from === 50 ? 290 : 1000);
   const x = (s: number) => ((Math.min(100, Math.max(from, s)) - from) * W) / (100 - from);
   const rowH = 34, top = 30, bandH = 8;
@@ -38,6 +46,9 @@ export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width }: { mark
       <text className="mx-ruler-t" x={x(70)} y={top - 14} textAnchor="middle" fontSize={fs}>{labels.cap70}</text>
       <text className="mx-ruler-t" x={x(85)} y={top - 14} textAnchor="middle" fontSize={fs}>{labels.cap85}</text>
       {ticks.map((n) => <text key={n} className="mx-ruler-ax" x={x(n)} y={top + bandH + 20} textAnchor="middle" fontSize={fs}>{n}</text>)}
+      {zones ? ([[from, 70, zones.noGo, "stop"], [70, 85, zones.atRisk, "watch"], [85, 100, zones.go, "go"]] as const).map(([a, b, name, k]) => (
+        <text key={k} className="mx-ruler-zone" data-zone={k} x={(x(a) + x(b)) / 2} y={top + bandH + 36} textAnchor="middle" fontSize={fs}>{name}</text>
+      )) : null}
       {marks.map((m, i) => {
         const cy = top + bandH + 54 + i * rowH;
         const capped = m.measured != null && m.measured > m.shown;
@@ -59,7 +70,13 @@ export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width }: { mark
                 <text className="mx-ruler-t" x={sx + 12} y={cy + 4} fontSize={fs}>{Math.round(m.shown)}</text>
               </>
             )}
-            <text className="mx-ruler-name" x={x(from)} y={cy - 14} fontSize={fs}>{m.label}</text>
+            {first && i === 0 && first.value >= from ? (
+              <g data-testid="ruler-first">
+                <circle className="mx-ruler-first" cx={x(first.value)} cy={cy} r={4} />
+                <text className="mx-ruler-ax" x={x(first.value)} y={cy + 20} textAnchor="middle" fontSize={fs}>{first.label}</text>
+              </g>
+            ) : null}
+            {showName ? <text className="mx-ruler-name" x={x(from)} y={cy - 14} fontSize={fs}>{m.label}</text> : null}
           </g>
         );
       })}

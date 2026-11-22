@@ -125,4 +125,18 @@ describe("ObjectScreen", () => {
       expect(screen.getByRole("dialog").querySelector(".mx-ans-chart")).toBeTruthy();
     });
   });
+
+  it("builds the board: hero, zoned ruler, three cards, worst rules table", async () => {
+    renderWithQuery(screenWithChat());
+    const hero = await screen.findByTestId("score-hero");
+    expect(hero.textContent).toMatch(/Measured/);
+    expect(await screen.findByText("Six dimensions")).toBeTruthy();
+    expect(screen.getByText("Holding the cap")).toBeTruthy();
+    expect(screen.getByText("Score by run")).toBeTruthy();
+    expect(screen.getAllByTestId("tonebar").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: /^All \d+ rules$/ })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: /Records affected/ })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /critical/i }).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("monitor-strip")).toBeTruthy();
+  });
 });
