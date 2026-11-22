@@ -95,6 +95,8 @@
 .mx-root .mx-badge[data-tone="bad"] { color: var(--mx-bad-ink); }
 .mx-root .mx-panel { display: grid; gap: var(--mx-s4); }
 .mx-root .mx-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--mx-s3); }
+/* Seven or more tiles wrap four to a row, so no tile is left alone on a second row. */
+.mx-root .mx-tiles:has(> :nth-child(7)) { grid-template-columns: repeat(auto-fit, minmax(max(10rem, calc((100% - 3 * var(--mx-s3)) / 4)), 1fr)); }
 .mx-root .mx-stat { padding: var(--mx-s3); border-radius: var(--mx-r-control); background: var(--mx-surface-2); display: grid; gap: var(--mx-s1); }
 .mx-root .mx-stat dt { color: var(--mx-ink-3); font-size: var(--mx-fs-small); }
 .mx-root .mx-links { display: flex; flex-wrap: wrap; gap: var(--mx-s2); }

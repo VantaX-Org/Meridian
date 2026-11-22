@@ -47,3 +47,14 @@ describe("removeBlock", () => {
     expect(removeBlock(other, [admin, other], null)).toBeNull();
   });
 });
+
+describe("me", () => {
+  it("shows delivery codes as words, never the raw code", async () => {
+    window.history.replaceState(null, "", "/me?fixture=1");
+    const { Me } = await import("./Me");
+    renderWithQuery(<AletheiaProvider><Me /></AletheiaProvider>);
+    expect(await screen.findByText("No mail server set up")).toBeTruthy();
+    expect(screen.queryByText("no_backend")).toBeNull();
+    expect(screen.getByText("Test (In app)")).toBeTruthy();
+  });
+});

@@ -4,11 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import { getMyDeliveries, sendTestNotification } from "@/lib/api/v2/admin";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, SeverityPill, useSheet } from "@/ui/kit";
+import { Button, Card, DataTable, SeverityPill, useSheet } from "@/ui/kit";
 import { PrefsForm } from "./PrefsForm";
 import { Row, Sec, useAct, when } from "./ops/shared";
 
 const SEV = { sent: "low", failed: "critical" } as Record<string, "low" | "critical" | "medium">;
+// Delivery codes from api/services/user_notifications.py, shown as words.
+const KIND: Record<string, () => string> = { critical: () => t("Critical finding"), digest: () => t("Digest"), test: () => t("Test") };
+const CHANNEL: Record<string, () => string> = { email: () => t("Email"), in_app: () => t("In app") };
+const STATUS: Record<string, () => string> = { pending: () => t("Waiting"), sent: () => t("Sent"), failed: () => t("Failed"), no_backend: () => t("No mail server set up"), skipped: () => t("Skipped") };
+const word = (m: Record<string, () => string>, k: string) => m[k]?.() ?? k;
 
 /** Me: my settings, my delivery log, and links to my inbox, licence, help and version. */
 export function Me() {
@@ -26,8 +31,8 @@ export function Me() {
         {rows.length === 0 ? <p className="mx-muted">{t("Nothing has been sent to you yet.")}</p> : (
           <DataTable label={t("Notification log")} rows={rows} rowKey={(r) => r.id} height={280}
             columns={[
-              { key: "kind", label: t("Kind"), render: (r) => <Code code={r.kind} description={r.channel} /> },
-              { key: "status", label: t("Status"), render: (r) => <SeverityPill sev={SEV[r.status] ?? "medium"} label={r.status} /> },
+              { key: "kind", label: t("Kind"), render: (r) => `${word(KIND, r.kind)} (${word(CHANNEL, r.channel)})` },
+              { key: "status", label: t("Status"), render: (r) => <SeverityPill sev={SEV[r.status] ?? "medium"} label={word(STATUS, r.status)} /> },
               { key: "err", label: t("Detail"), render: (r) => r.error ?? "" },
               { key: "at", label: t("Sent"), render: (r) => when(r.created_at) },
             ]} />

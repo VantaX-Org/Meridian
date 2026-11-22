@@ -13,6 +13,9 @@ describe("narrow screens", () => {
   it("insights page column is clamped to the screen", () => {
     expect(css("screens/insights/insights.css")).toMatch(/\.b8-page \{[^}]*minmax\(0, 1fr\)/);
   });
+  it("seven or more tiles wrap four to a row", () => {
+    expect(css("kit/kit.css")).toMatch(/\.mx-tiles:has\(> :nth-child\(7\)\) \{[^}]*\/ 4\)/);
+  });
   it("public pages sit in the same page column as the app", () => {
     expect(css("kit/Standalone.tsx")).toMatch(/<main className="mx-main">/);
   });
