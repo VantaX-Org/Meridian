@@ -6,6 +6,7 @@ import { bulkIssues, commentIssue, exportIssues, getIssue, getIssues, ISSUE_STAT
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Chip, Code, DataTable, DetailPanel, Input, Search, Split, useToast } from "@/ui/kit";
 import { Async, Empty, Head, num, Sev, useRead, useScreenScope, when } from "./shared";
+import { displayKey } from "@/lib/v2/work";
 
 const statusText = (s: string) => ({
   open: t("Open"), in_progress: t("In progress"), waiting_sap: t("Waiting for SAP"), waiting_requester: t("Waiting for requester"), accepted: t("Accepted"), resolved: t("Resolved"),
@@ -27,7 +28,7 @@ function IssueDetail({ id }: { id: string }) {
       {(d) => (
         <DetailPanel idBase="iss" label={t("Issue detail")} tabsLabel={t("Issue sections")} value={tab} onChange={setTab}
           tabs={[{ id: "history", label: t("History") }, { id: "runs", label: t("Runs") }]}
-          header={<><Sev s={d.issue.severity} /><Code code={d.issue.check_id} description={d.issue.message ?? undefined} /><span className="mx-muted">{d.issue.record_key}</span></>}>
+          header={<><Sev s={d.issue.severity} /><Code code={d.issue.check_id} description={d.issue.message ?? undefined} /><span className="mx-muted">{d.issue.record_key ? displayKey(d.issue.record_key) : null}</span></>}>
           {tab === "history" && (
             <>
               {d.events.length ? (
@@ -94,7 +95,7 @@ export function IssuesScreen() {
                   columns={[
                     { key: "sev", label: t("Severity"), sort: (i) => i.severity, render: (i) => <Sev s={i.severity} /> },
                     { key: "rule", label: t("Rule"), sort: (i) => i.check_id, render: (i) => <Code code={i.check_id} description={i.message ?? undefined} /> },
-                    { key: "rec", label: t("Record"), render: (i) => i.record_key },
+                    { key: "rec", label: t("Record"), render: (i) => (i.record_key ? displayKey(i.record_key) : "") },
                     { key: "st", label: t("Status"), render: (i) => `${picked.includes(i.id) ? "+ " : ""}${statusText(i.status)}` },
                   ]} />
               ) : <Empty heading={t("No issues match")} />)}

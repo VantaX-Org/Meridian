@@ -8,6 +8,7 @@ import { getVersionsPage } from "@/lib/api/v2/runs";
 import { t } from "@/lib/v2/i18n";
 import { AletheiaMark, Button, Code, CodeView, DataTable, Sheet, StatTile, Tabs, useToast } from "@/ui/kit";
 import { Async, Empty, Head, num, Sev, useRead, useScreenScope, when } from "./shared";
+import { displayKey } from "@/lib/v2/work";
 
 const more = (n: number, limit: number) => (n >= limit ? `${num(n)}+` : num(n));
 
@@ -124,7 +125,7 @@ export function MiningScreen() {
         <DataTable<AnomalyItem> label={t("Anomalies")} rows={a} rowKey={(x) => x.id} height={420}
           columns={[
             { key: "f", label: t("Field"), sort: (x) => x.field_name, render: (x) => <Code code={x.field_name} description={x.field_description ?? undefined} /> },
-            { key: "k", label: t("Record"), render: (x) => x.record_key ?? t("n/a") },
+            { key: "k", label: t("Record"), render: (x) => (x.record_key ? displayKey(x.record_key) : t("n/a")) },
             { key: "v", label: t("Value"), align: "end", render: (x) => num(x.field_value) },
             { key: "z", label: t("Usual range"), render: (x) => `${num(x.lower_bound)} ${t("to")} ${num(x.upper_bound)}` },
             { key: "sv", label: t("Severity"), sort: (x) => x.severity, render: (x) => <Sev s={x.severity} /> },

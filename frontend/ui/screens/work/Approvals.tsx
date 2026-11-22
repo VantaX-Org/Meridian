@@ -13,6 +13,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Sheet, Skeleton, StatTile, Tabs, useAletheia, useAletheiaScope, useStacked } from "@/ui/kit";
 import { ObjChip } from "./ObjChip";
 import { day, useDo } from "./shared";
+import { displayKey } from "@/lib/v2/work";
 
 function Trail({ id }: { id: string }) {
   const q = useBatchEvents(id);
@@ -137,7 +138,7 @@ function SendDetail({ b, live }: { b: BatchRow; live: boolean }) {
       {chk ? (
         <DataTable label={t("Fields in this batch")} rows={chk.fields} rowKey={(f) => `${f.record_key}-${f.field}`} height={240}
           columns={[
-            { key: "r", label: t("Record"), render: (f) => f.record_key },
+            { key: "r", label: t("Record"), render: (f) => displayKey(f.record_key) },
             { key: "f", label: t("Field"), render: (f) => <FieldChip code={f.field} description={f.reason ?? undefined} /> },
             { key: "d", label: t("Goes by"), render: (f) => f.delivery },
           ]} />

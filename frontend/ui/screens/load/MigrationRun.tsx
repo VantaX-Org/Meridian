@@ -14,6 +14,7 @@ import { Button, Card, Confirm, DataTable, EmptyState, FieldChip, Input, PageHea
 import { AskButton, Gate, humanize, pct, useHref, Verdict, when } from "./common";
 import { invalidateLoad, useRecon, useRecords, useRun } from "./hooks";
 import { modeLabel } from "./MigrationRuns";
+import { displayKey } from "@/lib/v2/work";
 
 const sevLabel = (s: string): string => (s === "critical" ? t("Critical") : s === "high" ? t("High") : s === "medium" ? t("Medium") : s === "low" ? t("Low") : humanize(s));
 const Sev = ({ s }: { s: string }) => <SeverityPill sev={s as Severity} label={sevLabel(s)} />;
@@ -134,7 +135,7 @@ function Findings({ id, modules }: { id: string; modules: string[] }) {
             rowKey={(r) => `${r.module}|${r.record_key}|${r.source_field}|${r.gap_type}|${r.target_field}`}
             columns={[
               { key: "m", label: t("Object"), render: (r) => <FieldChip code={r.module} description={humanize(r.module)} /> },
-              { key: "rec", label: t("Record"), render: (r) => <code className="mx-code">{r.record_key ?? ""}</code> },
+              { key: "rec", label: t("Record"), render: (r) => <code className="mx-code">{r.record_key ? displayKey(r.record_key) : ""}</code> },
               { key: "sf", label: t("Source field"), render: (r) => (r.source_field ? <FieldChip code={r.source_field} description={r.source_table ?? undefined} /> : "") },
               { key: "sv", label: t("Source value"), render: (r) => r.source_value ?? "" },
               { key: "tf", label: t("Target field"), render: (r) => (r.target_field ? <FieldChip code={r.target_field} description={r.dest_table ?? undefined} /> : "") },
@@ -275,7 +276,7 @@ function Records({ id }: { id: string }) {
             rowKey={(r) => `${r.module}|${r.record_key}`}
             columns={[
               { key: "m", label: t("Object"), render: (r) => <FieldChip code={r.module} description={humanize(r.module)} /> },
-              { key: "k", label: t("Record"), render: (r) => <code className="mx-code">{r.record_key}</code> },
+              { key: "k", label: t("Record"), render: (r) => <code className="mx-code">{displayKey(r.record_key)}</code> },
               { key: "t", label: t("Source table"), render: (r) => (r.source_table ? <FieldChip code={r.source_table} /> : "") },
               { key: "r", label: t("Reasons"), render: (r) => r.reasons.join("; ") },
             ]}
