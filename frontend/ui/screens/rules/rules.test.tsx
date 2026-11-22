@@ -50,6 +50,24 @@ describe("rules screens", () => {
     expect(screen.getByRole("link", { name: "Try a change" }).getAttribute("href")).toContain("/rules/dry-run?rule=MM142");
   });
 
+  it("a rule page leads with the board: tiles, chart, breakdowns, records and bulk actions", async () => {
+    renderWithQuery(withChat(<Rule id="MM142" />));
+    expect(await screen.findByRole("link", { name: "Open in clean cycle" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open in clean cycle" }).getAttribute("href")).toContain("/work?");
+    expect(screen.getByText("Records failing in this run")).toBeTruthy();
+    expect(screen.getByText("Pass rate")).toBeTruthy();
+    expect(screen.getByText("Value at risk")).toBeTruthy();
+    expect(screen.getByText("Proposed fixes ready for auto-cleanse")).toBeTruthy();
+    expect(screen.getByText("S/4HANA features blocked until it passes")).toBeTruthy();
+    expect(screen.getByText("What the rule checks")).toBeTruthy();
+    expect(screen.getByText("Where it fails")).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Apply all" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add to workbook" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Assign" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Apply 0 fixes" })).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: /Records/ })).toBeNull();
+  });
+
   it("the dry run page renders its form", async () => {
     renderWithQuery(withChat(<DryRun />));
     expect(await screen.findByRole("heading", { level: 1, name: "Try a rule change" })).toBeTruthy();
