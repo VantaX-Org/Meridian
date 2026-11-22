@@ -14741,4 +14741,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "All {n} objects, lowest score first.": "全 {n} オブジェクト、スコアの低い順。",
   "The {k} lowest of {n} objects.": "{n} オブジェクトのうちスコアの低い {k} 件。",
   "Show all {n}": "{n} 件すべて表示",
+  "Score of this object against the gates": "このオブジェクトのスコアとゲートの位置",
 };

@@ -7,9 +7,10 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { describeField } from "@/lib/v2/sap-fields";
 import type { RuleRow } from "@/lib/api/v2/types";
 import {
-  Button, Card, DetailPanel, DimensionBars, DqsPair, EmptyState, ErrorState, MasterList, PageHeader, ScoreRing,
+  Button, Card, DetailPanel, DimensionBars, DqsPair, EmptyState, ErrorState, MasterList, PageHeader, ScoreRuler,
   SeverityPill, SeverityStrip, Sheet, Skeleton, StatTile, TrendArea, FieldChip, useAletheia, useAletheiaScope, useStacked, type Severity,
 } from "@/ui/kit";
+import { ObjectTabNav } from "@/ui/screens/object-tabs/TabFrame";
 import { answerFor, type PromptId } from "./answers";
 import { FindingsCard, MonitorStrip, OldRunGate, RelatedObjects, ScoreReceipt } from "./ObjectExtras";
 import { compactCount, signed } from "./format";
@@ -78,6 +79,8 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
   }));
 
   const na = t("n/a");
+  const labels = { atRisk: t("At risk"), go: t("Go"), cap70: t("Cap at 70"), cap85: t("Cap at 85"), measured: (n: number) => t("Measured {n}", { n }) };
+  const marks = d.now === null ? [] : [{ id: "object", label: o.label, shown: d.now, measured: d.capped ? d.cell?.raw_score ?? null : null }];
   const pairScores = d.pair?.last?.scores;
   const proposed = g ? Math.min(g.proposed, g.open) : 0;
   const latest = o.heads[0]?.id ?? null;
@@ -138,16 +141,15 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />
+      <ObjectTabNav o={o} system={system} module={module} active="overview" />
+      <section className="mx-obj-ruler" aria-label={t("Score")}>
+        {d.now !== null ? <ScoreRuler marks={marks} labels={labels} ariaLabel={t("Score of this object against the gates")} from={stacked ? 50 : 0} /> : <p className="mx-muted">{na}</p>}
+      </section>
       <div className="mx-split">
         <div className="mx-col">
           <Card title={t("Score")}>
-            <div className="mx-scoreblock">
-              <ScoreRing value={d.now} label={t("Data quality score")} naLabel={na} />
-              <div>
-                <p>{d.delta === null ? t("First run") : t("{delta} since the last run", { delta: signed(d.delta) })}</p>
-                <p className="mx-cap"><CapLine d={d} /></p>
-              </div>
-            </div>
+            <p>{d.delta === null ? t("First run") : t("{delta} since the last run", { delta: signed(d.delta) })}</p>
+            <p className="mx-cap"><CapLine d={d} /></p>
             <DimensionBars items={d.dims} naLabel={na} />
             <ScoreReceipt receipt={d.receipt} />
           </Card>

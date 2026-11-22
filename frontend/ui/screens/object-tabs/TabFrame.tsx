@@ -31,6 +31,33 @@ export function useTabChat(system: string, module: string, tab: Tab, label: stri
   useAletheiaScope({ key: `${system}/${module}/${tab}`, label: t("Asking about {object}", { object: label }), suggestions, answer });
 }
 
+const VISIBLE: Tab[] = ["records", "rules", "fixes", "trend"];
+
+/** Overview plus four sub-screens in the strip; the other seven sit under More, still links in the page. */
+export function ObjectTabNav({ o, system, module, active }: { o: ObjectRun; system: string; module: string; active: Tab | "overview" }) {
+  useInterfaceLang();
+  const fx = useFixture();
+  const link = (sub: string) => withFixture(o.hrefWith(objectPath(system, module, sub)), fx);
+  const shown = [{ id: "overview" as const, path: "", label: () => t("Overview") }, ...VISIBLE.map((id) => TABS.find((x) => x.id === id)!)];
+  const rest = TABS.filter((x) => !VISIBLE.includes(x.id));
+  const inMore = rest.some((x) => x.id === active);
+  return (
+    <nav className="mx-links mx-objtabs" aria-label={t("Object screens")}>
+      {shown.map((x) => (
+        <Link key={x.id} className="mx-btn" data-variant={active === x.id ? "primary" : "ghost"} href={link(x.path)} aria-current={active === x.id ? "page" : undefined}>{x.label()}</Link>
+      ))}
+      <details className="mx-objmore" data-active={inMore ? "" : undefined}>
+        <summary className="mx-btn" data-variant={inMore ? "primary" : "ghost"}>{t("More")}</summary>
+        <div className="mx-menu">
+          {rest.map((x) => (
+            <Link key={x.id} className="mx-menuitem" href={link(x.path)} aria-current={active === x.id ? "page" : undefined}>{x.label()}</Link>
+          ))}
+        </div>
+      </details>
+    </nav>
+  );
+}
+
 /** Header, the strip of sub-screens, and the Ask Aletheia button shared by every object sub-screen. */
 export function TabFrame({ o, system, module, tab, title, actions, children }: {
   o: ObjectRun; system: string; module: string; tab: Tab; title: string; actions?: ReactNode; children: ReactNode;
@@ -50,12 +77,7 @@ export function TabFrame({ o, system, module, tab, title, actions, children }: {
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />
-      <nav className="mx-links" aria-label={t("Object screens")}>
-        <Link className="mx-btn" data-variant="ghost" href={link("")}>{t("Overview")}</Link>
-        {TABS.map((x) => (
-          <Link key={x.id} className="mx-btn" data-variant={active === x.id ? "primary" : "ghost"} href={link(x.path)} aria-current={active === x.id ? "page" : undefined}>{x.label()}</Link>
-        ))}
-      </nav>
+      <ObjectTabNav o={o} system={system} module={module} active={active} />
       {children}
     </>
   );

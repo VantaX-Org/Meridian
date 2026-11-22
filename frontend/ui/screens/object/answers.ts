@@ -3,7 +3,7 @@ import type { ChatAction } from "@/ui/kit";
 import { compactCount } from "./format";
 import type { ObjectData } from "./useObjectData";
 
-export interface Answer { text: string; evidence: string[]; actions: ChatAction[] }
+export interface Answer { text: string; evidence: string[]; actions: ChatAction[]; chart?: { kind: "bar" | "line"; data: { label: string; value: number }[] } }
 export type PromptId = "worst" | "cap" | "fix" | "target";
 
 /**
@@ -19,6 +19,7 @@ export function answerFor(id: PromptId, d: ObjectData, href: (seg: "proposed" | 
       text: t("{rule} fails the most. It fails {n} records, and it is a {sev} rule.", { rule: top.check_id, n: compactCount(top.affected_count), sev: top.severity }),
       evidence: [top.name, t("{n} of {m} records fail", { n: compactCount(top.affected_count), m: compactCount(top.total_count) })],
       actions: [ruleAction(top.check_id), { id: "review", label: t("Review fixes"), href: href("proposed", top.check_id) }],
+      chart: { kind: "bar", data: d.failing.slice(0, 5).map((x) => ({ label: x.check_id, value: x.affected_count })) },
     };
   }
   if (id === "cap") {

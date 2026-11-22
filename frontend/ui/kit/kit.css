@@ -322,3 +322,11 @@
   .mx-root .mx-home-grid, .mx-root .mx-home-panels { grid-template-columns: minmax(0, 1fr); }
   .mx-root .mx-home-head h1 { font-size: 1.375rem; }
 }
+
+/* Object detail ("The line"): tab strip with More, ruler header. Tokens only. */
+.mx-root .mx-objtabs { align-items: center; }
+.mx-root .mx-objmore { position: relative; }
+.mx-root .mx-objmore > summary { list-style: none; cursor: pointer; }
+.mx-root .mx-objmore > summary::-webkit-details-marker { display: none; }
+.mx-root .mx-objmore > .mx-menu { inset-inline-end: auto; inset-inline-start: 0; z-index: 5; }
+.mx-root .mx-obj-ruler { padding: var(--mx-s4); background: var(--mx-sheet); border: 1px solid var(--mx-line); border-radius: var(--mx-r-card); min-inline-size: 0; }

@@ -14740,6 +14740,7 @@ export const en = {
   "All {n} objects, lowest score first.": "All {n} objects, lowest score first.",
   "The {k} lowest of {n} objects.": "The {k} lowest of {n} objects.",
   "Show all {n}": "Show all {n}",
+  "Score of this object against the gates": "Score of this object against the gates",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -25,7 +25,7 @@ export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width }: { mark
   const W = width ?? (from === 50 ? 290 : 1000);
   const x = (s: number) => ((Math.min(100, Math.max(from, s)) - from) * W) / (100 - from);
   const rowH = 34, top = 30, bandH = 8;
-  const H = top + bandH + 26 + marks.length * rowH + 6;
+  const H = top + bandH + 40 + marks.length * rowH + 6;
   const ticks: number[] = [];
   for (let n = from; n <= 100; n += 10) ticks.push(n);
   const fs = from === 50 ? 10 : 11;
@@ -39,7 +39,7 @@ export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width }: { mark
       <text className="mx-ruler-t" x={x(85)} y={top - 14} textAnchor="middle" fontSize={fs}>{labels.cap85}</text>
       {ticks.map((n) => <text key={n} className="mx-ruler-ax" x={x(n)} y={top + bandH + 20} textAnchor="middle" fontSize={fs}>{n}</text>)}
       {marks.map((m, i) => {
-        const cy = top + bandH + 40 + i * rowH;
+        const cy = top + bandH + 54 + i * rowH;
         const capped = m.measured != null && m.measured > m.shown;
         const t = m.tone ?? tone(m.shown);
         const sx = x(m.shown);

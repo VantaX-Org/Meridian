@@ -14741,4 +14741,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "All {n} objects, lowest score first.": "Alle {n} Objekte, niedrigste Bewertung zuerst.",
   "The {k} lowest of {n} objects.": "Die {k} niedrigsten von {n} Objekten.",
   "Show all {n}": "Alle {n} anzeigen",
+  "Score of this object against the gates": "Bewertung dieses Objekts gegen die Schwellen",
 };

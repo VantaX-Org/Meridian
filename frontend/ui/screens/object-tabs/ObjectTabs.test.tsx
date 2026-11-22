@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { stubLayout } from "@/ui/testing/layout-stub";
 import AletheiaPanel from "@/ui/kit/AletheiaPanel";
@@ -49,6 +49,18 @@ describe("object sub-screens", () => {
       </AletheiaProvider>,
     );
     expect((await screen.findAllByRole("heading", { level: 1, name: title }, { timeout: 5000 })).length).toBeGreaterThan(0);
+  });
+  it("shows five tabs and puts the rest under More, every one still a link", async () => {
+    renderWithQuery(<AletheiaProvider><Screen tab="runs" system="ecc-production" module="material-master" /></AletheiaProvider>);
+    const nav = await screen.findByRole("navigation", { name: "Object screens" });
+    const more = nav.querySelector("details") as HTMLElement;
+    expect(more).toBeTruthy();
+    const visible = within(nav).getAllByRole("link").filter((a) => !more.contains(a));
+    expect(visible.length).toBe(5);
+    for (const [id, title] of TABS.filter(([id]) => id !== "record" && id !== "design")) {
+      expect(within(nav).getByRole("link", { name: title }).getAttribute("href"), id).toContain(id);
+    }
+    expect(more.querySelector("summary")?.getAttribute("data-variant")).toBe("primary");
   });
   it("record renders its title", async () => {
     renderWithQuery(<AletheiaProvider><Screen tab="record" system="ecc-production" module="material-master" recordKey="000000000000000001" /></AletheiaProvider>);
