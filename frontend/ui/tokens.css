@@ -175,5 +175,6 @@ html[data-theme="dark"] .mx-root {
 @keyframes mx-pulse { from { opacity: 0.55; } to { opacity: 1; } }
 @keyframes mx-rise { from { transform: translateY(var(--mx-s4)); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
+  .mx-root { --mx-dur: 0ms; }
   .mx-root .mx-btn, .mx-root .mx-row, .mx-root .mx-tab, .mx-root .mx-bar > span, .mx-root .mx-chip-btn, .mx-root .mx-skel, .mx-root .mx-sheet { transition: none; animation: none; }
 }
