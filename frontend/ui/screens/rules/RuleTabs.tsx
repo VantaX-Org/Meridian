@@ -1,12 +1,10 @@
 "use client";
 
 import "./rules.css";
-import { useState } from "react";
 import { t } from "@/lib/v2/i18n";
 import { describeField } from "@/lib/v2/sap-fields";
-import { BarList, Button, Card, DataTable, EmptyState, FieldChip, Skeleton, StatTile, YamlView, type Column } from "@/ui/kit";
+import { BarList, Button, Card, DataTable, EmptyState, FieldChip, Skeleton, StatTile, YamlView } from "@/ui/kit";
 import type { RuleScope } from "@/lib/api/v2/object";
-import { RECORDS_PAGE, useFailingRecords, type FailingRecord } from "@/lib/api/next/failing";
 import { useRuleFailuresBy, useRuleHistory } from "@/lib/v2/object-queries";
 import { compactCount, pct, sevLabel } from "./format";
 import { useRuleReads } from "./queries";
@@ -59,32 +57,6 @@ export function WhyTab({ id, scope }: { id: string; scope: RuleScope }) {
       {by.data?.groups.length ? by.data.groups.map((g) => (
         <BarList key={g.field} label={g.field} items={g.values.slice(0, 6).map((v) => ({ id: v.value, label: `${g.field} ${v.value}`, value: v.records, display: compactCount(v.records) }))} />
       )) : <EmptyState heading={t("No split of the failures is available.")} />}
-    </div>
-  );
-}
-
-export function RecordsTab({ id }: { id: string }) {
-  const hist = useRuleHistory(id).data;
-  const run = hist?.[0]?.version_id ?? null;
-  const [offset, setOffset] = useState(0);
-  const q = useFailingRecords(run, id, offset);
-  const cols: Column<FailingRecord>[] = [
-    { key: "record_key", label: t("Record"), render: (r) => <code className="mx-code">{r.record_key}</code> },
-    { key: "field", label: t("Field"), render: (r) => fieldCode(r.field) },
-    { key: "current_value", label: t("Value now"), render: (r) => String(r.current_value ?? "") },
-    { key: "expected_value", label: t("Expected"), render: (r) => (r.expected_value === null ? t("No fix proposed") : String(r.expected_value)) },
-  ];
-  if (!run) return <EmptyState heading={t("This rule has not run yet")} />;
-  if (q.isLoading) return <Skeleton lines={5} label={t("Loading the records")} />;
-  const total = q.data?.total ?? 0;
-  return (
-    <div className="mx-rules-form">
-      <DataTable columns={cols} rows={q.data?.items ?? []} rowKey={(r) => r.record_key} label={t("Failing records")} height={320} />
-      <div className="mx-rules-row">
-        <Button variant="ghost" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - RECORDS_PAGE))}>{t("Previous")}</Button>
-        <span className="mx-muted">{t("{a} to {b} of {n}", { a: total ? offset + 1 : 0, b: Math.min(total, offset + RECORDS_PAGE), n: total })}</span>
-        <Button variant="ghost" disabled={offset + RECORDS_PAGE >= total} onClick={() => setOffset(offset + RECORDS_PAGE)}>{t("Next")}</Button>
-      </div>
     </div>
   );
 }

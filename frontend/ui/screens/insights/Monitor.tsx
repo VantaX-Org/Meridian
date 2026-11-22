@@ -15,6 +15,7 @@ import { getDriftAlerts, getObjectContracts } from "@/lib/api/v2/step9";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { describeField } from "@/lib/v2/sap-fields";
 import { BarList, Button, Card, EmptyState, FieldChip, PageHeader, Select, SeverityPill, StatTile, Tabs, TrendArea, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
+import { MonitorBoard } from "./MonitorBoard";
 import { Gate, InsightsNav, Mod, Tbl, day, n0, n1, pc, sevLabel, sevOf, useQ } from "./shared";
 
 type View = "feed" | "objects" | "after-clean" | "learned" | "shifts" | "config" | "contracts" | "gate" | "schedule";
@@ -330,6 +331,7 @@ export function Monitor({ set = "changes" }: { set?: MonitorSet }) {
       <PageHeader title={set === "changes" ? t("Monitor") : t("Controls")}
         context={set === "changes" ? t("What changed, what came back and what is drifting, after every run.") : t("The configuration, contracts, load gate and schedules that guard each run.")}
         actions={<><InsightsNav here={set === "changes" ? "monitor" : "controls"} /><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
+      {set === "changes" ? <MonitorBoard /> : null}
       <Tabs idBase="b8-mon" label={t("Monitor views")} items={items} value={view} onChange={(id) => setView(id as View)} />
       <div id={`b8-mon-panel-${view}`} role="tabpanel" aria-labelledby={`b8-mon-tab-${view}`} className="b8-stack">
         {view === "feed" ? <Feed /> : null}

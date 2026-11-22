@@ -21,6 +21,7 @@ import {
 import type { VersionHead } from "@/lib/api/v2/runs";
 import { answer } from "./answers";
 import { JobHairline } from "./JobHairline";
+import { RunsBoard } from "./RunsBoard";
 import { isLive, modulesOf, runPath, runScore, runTitle, scoreText, sourceLabel, statusLabel, statusTone, when } from "./util";
 import "./runs.css";
 
@@ -237,7 +238,7 @@ export function Runs() {
       <Tabs idBase="runs-view" label={t("Runs views")} value={view} onChange={(v) => setView(v as (typeof VIEWS)[number])}
         items={[{ id: "runs", label: t("Runs") }, { id: "jobs", label: t("Jobs") }, { id: "sets", label: t("Compare sets") }, { id: "full", label: t("Timeline") }]} />
       <div role="tabpanel" id={`runs-view-panel-${view}`} aria-labelledby={`runs-view-tab-${view}`} className="mx-col">
-        {view === "runs" ? <RunsView onAsk={onAsk} /> : view === "jobs" ? <JobsView /> : view === "full" ? <TimelineView /> : <SetsView />}
+        {view === "runs" ? <><RunsBoard /><RunsView onAsk={onAsk} /></> : view === "jobs" ? <JobsView /> : view === "full" ? <TimelineView /> : <SetsView />}
       </div>
     </div>
   );

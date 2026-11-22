@@ -19,7 +19,7 @@ beforeEach(() => { undo = stubLayout(); window.sessionStorage.clear(); });
 afterEach(() => undo());
 
 const cases: [string, string, () => ReactElement][] = [
-  ["Work", "/work", () => <Work />],
+  [/Clean cycle/ as unknown as string, "/work", () => <Work />],
   ["Triage", "/work/triage", () => <Triage />],
   ["Exceptions", "/work/exceptions", () => <Exceptions />],
   ["Work analytics", "/work/analytics", () => <WorkAnalytics />],
@@ -31,7 +31,7 @@ describe("work screens in fixture mode", () => {
   it.each(cases)("%s shows its title and a data row", async (title, path, el) => {
     window.history.replaceState(null, "", `${path}?fixture=1`);
     renderWithQuery(<AletheiaProvider><SheetHost sheets={SHEETS} closeLabel="Close">{el()}</SheetHost></AletheiaProvider>);
-    expect(await screen.findByRole("heading", { level: 1, name: title })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: title as string })).toBeTruthy();
     expect((await screen.findAllByRole("row", {}, { timeout: 5000 })).length).toBeGreaterThan(1);
   });
 });

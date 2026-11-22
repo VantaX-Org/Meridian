@@ -81,7 +81,11 @@ export function describeField(field: string, fromApi?: Record<string, string> | 
   const key = sapField(field);
   // The API falls back to the field name itself when the catalogue has no text; that is not a description.
   const api = [fromApi?.[field], fromApi?.[key]].find((d) => d && d !== field && d !== key && d !== field.split(".").pop());
-  return api ?? DESCRIPTIONS[key] ?? null;
+  if (api ?? DESCRIPTIONS[key]) return api ?? DESCRIPTIONS[key];
+  // A bare key part (WERKS, BUKRS) reads the text of the first catalogued table field with that name.
+  if (key.includes("-")) return null;
+  const hit = Object.keys(DESCRIPTIONS).find((k) => k.endsWith(`-${key}`));
+  return hit ? DESCRIPTIONS[hit] : null;
 }
 
 /** SAP's standard short texts of the tables a record's fields come from (SE11 descriptions). */

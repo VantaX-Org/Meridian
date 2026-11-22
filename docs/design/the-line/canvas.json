@@ -1,0 +1,33 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-22T12:00:00Z" },
+  "title": "Meridian redesign",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1440, "h": 1560, "title": "Design system" },
+    "Home.dc.html": { "x": 0, "y": 1900, "w": 1440, "h": 1100, "title": "Home" },
+    "Object.dc.html": { "x": 1520, "y": 1900, "w": 1440, "h": 1100, "title": "Object detail, material master" },
+    "ObjectAletheia.dc.html": { "x": 3040, "y": 1900, "w": 1440, "h": 1100, "title": "Object detail, Aletheia open" },
+    "Rule.dc.html": { "x": 4560, "y": 1900, "w": 1440, "h": 1100, "title": "Rule detail, failing records" },
+    "Clean.dc.html": { "x": 0, "y": 3120, "w": 1440, "h": 1100, "title": "Clean cycle" },
+    "Runs.dc.html": { "x": 1520, "y": 3120, "w": 1440, "h": 1100, "title": "Runs and run compare" },
+    "Load.dc.html": { "x": 3040, "y": 3120, "w": 1440, "h": 1100, "title": "Load to target" },
+    "Insights.dc.html": { "x": 4560, "y": 3120, "w": 1440, "h": 1100, "title": "Insights" },
+    "Monitor.dc.html": { "x": 0, "y": 4340, "w": 1440, "h": 1100, "title": "Monitor" },
+    "Admin.dc.html": { "x": 1520, "y": 4340, "w": 1440, "h": 1100, "title": "Admin" },
+    "HomePhone.dc.html": { "x": 3040, "y": 4340, "w": 390, "h": 1600, "title": "Home, phone 390" }
+  },
+  "order": [
+    "Main.dc.html", "Home.dc.html", "Object.dc.html", "ObjectAletheia.dc.html", "Rule.dc.html",
+    "Clean.dc.html", "Runs.dc.html", "Load.dc.html", "Insights.dc.html", "Monitor.dc.html", "Admin.dc.html", "HomePhone.dc.html"
+  ],
+  "notes": {
+    "title-screens": { "kind": "title1", "x": 0, "y": 1640, "maxW": 2400, "text": "Screens, 1440 wide, light default" },
+    "case": {
+      "x": 1520, "y": 0, "w": 760, "size": 20, "fill": "#EFEBFF",
+      "text": "The case for this direction: The line\n\nMeridian exists to move a score along a scale and past two gates. So the scale is the interface. One ruler, 0 to 100, with the cap gates at 70 and 85 drawn on it, runs across the top of every screen. Every object, run, rule and migration sits on that same ruler, so a new user learns one picture and reads the whole product.\n\nWhat makes it wow\n1. The cap is visible. Measured 71.8 shows as a hollow mark past the gate, tethered back to the solid 70 it is held at. Nobody has to read a footnote to learn why the score will not move.\n2. Every panel is a real chart at working density: rule by run heat strips, range bands, slope charts, diverging movers, reconciliation bars. Tables only appear where the user edits or picks a record.\n3. Aletheia is not a side panel. It lives in a dock at the foot of every screen, scoped to what is in view, and when it answers it draws: a chart in the sheet and violet marks on the page's own charts. Violet appears nowhere else.\n4. The loop is the navigation. Pull, score, clean, load, monitor are places, and each object shows where it is in the loop.\n5. Native feel: one calm sheet per job, big tabular numerals, Geist, 140 ms motion, command palette, keyboard first.\n\nWhat it rejects from the current UI\n1. The split analyst frame: a master list eating a third of every screen to show what the ruler shows in one row.\n2. Score rings. A ring cannot show a cap, a gate or a second value. The ruler can.\n3. Aletheia as a fixed column that is empty most of the time.\n4. Stat tiles and reporting tables as the default panel.\n5. Blue used for both links and data, and status mixed with severity. Here cobalt is data and action, the three states are go, watch and stop, severity has its own four steps.\n\nKept on purpose: every function, codes always with their description, five tabs at most, light default with a dark set, sentence case."
+    }
+  },
+  "designSystems": []
+}

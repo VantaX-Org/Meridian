@@ -22,7 +22,8 @@ afterEach(() => undo());
 describe("Home", () => {
   it("shows the header, the lowest scoring objects and the attention list", async () => {
     wrap(<Home />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Home" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeTruthy();
+    expect(await screen.findByRole("img", { name: "Score of every object against the gates" })).toBeTruthy();
     expect(await screen.findByRole("list", { name: "Next action per object" })).toBeTruthy();
     expect(await screen.findByRole("list", { name: "Attention items" })).toBeTruthy();
   });
@@ -33,6 +34,18 @@ describe("Home", () => {
     await waitFor(() => expect((btn as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(btn);
     expect(await screen.findByRole("alertdialog")).toBeTruthy();
+  });
+});
+
+describe("Home ruler", () => {
+  it("shows the 12 lowest objects first and expands to all", async () => {
+    wrap(<Home />);
+    const ruler = await screen.findByRole("img", { name: "Score of every object against the gates" });
+    const more = screen.queryByRole("button", { name: /^Show all \d+$/ });
+    if (!more) return; // fixture holds 12 or fewer scored objects
+    expect(ruler.querySelectorAll("[data-mark]").length).toBe(12);
+    fireEvent.click(more);
+    await waitFor(() => expect(screen.getByRole("img", { name: "Score of every object against the gates" }).querySelectorAll("[data-mark]").length).toBeGreaterThan(12));
   });
 });
 

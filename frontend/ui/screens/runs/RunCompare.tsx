@@ -4,17 +4,19 @@ import { useState } from "react";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
+import { describeField } from "@/lib/v2/sap-fields";
 import { useCompareSets, useCompareSummary, useRun, type Change, type CompareRecord } from "@/lib/api/next/runs";
 import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, Skeleton, StatTile, useAletheiaScope, type Column } from "@/ui/kit";
 import { answer } from "./answers";
+import { CompareBoard } from "./CompareBoard";
 import { CompareObject } from "./CompareObject";
 import { JobHairline } from "./JobHairline";
-import { runPath, runTitle } from "./util";
+import { modulesOf, runPath, runTitle } from "./util";
 import "./runs.css";
 
 const CHANGES: Change[] = ["new", "resolved", "regressed", "persisting"];
 const changeText = (c: Change) => ({ new: t("Newly failing"), resolved: t("Fixed"), regressed: t("Got worse"), persisting: t("Still failing") })[c];
-const cell = (v: Record<string, unknown> | null) => (v ? Object.entries(v).map(([k, x]) => `${k}=${String(x)}`).join(", ") : "");
+const cell = (v: Record<string, unknown> | null) => (v ? Object.entries(v).map(([k, x]) => { const d = describeField(k); return `${k}${d ? ` (${d})` : ""} = ${String(x) || t("blank")}`; }).join(", ") : "");
 
 export function RunCompare({ a, b, runs, objects }: { a: string; b: string; runs?: readonly string[]; objects?: readonly string[] }) {
   useInterfaceLang();
@@ -53,6 +55,7 @@ export function RunCompare({ a, b, runs, objects }: { a: string; b: string; runs
       <JobHairline />
       <PageHeader title={t("Compare runs")} context={`${ra.data ? runTitle(ra.data) : a} ${t("with")} ${rb.data ? runTitle(rb.data) : b}`}
         actions={<span className="rn-row-actions"><Button variant="secondary" href={href(runPath(a))}>{t("Open first run")}</Button><Button variant="secondary" href={href(runPath(b))}>{t("Open second run")}</Button></span>} />
+      <CompareBoard a={a} b={b} module={objects?.[0] ?? (ra.data ? modulesOf(ra.data)[0] ?? null : null)} />
       <dl className="mx-tiles">{CHANGES.map((c) => <StatTile key={c} label={changeText(c)} value={String(s.totals[c] ?? 0)} />)}</dl>
       <Card title={t("Rules that changed")} sub={t("Pick a rule to see its records.")}>
         <div className="rn-filters">

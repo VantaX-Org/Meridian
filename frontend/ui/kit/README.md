@@ -27,6 +27,8 @@ Import everything from `@/ui/kit`. Builders use these instead of writing their o
 - `SeverityStrip` (alias `SegBar`): `{tiles: {sev,label,rules,records}[], rulesLabel(n)}`.
 - `StatTile` (alias `Tile`): `{label, value, note?, bar?, barTone?}`.
 - `ScoreRing`: `{value, label, naLabel, size?}`.
+- `ScoreRuler`: `{marks: {id, label, shown, measured?, tone?}[], labels, ariaLabel, from?: 0 | 50, width?}`. Gates at 70 and 85; a capped mark shows a hollow tethered mark at the measured score.
+- `AletheiaDock`: `{scope, placeholder, inputLabel, send, onAsk, onOpen}`. Pill at the foot of every screen; hands over to the one Aletheia sheet.
 - `DimensionBars`: `{items: {key,label,value}[], naLabel}`.
 - `DqsPair` (alias `PairBars`): `{rows: {key,label,value,note?}[], naLabel, reasons?}`, source, projected and actual DQS.
 - `TrendArea` (alias `AreaSpark`): `{points: {axis,title,value}[], height?, label, emptyLabel}`.

@@ -7,7 +7,7 @@ gradients, blur, ad hoc shadows and motion literals elsewhere, and `scripts/lint
 ## Direction
 
 Design C, "Split analyst": a master list on the left, the detail of what is selected on the right, one place to act.
-The shell is a top bar with five sections (Home, Work, Load, Runs, More), the Aletheia chat in a panel beside the
+The shell is a top bar with five sections (Home, Objects, Clean, Load, Monitor), a More menu and the palette for every other destination (Insights, Runs, Rules, MDM, Systems, People, Requests, Approvals, Reports, Admin), and an Aletheia dock at the foot of every screen that rises into the one chat sheet. On a phone the sections become a bottom tab bar, the Aletheia chat in a panel beside the
 content, and sheets for anything that is a task rather than a place. Light is the default; dark applies when
 `html[data-theme="dark"]` or when the system is dark and the person chose nothing.
 
@@ -28,7 +28,7 @@ content, and sheets for anything that is a task rather than a place. Light is th
 
 - **Tokens**: colour, border, ink, accent, status and Aletheia violet are `--mx-*` names; spacing is `--mx-s1` to
   `--mx-s6` on a 4px grid, radii are `--mx-r-control`, `--mx-r-card` and `--mx-r-pill`.
-- **Type**: IBM Plex Sans for UI and numerals, IBM Plex Mono for SAP identifiers only, self-hosted from `app/_fonts`
+- **Type**: Geist for UI and numerals, Geist Mono for SAP identifiers only, self-hosted from `app/_fonts`
   (`app/fonts.ts`). Sentence case. Never a middle dot (U+00B7) anywhere under `frontend/`; a test fails on it.
 - **Localisation**: every user-visible string goes through `lib/v2/i18n` (`t`, `tn`, `lc`) with English, German and
   Japanese entries; `node scripts/i18n-extract.mjs` must report 0 untranslated, 0 missing, 0 gaps.
@@ -64,7 +64,7 @@ Never colour a severity with a status token or the reverse.
 
 ## Type scale
 
-One family, IBM Plex Sans, at six sizes. Use the size for the job and do not invent sizes in between.
+One family, Geist, at six sizes. Use the size for the job and do not invent sizes in between.
 
 | Token | Size | Line | Use for |
 | --- | --- | --- | --- |
@@ -77,7 +77,7 @@ One family, IBM Plex Sans, at six sizes. Use the size for the job and do not inv
 
 Weights are `--mx-w-label` (500) for labels and buttons and `--mx-w-heading` (600) for headings. Numbers in tables
 and tiles use tabular figures so columns line up. SAP identifiers (field names, table names, rule codes) use
-IBM Plex Mono through `FieldChip`, always with their description beside them.
+Geist Mono through `FieldChip`, always with their description beside them.
 
 ## Space, size and shape
 

@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import type { WorkRow } from "@/lib/api/v2/types";
 import { exportFixSheet, importFixSheet, postAcceptAll, postSetValue, type WorkGroup } from "@/lib/api/v2/work";
 import { formatModuleName } from "@/lib/format";
@@ -10,9 +9,10 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { CHIPS, chipDef, displayKey, exportQueryOf, filtersOf, readState, viewFilters, type ChipId } from "@/lib/v2/work";
 import { useWorkGroups, useWorkRows, useWorkSummary, useWorkViews } from "@/lib/v2/work-queries";
 import {
-  Button, Card, Chip, DataTable, EmptyState, ErrorState, Field, Input, MasterList, PageHeader, Select, Sheet, Skeleton, Toggle, useAletheia, useAletheiaScope,
+  Button, Card, Chip, DataTable, EmptyState, ErrorState, Field, Input, MasterList, Select, Sheet, Skeleton, Toggle,
   useSheet, useStacked, type MasterRow,
 } from "@/ui/kit";
+import { CleanBoard } from "./CleanBoard";
 import { CleaningQueue } from "./CleaningQueue";
 import { ObjChip } from "./ObjChip";
 import { RecordDetail } from "./RecordDetail";
@@ -29,7 +29,6 @@ const groupRow = (g: WorkGroup): MasterRow => ({
 /** The ledger of work: rules on the left, their records on the right, and a decide panel for one record. */
 export function Work() {
   useInterfaceLang();
-  const fx = useFixture();
   const params = useSearchParams();
   const initial = readState(new URLSearchParams(params.toString()));
   const [state, setState] = useState(initial);
@@ -42,7 +41,6 @@ export function Work() {
   const [sim, setSim] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const stacked = useStacked();
-  const chat = useAletheia();
   const sheets = useSheet();
   const run = useDo();
   const summary = useWorkSummary();
@@ -52,16 +50,6 @@ export function Work() {
   const list = (rows.data?.pages ?? []).flatMap((p) => p.items);
   const gl = groups.data?.groups ?? [];
   const sel = gl.find((g) => g.check_id === check) ?? null;
-
-  useAletheiaScope({
-    key: "work", label: t("Asking about your work"),
-    suggestions: [t("What should I fix first?")],
-    answer: () => ({
-      text: t("{n} rules have records waiting. Start with {rule}.", { n: gl.length, rule: gl[0]?.check_id ?? "" }),
-      evidence: gl.slice(0, 3).map((g) => `${g.check_id}: ${g.records}`),
-      actions: [],
-    }),
-  });
 
   const open = (r: WorkRow) => { setPick(r); if (stacked) setSheet(true); };
   const chip = (id: ChipId) => { setState({ ...state, chip: id }); setPick(null); if (id === "proposed") setTab("cleaning"); };
@@ -129,8 +117,9 @@ export function Work() {
 
   return (
     <>
-      <PageHeader title={t("Work")} context={state.module ? <ObjChip code={state.module} /> : t("Everything waiting for a decision")}
-        actions={<><Button variant="primary" href={withFixture("/approvals", fx)}>{t("Approvals")}</Button><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
+      <CleanBoard module={state.module} onReview={(id) => { setCheck(id); setTab("records"); }} />
+      <h2 className="mx-h2">{t("Work ledger")}</h2>
+      <p className="mx-muted">{state.module ? <ObjChip code={state.module} /> : t("Everything waiting for a decision")}</p>
       <div className="mx-chips" role="group" aria-label={t("Work status")}>
         {CHIPS.map((c) => <Chip key={c.id} selected={state.chip === c.id} count={c.count(summary.data) ?? undefined} onClick={() => chip(c.id)}>{c.label}</Chip>)}
       </div>

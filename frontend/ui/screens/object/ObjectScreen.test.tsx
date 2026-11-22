@@ -100,4 +100,43 @@ describe("ObjectScreen", () => {
     expect(within(old).getByRole("link", { name: "Open the current run to act" }).getAttribute("href")).toMatch(/[?&]run=(?!b0500000)/);
     expect(screen.queryByRole("link", { name: "Fix records" })).toBeNull();
   });
+
+  it("draws the score on the ruler, with no ring, and every sub-screen reachable from the strip", async () => {
+    const { container } = renderWithQuery(screenWithChat());
+    await screen.findByRole("list", { name: "Failing rules" });
+    expect(await screen.findByRole("img", { name: "Score of this object against the gates" })).toBeTruthy();
+    expect(container.querySelector("[data-mark='object']")).toBeTruthy();
+    expect(container.querySelector(".mx-ring")).toBeNull();
+    const nav = screen.getByRole("navigation", { name: "Object screens" });
+    const links = within(nav).getAllByRole("link");
+    expect(links.length).toBe(12);
+    expect(within(nav).getByRole("link", { name: "Processes" }).getAttribute("href")).toContain("/processes");
+    expect(within(nav).getByText("More")).toBeTruthy();
+  });
+
+  it("opens the Aletheia sheet scoped to this object and draws a chart", async () => {
+    renderWithQuery(screenWithChat());
+    await screen.findByRole("list", { name: "Failing rules" });
+    await waitFor(() => { fireEvent.click(screen.getByRole("button", { name: "Ask Aletheia" })); expect(screen.getByRole("dialog")).toBeTruthy(); });
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getAllByText(/^Asking about /).length).toBeGreaterThan(0);
+    await waitFor(() => {
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Which rule hurts this object most?" }));
+      expect(screen.getByRole("dialog").querySelector(".mx-ans-chart")).toBeTruthy();
+    });
+  });
+
+  it("builds the board: hero, zoned ruler, three cards, worst rules table", async () => {
+    renderWithQuery(screenWithChat());
+    const hero = await screen.findByTestId("score-hero");
+    expect(hero.textContent).toMatch(/Measured/);
+    expect(await screen.findByText("Six dimensions")).toBeTruthy();
+    expect(screen.getByText("Holding the cap")).toBeTruthy();
+    expect(screen.getByText("Score by run")).toBeTruthy();
+    expect(screen.getAllByTestId("tonebar").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: /^All \d+ rules$/ })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: /Records affected/ })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /critical/i }).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("monitor-strip")).toBeTruthy();
+  });
 });

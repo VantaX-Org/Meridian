@@ -98,11 +98,11 @@ export function MonitorStrip({ module }: { module: string }) {
   const f = FRESH[m.freshness];
   return (
     <Card title={t("Monitor")} action={<Badge tone={f.tone}>{f.label()}</Badge>}>
-      <dl className="mx-tiles" data-testid="monitor-strip">
-        <StatTile label={t("Last run")} value={m.last_run_at ? formatDate(m.last_run_at, "datetime") : DASH} note={m.requested_by_label ?? m.trigger ?? undefined} />
-        <StatTile label={t("Next run")} value={m.next_run_at ? formatDate(m.next_run_at, "datetime") : DASH} note={m.cadence.cron ? describeCron(m.cadence.cron) : t("No schedule")} />
-        <StatTile label={t("Newly failing")} value={int(m.drift.new_failing)} note={t("{n} rules", { n: m.drift.newly_failing_rule_count })} />
-        <StatTile label={t("Recovered")} value={int(m.drift.recovered)} note={t("{n} rules", { n: m.drift.recovered_rule_count })} />
+      <dl className="mx-kv" data-testid="monitor-strip">
+        <div><dt>{t("Last run")}</dt><dd>{m.last_run_at ? formatDate(m.last_run_at, "datetime") : DASH}<small>{m.requested_by_label ?? m.trigger ?? ""}</small></dd></div>
+        <div><dt>{t("Next run")}</dt><dd>{m.next_run_at ? formatDate(m.next_run_at, "datetime") : DASH}<small>{m.cadence.cron ? describeCron(m.cadence.cron) : t("No schedule")}</small></dd></div>
+        <div><dt>{t("Newly failing")}</dt><dd>{int(m.drift.new_failing)}<small>{t("{n} rules", { n: m.drift.newly_failing_rule_count })}</small></dd></div>
+        <div><dt>{t("Recovered")}</dt><dd>{int(m.drift.recovered)}<small>{t("{n} rules", { n: m.drift.recovered_rule_count })}</small></dd></div>
       </dl>
     </Card>
   );

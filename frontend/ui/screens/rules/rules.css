@@ -3,3 +3,11 @@
 .mx-root .mx-rules-list { display: grid; gap: var(--mx-s3); margin: 0; padding: 0; list-style: none; }
 .mx-root .mx-rules-item { display: grid; gap: var(--mx-s2); padding: var(--mx-s3); border: 1px solid var(--mx-border); border-radius: var(--mx-r-card); background: var(--mx-surface); }
 
+.mx-root .mx-rule-stack { display: grid; gap: var(--mx-s4); margin-block-end: var(--mx-s5); }
+.mx-root .mx-rule-pair { display: grid; gap: var(--mx-s4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.mx-root .mx-rule-chart { width: 100%; height: auto; }
+.mx-root .mx-rule-col { fill: var(--mx-border-strong, var(--mx-border)); }
+.mx-root .mx-rule-col[data-latest] { fill: var(--mx-accent); }
+.mx-root .mx-rule-tx { fill: var(--mx-ink-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.mx-root .mx-rl-gate { stroke: var(--mx-border); stroke-width: 1; }
+.mx-root .mx-rule-foot { margin: 0; }

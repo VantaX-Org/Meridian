@@ -7,7 +7,7 @@ import type { ChatFact, ChatMessage } from "./AletheiaSheet";
 import { buildBody, streamAnswer, type AskContext } from "./aletheia/stream";
 
 /** What an answer carries: text, the facts it rests on, and action chips. */
-export type AletheiaAnswer = Pick<ChatMessage, "text" | "evidence" | "actions">;
+export type AletheiaAnswer = Pick<ChatMessage, "text" | "evidence" | "actions" | "chart">;
 
 /**
  * What the open screen tells the one chat. Two ways to answer:

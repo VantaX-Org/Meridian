@@ -11,7 +11,7 @@ import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { PATHS } from "@/lib/next/nav-defaults";
 import { DemoBar, Standalone, useDocumentLang } from "@/ui/kit";
-import { AletheiaProvider, AppShell, CommandPalette, SheetHost, ToastHost, useAletheia } from "@/ui/kit";
+import { AletheiaDock, AletheiaProvider, AppShell, CommandPalette, SheetHost, ToastHost, useAletheia } from "@/ui/kit";
 import { SHEETS } from "@/ui/sheets";
 import { Banners, FailedJobLine, HealthWord, InboxButton, usePaletteSearch, ViewAsSheet } from "@/ui/shell/parts";
 import { useV2Session } from "@/lib/v2/hooks";
@@ -64,14 +64,27 @@ function Shell({ children }: { children: ReactNode }) {
     document.addEventListener("keydown", k);
     return () => document.removeEventListener("keydown", k);
   }, [router, fx]);
+  // Primary tabs. Everything else is in MORE, the palette and the chords.
   const sections = [
-    { id: "home", label: t("Home"), href: PATHS.home },
-    { id: "work", label: t("Work"), href: PATHS.work },
+    { id: "home", label: t("Home"), href: "/" },
+    { id: "objects", label: t("Objects"), href: "/o" },
+    { id: "clean", label: t("Clean"), href: PATHS.work },
     { id: "load", label: t("Load"), href: PATHS.load },
-    { id: "runs", label: t("Runs"), href: PATHS.runs },
-    { id: "more", label: t("More"), href: PATHS.more },
+    { id: "monitor", label: t("Monitor"), href: "/monitor" },
   ].map((s) => ({ ...s, href: link(s.href), active: s.href === "/" ? path === "/" : path.startsWith(s.href) }));
-  const commands = sections.map((s) => ({ id: s.id, label: t("Go to {place}", { place: s.label }), run: () => router.push(s.href) }));
+  const moreItems = [
+    { id: "runs", label: t("Runs"), href: PATHS.runs },
+    { id: "insights", label: t("Insights"), href: "/insights" },
+    { id: "rules", label: t("Rules"), href: "/rules" },
+    { id: "mdm", label: t("MDM"), href: "/mdm" },
+    { id: "systems", label: t("Systems"), href: "/s" },
+    { id: "people", label: t("People"), href: "/people" },
+    { id: "requests", label: t("Requests"), href: "/requests" },
+    { id: "approvals", label: t("Approvals"), href: "/approvals" },
+    { id: "reports", label: t("Reports"), href: "/reports" },
+    { id: "admin", label: t("Admin"), href: PATHS.more },
+  ].map((m) => ({ ...m, href: link(m.href) }));
+  const commands = [...sections, ...moreItems].map((s) => ({ id: s.id, label: t("Go to {place}", { place: s.label }), run: () => router.push(s.href) }));
   return (
     <>
     <AppShell
@@ -83,6 +96,18 @@ function Shell({ children }: { children: ReactNode }) {
       user={{ name: user?.name ?? user?.email ?? t("Demo user"), email: user?.email }}
       userMenuLabel={t("Account menu")}
       menu={menu}
+      more={{ label: t("More"), items: moreItems }}
+      search={{ label: t("Jump to"), hint: "Ctrl K" /* i18n-ignore */, onOpen: () => setPalette(true) }}
+      dock={chat.open ? null : (
+        <AletheiaDock
+          scope={chat.scope?.label ?? t("Asking about the whole landscape")}
+          placeholder={t("Ask Aletheia about this page")}
+          inputLabel={t("Ask a question")}
+          send={t("Send")}
+          onOpen={() => chat.setOpen(true)}
+          onAsk={(q) => { chat.setOpen(true); chat.ask(q); }}
+        />
+      )}
       banner={<><Banners /><FailedJobLine /></>}
       actions={<><HealthWord /><InboxButton /></>}
       launcher={{ label: t("Ask Aletheia"), onOpen: () => chat.setOpen(true) }}

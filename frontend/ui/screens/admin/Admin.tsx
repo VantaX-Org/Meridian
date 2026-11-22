@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminBoard } from "./AdminBoard";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { Card, EmptyState, PageHeader } from "@/ui/kit";
@@ -19,6 +20,7 @@ export function Admin() {
   return (
     <div className="mx-col">
       <PageHeader title={t("Administration")} context={t("People, tenant settings and integrations.")} />
+      <AdminBoard />
       {open.length === 0 ? (
         <EmptyState heading={t("You have no administration access")} body={t("Ask a tenant administrator for access to the sections you need.")} />
       ) : groups.map((g) => (
