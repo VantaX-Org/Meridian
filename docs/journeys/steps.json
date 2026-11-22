@@ -542,7 +542,7 @@
       {
         "route": "/o/{system}/{object}",
         "control": "Trend",
-        "expect": "Score over runs"
+        "expect": "Score by run"
       },
       {
         "route": "/o/{system}/{object}/trend",
@@ -656,12 +656,12 @@
       {
         "route": "/",
         "control": "Material master",
-        "expect": "Lowest scores"
+        "expect": "Where every object stands"
       },
       {
         "route": "/o/{system}/{object}",
         "control": null,
-        "expect": "Score over runs"
+        "expect": "Score by run"
       }
     ]
   },

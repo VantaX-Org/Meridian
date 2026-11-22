@@ -63,9 +63,7 @@ export function TabFrame({ o, system, module, tab, title, actions, children }: {
   o: ObjectRun; system: string; module: string; tab: Tab; title: string; actions?: ReactNode; children: ReactNode;
 }) {
   useInterfaceLang();
-  const fx = useFixture();
   const chat = useAletheia();
-  const link = (sub: string) => withFixture(o.hrefWith(objectPath(system, module, sub)), fx);
   const active = tab === "record" ? "records" : tab === "design" ? "processes" : tab;
   return (
     <>

@@ -1,7 +1,7 @@
 "use client";
 
 import "./rules.css";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t } from "@/lib/v2/i18n";
 import { moneyCompactText } from "@/lib/v2/labels";
@@ -71,11 +71,11 @@ export function RuleBoard({ id, scope }: { id: string; scope: RuleScope }) {
   const d = scope.definition;
   const hist = useRuleHistory(id).data ?? [];
   const run = hist[0]?.version_id ?? scope.objects[0]?.run_id ?? null;
-  const module = scope.module ?? scope.objects[0]?.module ?? "";
-  const rules = useObjectRules(module, run).data ?? [];
+  const mod = scope.module ?? scope.objects[0]?.module ?? "";
+  const rules = useObjectRules(mod, run).data ?? [];
   const row = rules.find((r) => r.check_id === id);
-  const receipt = useReceipt(module, run, Boolean(module && run)).data;
-  const groups = useWorkGroups(module, run, Boolean(module)).data ?? [];
+  const receipt = useReceipt(mod, run, Boolean(mod && run)).data;
+  const groups = useWorkGroups(mod, run, Boolean(mod)).data ?? [];
   const impact = useConfigImpact(run).data ?? [];
   const by = useRuleFailuresBy(id).data;
   const reads = useRuleReads(id).data;
@@ -86,7 +86,7 @@ export function RuleBoard({ id, scope }: { id: string; scope: RuleScope }) {
   const total = latest?.total_count ?? row?.total_count ?? null;
   const rate = asPct(latest?.pass_rate ?? row?.pass_rate);
   const group = groups.find((g) => g.check_id === id);
-  const names = useMemo(() => new Map(rules.map((r) => [r.check_id, r.name])), [rules]);
+  const names = new Map(rules.map((r) => [r.check_id, r.name]));
 
   const vars = rules.filter((r) => r.value_at_risk !== null && r.value_at_risk !== undefined).sort((a, b) => (b.value_at_risk ?? 0) - (a.value_at_risk ?? 0));
   const rank = vars.findIndex((r) => r.check_id === id) + 1;
@@ -206,7 +206,7 @@ export function RuleBoard({ id, scope }: { id: string; scope: RuleScope }) {
         {[owner ? t("Owner {owner}", { owner }) : "", dimension ? t("Dimension {dimension}", { dimension: cap(dimension) }) : "", t("Severity {severity}", { severity: sevLabel(d.severity) })].filter(Boolean).join(", ")}
       </p>
 
-      <FailingRecordsTable id={id} run={run} module={module} />
+      <FailingRecordsTable id={id} run={run} module={mod} />
     </div>
   );
 }

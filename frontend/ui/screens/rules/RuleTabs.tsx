@@ -1,12 +1,10 @@
 "use client";
 
 import "./rules.css";
-import { useState } from "react";
 import { t } from "@/lib/v2/i18n";
 import { describeField } from "@/lib/v2/sap-fields";
-import { BarList, Button, Card, DataTable, EmptyState, FieldChip, Skeleton, StatTile, YamlView, type Column } from "@/ui/kit";
+import { BarList, Button, Card, DataTable, EmptyState, FieldChip, Skeleton, StatTile, YamlView } from "@/ui/kit";
 import type { RuleScope } from "@/lib/api/v2/object";
-import { RECORDS_PAGE, useFailingRecords, type FailingRecord } from "@/lib/api/next/failing";
 import { useRuleFailuresBy, useRuleHistory } from "@/lib/v2/object-queries";
 import { compactCount, pct, sevLabel } from "./format";
 import { useRuleReads } from "./queries";

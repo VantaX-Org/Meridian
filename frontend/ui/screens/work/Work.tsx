@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useFixture } from "@/lib/api/v2/fixture";
 import type { WorkRow } from "@/lib/api/v2/types";
 import { exportFixSheet, importFixSheet, postAcceptAll, postSetValue, type WorkGroup } from "@/lib/api/v2/work";
 import { formatModuleName } from "@/lib/format";
@@ -30,7 +29,6 @@ const groupRow = (g: WorkGroup): MasterRow => ({
 /** The ledger of work: rules on the left, their records on the right, and a decide panel for one record. */
 export function Work() {
   useInterfaceLang();
-  const fx = useFixture();
   const params = useSearchParams();
   const initial = readState(new URLSearchParams(params.toString()));
   const [state, setState] = useState(initial);
