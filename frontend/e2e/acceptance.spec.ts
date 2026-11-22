@@ -168,8 +168,8 @@ test("4. lead: the rule canvas and its tabs", async ({ page }) => {
   const tiles = page.locator("dl.mx-tiles").filter({ hasText: "Objects" });
   await expect(tiles).toBeVisible({ timeout: 45_000 });
   note((await tiles.innerText()).replace(/\s+/g, " ").trim());
-  // the Records tab carries a count badge, so a tab name only starts with its label
-  for (const tab of [/^Fix/, /^Why/, /^Records/, /^History/]) {
+  // failing records sit on the board above the tabs; the tabs are Overview, Fix, Why and History
+  for (const tab of [/^Fix/, /^Why/, /^History/, /^Overview/]) {
     await page.getByRole("tab", { name: tab }).click();
     await expect(page.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("tabpanel")).toBeVisible();

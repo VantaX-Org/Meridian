@@ -83,27 +83,27 @@ export function AdminBoard() {
         <Card title={t("Licence")} action={<Button variant="secondary" onClick={() => sheet.open("licence")}>{t("Upload licence file")}</Button>}>
           {licence.isLoading ? <Skeleton lines={3} label={t("Loading the licence")} /> : !lic ? <EmptyState heading={t("No licence data")} /> : (
             <>
-              <div className="ab-tiles">
+              <dl className="ab-tiles">
                 <StatTile label={t("Days left")} value={lic.days_remaining ?? t("None")} note={lic.expiry_date ? t("Ends {date}", { date: day(lic.expiry_date) }) : undefined} />
                 <StatTile label={t("Seats used")} value={lic.seats_used ?? 0} note={lic.seats ? t("of {n}", { n: lic.seats }) : undefined} />
-              </div>
+              </dl>
               <p className="ab-sub">{t("Licensed objects")}</p>
               <ul className="ab-chips">{lic.enabled_modules.map((m) => <li key={m}>{moduleText(m)}</li>)}</ul>
             </>
           )}
         </Card>
         <Card title={t("Schedule and version")}>
-          <div className="ab-tiles">
+          <dl className="ab-tiles">
             <StatTile label={t("Next run")} value={next ? day(next) : t("None")} />
             <StatTile label={t("Version")} value={update.data?.current_version ?? t("Unknown")} note={update.data?.update_available ? t("{v} is available", { v: update.data.latest_version }) : undefined} />
-          </div>
+          </dl>
           <div className="ab-actions">
             <Button variant="secondary" href={href("/admin/schedules")}>{t("Change schedule")}</Button>
             <Button variant="secondary" onClick={() => sheet.open("update")}>{t("Update now")}</Button>
           </div>
         </Card>
         <Card title={t("People and roles")}>
-          <div className="ab-tiles"><StatTile label={t("People")} value={people.length} /><StatTile label={t("Roles in use")} value={byRole.length} /></div>
+          <dl className="ab-tiles"><StatTile label={t("People")} value={people.length} /><StatTile label={t("Roles in use")} value={byRole.length} /></dl>
           <ul className="ab-chips">{byRole.map(([r, n]) => <li key={r}>{roleText(r)}: {n}</li>)}</ul>
           <div className="ab-actions">
             <Button variant="primary" href={href("/admin/users")}>{t("Invite a person")}</Button>

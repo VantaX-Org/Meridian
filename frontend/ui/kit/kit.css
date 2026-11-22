@@ -287,6 +287,8 @@
 .mx-root .mx-home-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--mx-s4); }
 .mx-root .mx-home-obj { display: grid; gap: var(--mx-s3); align-content: start; padding: var(--mx-s4); background: var(--mx-sheet); border: 1px solid var(--mx-line); border-radius: var(--mx-r-card); min-inline-size: 0; }
 .mx-root .mx-home-obj-h, .mx-root .mx-home-obj-f { display: flex; justify-content: space-between; align-items: center; gap: var(--mx-s3); }
+.mx-root .mx-home-objlink { color: inherit; text-decoration: none; }
+.mx-root .mx-home-objlink:hover { text-decoration: underline; }
 .mx-root .mx-home-obj h3 { margin: 0; font-size: var(--mx-fs-title); font-weight: 600; }
 .mx-root .mx-home-score { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--mx-s3); }
 .mx-root .mx-home-n { font-size: var(--mx-fs-score); font-weight: 600; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
@@ -329,6 +331,7 @@
 .mx-root .mx-objmore > summary { list-style: none; cursor: pointer; }
 .mx-root .mx-objmore > summary::-webkit-details-marker { display: none; }
 .mx-root .mx-objmore > .mx-menu { inset-inline-end: auto; inset-inline-start: 0; z-index: 5; }
+.mx-root .mx-objmore:not([open]) > .mx-menu { display: none; }
 .mx-root .mx-obj-ruler { padding: var(--mx-s4); background: var(--mx-sheet); border: 1px solid var(--mx-line); border-radius: var(--mx-r-card); min-inline-size: 0; }
 
 /* Object board */

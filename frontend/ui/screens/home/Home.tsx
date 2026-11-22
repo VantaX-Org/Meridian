@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -41,7 +42,7 @@ function ObjectCard({ row, cell, system, href }: { row: PortfolioRow; cell: Land
     <li className="mx-home-obj" data-tone={tone}>
       <div className="mx-home-obj-h">
         <div>
-          <h3>{row.label}</h3>
+          <h3><Link className="mx-home-objlink" href={href}>{row.label}</Link></h3>
           <p className="mx-home-sub">{system}</p>
         </div>
         {cell ? <span className="mx-home-pill" data-tone={tone}>{VERDICT_LABEL[cell.verdict]}</span> : null}
