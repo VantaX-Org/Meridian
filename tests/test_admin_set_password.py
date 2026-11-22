@@ -67,6 +67,9 @@ class _DB:
         p = params or {}
         if sql.startswith("SET app.tenant_id") or "service.meridian.invalid" in sql:
             return _Result([])
+        if sql.startswith("SELECT email FROM users WHERE id = CAST"):
+            u = self._mine(p["u"], p["t"])
+            return _Result([(u["email"],)] if u else [])
         if sql.startswith("SELECT role FROM users WHERE id"):
             u = self._mine(p["u"], p["t"])
             return _Result([(u["role"],)] if u else [])
