@@ -86,8 +86,9 @@
 
 /* Detail panel */
 .mx-root .mx-detail-h { display: grid; gap: var(--mx-s1); }
-.mx-root .mx-tabs { display: flex; gap: var(--mx-s1); border-block-end: 1px solid var(--mx-border); }
-.mx-root .mx-tab { padding: var(--mx-s2) var(--mx-s3); border: 0; border-block-end: 2px solid transparent; background: none; color: var(--mx-ink-3); font: inherit; font-weight: var(--mx-w-label); cursor: pointer; }
+.mx-root .mx-tabs { display: flex; gap: var(--mx-s1); border-block-end: 1px solid var(--mx-border); overflow-x: auto; scrollbar-width: none; }
+.mx-root .mx-tab { padding: var(--mx-s2) var(--mx-s3); border: 0; border-block-end: 2px solid transparent; background: none; color: var(--mx-ink-3); font: inherit; font-weight: var(--mx-w-label); cursor: pointer; white-space: nowrap; flex: none; }
+.mx-root .mx-tab:focus-visible { outline-offset: -2px; }
 .mx-root .mx-tab[aria-selected="true"] { color: var(--mx-ink); border-block-end-color: var(--mx-accent); }
 .mx-root .mx-badge { margin-inline-start: var(--mx-s2); color: var(--mx-ink-3); font-variant-numeric: tabular-nums; }
 .mx-root .mx-badge[data-tone="good"] { color: var(--mx-good-ink); }
