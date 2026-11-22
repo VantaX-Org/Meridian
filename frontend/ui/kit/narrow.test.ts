@@ -13,4 +13,7 @@ describe("narrow screens", () => {
   it("insights page column is clamped to the screen", () => {
     expect(css("screens/insights/insights.css")).toMatch(/\.b8-page \{[^}]*minmax\(0, 1fr\)/);
   });
+  it("chips in a virtual table row never wrap past the fixed row height", () => {
+    expect(css("screens/runs/runs.css")).toMatch(/\.mx-table \.rn-chips \{[^}]*flex-wrap: nowrap/);
+  });
 });

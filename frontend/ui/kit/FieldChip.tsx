@@ -3,7 +3,7 @@ export function FieldChip({ code, description }: { code: string; description?: s
   return (
     <span className="mx-fieldchip">
       <code className="mx-code">{code}</code>
-      {description ? <span>{description}</span> : null}
+      {description ? <span title={description}>{description}</span> : null}
     </span>
   );
 }
