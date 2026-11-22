@@ -26,4 +26,4 @@
 .mx-root .rn-cmp-track > i[data-side="a"] { inset-block-end: 50%; background: var(--mx-ink-3); }
 .mx-root .rn-cmp-track > i[data-side="b"] { inset-block-start: 50%; background: var(--mx-accent); }
 .mx-root .rn-cmp-track > b { position: absolute; inset-block: -3px; inline-size: 1px; background: var(--mx-ink); }
-@media (max-width: 640px) { .mx-root .rn-board-table { display: block; overflow-x: auto; } }
+@media (max-width: 640px) { .mx-root .rn-board-table { display: block; overflow-x: auto; } .mx-root .rn-board-table th, .mx-root .rn-board-table td:not(:has(svg)) { white-space: nowrap; } }
