@@ -845,13 +845,17 @@ async def write_audit(
         except (ValueError, TypeError, AttributeError):
             known = None
         else:
-            known = (await db.execute(text("SELECT 1 FROM users WHERE id = CAST(:u AS uuid) AND tenant_id = CAST(:t AS uuid)"),
+            known = (await db.execute(text("SELECT email FROM users WHERE id = CAST(:u AS uuid) AND tenant_id = CAST(:t AS uuid)"),
                                       {"u": str(me), "t": str(tenant_id)})).fetchone()
+    # The actor's own email when they are a user row: the session's context var can be empty (a token without the
+    # claim, a call made outside the middleware), and the row then read "system" for a person's action.
+    email = (known[0] if known and known[0] else None) or getattr(getattr(request, "state", None), "local_user_email", None) \
+        or current_user_label()
     await db.execute(
         text("INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, "
              "method, path, status_code, before_json, after_json) "
              "VALUES (:t, :u, :e, :a, :et, :ei, :m, :p, 200, CAST(:b AS jsonb), CAST(:af AS jsonb))"),
-        {"t": str(tenant_id), "u": str(me) if known else None, "e": current_user_label(), "a": action,
+        {"t": str(tenant_id), "u": str(me) if known else None, "e": email, "a": action,
          "et": entity_type, "ei": entity_id, "m": request.method, "p": request.url.path,
          "b": json.dumps(before) if before is not None else None,
          "af": json.dumps(after) if after is not None else None},

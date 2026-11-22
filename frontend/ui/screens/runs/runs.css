@@ -14,3 +14,5 @@
 .mx-root .rn-chips { display: flex; flex-wrap: wrap; gap: var(--mx-s2); }
 .mx-root .rn-filters { display: flex; flex-wrap: wrap; gap: var(--mx-s2); align-items: end; }
 .mx-root .rn-num { font-variant-numeric: tabular-nums; text-align: end; }
+/* Virtual tables assume a fixed row height, so chips in a cell stay on one line. */
+.mx-root .mx-table .rn-chips { flex-wrap: nowrap; overflow: hidden; max-inline-size: 36rem; }

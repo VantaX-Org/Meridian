@@ -1,5 +1,5 @@
 /* Insights and monitor screens. Tokens only. */
-.mx-root .b8-page { display: grid; gap: var(--mx-s4); }
+.mx-root .b8-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--mx-s4); }
 .mx-root .b8-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: var(--mx-s4); align-items: start; }
 .mx-root .b8-stack { display: grid; gap: var(--mx-s3); }
 .mx-root .b8-nav { display: flex; flex-wrap: wrap; gap: var(--mx-s2); }

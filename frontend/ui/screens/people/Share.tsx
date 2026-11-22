@@ -8,7 +8,7 @@ import { Gate, day, useQ } from "./common";
 export function Share({ token }: { token: string }) {
   const q = useQ(["share", token], () => resolveShareLink(token));
   return (
-    <main className="mx-col" aria-labelledby="share-h">
+    <section className="mx-col" aria-labelledby="share-h">
       <h1 id="share-h" className="mx-card-t">{t("Shared with you")}</h1>
       <Gate q={q} label={t("Opening the shared link")}>
         {(l) => (
@@ -21,6 +21,6 @@ export function Share({ token }: { token: string }) {
         )}
       </Gate>
       {!token ? <EmptyState heading={t("This link is not valid")} /> : null}
-    </main>
+    </section>
   );
 }
