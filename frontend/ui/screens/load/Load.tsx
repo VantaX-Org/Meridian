@@ -6,6 +6,7 @@ import { useLoadHistory, useLoadRuns } from "@/lib/api/next/load";
 import { Card, DataTable, EmptyState, FieldChip, PageHeader, StatTile, useAletheiaScope } from "@/ui/kit";
 import { AskButton, Gate, Verdict, humanize, useHref, when } from "./common";
 import { useLoadPlan } from "./hooks";
+import { LoadBoard } from "./LoadBoard";
 
 /** The Load area home: the order to load in, the files handed over, and a way into every part of the area. */
 export function Load() {
@@ -45,6 +46,7 @@ export function Load() {
   return (
     <>
       <PageHeader title={t("Load")} context={t("Move clean data into the new system, in the right order.")} actions={<AskButton />} />
+      <LoadBoard />
       <div className="mx-col">
       <dl className="mx-tiles">
         <StatTile label={t("Objects in the plan")} value={String(objects.length)} />

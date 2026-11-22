@@ -8,6 +8,7 @@ import {
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { describeField } from "@/lib/v2/sap-fields";
 import { BarList, Button, Card, FieldChip, PageHeader, SeverityPill, StatTile, Tabs, TrendArea, useAletheiaScope, useToast } from "@/ui/kit";
+import { InsightsBoard } from "./InsightsBoard";
 import { Gate, InsightsNav, Mod, Tbl, day, money, n0, n1, pc, sevLabel, sevOf, useQ } from "./shared";
 
 type TabId = "overview" | "rules" | "causes" | "trends" | "cleansing" | "impact" | "cost" | "owners" | "duplicates" | "exec";
@@ -249,6 +250,7 @@ export function InsightsScreen({ set = "findings" }: { set?: InsightSet }) {
       {set === "findings"
         ? <PageHeader title={t("Insights")} context={t("What Aletheia found in your data and where it is getting worse.")} actions={<InsightsNav here="insights" />} />
         : <PageHeader title={t("Cost and owners")} context={t("What bad data costs, what cleaning saved and who owns the fix.")} actions={<InsightsNav here="money" />} />}
+      {set === "findings" && <InsightsBoard />}
       <Tabs idBase="b8-ins" label={t("Insight views")} items={items} value={tab} onChange={(id) => setTab(id as TabId)} />
       <div id={`b8-ins-panel-${tab}`} role="tabpanel" aria-labelledby={`b8-ins-tab-${tab}`} className="b8-stack">
         {tab === "overview" ? <Overview /> : null}

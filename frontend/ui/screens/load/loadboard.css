@@ -1,0 +1,7 @@
+.mx-root .lb-board { display: grid; gap: var(--mx-s4); margin-block-end: var(--mx-s5); }
+.mx-root .lb-note { margin: var(--mx-s3) 0 0; color: var(--mx-ink-2); }
+.mx-root .lb-actions { display: inline-flex; flex-wrap: wrap; gap: var(--mx-s2); }
+.mx-root .lb-block { margin-block-start: var(--mx-s4); }
+.mx-root .lb-list { display: grid; gap: var(--mx-s2); margin: var(--mx-s2) 0 0; padding: 0; list-style: none; }
+.mx-root .lb-board [data-tone="good"] { color: var(--mx-good-ink); }
+.mx-root .lb-board [data-tone="bad"] { color: var(--mx-bad-ink); }
