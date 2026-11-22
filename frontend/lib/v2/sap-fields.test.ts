@@ -43,3 +43,14 @@ describe("sap-fields", () => {
     expect(describeTable("ZTAB")).toBeNull();
   });
 });
+
+describe("describeField on a bare key part", () => {
+  it("reads the catalogued text of the same field name", () => {
+    expect(describeField("WERKS")).toBe("Plant");
+    expect(describeField("BUKRS")).toBe("Company code");
+  });
+
+  it("stays null for a table field the catalogue lacks", () => {
+    expect(describeField("ZTAB.WERKS")).toBeNull();
+  });
+});

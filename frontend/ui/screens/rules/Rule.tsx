@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useRuleHistory, useRuleScope } from "@/lib/v2/object-queries";
+import { labelText, moduleText } from "@/lib/v2/labels";
 import { Button, DetailPanel, ErrorState, PageHeader, Skeleton, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { checkId, compactCount, pct, sevLabel } from "./format";
 import { RuleFix } from "./RuleFix";
@@ -52,9 +53,9 @@ export function Rule({ id: raw }: { id: string }) {
   return (
     <>
       <nav className="mx-crumb" aria-label={t("Breadcrumb")}>
-        {s.module ? <><a href={href(objectPath(s.objects[0]?.system_id ?? "", s.module))}>{s.module}</a> / </> : null}
+        {s.module ? <><a href={href(objectPath(s.objects[0]?.system_id ?? "", s.module))}>{moduleText(s.module)}</a> / </> : null}
         <a href={href("/rules")}>{t("Rules")}</a>
-        {s.definition.dimension ? <> / {s.definition.dimension}</> : null}
+        {s.definition.dimension ? <> / {labelText(s.definition.dimension)}</> : null}
       </nav>
       <PageHeader
         title={`${id} ${s.name ?? ""}`.trim()}

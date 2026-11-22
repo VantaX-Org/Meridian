@@ -4,7 +4,7 @@ import "./rules.css";
 import { useMemo, useState } from "react";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t } from "@/lib/v2/i18n";
-import { money } from "@/lib/v2/format";
+import { moneyCompactText } from "@/lib/v2/labels";
 import { describeField } from "@/lib/v2/sap-fields";
 import { useConfigImpact, useRuleFailuresBy, useRuleHistory, useStewards, useWorkGroups } from "@/lib/v2/object-queries";
 import { useObjectRules, useReceipt } from "@/lib/v2/queries";
@@ -118,7 +118,7 @@ export function RuleBoard({ id, scope }: { id: string; scope: RuleScope }) {
         />
         <StatTile
           label={t("Value at risk")}
-          value={var_ === null ? t("n/a") : cur ? money(var_, cur) : compactCount(var_)}
+          value={var_ === null ? t("n/a") : cur ? moneyCompactText(var_, cur) : compactCount(var_)}
           note={rank && vars.length > 1 ? t("Rank {r} of {n} rules by value at risk", { r: rank, n: vars.length }) : undefined}
         />
         <StatTile
@@ -158,9 +158,9 @@ export function RuleBoard({ id, scope }: { id: string; scope: RuleScope }) {
               const sum = g.values.reduce((a, v) => a + v.records, 0) || 1;
               return (
                 <div key={g.field} className="mx-rules-form">
-                  <h3 className="mx-card-t">{t("By {field}", { field: g.field })}</h3>
+                  <h3 className="mx-card-t">{t("By {field}", { field: fieldName(g.field) })}</h3>
                   <DataTable
-                    label={t("Failures by {field}", { field: g.field })}
+                    label={t("Failures by {field}", { field: fieldName(g.field) })}
                     rowKey={(v) => v.value}
                     rows={g.values}
                     height={240}
@@ -174,7 +174,7 @@ export function RuleBoard({ id, scope }: { id: string; scope: RuleScope }) {
               );
             })}
             {by.groups.slice(2).map((g) => (
-              <BarList key={g.field} label={t("By {field}", { field: g.field })} items={g.values.slice(0, 6).map((v) => ({ id: v.value, label: `${g.field} ${v.value}`, value: v.records, display: compactCount(v.records) }))} />
+              <BarList key={g.field} label={t("By {field}", { field: fieldName(g.field) })} items={g.values.slice(0, 6).map((v) => ({ id: v.value, label: v.value, value: v.records, display: compactCount(v.records) }))} />
             ))}
           </div>
         ) : <EmptyState heading={t("No split of the failures is available.")} />}
@@ -263,3 +263,6 @@ function FailingRecordsTable({ id, run, module }: { id: string; run: string | nu
     </Card>
   );
 }
+
+/** "WERKS Plant": the code with its description, the code alone when the catalogue has none. */
+const fieldName = (f: string) => { const d = describeField(f); return d ? `${f} ${d}` : f; };
