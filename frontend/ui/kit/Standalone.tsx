@@ -25,7 +25,7 @@ export function Standalone({ children }: { children: ReactNode }) {
   return (
     <div key={tag} className="mx-root mx-standalone" lang={tag} {...themeRootProps(theme)}>
       <DemoBar />
-      {children}
+      <main className="mx-main">{children}</main>
     </div>
   );
 }
