@@ -12,5 +12,5 @@
 .mx-root .rn-pill[data-tone="info"] { background: var(--mx-accent-soft); color: var(--mx-accent); }
 .mx-root .rn-stack { display: grid; gap: var(--mx-s4); }
 .mx-root .rn-chips { display: flex; flex-wrap: wrap; gap: var(--mx-s2); }
-.mx-root .rn-filters { display: flex; flex-wrap: wrap; gap: var(--mx-s2); align-items: center; }
+.mx-root .rn-filters { display: flex; flex-wrap: wrap; gap: var(--mx-s2); align-items: end; }
 .mx-root .rn-num { font-variant-numeric: tabular-nums; text-align: end; }

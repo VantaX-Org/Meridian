@@ -7,7 +7,7 @@ import type { WorkRow } from "@/lib/api/v2/types";
 import { exportFixSheet, importFixSheet, postAcceptAll, postSetValue, type WorkGroup } from "@/lib/api/v2/work";
 import { formatModuleName } from "@/lib/format";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
-import { CHIPS, chipDef, exportQueryOf, filtersOf, readState, viewFilters, type ChipId } from "@/lib/v2/work";
+import { CHIPS, chipDef, displayKey, exportQueryOf, filtersOf, readState, viewFilters, type ChipId } from "@/lib/v2/work";
 import { useWorkGroups, useWorkRows, useWorkSummary, useWorkViews } from "@/lib/v2/work-queries";
 import {
   Button, Card, Chip, DataTable, EmptyState, ErrorState, Field, Input, MasterList, PageHeader, Select, Sheet, Skeleton, Toggle, useAletheia, useAletheiaScope,
@@ -75,9 +75,9 @@ export function Work() {
       <Button onClick={exp}>{t("Export workbook")}</Button>
       <Button onClick={() => file.current?.click()}>{t("Import workbook")}</Button>
       <input ref={file} type="file" accept=".xlsx,.csv" hidden aria-label={t("Import workbook")} onChange={(e) => { const f = e.target.files?.[0]; if (f) void imp(f); e.target.value = ""; }} />
-      <Button onClick={() => sheets.open("whatif", { module: state.module })}>{t("What if")}</Button>
-      {list.length ? <Button onClick={() => setSim(true)}>{t("Simulate fixing")}</Button> : null}
-      <Button onClick={saveView}>{t("Save this view")}</Button>
+      <Button variant="ghost" onClick={() => sheets.open("whatif", { module: state.module })}>{t("What if")}</Button>
+      {list.length ? <Button variant="ghost" onClick={() => setSim(true)}>{t("Simulate fixing")}</Button> : null}
+      <Button variant="ghost" onClick={saveView}>{t("Save this view")}</Button>
       {vs.length ? (
         <Select aria-label={t("Saved views")} value="" options={[{ value: "", label: t("Saved views") }, ...vs.map((v) => ({ value: v.id, label: v.name }))]}
           onChange={(e) => { const v = vs.find((x) => x.id === e.target.value); if (v) setState(readState(new URLSearchParams(), v)); }} />
@@ -110,7 +110,7 @@ export function Work() {
             <>
               <DataTable label={t("Records")} rows={list} rowKey={rowId} selected={pick ? rowId(pick) : null} onSelect={open}
                 columns={[
-                  { key: "k", label: t("Record"), render: (r) => `${formatModuleName(r.module)} ${r.record_key} ${r.name ?? ""}`, sort: (r) => r.record_key },
+                  { key: "k", label: t("Record"), render: (r) => <><strong>{r.name ?? displayKey(r.record_key)}</strong> <span className="mx-muted">{formatModuleName(r.module)}{r.name ? ` ${displayKey(r.record_key)}` : ""}</span></>, sort: (r) => r.record_key },
                   { key: "s", label: t("Severity"), render: (r) => sevLabel(r.severity), sort: (r) => r.severity },
                   { key: "m", label: t("Why"), render: (r) => r.top_message ?? "" },
                   { key: "n", label: t("Issues"), render: (r) => r.issues, sort: (r) => r.issues, align: "end" },

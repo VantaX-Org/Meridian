@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { displayKey } from "@/lib/v2/work";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { createDataRequest, getDataRequest, getRequestFindings, listDataRequests, submitDataRequest, type RequestItem, type RequestSummary } from "@/lib/api/v2/data-requests";
@@ -31,7 +32,7 @@ function Answer({ id }: { id: string }) {
       <p className="mx-muted">{q.data.note}</p>
       <DataTable label={t("Request items")} rows={items} rowKey={(i: RequestItem) => i.id} height={320}
         columns={[
-          { key: "r", label: t("Record"), render: (i) => i.record_key, sort: (i) => i.record_key },
+          { key: "r", label: t("Record"), render: (i) => displayKey(i.record_key), sort: (i) => i.record_key },
           { key: "f", label: t("Field"), render: (i) => <FieldChip code={i.field} description={i.field_label ?? undefined} /> },
           { key: "c", label: t("Now"), render: (i) => i.current_value ?? "" },
           { key: "s", label: t("State"), render: (i) => STATE(i.state), sort: (i) => i.state },

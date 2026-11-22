@@ -6,7 +6,7 @@ import { withFixture, useFixture } from "@/lib/api/v2/fixture";
 import { t } from "@/lib/v2/i18n";
 import { describeField } from "@/lib/v2/sap-fields";
 import { useWorkRows } from "@/lib/v2/work-queries";
-import { STATUS_LABEL, keyHeaders, splitKey } from "@/lib/v2/work";
+import { STATUS_LABEL, alphaOut, displayKey, keyHeaders, splitKey } from "@/lib/v2/work";
 import type { WorkRow } from "@/lib/api/v2/types";
 import { Button, Card, DataTable, EmptyState, ErrorState, FieldChip, Search, Select, Skeleton, StatTile, TrendArea, type Column, SeverityPill } from "@/ui/kit";
 import { compactCount } from "@/ui/screens/object/format";
@@ -75,7 +75,7 @@ export function Records({ o, system, module }: { o: ObjectRun; system: string; m
   });
 
   const columns: Column<WorkRow>[] = [
-    { key: "record", label: heads.first, render: (r) => <><strong>{r.name ?? splitKey(r.record_key)[0]?.value}</strong> <span className="mx-muted">{r.record_key}</span></>, sort: (r) => r.record_key },
+    { key: "record", label: heads.first, render: (r) => <><strong>{r.name ?? alphaOut(splitKey(r.record_key)[0]?.value ?? "")}</strong> <span className="mx-muted">{displayKey(r.record_key)}</span></>, sort: (r) => r.record_key },
     { key: "sev", label: t("Severity"), render: (r) => <SeverityPill sev={r.severity} label={sevLabel(r.severity)} />, sort: (r) => r.severity },
     { key: "issues", label: t("Issues"), align: "end", render: (r) => r.issues, sort: (r) => r.issues },
     {

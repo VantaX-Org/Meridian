@@ -45,6 +45,7 @@ export function Load() {
   return (
     <>
       <PageHeader title={t("Load")} context={t("Move clean data into the new system, in the right order.")} actions={<AskButton />} />
+      <div className="mx-col">
       <dl className="mx-tiles">
         <StatTile label={t("Objects in the plan")} value={String(objects.length)} />
         <StatTile label={t("Go")} value={String(go)} />
@@ -52,7 +53,6 @@ export function Load() {
         <StatTile label={t("Migration runs")} value={String(runs.data?.length ?? 0)} />
         <StatTile label={t("Files handed over")} value={String(hist.data?.total ?? 0)} />
       </dl>
-      <div className="mx-col">
           <Card title={t("Load order")} sub={plan.data ? t("{n} steps for release {r}", { n: plan.data.steps, r: plan.data.release }) : undefined}>
             <Gate loading={plan.isLoading} error={plan.isError} what={t("the load order")}>
               {objects.length ? (

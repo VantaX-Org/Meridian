@@ -23,7 +23,7 @@ export function Admin() {
         <EmptyState heading={t("You have no administration access")} body={t("Ask a tenant administrator for access to the sections you need.")} />
       ) : groups.map((g) => (
         <Card key={g} title={g}>
-          <ul className="mx-links">
+          <ul className="mx-linkgrid">
             {open.filter((s) => s.group() === g).map((s) => (
               <li key={s.slug}>
                 <a href={withFixture(`/admin/${s.slug}`, fx)}><strong>{s.label()}</strong></a>

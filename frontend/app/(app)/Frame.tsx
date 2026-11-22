@@ -70,7 +70,7 @@ function Shell({ children }: { children: ReactNode }) {
     { id: "load", label: t("Load"), href: PATHS.load },
     { id: "runs", label: t("Runs"), href: PATHS.runs },
     { id: "more", label: t("More"), href: PATHS.more },
-  ].map((s) => ({ ...s, href: link(s.href), active: s.href !== "/" && path.startsWith(s.href) }));
+  ].map((s) => ({ ...s, href: link(s.href), active: s.href === "/" ? path === "/" : path.startsWith(s.href) }));
   const commands = sections.map((s) => ({ id: s.id, label: t("Go to {place}", { place: s.label }), run: () => router.push(s.href) }));
   return (
     <>

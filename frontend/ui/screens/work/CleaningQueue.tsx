@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { displayKey } from "@/lib/v2/work";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import {
@@ -65,7 +66,7 @@ export function CleaningQueue() {
             <DataTable label={t("Proposed fixes")} rows={rows} rowKey={(x) => x.id}
               columns={[
                 { key: "o", label: t("Object"), render: (x) => <ObjChip code={x.object_type} /> },
-                { key: "r", label: t("Record"), render: (x) => x.record_key, sort: (x) => x.record_key },
+                { key: "r", label: t("Record"), render: (x) => displayKey(x.record_key), sort: (x) => x.record_key },
                 { key: "c", label: t("Confidence"), render: (x) => pct(x.confidence), sort: (x) => x.confidence ?? 0, align: "end" },
                 { key: "a", label: t("Action"), render: (x) => (
                   <span className="mx-links">

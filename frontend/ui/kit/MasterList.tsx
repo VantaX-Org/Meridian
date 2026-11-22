@@ -5,12 +5,12 @@ export interface MasterRow {
   id: string;
   severity: Severity;
   severityLabel: string;
-  code: string;
+  code?: string;
   text: string;
   field?: { code: string; description?: string };
   countLabel: string;
-  /** 0 to 1: this row's share of the largest row. */
-  ratio: number;
+  /** 0 to 1: this row's share of the largest row. Omit for rows with no magnitude; no bar is drawn. */
+  ratio?: number;
 }
 
 /** A selectable list: severity, rule id and text, field chip, record count and a proportional bar. */
@@ -24,9 +24,9 @@ export function MasterList({ rows, selectedId, onSelect, label }: { rows: Master
               <span className="mx-sev" data-sev={r.severity}><i className="mx-dot" aria-hidden="true" />{r.severityLabel}</span>
               <span className="mx-row-n mx-num">{r.countLabel}</span>
             </span>
-            <span className="mx-row-name"><code className="mx-code">{r.code}</code> {r.text}</span>
+            <span className="mx-row-name">{r.code ? <><code className="mx-code">{r.code}</code> </> : null}{r.text}</span>
             {r.field ? <span className="mx-row-field"><FieldChip code={r.field.code} description={r.field.description} /></span> : null}
-            <span className="mx-bar" aria-hidden="true"><span data-sev={r.severity} style={{ inlineSize: `${Math.round(Math.max(0, Math.min(1, r.ratio)) * 100)}%` }} /></span>
+            {r.ratio === undefined ? null : <span className="mx-bar" aria-hidden="true"><span data-sev={r.severity} style={{ inlineSize: `${Math.round(Math.max(0, Math.min(1, r.ratio)) * 100)}%` }} /></span>}
           </button>
         </li>
       ))}

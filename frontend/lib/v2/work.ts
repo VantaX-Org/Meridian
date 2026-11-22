@@ -346,3 +346,9 @@ export function sentence(opts: { persona: string; chip: ChipId | null; summary: 
   if (persona === "steward" || chip === "proposed") return tr("{n} {toFix, plural, one {record} other {records}} to fix{where}, {n2} with a suggested value.", { n: n(toFix), toFix, where, n2: n(suggested) });
   return tr("{n} {toFix, plural, one {record} other {records}} to fix{where}, ranked by value at risk.", { n: n(toFix), toFix, where });
 }
+
+/** SAP ALPHA output: an all-digit value shows without its leading zeros. */
+export const alphaOut = (v: string): string => (/^\d+$/.test(v) ? v.replace(/^0+(?=\d)/, "") : v);
+
+/** A record key as a person reads it: the values only, ALPHA-stripped, joined by " / ". */
+export const displayKey = (key: string): string => splitKey(key).map((p) => alphaOut(p.value)).join(" / ");

@@ -56,7 +56,9 @@
 .mx-root [data-sev="critical"] { --sev: var(--mx-sev-critical); }
 .mx-root [data-sev="high"] { --sev: var(--mx-sev-high); }
 .mx-root [data-sev="medium"] { --sev: var(--mx-sev-medium); }
-.mx-root [data-sev="low"], .mx-root [data-sev="info"] { --sev: var(--mx-sev-low); }
+.mx-root [data-sev="low"] { --sev: var(--mx-sev-low); }
+.mx-root [data-sev="info"] { --sev: var(--mx-ink-3); }
+.mx-root [data-sev="good"] { --sev: var(--mx-good); }
 .mx-root .mx-bar > span[data-sev] { background: var(--sev); }
 .mx-root .mx-dims li { display: grid; grid-template-columns: 7rem 1fr 3rem; gap: var(--mx-s3); align-items: center; font-size: var(--mx-fs-small); padding-block: var(--mx-s1); }
 .mx-root .mx-dims li > .mx-num { text-align: end; }
@@ -95,6 +97,9 @@
 .mx-root .mx-stat { padding: var(--mx-s3); border-radius: var(--mx-r-control); background: var(--mx-surface-2); display: grid; gap: var(--mx-s1); }
 .mx-root .mx-stat dt { color: var(--mx-ink-3); font-size: var(--mx-fs-small); }
 .mx-root .mx-links { display: flex; flex-wrap: wrap; gap: var(--mx-s2); }
+.mx-root .mx-links > .mx-input { flex: 0 1 auto; inline-size: auto; }
+.mx-root .mx-linkgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: var(--mx-s3) var(--mx-s4); margin: 0; padding: 0; list-style: none; }
+.mx-root .mx-linkgrid > li { display: grid; gap: var(--mx-s1); align-content: start; }
 
 /* States */
 .mx-root .mx-state { padding: var(--mx-s5); display: grid; gap: var(--mx-s2); justify-items: start; background: var(--mx-surface); border: 1px dashed var(--mx-border-strong); border-radius: var(--mx-r-card); }

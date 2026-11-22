@@ -7,6 +7,7 @@ import { apiDetail, downloadCleansingLog, downloadErrors, moveKeys, RUN_DONE, ru
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Confirm, DataTable, FieldChip, StatTile, type Column } from "@/ui/kit";
 import { WaveProgress } from "./charts";
+import { displayKey } from "@/lib/v2/work";
 
 interface Row { key: string; wave: number; entity: string; sent: number; ok: number; failed: number; error_rate: number }
 
@@ -24,7 +25,7 @@ const cols = (): Column<Row>[] => [
 const unfixCols = (): Column<Unfixable & { k: string }>[] => [
   { key: "rule", label: t("Rule"), render: (r) => <FieldChip code={r.rule} description={r.reason} />, sort: (r) => r.rule },
   { key: "field", label: t("Field"), render: (r) => <FieldChip code={r.field} /> },
-  { key: "record_key", label: t("Record"), render: (r) => <span className="mx-num">{r.record_key}</span> },
+  { key: "record_key", label: t("Record"), render: (r) => <span className="mx-num">{displayKey(r.record_key)}</span> },
   { key: "current_value", label: t("Value loaded"), render: (r) => r.current_value ?? t("empty") },
 ];
 
