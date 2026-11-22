@@ -1,0 +1,22 @@
+.mx-root .mx-clean { display: grid; gap: var(--mx-s4); margin-block-end: var(--mx-s5); }
+.mx-root .mx-clean-pair { display: grid; gap: var(--mx-s4); grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.mx-root .mx-clean-steps { display: grid; gap: var(--mx-s3); grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin: 0; padding: 0; list-style: none; }
+.mx-root .mx-clean-step { display: grid; gap: var(--mx-s1); padding: var(--mx-s3); border: 1px solid var(--mx-border); border-radius: var(--mx-r-card); background: var(--mx-surface); }
+.mx-root .mx-clean-step[data-state="current"] { border-color: var(--mx-accent, var(--mx-text)); }
+.mx-root .mx-clean-step-name { font-weight: 600; }
+.mx-root .mx-clean-hold { margin: 0; display: grid; gap: var(--mx-s2); }
+.mx-root .mx-clean-list { display: grid; gap: var(--mx-s2); margin: 0; padding: 0; list-style: none; }
+.mx-root .mx-clean-row { display: grid; gap: var(--mx-s3); grid-template-columns: minmax(0, 1fr) 90px auto auto; align-items: center; padding-block: var(--mx-s2); border-block-start: 1px solid var(--mx-border); }
+.mx-root .mx-clean-sub { display: block; color: var(--mx-text-2, var(--mx-text)); font-size: 12px; }
+.mx-root .mx-clean-bar { height: 10px; border-radius: 3px; background: var(--mx-border); overflow: hidden; }
+.mx-root .mx-clean-bar > span { display: block; height: 100%; background: var(--mx-accent, var(--mx-text)); }
+.mx-root .mx-clean-num { font-weight: 600; text-align: end; font-variant-numeric: tabular-nums; }
+.mx-root .mx-clean-cycle { display: grid; gap: var(--mx-s3); grid-template-columns: 70px minmax(0, 1fr) 150px; align-items: center; }
+.mx-root .mx-clean-track { position: relative; height: 10px; border-radius: 3px; background: var(--mx-border); }
+.mx-root .mx-clean-track > span { position: absolute; inset-block: 0; inset-inline-start: 0; border-radius: 3px; background: var(--mx-accent, var(--mx-text)); }
+.mx-root .mx-clean-track > i { position: absolute; inset-block: -3px; width: 1px; background: var(--mx-text); }
+.mx-root .mx-clean-sheet { display: flex; gap: var(--mx-s3); align-items: baseline; }
+.mx-root .mx-clean-file { display: flex; flex-wrap: wrap; gap: var(--mx-s3); align-items: center; }
+.mx-root .mx-clean-why { display: grid; gap: var(--mx-s2); margin: 0; padding: 0; list-style: none; }
+.mx-root .mx-clean-chart { width: 100%; height: auto; }
+.mx-root .mx-clean-ledger-h { margin: var(--mx-s5) 0 var(--mx-s3); }
