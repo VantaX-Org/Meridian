@@ -50,7 +50,7 @@ export function CompareBoard({ a, b, module }: { a: string; b: string; module: s
   return (
     <section className="rn-cmp" aria-label={t("Comparing {a} to {b}", { a: name(ra), b: name(rb) })} data-testid="compare-board">
       <dl className="mx-tiles">
-        {shownA != null && shownB != null && <StatTile label={t("Shown score")} value={`${score(shownA)} ${t("to")} ${score(shownB)}`} />}
+        {shownA != null && shownB != null && <StatTile label={t("Shown score")} value={`${score(shownA)} ${t("to")} ${score(shownB)}`} note={signed(shownB - shownA)} />}
         {ra.raw_score != null && rb.raw_score != null && <StatTile label={t("Measured score")} value={`${score(ra.raw_score)} ${t("to")} ${score(rb.raw_score)}`} note={signed(rb.raw_score - ra.raw_score)} />}
         {recDelta !== null && <StatTile label={t("Records")} value={`${compactCount(ra.records_checked as number)} ${t("to")} ${compactCount(rb.records_checked as number)}`} note={signed(recDelta)} />}
         {d.rules.length > 0 && <StatTile label={t("Failing records")} value={`${compactCount(failing(0))} ${t("to")} ${compactCount(failing(1))}`} note={signed(failing(1) - failing(0))} />}

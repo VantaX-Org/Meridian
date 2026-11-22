@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
+import { describeField } from "@/lib/v2/sap-fields";
 import { useCompareSets, useCompareSummary, useRun, type Change, type CompareRecord } from "@/lib/api/next/runs";
 import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, Skeleton, StatTile, useAletheiaScope, type Column } from "@/ui/kit";
 import { answer } from "./answers";
@@ -15,7 +16,7 @@ import "./runs.css";
 
 const CHANGES: Change[] = ["new", "resolved", "regressed", "persisting"];
 const changeText = (c: Change) => ({ new: t("Newly failing"), resolved: t("Fixed"), regressed: t("Got worse"), persisting: t("Still failing") })[c];
-const cell = (v: Record<string, unknown> | null) => (v ? Object.entries(v).map(([k, x]) => `${k}=${String(x)}`).join(", ") : "");
+const cell = (v: Record<string, unknown> | null) => (v ? Object.entries(v).map(([k, x]) => { const d = describeField(k); return `${k}${d ? ` (${d})` : ""} = ${String(x) || t("blank")}`; }).join(", ") : "");
 
 export function RunCompare({ a, b, runs, objects }: { a: string; b: string; runs?: readonly string[]; objects?: readonly string[] }) {
   useInterfaceLang();

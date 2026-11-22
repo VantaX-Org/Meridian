@@ -14,6 +14,7 @@
 .mx-root .rn-cmp { display: grid; gap: var(--mx-s4); margin-block-end: var(--mx-s5); }
 .mx-root .rn-cmp-rules { display: grid; gap: var(--mx-s2); margin: 0; padding: 0; list-style: none; }
 .mx-root .rn-cmp-rule { display: grid; gap: var(--mx-s3); grid-template-columns: minmax(0, 1fr) minmax(120px, 240px) 64px; align-items: center; }
+.mx-root .rn-cmp-rule > :first-child { justify-self: start; max-inline-size: 100%; }
 .mx-root .rn-cmp-axis { position: relative; block-size: 10px; background: var(--mx-border); border-radius: 3px; }
 .mx-root .rn-cmp-axis::after { content: ""; position: absolute; inset-block: -3px; inset-inline-start: 50%; inline-size: 1px; background: var(--mx-ink-3); }
 .mx-root .rn-cmp-bar { position: absolute; inset-block: 0; border-radius: 3px; background: var(--mx-good); }
