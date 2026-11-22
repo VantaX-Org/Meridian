@@ -26,6 +26,8 @@ const screens: [string, React.ReactNode, string][] = [
   ["Forecast", <Forecast key="f" />, "Forecast"],
   ["Value", <Value key="v" />, "Value"],
   ["Monitor", <Monitor key="m" />, "Monitor"],
+  ["Cost and owners", <InsightsScreen key="c" set="money" />, "Cost and owners"],
+  ["Controls", <Monitor key="k" set="controls" />, "Controls"],
 ];
 
 describe("insight and monitor screens in fixture mode", () => {
@@ -57,5 +59,30 @@ describe("monitor after a clean", () => {
     expect(box.textContent).toContain("MM142");
     expect(box.textContent).toContain("B-236");
     expect(screen.getAllByRole("table", { name: "Rules that got worse" }).length).toBeGreaterThan(0);
+  });
+});
+
+describe("no insight screen has more than five views", () => {
+  it.each([
+    ["Insights", <InsightsScreen key="i" />],
+    ["Cost and owners", <InsightsScreen key="c" set="money" />],
+    ["Monitor", <Monitor key="m" />],
+    ["Controls", <Monitor key="k" set="controls" />],
+  ])("%s keeps its tabs to five", async (_n, node) => {
+    renderWithQuery(wrap(node));
+    await screen.findByRole("tablist");
+    const n = screen.getAllByRole("tab").length;
+    expect(n).toBeGreaterThan(0);
+    expect(n).toBeLessThanOrEqual(5);
+  });
+});
+
+describe("old monitor links", () => {
+  it("send a controls view on to the controls screen", async () => {
+    const { replace } = await import("@/ui/testing/nav-store");
+    window.history.replaceState(null, "", "/monitor?fixture=1&open=schedule");
+    renderWithQuery(wrap(<Monitor />));
+    await screen.findByRole("heading", { level: 1, name: "Monitor" });
+    expect(replace).toHaveBeenCalledWith("/monitor/controls?view=schedule");
   });
 });

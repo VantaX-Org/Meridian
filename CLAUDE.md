@@ -259,7 +259,8 @@ disagree, follow DESIGN.md.
   `frontend/app/(app)`; old URLs redirect permanently (table in
   `frontend/docs/guide/redirects.md`, checked by a test).
 - **One component kit**: `frontend/ui/kit` (`@/ui/kit`, parts listed in its
-  `README.md`); screens are one folder per journey under `frontend/ui/screens`.
+  `README.md`); screens are one folder per journey under `frontend/ui/screens`. Up to five
+  views of one thing are `Tabs`; more than five means the screen splits.
 - **Tokens**: `frontend/ui/tokens.css` defines every `--mx-*` token, light and
   dark (light is the default). `npm run lint:tokens` rejects raw hex,
   gradients, blur, ad hoc shadows and motion literals outside the token files.

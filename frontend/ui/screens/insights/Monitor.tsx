@@ -2,8 +2,8 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { groupByRun, useFeed } from "@/lib/api/next/monitor";
 import { getBackAfterClean, getMonitor, type MonitorItem } from "@/lib/api/remediation";
 import { proposeShiftRule, getFieldShifts } from "@/lib/api/v2/anomaly-rules";
@@ -19,11 +19,15 @@ import { Gate, InsightsNav, Mod, Tbl, day, n0, n1, pc, sevLabel, sevOf, useQ } f
 
 type View = "feed" | "objects" | "after-clean" | "learned" | "shifts" | "config" | "contracts" | "gate" | "schedule";
 const VIEWS: View[] = ["feed", "objects", "after-clean", "learned", "shifts", "config", "contracts", "gate", "schedule"];
-const viewItems = (): { id: View; label: string }[] => [
-  { id: "feed", label: t("Feed") }, { id: "objects", label: t("Objects") }, { id: "after-clean", label: t("After a clean") },
-  { id: "learned", label: t("Learned") }, { id: "shifts", label: t("Field shifts") }, { id: "config", label: t("Configuration") },
-  { id: "contracts", label: t("Contracts") }, { id: "gate", label: t("Gate") }, { id: "schedule", label: t("Schedule") },
-];
+/** Two screens: what changed after each run, and the controls that guard a run. */
+export type MonitorSet = "changes" | "controls";
+const CONTROLS: View[] = ["config", "contracts", "gate", "schedule"];
+const setOf = (v: View): MonitorSet => (CONTROLS.includes(v) ? "controls" : "changes");
+const viewItems = (set: MonitorSet): { id: View; label: string }[] => set === "changes"
+  ? [{ id: "feed", label: t("Feed") }, { id: "objects", label: t("Objects") }, { id: "after-clean", label: t("After a clean") },
+     { id: "learned", label: t("Learned") }, { id: "shifts", label: t("Field shifts") }]
+  : [{ id: "config", label: t("Configuration") }, { id: "contracts", label: t("Contracts") }, { id: "gate", label: t("Gate") },
+     { id: "schedule", label: t("Schedule") }];
 
 function Feed() {
   const [module, setModule] = useState("");
@@ -303,13 +307,19 @@ function Schedule() {
   );
 }
 
-export function Monitor() {
+export function Monitor({ set = "changes" }: { set?: MonitorSet }) {
   useInterfaceLang();
   const chat = useAletheia();
   const sp = useSearchParams();
-  const start: View = sp.get("open") === "schedule" ? "schedule" : VIEWS.includes(sp.get("view") as View) ? (sp.get("view") as View) : "feed";
-  const [view, setView] = useState<View>(start);
-  const items = viewItems();
+  const router = useRouter();
+  const asked: View | null = sp.get("open") === "schedule" ? "schedule" : VIEWS.includes(sp.get("view") as View) ? (sp.get("view") as View) : null;
+  const items = viewItems(set);
+  const [view, setView] = useState<View>(asked && setOf(asked) === set ? asked : items[0].id);
+  // Old links to a view that now lives on the other screen land there.
+  const elsewhere = asked && setOf(asked) !== set ? asked : null;
+  useEffect(() => {
+    if (elsewhere) router.replace(`${setOf(elsewhere) === "controls" ? "/monitor/controls" : "/monitor"}?view=${elsewhere}`);
+  }, [elsewhere, router]);
   useAletheiaScope({
     key: `monitor/${view}`,
     label: t("Asking about the monitor, {view}", { view: items.find((i) => i.id === view)?.label ?? "" }),
@@ -317,8 +327,9 @@ export function Monitor() {
   });
   return (
     <div className="b8-page">
-      <PageHeader title={t("Monitor")} context={t("What changed, what came back and what is drifting, after every run.")}
-        actions={<><InsightsNav here="monitor" /><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
+      <PageHeader title={set === "changes" ? t("Monitor") : t("Controls")}
+        context={set === "changes" ? t("What changed, what came back and what is drifting, after every run.") : t("The configuration, contracts, load gate and schedules that guard each run.")}
+        actions={<><InsightsNav here={set === "changes" ? "monitor" : "controls"} /><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
       <Tabs idBase="b8-mon" label={t("Monitor views")} items={items} value={view} onChange={(id) => setView(id as View)} />
       <div id={`b8-mon-panel-${view}`} role="tabpanel" aria-labelledby={`b8-mon-tab-${view}`} className="b8-stack">
         {view === "feed" ? <Feed /> : null}

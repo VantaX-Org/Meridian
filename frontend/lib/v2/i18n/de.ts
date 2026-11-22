@@ -14708,4 +14708,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{n} more not shown": "{n} weitere nicht angezeigt",
   "Share of {n}": "Anteil an {n}",
   "{n} against the second figure": "{n} gegenüber der zweiten Zahl",
+  "Cost and owners": "Kosten und Verantwortliche",
+  "What bad data costs, what cleaning saved and who owns the fix.": "Was schlechte Daten kosten, was die Bereinigung gespart hat und wer die Korrektur verantwortet.",
+  "What Aletheia found in your data and where it is getting worse.": "Was Aletheia in Ihren Daten gefunden hat und wo es schlechter wird.",
+  "Controls": "Kontrollen",
+  "The configuration, contracts, load gate and schedules that guard each run.": "Die Konfiguration, Verträge, Ladeschranke und Zeitpläne, die jeden Lauf absichern.",
 };

@@ -14708,4 +14708,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{n} more not shown": "ほか {n} 件は非表示",
   "Share of {n}": "{n} に占める割合",
   "{n} against the second figure": "2 番目の数値との差 {n}",
+  "Cost and owners": "コストと担当者",
+  "What bad data costs, what cleaning saved and who owns the fix.": "不良データのコスト、クレンジングによる削減額、修正の担当者。",
+  "What Aletheia found in your data and where it is getting worse.": "Aletheia がデータで見つけた内容と、悪化している箇所。",
+  "Controls": "コントロール",
+  "The configuration, contracts, load gate and schedules that guard each run.": "各実行を守る構成、コントラクト、ロードゲート、スケジュール。",
 };
