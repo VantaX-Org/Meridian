@@ -22,7 +22,8 @@ afterEach(() => undo());
 describe("Home", () => {
   it("shows the header, the lowest scoring objects and the attention list", async () => {
     wrap(<Home />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Home" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeTruthy();
+    expect(await screen.findByRole("img", { name: "Score of every object against the gates" })).toBeTruthy();
     expect(await screen.findByRole("list", { name: "Next action per object" })).toBeTruthy();
     expect(await screen.findByRole("list", { name: "Attention items" })).toBeTruthy();
   });
