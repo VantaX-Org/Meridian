@@ -145,7 +145,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
     </div>
   );
   const canApply = !!file && !!chk && chk.verdict !== "fail" && ready > 0 && !applied;
-  const applyLabel = t("Apply {n} and rescore", { n: compactCount(ready) });
+  const applyLabel = ready > 0 ? t("Apply {n} and rescore", { n: compactCount(ready) }) : t("Apply and rescore");
 
   if (landscape.isLoading) return <Skeleton lines={6} label={t("Loading the clean cycle")} />;
   if (!mod || !object) return <EmptyState heading={t("No object is licensed to clean")} />;
@@ -156,8 +156,8 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
         <span>{t("Clean")}</span> / <span>{object.label}{system ? `, ${system.name}` : ""}</span>
       </nav>
       <PageHeader
-        title={runNo !== null ? t("Clean cycle {n}", { n: runNo }) : t("Clean cycle")}
-        context={head ? t("Pulled {date}", { date: day(head.run_at) }) : ""}
+        title={t("Clean cycle")}
+        context={head ? t("Run {n}, pulled {date}", { n: runNo ?? "", date: day(head.run_at) }) : ""}
         actions={<>
           <Button variant="primary" disabled={!canApply} onClick={apply}>{applyLabel}</Button>
           <Button href={withFixture("/approvals", fx)}>{t("Approvals")}</Button>
@@ -236,7 +236,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
       </Card>
 
       <div className="mx-clean-pair">
-        <Card title={t("Findings and fixes by week")} sub={t("Applied and verified")}>
+        <Card title={t("Findings and fixes by week")} sub={t("Applied is the solid line, verified the dashed line")}>
           {weeks.length < 2 ? <EmptyState heading={t("Not enough weeks yet")} /> : (
             <>
               <WeeklyChart weeks={weeks} />
