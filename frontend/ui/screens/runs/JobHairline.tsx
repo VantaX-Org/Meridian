@@ -18,7 +18,7 @@ export function JobHairline() {
         id: r.id,
         label: r.label,
         pct: r.pct ?? null,
-        meta: `${r.status === "queued" ? t("Queued, place {n}", { n: r.queue_position ?? 1 }) : r.pct != null ? `${Math.round(r.pct)}%` : t("Working")}${r.eta_s != null ? ` ${t("{time} left", { time: formatDuration(r.eta_s * 1000) })}` : ""}`,
+        meta: `${r.status === "queued" ? t("Queued, place {n}", { n: r.queue_position ?? 1 }) : r.pct != null ? `${Math.round(r.pct)}%` : t("Working")}${r.eta_s != null ? `, ${t("{time} left", { time: formatDuration(r.eta_s * 1000) })}` : ""}`,
         action: r.version_id ? <Button variant="ghost" href={withFixture(`/run/${r.version_id}`, fx)}>{t("Open")}</Button> : undefined,
       }))}
     />

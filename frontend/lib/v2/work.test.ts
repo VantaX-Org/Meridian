@@ -164,3 +164,12 @@ describe("allWorkRows", () => {
     spy.mockRestore();
   });
 });
+
+describe("displayKey", () => {
+  it("strips SAP leading zeros from numeric values and keeps text values", async () => {
+    const { displayKey, alphaOut } = await import("./work");
+    expect(displayKey("MATNR=000000000000000232")).toBe("232");
+    expect(displayKey("MATNR=AB-0012|WERKS=0001")).toBe("AB-0012 / 1");
+    expect(alphaOut("0000")).toBe("0");
+  });
+});

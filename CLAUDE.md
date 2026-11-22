@@ -253,16 +253,16 @@ RLS policy on every data table — always set `app.tenant_id` before queries.
 Source of truth: `frontend/DESIGN.md`. When this summary and DESIGN.md
 disagree, follow DESIGN.md.
 
-- **One interface**: the rebuilt Meridian UI (design C, Split analyst), served at the
-  root from `frontend/app/(app)`. The old page trees, their component libraries
-  and help centre are deleted; every old URL redirects permanently (table in
+- **One interface**: design C, "Split analyst". A top bar with five sections
+  (Home, Work, Load, Runs, More), a master list with detail beside it, the
+  Aletheia chat in a side panel, and sheets for tasks. Routes live in
+  `frontend/app/(app)`; old URLs redirect permanently (table in
   `frontend/docs/guide/redirects.md`, checked by a test).
-- **One component library**: `frontend/ui/kit` (shell, tables, tabs, sheets,
-  the Aletheia chat) with screens under `ui/screens` and `lib/v2` for logic.
-  Sheets are registered in `ui/sheets.ts`; `?open=kind:id` opens one.
+- **One component kit**: `frontend/ui/kit` (`@/ui/kit`, parts listed in its
+  `README.md`); screens are one folder per journey under `frontend/ui/screens`.
 - **Tokens**: `frontend/ui/tokens.css` defines every `--mx-*` token, light and
-  dark. `npm run lint:tokens` rejects raw hex, gradients, blur, ad hoc
-  shadows and motion literals outside the token files.
+  dark (light is the default). `npm run lint:tokens` rejects raw hex,
+  gradients, blur, ad hoc shadows and motion literals outside the token files.
   `frontend/scripts/lint-tokens.allow.txt` is empty. Never add a line to it.
 - **Type**: IBM Plex Sans for UI and numerals (tabular figures), IBM Plex Mono
   for SAP identifiers only. Sentence case. Words of the trade. Never a middle

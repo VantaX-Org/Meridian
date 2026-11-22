@@ -69,10 +69,8 @@ export function Home() {
     id: i.id,
     severity: (["critical", "high", "medium", "low"].includes(i.severity) ? i.severity : "low") as Severity,
     severityLabel: sevLabel(i.severity),
-    code: i.kind,
     text: `${i.title}. ${i.detail}`,
     countLabel: i.action_label,
-    ratio: 0,
   }));
 
   return (

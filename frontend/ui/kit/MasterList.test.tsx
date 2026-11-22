@@ -17,4 +17,10 @@ describe("MasterList", () => {
     fireEvent.click(buttons[1]);
     expect(pick).toHaveBeenCalledWith("MM035");
   });
+
+  it("draws no code or bar for a row without them", () => {
+    const { container } = render(<MasterList label="Attention" rows={[{ id: "a", severity: "high", severityLabel: "High", text: "Approvals wait", countLabel: "Review" }]} selectedId={null} onSelect={() => {}} />);
+    expect(container.querySelector(".mx-code")).toBeNull();
+    expect(container.querySelector(".mx-bar")).toBeNull();
+  });
 });

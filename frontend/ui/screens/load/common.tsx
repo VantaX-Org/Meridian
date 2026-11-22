@@ -16,7 +16,7 @@ export const verdictLabel = (v: string | null | undefined): string =>
 
 /** A word with a coloured dot. `tone` maps to the kit severity colours. */
 export function Verdict({ v }: { v: string | null | undefined }) {
-  const sev = v === "go" || v === "passing" ? "low" : v === "conditional" || v === "at_risk" ? "medium" : v === "no-go" || v === "no_go" ? "critical" : "info";
+  const sev = v === "go" || v === "passing" ? "good" : v === "conditional" || v === "at_risk" ? "medium" : v === "no-go" || v === "no_go" ? "critical" : "info";
   return <SeverityPill sev={sev} label={verdictLabel(v)} />;
 }
 
