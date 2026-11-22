@@ -14737,4 +14737,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "No issue was resolved, opened or regressed since the last run.": "Seit dem letzten Lauf wurde kein Problem behoben, eröffnet oder verschlechtert.",
   "Licence valid to {d}": "Lizenz gültig bis {d}",
   "Connect a system to start.": "Verbinden Sie ein System, um zu beginnen.",
+  "{object} in {system}": "{object} in {system}",
+  "All {n} objects, lowest score first.": "Alle {n} Objekte, niedrigste Bewertung zuerst.",
+  "The {k} lowest of {n} objects.": "Die {k} niedrigsten von {n} Objekten.",
+  "Show all {n}": "Alle {n} anzeigen",
 };

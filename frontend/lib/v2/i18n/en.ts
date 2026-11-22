@@ -14736,6 +14736,10 @@ export const en = {
   "No issue was resolved, opened or regressed since the last run.": "No issue was resolved, opened or regressed since the last run.",
   "Licence valid to {d}": "Licence valid to {d}",
   "Connect a system to start.": "Connect a system to start.",
+  "{object} in {system}": "{object} in {system}",
+  "All {n} objects, lowest score first.": "All {n} objects, lowest score first.",
+  "The {k} lowest of {n} objects.": "The {k} lowest of {n} objects.",
+  "Show all {n}": "Show all {n}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

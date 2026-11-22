@@ -23,6 +23,8 @@ const toneOf = (n: number | null): "go" | "watch" | "stop" => (n === null ? "sto
 const greeting = (): string => { const h = new Date().getHours(); return h < 12 ? t("Good morning") : h < 18 ? t("Good afternoon") : t("Good evening"); };
 
 /** A small trend line over the last runs of one object. Real points only; fewer than two draws nothing. */
+const RULER_ROWS = 12;
+
 function Trend({ points, label }: { points: number[]; label: string }) {
   if (points.length < 2) return null;
   const lo = Math.min(...points), hi = Math.max(...points), span = hi - lo || 1;
@@ -91,6 +93,7 @@ export function Home() {
   const att = useQuery({ queryKey: ["next", "home-attention", fx], queryFn: () => getAttention({}), staleTime: 30_000 });
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [allMarks, setAllMarks] = useState(false);
   const href = (p: string) => withFixture(p, fx);
 
   const rows = pf.data?.objects ?? [];
@@ -134,8 +137,12 @@ export function Home() {
   ].filter(Boolean).join(", ");
   const sentence = s ? t("{held} of {n} objects score under 85, and {crit} critical rules are over their limit.", { held: s.held_under_85, n: s.objects, crit: s.critical_over_tolerance }) : "";
 
-  const marks: RulerMark[] = scored.map((r) => ({
-    id: r.module + r.system_id, label: r.label, shown: r.composite_score ?? 0,
+  const sysName = new Map((land.data?.systems ?? []).map((x) => [x.id, x.name]));
+  const ranked = [...scored].sort((a, b) => (a.composite_score ?? 0) - (b.composite_score ?? 0));
+  const marks: RulerMark[] = (allMarks ? ranked : ranked.slice(0, RULER_ROWS)).map((r) => ({
+    id: r.module + r.system_id,
+    label: r.system_id && sysName.get(r.system_id) ? t("{object} in {system}", { object: r.label, system: sysName.get(r.system_id) as string }) : r.label,
+    shown: r.composite_score ?? 0,
     measured: r.capped ? r.measured_score : null, tone: toneOf(r.composite_score),
   }));
   const labels = { atRisk: t("At risk"), go: t("Go"), cap70: t("Cap at 70"), cap85: t("Cap at 85"), measured: (n: number) => t("Measured {n}", { n }) };
@@ -166,6 +173,7 @@ export function Home() {
       </header>
 
       <Card title={t("Where every object stands")} sub={t("Gates at 70 and 85. A hollow mark is the measured score before a cap.")}>
+        {scored.length > RULER_ROWS ? <p className="mx-muted">{allMarks ? t("All {n} objects, lowest score first.", { n: scored.length }) : t("The {k} lowest of {n} objects.", { k: RULER_ROWS, n: scored.length })} <Button variant="ghost" onClick={() => setAllMarks((v) => !v)}>{allMarks ? t("Show fewer") : t("Show all {n}", { n: scored.length })}</Button></p> : null}
         {marks.length ? <ScoreRuler marks={marks} labels={labels} ariaLabel={t("Score of every object against the gates")} from={stacked ? 50 : 0} /> : <EmptyState heading={t("No objects have run yet")} body={t("Pull an object to see its score here.")} />}
       </Card>
 

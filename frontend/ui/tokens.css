@@ -41,7 +41,7 @@
   --mx-heat-7: #D46C62;
   --mx-heat-8: #C4281F;
   --mx-scrim: rgb(15 17 21 / 40%);
-  --mx-glass: rgb(255 255 255 / 80%);
+  --mx-glass: rgb(255 255 255 / 96%);
   --mx-elev-1: 0 1px 2px rgb(15 17 21 / 6%), 0 1px 1px rgb(15 17 21 / 4%);
   --mx-elev-2: 0 8px 24px rgb(15 17 21 / 14%);
   --mx-elev-dock: 0 10px 30px rgb(58 40 144 / 18%);
@@ -146,7 +146,7 @@ html[data-theme="dark"] .mx-root {
   --mx-heat-7: #C24C42;
   --mx-heat-8: #F0685E;
   --mx-scrim: rgb(0 0 0 / 60%);
-  --mx-glass: rgb(21 22 29 / 80%);
+  --mx-glass: rgb(21 22 29 / 96%);
   --mx-elev-1: 0 1px 2px rgb(0 0 0 / 40%);
   --mx-elev-2: 0 8px 24px rgb(0 0 0 / 55%);
   --mx-elev-dock: 0 10px 30px rgb(0 0 0 / 55%);
@@ -191,7 +191,7 @@ html[data-theme="dark"] .mx-root {
     --mx-heat-7: #C24C42;
     --mx-heat-8: #F0685E;
     --mx-scrim: rgb(0 0 0 / 60%);
-    --mx-glass: rgb(21 22 29 / 80%);
+    --mx-glass: rgb(21 22 29 / 96%);
     --mx-elev-1: 0 1px 2px rgb(0 0 0 / 40%);
     --mx-elev-2: 0 8px 24px rgb(0 0 0 / 55%);
     --mx-elev-dock: 0 10px 30px rgb(0 0 0 / 55%);

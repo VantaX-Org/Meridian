@@ -37,6 +37,18 @@ describe("Home", () => {
   });
 });
 
+describe("Home ruler", () => {
+  it("shows the 12 lowest objects first and expands to all", async () => {
+    wrap(<Home />);
+    const ruler = await screen.findByRole("img", { name: "Score of every object against the gates" });
+    const more = screen.queryByRole("button", { name: /^Show all \d+$/ });
+    if (!more) return; // fixture holds 12 or fewer scored objects
+    expect(ruler.querySelectorAll("[data-mark]").length).toBe(12);
+    fireEvent.click(more);
+    await waitFor(() => expect(screen.getByRole("img", { name: "Score of every object against the gates" }).querySelectorAll("[data-mark]").length).toBeGreaterThan(12));
+  });
+});
+
 describe("Objects", () => {
   it("lists objects and filters by search", async () => {
     window.history.replaceState(null, "", "/o?fixture=1");

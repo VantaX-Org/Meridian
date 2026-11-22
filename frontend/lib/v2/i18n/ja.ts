@@ -14737,4 +14737,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "No issue was resolved, opened or regressed since the last run.": "前回の実行以降、解決・新規・悪化した問題はありません。",
   "Licence valid to {d}": "ライセンス有効期限 {d}",
   "Connect a system to start.": "システムを接続して開始してください。",
+  "{object} in {system}": "{system} の {object}",
+  "All {n} objects, lowest score first.": "全 {n} オブジェクト、スコアの低い順。",
+  "The {k} lowest of {n} objects.": "{n} オブジェクトのうちスコアの低い {k} 件。",
+  "Show all {n}": "{n} 件すべて表示",
 };
