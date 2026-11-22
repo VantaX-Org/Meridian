@@ -367,3 +367,7 @@
 .mx-root .mx-rl-dot { fill: var(--mx-ink); }
 @media (max-width: 900px) { .mx-root .mx-board-row { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .mx-root .mx-tonebars li { grid-template-columns: 6rem 1fr 2.2rem; } .mx-root .mx-tb-d { display: none; } }
+.mx-root .mx-s4 { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: var(--mx-s3); margin: 0; padding: 0; list-style: none; }
+.mx-root .mx-s4 > li { display: grid; grid-template-columns: 1fr auto; align-content: start; gap: var(--mx-s1) var(--mx-s2); padding: var(--mx-s3); border: 1px solid var(--mx-border); border-radius: var(--mx-r-control); }
+.mx-root .mx-s4-f { font-weight: var(--mx-w-label); }
+.mx-root .mx-s4-r { grid-column: 1 / -1; display: grid; gap: var(--mx-s1); font-size: var(--mx-fs-small); color: var(--mx-ink-2); }
