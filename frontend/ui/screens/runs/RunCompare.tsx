@@ -7,9 +7,10 @@ import { moduleText } from "@/lib/v2/labels";
 import { useCompareSets, useCompareSummary, useRun, type Change, type CompareRecord } from "@/lib/api/next/runs";
 import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, Skeleton, StatTile, useAletheiaScope, type Column } from "@/ui/kit";
 import { answer } from "./answers";
+import { CompareBoard } from "./CompareBoard";
 import { CompareObject } from "./CompareObject";
 import { JobHairline } from "./JobHairline";
-import { runPath, runTitle } from "./util";
+import { modulesOf, runPath, runTitle } from "./util";
 import "./runs.css";
 
 const CHANGES: Change[] = ["new", "resolved", "regressed", "persisting"];
@@ -53,6 +54,7 @@ export function RunCompare({ a, b, runs, objects }: { a: string; b: string; runs
       <JobHairline />
       <PageHeader title={t("Compare runs")} context={`${ra.data ? runTitle(ra.data) : a} ${t("with")} ${rb.data ? runTitle(rb.data) : b}`}
         actions={<span className="rn-row-actions"><Button variant="secondary" href={href(runPath(a))}>{t("Open first run")}</Button><Button variant="secondary" href={href(runPath(b))}>{t("Open second run")}</Button></span>} />
+      <CompareBoard a={a} b={b} module={objects?.[0] ?? (ra.data ? modulesOf(ra.data)[0] ?? null : null)} />
       <dl className="mx-tiles">{CHANGES.map((c) => <StatTile key={c} label={changeText(c)} value={String(s.totals[c] ?? 0)} />)}</dl>
       <Card title={t("Rules that changed")} sub={t("Pick a rule to see its records.")}>
         <div className="rn-filters">
