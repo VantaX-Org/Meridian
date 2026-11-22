@@ -1,5 +1,5 @@
 .mx-root .mx-clean { display: grid; gap: var(--mx-s4); margin-block-end: var(--mx-s5); }
-.mx-root .mx-clean-pair { display: grid; gap: var(--mx-s4); grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.mx-root .mx-clean-pair { display: grid; gap: var(--mx-s4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
 .mx-root .mx-clean-steps { display: grid; gap: var(--mx-s3); grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin: 0; padding: 0; list-style: none; }
 .mx-root .mx-clean-step { display: grid; gap: var(--mx-s1); padding: var(--mx-s3); border: 1px solid var(--mx-border); border-radius: var(--mx-r-card); background: var(--mx-surface); }
 .mx-root .mx-clean-step[data-state="current"] { border-color: var(--mx-accent); }

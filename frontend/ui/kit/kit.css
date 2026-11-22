@@ -38,8 +38,8 @@
 
 /* Cards and the split */
 .mx-root .mx-split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--mx-s4); align-items: start; }
-.mx-root .mx-col { display: grid; gap: var(--mx-s4); min-inline-size: 0; }
-.mx-root .mx-card { background: var(--mx-surface); border: 1px solid var(--mx-border); border-radius: var(--mx-r-card); padding: var(--mx-s4); box-shadow: var(--mx-elev-1); display: grid; gap: var(--mx-s3); }
+.mx-root .mx-col { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--mx-s4); min-inline-size: 0; }
+.mx-root .mx-card { background: var(--mx-surface); border: 1px solid var(--mx-border); border-radius: var(--mx-r-card); padding: var(--mx-s4); box-shadow: var(--mx-elev-1); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--mx-s3); }
 .mx-root .mx-card-h { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--mx-s3); }
 .mx-root .mx-card-t { font-size: var(--mx-fs-title); line-height: var(--mx-lh-title); font-weight: var(--mx-w-heading); }
 .mx-root .mx-card-s { color: var(--mx-ink-3); font-size: var(--mx-fs-small); }

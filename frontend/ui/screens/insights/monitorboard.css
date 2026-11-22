@@ -1,4 +1,4 @@
-.mx-root .mb-board { display: grid; gap: var(--mx-s4); margin-block-end: var(--mx-s5); }
+.mx-root .mb-board { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--mx-s4); margin-block-end: var(--mx-s5); }
 .mx-root .mb-stack { display: grid; gap: var(--mx-s3); }
 .mx-root .mb-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--mx-s3); }
 .mx-root .mb-actions { display: inline-flex; flex-wrap: wrap; gap: var(--mx-s2); }
