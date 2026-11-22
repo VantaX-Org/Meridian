@@ -7,6 +7,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { AletheiaMark, BandChart, BarList, Button, Card, EmptyState, EvidenceNote, FieldChip, PageHeader, Select, SeverityPill, StatTile, TrendArea, buildBody, useAletheia, useAletheiaScope, type AletheiaAnswer, type AskContext } from "@/ui/kit";
 import { streamAnswer } from "@/ui/kit/aletheia/stream";
 import { useState } from "react";
+import { labelText } from "@/lib/v2/labels";
 import { Gate, InsightsNav, Mod, Tbl, day, n0, n1, sevLabel, sevOf, useQ } from "./shared";
 
 const trendText = (s: string) => (s === "improving" ? t("Improving") : s === "declining" ? t("Declining") : s === "critical" ? t("Critical") : t("Stable"));
@@ -68,7 +69,7 @@ const metricText = (labels: Record<string, string>, m: string) => labels[m] ?? (
 function AnomalyTable({ rows, labels, label }: { rows: Anomaly[]; labels: Record<string, string>; label: string }) {
   return (
     <Tbl label={label} rows={rows} rowKey={(r) => `${r.metric}/${r.version_id}`} cols={[
-      { key: "m", label: t("Measure"), render: (r) => <FieldChip code={r.metric} description={metricText(labels, r.metric)} /> },
+      { key: "m", label: t("Measure"), render: (r) => (r.metric.startsWith("dimension:") ? labelText(metricText(labels, r.metric)) : <FieldChip code={r.metric} description={metricText(labels, r.metric)} />) },
       { key: "r", label: t("Run"), render: (r) => `${r.label ?? r.version_id ?? t("n/a")} (${day(r.run_at)})` },
       { key: "e", label: t("Expected"), end: true, render: (r) => n1(r.expected) },
       { key: "o", label: t("Observed"), end: true, render: (r) => n1(r.observed) },
