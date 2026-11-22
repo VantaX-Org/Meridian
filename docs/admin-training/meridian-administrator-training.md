@@ -10,9 +10,12 @@ screenshots are taken from the product's demo build with sample data (the "Demo 
 your own deployment shows your data and never shows that bar. They show the light theme, the default; each person can
 switch to dark under Preferences, Display, or from the account menu.
 
-Every screen opens the same way: a banner with the verdict for what you are looking at (go, at risk or no-go), the
-figures behind it and one primary action, then the detail. Aletheia, the grounded assistant, is docked beside the
-canvas on every screen; it answers from the run you are looking at and cites the rules behind each number.
+Every screen opens the same way, with the design called "the line": a board at the top that places what you are
+looking at on the score ruler, with the 70 gate (at risk below it) and the 85 gate (go above it), the figures behind
+the position and one primary action. The full detail and every earlier function follow below the board. The menu has
+five places: Home, Objects, Clean, Load and Monitor; Administration is in the account menu. Aletheia, the grounded
+assistant, is docked at the foot of every screen; it answers from the run you are looking at and cites the rules
+behind each number. On a phone the boards stack into one column and wide tables scroll inside their card.
 
 Who does what:
 
@@ -79,7 +82,7 @@ addresses without sign-in.
 - After the password change you should land on the Landscape with **Administration** in your account menu.
 - `curl -s https://<server>/health` should print `"status": "ok"`.
 
-![Administration: the health of the setup with its one action, people by role, and every section, grouped as People and access, Tenant, Data, Notifications and Operations.](img/admin-index.png)
+![Administration: the board with the health of the setup and its one action, people by role, and every section, grouped as People and access, Tenant, Data, Notifications and Operations.](img/admin-index.png)
 
 ### Exercise
 
@@ -422,7 +425,7 @@ A module can have a target for each dimension, for example 85 for validity. Set 
 Quality thresholds**.
 
 1. Pick the module and the dimension, enter the target, and save.
-2. Open the score lens heat map on Monitoring. Each cell is banded against its own target, with the target beside the
+2. Open the score lens heat map on Monitor. Each cell is banded against its own target, with the target beside the
    colour.
 3. After the next analysis, a dimension below its target raises a breach alert, for example "Material master: validity
    78.4 is below its target of 85".
@@ -643,7 +646,7 @@ touching the real one: run it monthly.
 - **Administration, Platform and updates, Health checks** and the status page (below) watch the platform itself.
 - **Administration, Alerts** (module 8) sends what you choose under **When to alert** and the **Score floors per
   object** to email, Teams or a webhook.
-- After a cleaning batch is loaded, **Monitoring** under Work shows whether the fixed records stay fixed and which
+- After a cleaning batch is loaded, **Monitor** in the menu shows whether the fixed records stay fixed and which
   rules pull them back. It needs a run after the load; until then it says there is nothing to monitor yet.
 - **Learned monitors**, under Rules, compares the latest run of each object with that object's own earlier runs and
   needs no setup. Between full runs it also compares the rows each sync extracted with the earlier syncs.
