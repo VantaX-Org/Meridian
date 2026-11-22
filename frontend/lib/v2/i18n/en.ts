@@ -14707,6 +14707,11 @@ export const en = {
   "{n} more not shown": "{n} more not shown",
   "Share of {n}": "Share of {n}",
   "{n} against the second figure": "{n} against the second figure",
+  "Cost and owners": "Cost and owners",
+  "What bad data costs, what cleaning saved and who owns the fix.": "What bad data costs, what cleaning saved and who owns the fix.",
+  "What Aletheia found in your data and where it is getting worse.": "What Aletheia found in your data and where it is getting worse.",
+  "Controls": "Controls",
+  "The configuration, contracts, load gate and schedules that guard each run.": "The configuration, contracts, load gate and schedules that guard each run.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

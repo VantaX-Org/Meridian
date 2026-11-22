@@ -12,11 +12,13 @@ import { Gate, InsightsNav, Mod, Tbl, day, money, n0, n1, pc, sevLabel, sevOf, u
 
 type TabId = "overview" | "rules" | "causes" | "trends" | "cleansing" | "impact" | "cost" | "owners" | "duplicates" | "exec";
 
-const tabItems = (): { id: TabId; label: string }[] => [
-  { id: "overview", label: t("Overview") }, { id: "rules", label: t("Rules") }, { id: "causes", label: t("Root causes") },
-  { id: "trends", label: t("Trends") }, { id: "cleansing", label: t("Cleansing") }, { id: "impact", label: t("Impact") },
-  { id: "cost", label: t("Proven cost") }, { id: "owners", label: t("Owners") }, { id: "duplicates", label: t("Duplicates") }, { id: "exec", label: t("Executive") },
-];
+/** Two screens of five views each: what was found, and what it costs and who owns it. */
+export type InsightSet = "findings" | "money";
+const tabItems = (set: InsightSet): { id: TabId; label: string }[] => set === "findings"
+  ? [{ id: "overview", label: t("Overview") }, { id: "rules", label: t("Rules") }, { id: "causes", label: t("Root causes") },
+     { id: "duplicates", label: t("Duplicates") }, { id: "trends", label: t("Trends") }]
+  : [{ id: "impact", label: t("Impact") }, { id: "cost", label: t("Proven cost") }, { id: "cleansing", label: t("Cleansing") },
+     { id: "owners", label: t("Owners") }, { id: "exec", label: t("Executive") }];
 
 const fieldChip = (f: string | null) => (f ? <FieldChip code={f} description={describeField(f) ?? ""} /> : t("n/a"));
 
@@ -230,10 +232,10 @@ function FeedbackBar({ surface, runId }: { surface: string; runId?: string }) {
   );
 }
 
-export function InsightsScreen() {
+export function InsightsScreen({ set = "findings" }: { set?: InsightSet }) {
   useInterfaceLang();
-  const [tab, setTab] = useState<TabId>("overview");
-  const items = tabItems();
+  const items = tabItems(set);
+  const [tab, setTab] = useState<TabId>(items[0].id);
   const label = items.find((i) => i.id === tab)?.label ?? "";
   const ov = useQ("overview", getOverview);
   useAletheiaScope({
@@ -244,7 +246,9 @@ export function InsightsScreen() {
   });
   return (
     <div className="b8-page">
-      <PageHeader title={t("Insights")} context={t("What Aletheia found in your data, what it costs and who owns it.")} actions={<InsightsNav here="insights" />} />
+      {set === "findings"
+        ? <PageHeader title={t("Insights")} context={t("What Aletheia found in your data and where it is getting worse.")} actions={<InsightsNav here="insights" />} />
+        : <PageHeader title={t("Cost and owners")} context={t("What bad data costs, what cleaning saved and who owns the fix.")} actions={<InsightsNav here="money" />} />}
       <Tabs idBase="b8-ins" label={t("Insight views")} items={items} value={tab} onChange={(id) => setTab(id as TabId)} />
       <div id={`b8-ins-panel-${tab}`} role="tabpanel" aria-labelledby={`b8-ins-tab-${tab}`} className="b8-stack">
         {tab === "overview" ? <Overview /> : null}
