@@ -12670,6 +12670,7 @@ export const en = {
   "Release notes": "Release notes",
   "Updates are run by your Meridian operator, not from this screen.": "Updates are run by your Meridian operator, not from this screen.",
   "Loading help": "Loading help",
+  "Help could not be loaded": "Help could not be loaded",
   "Build makes a file now and saves it under built files. A schedule builds the same report on a set day and sends it to people or channels. Export writes one dataset with the columns you choose.": "Build makes a file now and saves it under built files. A schedule builds the same report on a set day and sends it to people or channels. Export writes one dataset with the columns you choose.",
   "You can open {n} of {total} administration sections.": "You can open {n} of {total} administration sections.",
   "What can I administer?": "What can I administer?",

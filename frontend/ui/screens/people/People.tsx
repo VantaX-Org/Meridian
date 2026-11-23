@@ -87,7 +87,7 @@ export function People() {
   });
 
   if (people.isPending) return <Skeleton lines={8} label={t("Loading people")} />;
-  if (people.isError) return <ErrorState heading={t("People could not be loaded")} />;
+  if (people.isError) return <ErrorState heading={t("People could not be loaded")} retryLabel={t("Try again")} onRetry={() => void people.refetch()} />;
 
   const rows = sortPeople(list, "open");
   const open = (id: string, arg?: unknown) => sheet.open(id, arg);

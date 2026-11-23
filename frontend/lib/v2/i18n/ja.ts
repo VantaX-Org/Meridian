@@ -12671,6 +12671,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Release notes": "リリースノート",
   "Updates are run by your Meridian operator, not from this screen.": "アップデートは Meridian の運用担当者が実施します。この画面からは実行できません。",
   "Loading help": "ヘルプを読み込み中",
+  "Help could not be loaded": "ヘルプを読み込めませんでした",
   "Build makes a file now and saves it under built files. A schedule builds the same report on a set day and sends it to people or channels. Export writes one dataset with the columns you choose.": "「作成」はファイルをすぐに作成し、作成済みファイルに保存します。スケジュールは同じレポートを指定日に作成し、ユーザーまたはチャンネルへ送信します。エクスポートは選択した列で1つのデータセットを書き出します。",
   "You can open {n} of {total} administration sections.": "{total} 件中 {n} 件の管理セクションを開けます。",
   "What can I administer?": "何を管理できますか?",

@@ -12671,6 +12671,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Release notes": "Versionshinweise",
   "Updates are run by your Meridian operator, not from this screen.": "Updates führt Ihr Meridian-Betreiber durch, nicht über diesen Bildschirm.",
   "Loading help": "Hilfe wird geladen",
+  "Help could not be loaded": "Die Hilfe konnte nicht geladen werden",
   "Build makes a file now and saves it under built files. A schedule builds the same report on a set day and sends it to people or channels. Export writes one dataset with the columns you choose.": "Erstellen legt sofort eine Datei an und speichert sie unter den erstellten Dateien. Ein Plan erstellt denselben Bericht an einem festen Tag und sendet ihn an Personen oder Kanäle. Der Export schreibt einen Datensatz mit den gewählten Spalten.",
   "You can open {n} of {total} administration sections.": "Sie können {n} von {total} Verwaltungsbereichen öffnen.",
   "What can I administer?": "Was kann ich verwalten?",
