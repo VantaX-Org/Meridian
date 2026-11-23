@@ -28,7 +28,7 @@ export function LibraryRuleSheet({ arg }: { arg: RuleArg }) {
         <StatTile label={t("Pass rate")} value={pct(r.last_pass_rate)} />
         <StatTile label={t("Records failing")} value={r.last_affected_count == null ? t("n/a") : compactCount(r.last_affected_count)} />
       </dl>
-      <Toggle label={t("Rule is on")} checked={r.enabled} onChange={(v) => toggle.mutate(v)} />
+      <Toggle label={t("Rule is on")} checked={r.enabled} disabled={toggle.isPending} onChange={(v) => toggle.mutate(v)} />
       <Button variant="primary" href={withFixture(`/r/${encodeURIComponent(ruleCheck(r))}`, fx)}>{t("Open the rule")}</Button>
     </div>
   );

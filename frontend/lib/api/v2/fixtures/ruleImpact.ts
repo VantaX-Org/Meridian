@@ -29,7 +29,7 @@ export function ruleImpactWrite(method: string, path: string, body: unknown): un
     sample: { records_evaluated: Math.min(cap, total), records_failing: Math.round(failing * Math.min(cap, total) / total) },
     records_evaluated: total, records_failing: failing, failure_rate: Math.round((failing / total) * 10000) / 100,
     failing_shapes: [{ shape: "aaa", count: 1480 }, { shape: "AAA999", count: 960 }, { shape: "99-99", count: 420 }, { shape: "blank", count: 320 }],
-    dqs: { before: 91.4, after: stricter ? 89.1 : 90.2, delta: stricter ? -2.3 : -1.2, breaches_before: 1, breaches_after: 1 },
+    dqs: { before: 91.4, after: stricter ? 89.1 : 90.2, delta: stricter ? -2.3 : -1.2, breaches_before: ["accuracy"], breaches_after: ["accuracy"] },
   };
   if (edit) out.delta = { current_failing: 3180, newly_failing: stricter ? 960 : 0, newly_passing: stricter ? 20 : 0, unchanged_failing: 3160, basis: "failing record keys in the evaluated rows" };
   return out;
