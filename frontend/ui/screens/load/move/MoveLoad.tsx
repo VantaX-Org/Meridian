@@ -67,7 +67,9 @@ export function MoveLoad({ planId, runId, onRun, onBack, onNext }: { planId: str
   const realOk = !!r && !r.dry_run && done;
   const stopping = r?.status === "stopping";
   const name = systems.find((x) => x.id === plan?.target)?.name ?? plan?.target ?? "";
-  const err = start.error ?? act.error;
+  const [dlErr, setDlErr] = useState<unknown>(null);
+  const dl = (p: Promise<unknown>) => { setDlErr(null); p.catch(setDlErr); };
+  const err = start.error ?? act.error ?? dlErr;
 
   return (
     <div className="mx-col">
@@ -89,8 +91,8 @@ export function MoveLoad({ planId, runId, onRun, onBack, onNext }: { planId: str
             {live ? <Button disabled={stopping || act.isPending} onClick={() => act.mutate("stop")}>{stopping ? t("Stopping after this batch") : t("Stop")}</Button> : null}
             {done && r?.status !== "completed" ? <Button onClick={() => act.mutate("resume")}>{t("Resume")}</Button> : null}
             {done && failed > 0 ? <Button onClick={() => act.mutate("retry-failed")}>{t("Retry failed")}</Button> : null}
-            {runId && plan?.mode === "cleansed" ? <Button onClick={() => downloadCleansingLog(runId)}>{t("Download cleansing log (CSV)")}</Button> : null}
-            {failed > 0 && runId ? <Button onClick={() => downloadErrors(runId)}>{t("Download errors (CSV)")}</Button> : null}
+            {runId && plan?.mode === "cleansed" ? <Button onClick={() => dl(downloadCleansingLog(runId))}>{t("Download cleansing log (CSV)")}</Button> : null}
+            {failed > 0 && runId ? <Button onClick={() => dl(downloadErrors(runId))}>{t("Download errors (CSV)")}</Button> : null}
             {realOk ? <Button variant="primary" onClick={onNext}>{t("Reconcile")}</Button> : null}
           </div>
           {err ? <p className="mx-field-e" role="alert">{apiDetail(err) ?? t("That did not work. Nothing was changed.")}</p> : null}

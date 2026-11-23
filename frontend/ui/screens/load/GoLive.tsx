@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useWaveGates } from "@/lib/v2/roles-queries";
 import { putWaveGate, type GateCheck, type WaveGate } from "@/lib/api/v2/roles";
+import { errorSentence } from "@/lib/api/v2/client";
 import { downloadCertificate, gateRefusalOf, issueCertificate, signCertificate, type GateRefusal } from "@/lib/api/v2/step9";
 import { Button, Card, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Toggle, useAletheiaScope, useToast } from "@/ui/kit";
 import { AskButton, Gate, humanize, pct, useHref, Verdict, when } from "./common";
@@ -73,7 +74,7 @@ function Certificates({ g }: { g: WaveGate }) {
             { key: "act", label: t("Actions"), render: (v) => (
               <span className="mx-links">
                 {v.status === "issued" ? <Button variant="secondary" onClick={() => sign.mutate(v.id)}>{t("Sign")}</Button> : null}
-                <Button variant="ghost" onClick={() => void downloadCertificate(g.wave_id, v.id, v.version)}>{t("Download PDF")}</Button>
+                <Button variant="ghost" onClick={() => { downloadCertificate(g.wave_id, v.id, v.version).catch((e) => toast(errorSentence(e, t("That did not work. Try again.")), "bad")); }}>{t("Download PDF")}</Button>
               </span>
             ) },
           ]}
