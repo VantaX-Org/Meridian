@@ -42,7 +42,7 @@ for (const [slug, title, row] of ROUTES) {
   test(`/admin/${slug} shows its title and data`, async ({ page }) => {
     await page.goto(`/admin${slug ? `/${slug}` : ""}?fixture=1`, NAV);
     await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible(NAV);
-    await expect(page.locator("main").locator(row).first()).toBeVisible(NAV);
+    await expect(page.locator("main").locator(row).locator("visible=true").first()).toBeVisible(NAV);
     expect(await page.locator("main").innerText()).not.toContain(DOT);
   });
 }
