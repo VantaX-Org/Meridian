@@ -90,9 +90,12 @@
   --mx-s4: 16px;
   --mx-s5: 24px;
   --mx-s6: 32px;
+  --mx-s7: 48px;
   --mx-gutter: var(--mx-s4);
   --mx-h-control: 32px;
   --mx-h-row: 32px;
+  --mx-row: 32px;
+  --mx-row-comfort: 40px;
   --mx-h-bar: 48px;
   --mx-h-subbar: 40px;
   --mx-page-gutter: var(--mx-s5);
@@ -119,8 +122,13 @@
   --mx-w-label: 500;
   --mx-w-heading: 600;
 
+  --mx-dur-instant: 80ms;
   --mx-dur: 140ms;
+  --mx-dur-panel: 220ms;
+  --mx-dur-value: 600ms;
   --mx-ease: cubic-bezier(0.2, 0, 0, 1);
+  --mx-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --mx-ease-value: cubic-bezier(0.3, 0, 0.2, 1);
 
   background: var(--mx-bg);
   color: var(--mx-ink);
@@ -257,6 +265,6 @@ html[data-theme="dark"] .mx-root {
 @keyframes mx-pulse { from { opacity: 0.55; } to { opacity: 1; } }
 @keyframes mx-rise { from { transform: translateY(var(--mx-s4)); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .mx-root { --mx-dur: 0ms; }
+  .mx-root { --mx-dur-instant: 0ms; --mx-dur: 0ms; --mx-dur-panel: 0ms; --mx-dur-value: 0ms; }
   .mx-root .mx-btn, .mx-root .mx-row, .mx-root .mx-tab, .mx-root .mx-bar > span, .mx-root .mx-chip-btn, .mx-root .mx-skel, .mx-root .mx-sheet { transition: none; animation: none; }
 }
