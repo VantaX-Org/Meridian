@@ -15012,4 +15012,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Pair constraints could not be loaded": "Paarbeschränkungen konnten nicht geladen werden",
   "Calibration could not be loaded": "Die Kalibrierung konnte nicht geladen werden",
   "The consolidation pack could not be loaded": "Das Konsolidierungspaket konnte nicht geladen werden",
+  "Unavailable": "Nicht verfügbar",
+  "The comparison could not be started": "Der Vergleich konnte nicht gestartet werden",
+  "Pair deleted": "Paar gelöscht",
+  "The pair could not be deleted": "Das Paar konnte nicht gelöscht werden",
+  "The target fields could not be loaded": "Die Zielfelder konnten nicht geladen werden",
 };

@@ -88,6 +88,7 @@ export function Templates() {
             <Button onClick={() => downloadTemplateFile(mod, cur).catch(bad)}>{t("Download the kept file")}</Button>
             <Button onClick={() => exportTemplate(mod, cur, "xlsx").catch(bad)}>{t("Fill and download")}</Button>
           </div>
+          {fields.isError ? <p role="alert" className="mx-muted">{t("The target fields could not be loaded")} <Button variant="ghost" onClick={() => void fields.refetch()}>{t("Retry")}</Button></p> : null}
           {unmapped.length ? (
             <DataTable<Unmapped>
               label={t("Columns without a target field")}

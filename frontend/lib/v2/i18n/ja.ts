@@ -15012,4 +15012,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Pair constraints could not be loaded": "ペアの制約を読み込めませんでした",
   "Calibration could not be loaded": "キャリブレーションを読み込めませんでした",
   "The consolidation pack could not be loaded": "統合パックを読み込めませんでした",
+  "Unavailable": "利用できません",
+  "The comparison could not be started": "比較を開始できませんでした",
+  "Pair deleted": "ペアを削除しました",
+  "The pair could not be deleted": "ペアを削除できませんでした",
+  "The target fields could not be loaded": "対象フィールドを読み込めませんでした",
 };
