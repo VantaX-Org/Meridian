@@ -15943,4 +15943,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Subject request": "本人からの請求",
   "Admin setup": "管理の設定",
   "That did not save. Your change was put back.": "保存できませんでした。変更は元に戻しました。",
+  "Group by": "グループ化",
 };

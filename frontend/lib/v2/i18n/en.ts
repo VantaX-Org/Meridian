@@ -15942,6 +15942,7 @@ export const en = {
   "Subject request": "Subject request",
   "Admin setup": "Admin setup",
   "That did not save. Your change was put back.": "That did not save. Your change was put back.",
+  "Group by": "Group by",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

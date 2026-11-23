@@ -15943,4 +15943,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Subject request": "Betroffenenanfrage",
   "Admin setup": "Einrichtung",
   "That did not save. Your change was put back.": "Das wurde nicht gespeichert. Ihre Änderung wurde zurückgesetzt.",
+  "Group by": "Gruppieren nach",
 };
