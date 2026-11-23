@@ -14,6 +14,7 @@ import { applyPolicyPack, unapplyPolicyPack } from "@/lib/api/v2/step10";
 import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, SeverityPill, Skeleton, StatTile, YamlView, type Column } from "@/ui/kit";
 import type { Severity } from "@/ui/kit/SeverityStrip";
 import { compactCount, pct, sevLabel } from "./format";
+import { DraftReview } from "./DraftReview";
 import { useAccuracy, useAct, useAllDrafts, useCoverage, useFixCoverage, useFixDrafts, useLearnedAll, usePacks, useProposed, useScenarios } from "./queries";
 
 const mod = (m: string) => formatModuleName(m);
@@ -31,6 +32,7 @@ export function DraftsView() {
   const fx = useFixture();
   const q = useAllDrafts();
   const [shown, setShown] = useState<string | null>(null);
+  const [review, setReview] = useState<RuleDraft | null>(null);
   const [result, setResult] = useState<Record<string, string>>({});
   const dry = useAct(async (d: RuleDraft) => {
     const r = await dryRunDraftBody({ module: d.domain.replace(/^dq_rule:/, ""), rule_yaml: JSON.stringify(d.proposed_rule) });
@@ -48,6 +50,7 @@ export function DraftsView() {
     { key: "act", label: t("Actions"), render: (d) => (
       <span className="mx-rules-row">
         <Button variant="ghost" onClick={() => setShown(shown === d.id ? null : d.id)}>{t("Show rule")}</Button>
+        <Button variant="ghost" onClick={() => setReview(d)}>{t("Review")}</Button>
         <Button variant="ghost" disabled={dry.isPending} onClick={() => dry.mutate(d)}>{t("Try it on the data")}</Button>
         <Button variant="secondary" disabled={pub.isPending} onClick={() => pub.mutate(d.id)}>{t("Publish")}</Button>
         <Button variant="ghost" disabled={del.isPending} onClick={() => del.mutate(d.id)}>{t("Delete")}</Button>
@@ -60,6 +63,7 @@ export function DraftsView() {
       {rows.length ? (
         <>
           <DataTable columns={cols} rows={rows} rowKey={(d) => d.id} label={t("Draft rules")} />
+          <DraftReview draft={review} onClose={() => setReview(null)} />
           {open ? <Card title={open.proposed_rule.id ?? open.id} sub={open.rationale ?? undefined}><YamlView label={t("Rule definition")} text={JSON.stringify(open.proposed_rule, null, 2)} /></Card> : null}
         </>
       ) : <EmptyState heading={t("No draft rules")} body={t("Write a rule or let Aletheia propose one; it waits here for review.")} action={<Button variant="primary" href={withFixture("/rules/dry-run", fx)}>{t("Write a rule")}</Button>} />}

@@ -15241,6 +15241,20 @@ export const en = {
   "Choose another pair": "Choose another pair",
   "Merge the records": "Merge the records",
   "Record {other} is folded into {key}. 1 record is merged away and {n} fields of the survivor change.": "Record {other} is folded into {key}. 1 record is merged away and {n} fields of the survivor change.",
+  "Review draft rule": "Review draft rule",
+  "You need the manage rules permission to change or publish rules.": "You need the manage rules permission to change or publish rules.",
+  "Save your changes before you publish.": "Save your changes before you publish.",
+  "Try the rule on the data first.": "Try the rule on the data first.",
+  "Rule steps": "Rule steps",
+  "Publish this rule?": "Publish this rule?",
+  "Rule {id} goes live on {mod} and runs on every later analysis. 1 rule is created and this draft is removed.": "Rule {id} goes live on {mod} and runs on every later analysis. 1 rule is created and this draft is removed.",
+  "Version drafted": "Version drafted",
+  "Propose a new version": "Propose a new version",
+  "Rule definition as JSON": "Rule definition as JSON",
+  "Draft the version": "Draft the version",
+  "You need the manage rules permission to draft a version.": "You need the manage rules permission to draft a version.",
+  "The definition must be a JSON object.": "The definition must be a JSON object.",
+  "A new version starts as a draft and shows its changes below. It applies only after review.": "A new version starts as a draft and shows its changes below. It applies only after review.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
