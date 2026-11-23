@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { decideMapping, getRefList, getRefLists, proposeMapping, suggestMapping, type RefListSummary, type RefMapping, type RefSuggestion } from "@/lib/api/v2/reference-data";
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Code, DataTable, DetailPanel, Field, Input, Select, Split, useToast } from "@/ui/kit";
+import { RefUsageView } from "./RefUsageView";
 import { Async, Empty, Head, num, useRead, useScreenScope, useSystemPick } from "./shared";
 
 const statusText = (s: string) => (s === "confirmed" ? t("Approved") : s === "rejected" ? t("Rejected") : t("Proposed"));
@@ -36,10 +37,10 @@ function ListDetail({ systemId, list }: { systemId: string; list: RefListSummary
   return (
     <DetailPanel idBase="ref" label={list.table} tabsLabel={t("Reference list views")}
       header={<><Code code={list.table} description={list.module} /> <span className="mx-muted">{num(list.source_codes)} {t("source codes")}, {num(list.target_codes)} {t("target codes")}</span></>}
-      tabs={[{ id: "mappings", label: t("Mappings") }, { id: "source", label: t("Source codes") }, { id: "target", label: t("Target codes") }]}
+      tabs={[{ id: "mappings", label: t("Mappings") }, { id: "source", label: t("Source codes") }, { id: "target", label: t("Target codes") }, { id: "usage", label: t("Usage") }]}
       value={tab} onChange={setTab}>
       <Async q={q}>
-        {(d) => tab === "source" || tab === "target" ? (
+        {(d) => tab === "usage" ? <RefUsageView systemId={systemId} listId={list.id} source={d.source} /> : tab === "source" || tab === "target" ? (
           <DataTable label={tab === "source" ? t("Source codes") : t("Target codes")} rows={tab === "source" ? d.source : d.target} rowKey={(c) => c.code} height={380}
             columns={[{ key: "code", label: t("Code"), sort: (c) => c.code, render: (c) => <Code code={c.code} description={c.text ?? undefined} /> }]} />
         ) : (

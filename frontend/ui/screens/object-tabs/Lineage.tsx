@@ -7,6 +7,7 @@ import { COLUMN_TITLES, buildLineage, type LineageNode, type NodeKind } from "@/
 import { t } from "@/lib/v2/i18n";
 import { Card, EmptyState, ErrorState, FieldChip, Skeleton } from "@/ui/kit";
 import type { ObjectRun } from "@/ui/screens/object/useObjectRun";
+import { BlastCard } from "./Blast";
 import { Lead } from "./Lead";
 import { useTabChat } from "./TabFrame";
 
@@ -45,6 +46,7 @@ export function Lineage({ o, system, module }: { o: ObjectRun; system: string; m
         </Card>
       ))}
     </div>
+    <BlastCard runId={o.runId} rules={rules.data ?? []} />
     </div>
   );
 }
