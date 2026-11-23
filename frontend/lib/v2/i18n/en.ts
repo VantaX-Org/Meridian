@@ -15203,6 +15203,19 @@ export const en = {
   "Back to migration runs": "Back to migration runs",
   "Back to paired systems": "Back to paired systems",
   "Back to waves": "Back to waves",
+  "Item approved": "Item approved",
+  "Item rejected": "Item rejected",
+  "Item escalated": "Item escalated",
+  "{n} items approved": "{n} items approved",
+  "Items waiting for a decision, with the AI recommendation": "Items waiting for a decision, with the AI recommendation",
+  "Approve {n} confident items": "Approve {n} confident items",
+  "Steward queue": "Steward queue",
+  "Item detail": "Item detail",
+  "Where the item stands": "Where the item stands",
+  "Add maintenance window": "Add maintenance window",
+  "Maintenance window added": "Maintenance window added",
+  "Maintenance window removed": "Maintenance window removed",
+  "The list is full.": "The list is full.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

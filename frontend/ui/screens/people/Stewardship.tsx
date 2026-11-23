@@ -5,6 +5,7 @@ import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
 import { BarList, Button, Card, DataTable, EmptyState, PageHeader, StatTile, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { Gate, useQ } from "./common";
+import { StewardQueue } from "./StewardQueue";
 
 const pct = (v: number | null | undefined) => (v === null || v === undefined ? t("n/a") : `${Math.round(v * (v <= 1 ? 100 : 1))}%`);
 const word = labelText;
@@ -65,6 +66,7 @@ export function Stewardship() {
                 />
               )}
             </Card>
+            <StewardQueue />
           </div>
         )}
       </Gate>
