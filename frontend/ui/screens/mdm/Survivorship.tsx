@@ -94,7 +94,7 @@ export function Survivorship() {
           items={[{ id: "rules", label: t("Rules"), badge: String(list.length) }, { id: "decisions", label: t("Aletheia decisions"), badge: String(waiting.length) }]}
         />
         {tab === "rules" && (
-          rules.isLoading || draft === null ? (rules.isError ? <ErrorState heading={t("Survivorship rules could not be loaded")} /> : <Skeleton lines={6} label={t("Loading survivorship rules")} />) : (
+          rules.isLoading || draft === null ? (rules.isError ? <ErrorState heading={t("Survivorship rules could not be loaded")} retryLabel={t("Try again")} onRetry={() => void rules.refetch()} /> : <Skeleton lines={6} label={t("Loading survivorship rules")} />) : (
             <Card
               title={t("Rules that pick the winning value")}
               sub={t("Rules run top to bottom. The first rule with a value wins for its field.")}
@@ -150,7 +150,7 @@ export function Survivorship() {
               sub={t("Aletheia sees only the shape of each value. A pick shows only when the server proved it.")}
               action={<Button variant="secondary" disabled={busy || waiting.length === 0} onClick={() => act(() => postSurvivorshipBulkApprove(waiting.map((p) => ({ domain: p.domain, sap_object_key: p.sap_object_key, field: p.field }))), (r) => t("{n} picks approved", { n: r.approved }))}>{t("Approve all waiting")}</Button>}
             >
-              {picks.isLoading ? <Skeleton lines={5} label={t("Loading Aletheia picks")} /> : picks.isError ? <ErrorState heading={t("Aletheia picks could not be loaded")} /> : mine.length === 0 ? (
+              {picks.isLoading ? <Skeleton lines={5} label={t("Loading Aletheia picks")} /> : picks.isError ? <ErrorState heading={t("Aletheia picks could not be loaded")} retryLabel={t("Try again")} onRetry={() => void picks.refetch()} /> : mine.length === 0 ? (
                 <EmptyState heading={t("No picks for this object")} body={t("Aletheia proposes winners when records merge.")} />
               ) : (
                 <DataTable<SurvivorshipPick>

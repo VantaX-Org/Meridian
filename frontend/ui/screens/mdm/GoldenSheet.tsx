@@ -11,7 +11,7 @@ export function GoldenSheet({ id }: { id: string }) {
   const href = useHref();
   const q = useGoldenRecord(id);
   if (q.isLoading) return <Skeleton lines={5} label={t("Loading the golden record")} />;
-  if (q.isError || !q.data) return <ErrorState heading={t("The golden record could not be loaded")} />;
+  if (q.isError || !q.data) return <ErrorState heading={t("The golden record could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
   const r = q.data;
   const fields = Object.entries(r.golden_fields).slice(0, 8);
   return (

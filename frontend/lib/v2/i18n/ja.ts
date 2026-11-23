@@ -15007,4 +15007,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Test these settings": "この設定をテスト",
   "Save and test": "保存してテスト",
   "Every measured rule": "測定したすべてのルール",
+  "Cross-system clusters could not be loaded": "システム横断のクラスターを読み込めませんでした",
+  "Pair constraints could not be loaded": "ペアの制約を読み込めませんでした",
+  "Calibration could not be loaded": "キャリブレーションを読み込めませんでした",
+  "The consolidation pack could not be loaded": "統合パックを読み込めませんでした",
 };

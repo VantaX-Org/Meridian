@@ -15006,6 +15006,10 @@ export const en = {
   "Test these settings": "Test these settings",
   "Save and test": "Save and test",
   "Every measured rule": "Every measured rule",
+  "Cross-system clusters could not be loaded": "Cross-system clusters could not be loaded",
+  "Pair constraints could not be loaded": "Pair constraints could not be loaded",
+  "Calibration could not be loaded": "Calibration could not be loaded",
+  "The consolidation pack could not be loaded": "The consolidation pack could not be loaded",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

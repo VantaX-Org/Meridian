@@ -44,7 +44,7 @@ export function Golden() {
       {header}
       <div className="mx-col">
         <DomainSelect value={domain} onChange={(v) => { setDomain(v); setPage(1); }} />
-        {q.isLoading ? <Skeleton lines={8} label={t("Loading golden records")} /> : q.isError ? <ErrorState heading={t("Golden records could not be loaded")} /> : rows.length === 0 ? (
+        {q.isLoading ? <Skeleton lines={8} label={t("Loading golden records")} /> : q.isError ? <ErrorState heading={t("Golden records could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : rows.length === 0 ? (
           <EmptyState heading={t("No golden records yet")} body={t("Golden records appear once matched duplicates are merged or a record is promoted.")} action={<Button href={href("/mdm/match")}>{t("Open match review")}</Button>} />
         ) : (
           <Card title={t("Records")} sub={t("Select a row for a summary. Open the record for fields, history and write-back.")}>

@@ -15007,4 +15007,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Test these settings": "Diese Einstellungen testen",
   "Save and test": "Speichern und testen",
   "Every measured rule": "Jede gemessene Regel",
+  "Cross-system clusters could not be loaded": "Systemübergreifende Cluster konnten nicht geladen werden",
+  "Pair constraints could not be loaded": "Paarbeschränkungen konnten nicht geladen werden",
+  "Calibration could not be loaded": "Die Kalibrierung konnte nicht geladen werden",
+  "The consolidation pack could not be loaded": "Das Konsolidierungspaket konnte nicht geladen werden",
 };

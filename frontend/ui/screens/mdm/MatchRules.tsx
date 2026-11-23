@@ -60,7 +60,7 @@ export function MatchRules() {
           title={t("Rules")}
           sub={t("A pair at {a} or more merges by itself. Below {l} it is dismissed. Between the two a steward decides.", { a: pct(BANDS.autoMerge), l: pct(BANDS.reviewFloor) })}
         >
-          {rules.isLoading ? <Skeleton lines={6} label={t("Loading match rules")} /> : rules.isError ? <ErrorState heading={t("Match rules could not be loaded")} /> : mine.length === 0 ? (
+          {rules.isLoading ? <Skeleton lines={6} label={t("Loading match rules")} /> : rules.isError ? <ErrorState heading={t("Match rules could not be loaded")} retryLabel={t("Try again")} onRetry={() => void rules.refetch()} /> : mine.length === 0 ? (
             <EmptyState heading={t("No match rules for this object")} body={t("Add a rule below to start scoring pairs.")} />
           ) : (
             <DataTable<MatchRule>
