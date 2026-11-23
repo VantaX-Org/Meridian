@@ -16,6 +16,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { describeField } from "@/lib/v2/sap-fields";
 import { BarList, Button, Card, EmptyState, FieldChip, PageHeader, Select, SeverityPill, StatTile, Tabs, TrendArea, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
 import { MonitorBoard } from "./MonitorBoard";
+import { BreakEvidenceSheet } from "./BreakEvidenceSheet";
 import { Gate, InsightsNav, Mod, Tbl, day, n0, n1, pc, sevLabel, sevOf, useQ } from "./shared";
 
 type View = "feed" | "objects" | "after-clean" | "learned" | "shifts" | "config" | "contracts" | "gate" | "schedule";
@@ -153,6 +154,7 @@ function Learned() {
   const qc = useQueryClient();
   const toast = useToast();
   const [why, setWhy] = useState<Record<string, string>>({});
+  const [ev, setEv] = useState<LearnedBreak | null>(null);
   const d = q.data;
   const refresh = () => qc.invalidateQueries({ queryKey: ["b8", "learned"] });
   const run = (p: Promise<unknown>) => p.then(() => { toast(t("Saved.")); void refresh(); }).catch(() => toast(t("That could not be saved.")));
@@ -185,11 +187,13 @@ function Learned() {
                     <Button variant="ghost" onClick={() => void run(expectBreak(r.id, "accept"))}>{t("Expected")}</Button>
                     <Button variant="ghost" onClick={() => void run(snoozeBreak(r.id, 7))}>{t("Snooze 7 days")}</Button>
                     <Button variant="ghost" onClick={() => void explain(r)}>{t("Explain")}</Button>
+                    <Button variant="ghost" onClick={() => setEv(r)}>{t("Evidence")}</Button>
                   </span>
                 ) },
               ]} />
             )}
           </Card>
+          <BreakEvidenceSheet item={ev} onClose={() => setEv(null)} />
         </div>
       ) : null}
     </Gate>

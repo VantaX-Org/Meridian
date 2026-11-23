@@ -6,7 +6,7 @@ import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t } from "@/lib/v2/i18n";
 import { formatModuleName } from "@/lib/format";
 import { describeField } from "@/lib/v2/sap-fields";
-import { approveLearned, rejectLearned, type RuleDraft } from "@/lib/api/v2/object";
+import { approveLearned, mineFixes, rejectLearned, type RuleDraft } from "@/lib/api/v2/object";
 import { deleteDraft, dryRunDraftBody, publishDraftById } from "@/lib/api/v2/rulelib";
 import { approveProposedRule, rejectProposedRule } from "@/lib/api/v2/match-rules";
 import { approveFix, rejectFix } from "@/lib/api/v2/fix-drafts";
@@ -15,6 +15,8 @@ import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, Sever
 import type { Severity } from "@/ui/kit/SeverityStrip";
 import { compactCount, pct, sevLabel } from "./format";
 import { DraftReview } from "./DraftReview";
+import { LearnedReview } from "./LearnedReview";
+import { useCan } from "@/ui/screens/orphans/useCan";
 import { useAccuracy, useAct, useAllDrafts, useCoverage, useFixCoverage, useFixDrafts, useLearnedAll, usePacks, useProposed, useScenarios } from "./queries";
 
 const mod = (m: string) => formatModuleName(m);
@@ -77,6 +79,9 @@ export function LearnedView({ modules }: { modules: string[] }) {
   const prop = useProposed();
   const ok = useAct((a: { id: string; s: "high" | "medium" }) => approveLearned(a.id, a.s), () => t("Learned rule approved"));
   const no = useAct((id: string) => rejectLearned(id), () => t("Learned rule rejected"));
+  const mine = useAct(() => mineFixes(), () => t("Stewards' fixes mined. New rules wait for review."));
+  const canMine = useCan()("manage_rules");
+  const [rev, setRev] = useState<{ id: string; module: string } | null>(null);
   const pOk = useAct((id: string) => approveProposedRule(id), () => t("Proposed rule approved"));
   const pNo = useAct((id: string) => rejectProposedRule(id, t("Not useful")), () => t("Proposed rule rejected"));
   const rows = results.flatMap((r) => r.data ?? []).filter((p) => p.status === "pending");
@@ -90,6 +95,7 @@ export function LearnedView({ modules }: { modules: string[] }) {
     { key: "vio", label: t("Rows breaking it"), render: (p) => compactCount(p.violations), sort: (p) => p.violations, align: "end" },
     { key: "act", label: t("Actions"), render: (p) => (
       <span className="mx-rules-row">
+        <Button variant="ghost" onClick={() => setRev({ id: p.id, module: p.module })}>{t("Review")}</Button>
         <Button variant="secondary" disabled={ok.isPending} onClick={() => ok.mutate({ id: p.id, s: "medium" })}>{t("Approve as a rule")}</Button>
         <Button variant="ghost" disabled={no.isPending} onClick={() => no.mutate(p.id)}>{t("Reject")}</Button>
       </span>
@@ -98,7 +104,9 @@ export function LearnedView({ modules }: { modules: string[] }) {
   const prules = prop.data?.rules ?? [];
   return (
     <div className="mx-col">
-      <Card title={t("Learned from the data and from fixes")} sub={t("{n} waiting for review", { n: rows.length })}>
+      <Card title={t("Learned from the data and from fixes")} sub={t("{n} waiting for review", { n: rows.length })}
+        action={<Button variant="secondary" disabled={!canMine || mine.isPending} title={canMine ? undefined : t("You need the manage rules permission to mine fixes.")} onClick={() => mine.mutate(undefined)}>{t("Mine stewards' fixes")}</Button>}>
+        {canMine ? null : <p className="mx-muted">{t("You need the manage rules permission to mine fixes.")}</p>}
         {results.some((r) => r.isLoading) ? <Skeleton lines={4} label={t("Loading")} /> : rows.length
           ? <DataTable columns={cols} rows={rows} rowKey={(p) => p.id} label={t("Learned rules")} />
           : <EmptyState heading={t("Nothing learned yet")} body={t("Rules the engine mines from clean data and from stewards' fixes appear here.")} />}
@@ -126,6 +134,7 @@ export function LearnedView({ modules }: { modules: string[] }) {
           ) : <EmptyState heading={t("No proposals")} body={t("Aletheia proposes rules from the corrections stewards make.")} />}
         </Load>
       </Card>
+      <LearnedReview target={rev} onClose={() => setRev(null)} />
     </div>
   );
 }

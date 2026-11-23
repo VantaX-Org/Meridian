@@ -42,8 +42,10 @@ Statuses:
 | Maintenance windows: add and remove (PUT replaces list, max 20, UTC) | PUT `/settings/maintenance` | `ui/screens/admin/ops/MaintenanceEditor.tsx`, in Admin, Enterprise | Admin, Enterprise |
 | Dedup candidates, preview, merge | GET `/dedup/candidates`, POST `/dedup/preview`, POST `/dedup/merge` | `ui/screens/work/Dedup.tsx`, Duplicates tab of the cleaning queue | Clean |
 | Rule authoring: dry run, publish, update draft, version diff | PUT `/rule-authoring/drafts/{id}`, POST `/rule-authoring/dry-run`, POST `/rule-authoring/drafts/{id}/publish`, POST `/rules/{id}/versions`, GET `/rules/{id}/versions/{v}/diff` | `ui/screens/rules/DraftReview.tsx` (Review sheet in Drafts), `RuleFix.tsx` (Propose a new version). `dryRunDraft` and `publishDraft` in object.ts hit the same routes as the wired rulelib calls, so they stay unused duplicates | Rules |
+| Learned monitors: break evidence | GET `/aletheia/monitors/{id}/evidence` | `ui/screens/insights/BreakEvidenceSheet.tsx`, Evidence button on the Learned monitor view | Monitor |
+| Learned rules: review, mine; mined rule accept | GET `/learned-rules/review`, POST `/learned-rules/mine`, POST `/rules/mined` | `ui/screens/rules/LearnedReview.tsx`, `ui/screens/runs/MinedDependencies.tsx` (profile tab, confirm first, needs manage_rules) | Rules, Clean |
 
-Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`.
+Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `LearnedReview.test.tsx`, `BreakEvidenceSheet.test.tsx`, `MinedDependencies.test.tsx`.
 
 ## ORPHAN capabilities (client exists, no screen)
 
@@ -56,8 +58,6 @@ Suggested home is the journey where the user would expect it.
 | Triage configuration: SLA delete, settings, team update and members, assign rules and reorder, escalation chain | `deleteSlaPolicy`, `getTriageSettings`, `updateTeam`, `setTeamMembers`, `createAssignRule`, `reorderAssignRules`, `putEscalationChain` | `/triage/*` | Work, Triage settings |
 | Subscriptions, delegations | `putSubscriptions`, `getAllDelegations` | `/me/subscriptions`, `/delegations` | Me |
 | Data contracts: update, enforcement, create per object | `updateContract`, `setEnforcement`, `createObjectContract` | `/contracts` | People, Contracts |
-| Learned monitors: break evidence | `getBreakEvidence` | `/aletheia/monitors/{id}/evidence` | Monitor |
-| Learned rules: review, mine, approve; mined rule accept | `getLearnedReview`, `mineFixes`, `acceptMinedRule` | `/learned-rules/*`, `/rules/mined` | Rules |
 | Sandbox enter and exit, digest read | `enterSandbox`, `exitSandbox`, `getDigest` | `/admin/sandbox/*`, `/digests` | Admin, People Digests |
 | Analytics: prescriptive, bottlenecks, capacity, sprints, finding impact, MDM health series and history | `getPrescriptive`, `getBottlenecks`, `getCapacity`, `getSprintPlan`, `getFindingImpact`, `getMdmHealthSeries`, `getMdmHistory` | `/analytics/*`, `/mdm-metrics/history` | Home and Monitor |
 | Design: table, config, diff | `getDesignTable`, `getDesignConfig`, `getDesignDiff` | `/systems/{id}/design/*` | Objects, per system |

@@ -13,6 +13,7 @@ import { downloadReconciliation, getRunSteps, renameRun, rerunAgents, streamRunE
 import { purgeVersion } from "@/lib/api/v2/admin";
 import { getConfigMatches } from "@/lib/api/v2/config";
 import { exportVersionProfile, getProfile } from "@/lib/api/v2/profile";
+import { MinedDependencies } from "./MinedDependencies";
 import { baselineRefusalOf, getSemanticTypes, putSemanticType, type SemanticColumn, type SemanticType } from "@/lib/api/v2/step9";
 import { getRunPrediction } from "@/lib/api/v2/step10";
 import { useObjectCycle, useRun, useRunsPage } from "@/lib/api/next/runs";
@@ -149,6 +150,7 @@ function ProfileTab({ id, systemId, modules }: { id: string; systemId: string; m
           <DataTable columns={tcols} rows={tables} rowKey={(x) => x.table} label={t("Profiled tables")} height={240} />
         )}
       </Card>
+      {profile.data ? <MinedDependencies object={obj} deps={profile.data.dependencies} onDone={() => void profile.refetch()} /> : null}
       <Card title={t("Column types")} sub={t("Confirm what each column holds so its values are checked.")}>
         {sem.isLoading ? <Skeleton lines={4} label={t("Loading the column types")} /> : !sem.data?.columns.length ? <EmptyState heading={t("No columns profiled")} body={t("Column types appear once the run is profiled.")} /> : (
           <DataTable columns={scols} rows={sem.data.columns} rowKey={(c) => c.column} label={t("Column types")} height={320} />
