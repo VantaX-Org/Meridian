@@ -15199,4 +15199,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Proposals appear here after the next run.": "次回の実行後、提案がここに表示されます。",
   "Feedback appears here after people review the proposals.": "ユーザーが提案を確認すると、フィードバックがここに表示されます。",
   "Go back to the batches and open another one.": "バッチ一覧に戻って、別のバッチを開いてください。",
+  "Back to Administration": "管理に戻る",
+  "Review the load order": "ロード順序を確認",
+  "Back to migration runs": "移行実行に戻る",
+  "Back to paired systems": "ペアのシステムに戻る",
+  "Back to waves": "ウェーブに戻る",
 };

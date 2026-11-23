@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { exportComparison, runPair, type CompareKind, type DiffRow } from "@/lib/api/v2/compare";
 import { Button, Card, DataTable, DqsPair, EmptyState, FieldChip, PageHeader, Select, StatTile, Tabs, TrendArea, useAletheiaScope, useToast } from "@/ui/kit";
-import { AskButton, Gate, humanize, pct, useHref, when } from "./common";
+import { AskButton, Gate, humanize, pct, useHref, when, useBack } from "./common";
 import { invalidateLoad, useDiffs, usePairLatest, usePairTrend } from "./hooks";
 
 const kindLabel = (k: CompareKind): string => (k === "missing" ? t("Missing in target") : k === "extra" ? t("Only in target") : t("Differs"));
@@ -13,6 +13,7 @@ const kindLabel = (k: CompareKind): string => (k === "missing" ? t("Missing in t
 /** One pair: source DQS, projected target DQS, actual target DQS and why they differ, then trend, differences and config. */
 export function Pair({ id }: { id: string }) {
   useInterfaceLang();
+  const back = useBack("/load/compare", t("Back to paired systems"));
   const q = usePairLatest(id);
   const tr = usePairTrend(id);
   const href = useHref();
@@ -46,7 +47,7 @@ export function Pair({ id }: { id: string }) {
 
   return (
     <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the pair")}>
-      <PageHeader
+      <PageHeader back={back}
         title={name}
         context={pair ? <>{<FieldChip code={pair.module} description={humanize(pair.module)} />}{cmp ? `, ${t("compared {when}", { when: when(cmp.completed_at ?? cmp.created_at) })}` : ""}</> : null}
         actions={<>

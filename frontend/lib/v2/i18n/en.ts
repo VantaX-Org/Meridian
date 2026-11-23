@@ -15198,6 +15198,11 @@ export const en = {
   "Proposals appear here after the next run.": "Proposals appear here after the next run.",
   "Feedback appears here after people review the proposals.": "Feedback appears here after people review the proposals.",
   "Go back to the batches and open another one.": "Go back to the batches and open another one.",
+  "Back to Administration": "Back to Administration",
+  "Review the load order": "Review the load order",
+  "Back to migration runs": "Back to migration runs",
+  "Back to paired systems": "Back to paired systems",
+  "Back to waves": "Back to waves",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

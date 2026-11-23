@@ -11,6 +11,8 @@ export const humanize = (m: string): string => (/^[a-z0-9]+([_-][a-z0-9]+)*$/.te
 export const pct = (n: number | null | undefined): string => (n === null || n === undefined ? t("n/a") : `${Math.round(n * 10) / 10}%`);
 export const when = (iso: string | null | undefined): string => (iso ? iso.slice(0, 10) : "");
 export const useHref = () => { const fx = useFixture(); return (p: string) => withFixture(p, fx); };
+/** The back link every Load sub-page passes to the page header; `to` is the parent screen. */
+export const useBack = (to = "/load", label = t("Back to Load")) => { const h = useHref(); return { href: h(to), label }; };
 
 export const verdictLabel = (v: string | null | undefined): string =>
   v === "go" || v === "passing" ? t("Go") : v === "conditional" || v === "at_risk" ? t("At risk") : v === "no-go" || v === "no_go" ? t("No-go") : v === "not_run" ? t("Not run") : t("Not assessed");

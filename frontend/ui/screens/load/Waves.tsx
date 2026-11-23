@@ -7,7 +7,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { createWave, type MigrationWave } from "@/lib/api/v2/reports";
 import { sortWaves } from "@/lib/v2/waves";
 import { Button, Card, Chip, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Select, Sheet, TrendArea, useAletheiaScope, useToast } from "@/ui/kit";
-import { AskButton, Gate, humanize, pct, useHref, Verdict, when } from "./common";
+import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, usePairs, useLoadPlan, useWaves } from "./hooks";
 
 const STAGES = ["plan", "mock1", "mock2", "dress", "cutover"] as const;
@@ -16,6 +16,7 @@ const stageLabel = (s: string): string => (s === "plan" ? t("Plan") : s === "moc
 /** Every migration wave: its objects, stage, target date, verdict and score trend, plus a Sheet to plan a new one. */
 export function Waves() {
   useInterfaceLang();
+  const back = useBack();
   const q = useWaves();
   const plan = useLoadPlan();
   const pairs = usePairs();
@@ -46,7 +47,7 @@ export function Waves() {
 
   return (
     <>
-      <PageHeader title={t("Migration waves")} context={t("Group objects into waves and track each wave to sign-off.")} actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("New wave")}</Button><AskButton /></>} />
+      <PageHeader back={back} title={t("Migration waves")} context={t("Group objects into waves and track each wave to sign-off.")} actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("New wave")}</Button><AskButton /></>} />
       <Card title={t("Waves")} sub={t("{n} waves", { n: waves.length })}>
         <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the waves")}>
           {waves.length ? (

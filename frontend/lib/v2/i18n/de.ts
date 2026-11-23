@@ -15199,4 +15199,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Proposals appear here after the next run.": "Vorschläge erscheinen hier nach dem nächsten Lauf.",
   "Feedback appears here after people review the proposals.": "Rückmeldungen erscheinen hier, nachdem Personen die Vorschläge geprüft haben.",
   "Go back to the batches and open another one.": "Gehen Sie zurück zu den Batches und öffnen Sie einen anderen.",
+  "Back to Administration": "Zurück zur Verwaltung",
+  "Review the load order": "Ladereihenfolge prüfen",
+  "Back to migration runs": "Zurück zu Migrationsläufen",
+  "Back to paired systems": "Zurück zu gekoppelten Systemen",
+  "Back to waves": "Zurück zu Wellen",
 };
