@@ -53,7 +53,7 @@ export function Waves() {
       <Card title={t("Waves")} sub={t("{n} waves", { n: waves.length })}>
         <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the waves")}>
           {waves.length ? (
-            <DataTable
+            <DataTable id="waves-1" viewMenu
               label={t("Waves")}
               rows={waves}
               rowKey={(w) => w.id}

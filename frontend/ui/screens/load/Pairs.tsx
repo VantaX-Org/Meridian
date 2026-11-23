@@ -56,7 +56,7 @@ export function Pairs() {
       <Card title={t("Pairs")} sub={t("{n} pairs", { n: pairs.length })}>
         <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the pairs")}>
           {pairs.length ? (
-            <DataTable
+            <DataTable id="pairs-1" viewMenu
               label={t("Pairs")}
               rows={pairs}
               rowKey={(p) => p.id}
@@ -67,11 +67,12 @@ export function Pairs() {
                 { key: "s", label: t("Source DQS"), align: "end", sort: (p) => p.last?.scores?.source ?? -1, render: (p) => pct(p.last?.scores?.source) },
                 { key: "p", label: t("Projected target DQS"), align: "end", sort: (p) => p.last?.scores?.projected ?? -1, render: (p) => pct(p.last?.scores?.projected) },
                 { key: "a", label: t("Actual target DQS"), align: "end", sort: (p) => p.last?.scores?.actual ?? -1, render: (p) => pct(p.last?.scores?.actual) },
-                { key: "at", label: t("Last compared"), render: (p) => (p.last ? when(p.last.at) : t("Never")) },
-                { key: "act", label: t("Actions"), render: (p) => (
-                  <span className="mx-links">
-                    <Button variant="secondary" disabled={run.isPending} onClick={() => run.mutate(p.id)}>{t("Run comparison")}</Button>
-                    <Button variant="ghost" onClick={() => setDrop(p)}>{t("Remove")}</Button>
+                { key: "at", label: t("Last compared"), sort: (p) => p.last?.at ?? "", render: (p) => (
+                  <span className="mx-row-end"><span>{p.last ? when(p.last.at) : t("Never")}</span>
+                    <span className="mx-row-acts">
+                      <Button variant="secondary" disabled={run.isPending} onClick={(e) => { e.stopPropagation(); run.mutate(p.id); }}>{t("Run comparison")}</Button>
+                      <Button variant="ghost" onClick={(e) => { e.stopPropagation(); setDrop(p); }}>{t("Remove")}</Button>
+                    </span>
                   </span>
                 ) },
               ]}

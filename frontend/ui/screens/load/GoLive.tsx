@@ -61,7 +61,7 @@ function Certificates({ g }: { g: WaveGate }) {
         </div>
       ) : null}
       {vs.length ? (
-        <DataTable
+        <DataTable id="golive-1" viewMenu
           label={t("Certificate versions")}
           rows={vs}
           rowKey={(v) => v.id}
@@ -116,7 +116,7 @@ export function GoLive() {
       <Card title={t("Wave gates")} sub={t("{n} waves", { n: gates.length })}>
         <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the wave gates")}>
           {gates.length ? (
-            <DataTable
+            <DataTable id="golive-2" viewMenu
               label={t("Wave gates")}
               rows={gates}
               rowKey={(x) => x.wave_id}
@@ -137,7 +137,7 @@ export function GoLive() {
       {g ? (
         <>
           <Card title={t("Gate checks for {wave}", { wave: g.name })}>
-            <DataTable
+            <DataTable id="golive-3" viewMenu
               label={t("Gate checks")}
               rows={g.status.checks}
               rowKey={(c) => c.key}

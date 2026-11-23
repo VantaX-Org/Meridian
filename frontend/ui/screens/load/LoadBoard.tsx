@@ -28,7 +28,7 @@ function Failures({ runId, tables }: { runId: string; tables: TableCompare[] }) 
     <Card title={t("Load failures to clear")} sub={t("{n, plural, one {# record} other {# records}}", { n: q.data?.total ?? 0 })}
       action={<Button variant="secondary" href={href("/load/maps")}>{t("Open value mapping")}</Button>}>
       {q.isLoading ? <Skeleton lines={3} label={t("Loading the load failures")} /> : q.isError ? <ErrorState heading={t("The load failures could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : rows.length === 0 ? <EmptyState heading={t("No load failures")} body={t("A failure appears here when a load is rejected by SAP.")} /> : (
-        <DataTable
+        <DataTable id="loadboard-1" viewMenu
           label={t("Load failures to clear")}
           rows={rows}
           rowKey={(r) => `${r.source_table}|${r.record_key}`}
@@ -119,7 +119,7 @@ export function LoadBoard() {
           </Card>
           {reasons.length > 0 && (
             <Card title={t("Why they differ")} sub={t("Pass rate per rule, source against target")}>
-              <DataTable
+              <DataTable id="loadboard-2" viewMenu
                 label={t("Why they differ")}
                 rows={reasons}
                 rowKey={(r) => r.check_id}
@@ -137,7 +137,7 @@ export function LoadBoard() {
           <Card title={t("Reconciliation")} sub={cmp?.summary ? t("{n, plural, one {# record} other {# records}} in the target", { n: cmp.summary.in_target }) : undefined}
             action={<span className="lb-actions"><Button variant="secondary" href={href(`/load/compare/${pair.id}`)}>{t("Open missing records")}</Button><ExportMenu label={t("Export reconciliation")} disabled={!cmp} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={exportRecon} /></span>}>
             {tables.length ? (
-              <DataTable
+              <DataTable id="loadboard-3" viewMenu
                 label={t("Records missing in the target")}
                 rows={tables}
                 rowKey={(r) => r.table}
@@ -151,7 +151,7 @@ export function LoadBoard() {
           </Card>
           {fieldRows.length > 0 && (
             <Card title={t("Field by field")}>
-              <DataTable
+              <DataTable id="loadboard-4" viewMenu
                 label={t("Field by field")}
                 rows={fieldRows}
                 rowKey={(r) => r.id}
@@ -170,7 +170,7 @@ export function LoadBoard() {
         {plan.isLoading ? <Skeleton lines={3} label={t("Loading the load order")} /> : plan.isError ? <ErrorState heading={t("The load order could not be loaded")} retryLabel={t("Try again")} onRetry={() => void plan.refetch()} /> : objects.length === 0 ? <EmptyState heading={t("No load order yet")} body={t("Analyse an object first.")} /> : (
           <>
             <Stepper label={t("Load order")} current={firstOpen < 0 ? objects.length : firstOpen} steps={objects.map((o) => ({ id: o.module, label: o.label || humanize(o.module) }))} />
-            <DataTable
+            <DataTable id="loadboard-5" viewMenu
               label={t("Load plan")}
               rows={objects}
               rowKey={(o) => o.module}
