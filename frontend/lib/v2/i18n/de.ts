@@ -15351,4 +15351,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "No sync runs yet.": "Noch keine Synchronisierungsläufe.",
   "Runs are listed here once an extraction has started.": "Läufe erscheinen hier, sobald eine Extraktion gestartet wurde.",
   "Sync runs": "Synchronisierungsläufe",
+  "Item assigned": "Element zugewiesen",
+  "Item released": "Element freigegeben",
+  "people": "Personen",
+  "Empty releases the item.": "Leer gibt das Element frei.",
+  "Save owner": "Verantwortliche Person speichern",
 };

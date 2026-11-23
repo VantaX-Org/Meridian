@@ -15350,6 +15350,11 @@ export const en = {
   "No sync runs yet.": "No sync runs yet.",
   "Runs are listed here once an extraction has started.": "Runs are listed here once an extraction has started.",
   "Sync runs": "Sync runs",
+  "Item assigned": "Item assigned",
+  "Item released": "Item released",
+  "people": "people",
+  "Empty releases the item.": "Empty releases the item.",
+  "Save owner": "Save owner",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

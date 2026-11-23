@@ -44,8 +44,9 @@ Statuses:
 | Triage configuration: SLA policy reset, team edit and members, assignment rule add (three steps) and reorder, escalation chain, working calendar and fallback owner | DELETE `/triage/sla-policies/{id}`, PATCH `/triage/teams/{id}`, PUT `/triage/teams/{id}/members`, POST `/triage/rules`, POST `/triage/rules/reorder`, PUT `/triage/escalation-chain`, GET and PUT `/triage/settings` | `ui/screens/admin/ops/TriageConfig.tsx`, mounted in `Triage.tsx` | Admin, Triage settings |
 | Data contracts: edit a draft or pending contract, set limits and enforcement behind a confirm, create a contract for one object in three steps (object picked from the landscape) | PUT `/contracts/{id}`, PUT `/contracts/{id}/enforcement`, POST `/contracts` | `ui/screens/people/ContractTerms.tsx`, in Contracts | People, Contracts |
 | Admin: manager picker on a person, API key edit (name, role, expiry), field mapping create, schedule edit, extraction history (profiles and sync runs per system) | PUT `/users/{id}/manager`, PATCH `/admin/api-keys/{id}`, POST `/field-mappings`, GET and PATCH `/schedules/{id}`, GET `/systems/{id}/profiles`, GET `/systems/{id}/runs` | `ui/screens/admin/access/{Users,ApiKeys}.tsx`, `ui/screens/admin/ops/{Mappings,Schedules}.tsx` | Admin |
+| Steward assign: owner picker fed by the assignable users list, empty releases the item | PUT `/stewardship/{id}/assign` | `ui/screens/people/StewardQueue.tsx` | People, Stewardship |
 
-Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `SettingsWrites.test.tsx`, `TriageConfig.test.tsx`, `ContractTerms.test.tsx`, `AdminWrites.test.tsx`.
+Tests: `people.test.tsx` (three new cases), `MaintenanceEditor.test.tsx`, `SettingsWrites.test.tsx`, `TriageConfig.test.tsx`, `ContractTerms.test.tsx`, `AdminWrites.test.tsx`.
 
 ## ORPHAN capabilities (client exists, no screen)
 
@@ -53,7 +54,6 @@ Suggested home is the journey where the user would expect it.
 
 | Capability | Client functions | Endpoints | Suggested home |
 | --- | --- | --- | --- |
-| Assign a steward to a queue item | `assignStewardItem` | POST `/stewardship/{id}/assign` | People, Stewardship (needs a user picker) |
 | Cost features read, AI audit read | `getCostFeatures`, `getAiAudit` | `/settings/cost-model/features`, `/audit/llm` | Admin |
 | Subscriptions, delegations | `putSubscriptions`, `getAllDelegations` | `/me/subscriptions`, `/delegations` | Me |
 | Dedup candidates, preview, merge | `getDedupCandidates`, `getDedupCandidatesFor`, `previewDedup`, `mergeDedup` | `/dedup/*` | Clean |

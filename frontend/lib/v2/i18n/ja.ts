@@ -15351,4 +15351,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "No sync runs yet.": "同期実行はまだありません。",
   "Runs are listed here once an extraction has started.": "抽出が開始されると、実行がここに表示されます。",
   "Sync runs": "同期実行",
+  "Item assigned": "項目を割り当てました",
+  "Item released": "項目の割り当てを解除しました",
+  "people": "ユーザー",
+  "Empty releases the item.": "空にすると割り当てを解除します。",
+  "Save owner": "担当者を保存",
 };
