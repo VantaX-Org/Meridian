@@ -6,6 +6,7 @@ import { type SslMode, createDbConnection, deleteDbConnection, testDbConnection 
 import { refreshDbConnections, useDbConnections, useDbTables } from "@/lib/v2/external-db-queries";
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Code, DataTable, Field, Input, Select, useToast, EmptyState } from "@/ui/kit";
+import { DbLoad } from "./DbLoad";
 import { Row, Sec, errText, when } from "./shared";
 
 const BLANK = { name: "", host: "", port: "5432", database: "", username: "", password: "", ssl_mode: "require" as SslMode };
@@ -53,6 +54,7 @@ export function ExternalDb() {
             )}
         </Card>
       )}
+      {open && (() => { const c = rows.find((x) => x.id === open); return c ? <DbLoad key={c.id} connId={c.id} connName={c.name} maxRows={q.data?.max_rows ?? 0} /> : null; })()}
       <Card title={t("Add a connection")} sub={t("The password is sent once and is never shown again.")}>
         <Row>
           <Field label={t("Name")}><Input value={form.name} onChange={set("name")} /></Field>

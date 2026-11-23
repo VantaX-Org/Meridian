@@ -48,8 +48,10 @@ Statuses:
 | Fix drafts and cleaning plan | `draftFix`, `getCleaningPlan` | `ui/screens/work/CleaningPlan.tsx`, the Plan tab in Clean; Draft a fix needs manage_rules and stores the draft as pending | Clean |
 | Split scope | `splitScope` | `ui/screens/runs/SplitCapped.tsx` on the Run overview: preview, then a confirm naming the scope count before the SAP read is queued (trigger_sync) | Run |
 | Migration run: value candidates and value-map proposals, reconciliation records, target workbook check | GET `/migration/runs/{id}/value-candidates`, PUT `/migration/value-map`, GET `/migration/runs/{id}/reconciliation/records`, POST `/migration/target-workbook/{version_id}/check` (`loadParams` is its query builder) | `ui/screens/load/RunExtras.tsx`: Value mapping tab, records under Reconciliation, Target workbook tab of the run screen | Load |
+| Batches: run records, export to SAP (preview then confirm), confirm loaded | `getBatchRunRecords`, `sendBatchToSap`, `confirmBatchLoaded` (GET `/writeback/batches/{id}/run/records`, POST `/remediation/batches/{id}/export`, POST `/remediation/batches/{id}/loaded`) | `ui/screens/work/BatchSend.tsx`, in the batch detail of Approvals; export needs the export permission, load confirmation needs approve or manage_systems | Load |
+| External database: preview and load | `previewDb`, `loadDb` | `ui/screens/admin/ops/DbLoad.tsx`, under a selected connection in External database; needs manage_systems, preview first, confirm names the row cap | Load |
 
-Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `LearnedReview.test.tsx`, `BreakEvidenceSheet.test.tsx`, `MinedDependencies.test.tsx`, `SurvivorshipSave.test.tsx`, `CleaningPlan.test.tsx`, `SplitCapped.test.tsx`, `RunExtras.test.tsx`.
+Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `LearnedReview.test.tsx`, `BreakEvidenceSheet.test.tsx`, `MinedDependencies.test.tsx`, `SurvivorshipSave.test.tsx`, `CleaningPlan.test.tsx`, `SplitCapped.test.tsx`, `RunExtras.test.tsx`, `BatchSend.test.tsx`, `DbLoad.test.tsx`.
 
 ## ORPHAN capabilities (client exists, no screen)
 
@@ -73,8 +75,6 @@ Suggested home is the journey where the user would expect it.
 | Reference data usage | `getRefUsage` | `/reference-data/lists/{id}/usage` | Objects, reference data |
 | Workflow definitions: get, new version, create | `getDefinition`, `newVersion`, `createDefinition` | `/workflows/definitions*` | Work, Requests |
 | Z-object registry: get, update, anomaly feedback | `getZEntry`, `updateZEntry`, `feedbackZAnomaly` | `/z-objects/*` | Objects, Z-objects |
-| Batches: run records, send to SAP, confirm loaded | `getBatchRunRecords`, `sendBatchToSap`, `confirmBatchLoaded` | `/writeback/batches/*`, `/remediation/batches/*` | Load |
-| External database preview and load | `previewDb`, `loadDb` | external-db routes | Load |
 | Report schedule update | `updateSchedule` | `/reports/schedules/{id}` | Reports |
 | Admin: user manager, API key update, field mapping create, sync runs and profiles, run schedule get and patch | `setUserManager`, `updateApiKey`, `createFieldMapping`, `listSyncRuns`, `listProfiles`, `getRunSchedule`, `patchRunSchedule` | `/users/{id}/manager`, `/licence`, `/field-mappings`, `/systems/{id}/runs`, `/schedules/{id}` | Admin |
 | Record findings, glossary batch lookup, DQ firewall validate, AI feedback | `getRecordFindings`, `glossaryBatchLookup`, `validateRecords`, `sendAiFeedback` | various | Objects, Clean |
