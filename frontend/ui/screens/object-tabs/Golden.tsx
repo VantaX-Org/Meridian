@@ -21,7 +21,7 @@ export function Golden({ o, system, module }: { o: ObjectRun; system: string; mo
     evidence: (g.data?.records ?? []).slice(0, 3).map((r) => `${r.sap_object_key}: ${r.status}`),
   }));
   if (g.isLoading) return <Skeleton lines={6} label={t("Loading golden records")} />;
-  if (g.isError || !g.data) return <ErrorState heading={t("Golden records could not be loaded.")} />;
+  if (g.isError || !g.data) return <ErrorState heading={t("Golden records could not be loaded.")} retryLabel={t("Try again")} onRetry={() => void g.refetch()} />;
   const cols: Column<MasterRecordSummary>[] = [
     { key: "k", label: t("Record"), render: (r) => <FieldChip code={r.sap_object_key} /> },
     { key: "s", label: t("Status"), render: (r) => r.status },

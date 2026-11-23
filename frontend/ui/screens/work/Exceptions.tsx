@@ -87,7 +87,7 @@ function Rules() {
   return (
     <>
       <Card title={t("Exception rules")} sub={t("When these match, an exception is raised for you.")}>
-        {q.isLoading ? <Skeleton lines={4} label={t("Loading the rules")} /> : !rows.length ? <EmptyState heading={t("No exception rules yet")} /> : (
+        {q.isLoading ? <Skeleton lines={4} label={t("Loading the rules")} /> : !rows.length ? <EmptyState heading={t("No exception rules yet")} body={t("Add a rule below. Meridian raises an exception when the rule matches.")} /> : (
           <DataTable label={t("Exception rules")} rows={rows} rowKey={(r: ExceptionRule) => r.id}
             columns={[
               { key: "n", label: t("Rule"), render: (r) => <FieldChip code={r.id} description={r.name} />, sort: (r) => r.name },

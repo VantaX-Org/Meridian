@@ -28,6 +28,8 @@
 
 /* Header and buttons */
 .mx-root .mx-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--mx-s3); margin-block-end: var(--mx-s5); }
+/* Screens put cards, chips and tiles straight in main; give them the column gap. Fixed overlays are skipped. */
+.mx-root .mx-main > * + *:not(.mx-scrim, .mx-sheet, .mx-toasts) { margin-block-start: var(--mx-s4); }
 .mx-root .mx-head-actions { display: flex; flex-wrap: wrap; gap: var(--mx-s2); }
 .mx-root .mx-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--mx-s2); min-block-size: var(--mx-h-control); padding: 0 var(--mx-s4); border-radius: var(--mx-r-pill); border: 1px solid var(--mx-border-strong); background: var(--mx-surface); color: var(--mx-ink); font: inherit; font-size: var(--mx-fs-small); font-weight: var(--mx-w-label); cursor: pointer; }
 .mx-root .mx-btn[data-variant="primary"] { background: var(--mx-accent); border-color: var(--mx-accent); color: var(--mx-accent-ink); }

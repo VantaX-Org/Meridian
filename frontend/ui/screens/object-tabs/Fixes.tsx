@@ -28,7 +28,7 @@ export function Fixes({ o, system, module }: { o: ObjectRun; system: string; mod
     return { text: top ? t("Start with {rule}: {n} records are open.", { rule: top.check_id, n: top.open }) : t("Nothing is open."), evidence: rows.slice(0, 3).map((r) => `${r.check_id}: ${r.open}`) };
   });
   if (q.isLoading || o.runsLoading) return <Skeleton lines={5} label={t("Loading fixes")} />;
-  if (q.isError) return <ErrorState heading={t("The fixes could not be loaded.")} />;
+  if (q.isError) return <ErrorState heading={t("The fixes could not be loaded.")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
   const cols: Column<WorkGroupRow>[] = [
     { key: "c", label: t("Rule"), render: (r) => <FieldChip code={r.check_id} /> },
     { key: "s", label: t("Severity"), render: (r) => <span className="mx-sev" data-sev={r.severity}>{sevLabel(r.severity)}</span> },

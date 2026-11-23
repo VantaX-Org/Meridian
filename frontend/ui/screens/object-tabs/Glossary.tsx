@@ -21,7 +21,7 @@ export function Glossary({ o, system, module }: { o: ObjectRun; system: string; 
     evidence: rows.filter((r) => r.mandatory_for_s4hana).slice(0, 3).map((r) => `${r.sap_table}.${r.sap_field}`),
   }));
   if (g.isLoading) return <Skeleton lines={6} label={t("Loading the glossary")} />;
-  if (g.isError) return <ErrorState heading={t("The glossary could not be loaded.")} />;
+  if (g.isError) return <ErrorState heading={t("The glossary could not be loaded.")} retryLabel={t("Try again")} onRetry={() => void g.refetch()} />;
   const cols: Column<GlossaryTermSummary>[] = [
     { key: "f", label: t("Field"), render: (r) => <FieldChip code={`${r.sap_table}.${r.sap_field}`} description={r.business_name} /> },
     { key: "b", label: t("Business name"), sort: (r) => r.business_name, render: (r) => r.business_name },

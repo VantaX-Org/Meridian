@@ -6,10 +6,10 @@ import type { WorkRow } from "@/lib/api/v2/types";
 import { exportFixSheet, importFixSheet, postAcceptAll, postSetValue, type WorkGroup } from "@/lib/api/v2/work";
 import { formatModuleName } from "@/lib/format";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
-import { CHIPS, chipDef, displayKey, exportQueryOf, filtersOf, readState, viewFilters, type ChipId } from "@/lib/v2/work";
+import { CHIPS, displayKey, exportQueryOf, filtersOf, readState, viewFilters, type ChipId } from "@/lib/v2/work";
 import { useWorkGroups, useWorkRows, useWorkSummary, useWorkViews } from "@/lib/v2/work-queries";
 import {
-  Button, Card, Chip, DataTable, EmptyState, ErrorState, Field, Input, MasterList, Select, Sheet, Skeleton, Toggle,
+  Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, Field, Input, MasterList, Select, Sheet, Skeleton, Toggle,
   useSheet, useStacked, type MasterRow,
 } from "@/ui/kit";
 import { CleanBoard } from "./CleanBoard";
@@ -39,6 +39,7 @@ export function Work() {
   const [setTo, setSetTo] = useState("");
   const [onlyBlank, setOnlyBlank] = useState(true);
   const [sim, setSim] = useState(false);
+  const [askAll, setAskAll] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const stacked = useStacked();
   const sheets = useSheet();
@@ -77,14 +78,14 @@ export function Work() {
     <div className="mx-split">
       <div className="mx-col">
         <Card title={t("Rules with work")} sub={t("Pick a rule to list its records.")}>
-          {groups.isLoading ? <Skeleton lines={4} label={t("Loading the rules")} /> : groups.isError ? <ErrorState heading={t("The rules could not be loaded")} onRetry={() => void groups.refetch()} retryLabel={t("Try again")} /> : !gl.length ? <EmptyState heading={t("No rule has work in this view")} /> : (
+          {groups.isLoading ? <Skeleton lines={4} label={t("Loading the rules")} /> : groups.isError ? <ErrorState heading={t("The rules could not be loaded")} onRetry={() => void groups.refetch()} retryLabel={t("Try again")} /> : !gl.length ? <EmptyState heading={t("No rule has work in this view")} body={t("Pick another status above, or pull the object again to find new work.")} /> : (
             <MasterList label={t("Rules with work")} rows={gl.map(groupRow)} selectedId={check} onSelect={(id) => { setCheck(id === check ? null : id); setPick(null); }} />
           )}
         </Card>
         {sel ? (
           <Card title={t("Fix every record of this rule")} sub={sel.message ?? undefined}>
             <div className="mx-links">
-              <Button variant="primary" onClick={() => void run(() => postAcceptAll(sel.check_id), (r) => t("{n} fixes accepted.", { n: r.accepted ?? r.updated ?? 0 }))}>{t("Accept every proposed value")}</Button>
+              <Button variant="primary" onClick={() => setAskAll(true)}>{t("Accept every proposed value")}</Button>
             </div>
             <Field label={t("Or set one value for all")}><Input value={setTo} onChange={(e) => setSetTo(e.target.value)} /></Field>
             <Toggle label={t("Only where the field is empty")} checked={onlyBlank} onChange={setOnlyBlank} />
@@ -93,8 +94,8 @@ export function Work() {
         ) : null}
       </div>
       <div className="mx-col">
-        <Card title={t("Records")} sub={sel ? sel.check_id : t("All rules")}>
-          {rows.isLoading ? <Skeleton lines={5} label={t("Loading the records")} /> : !list.length ? <EmptyState heading={t("No record matches")} /> : (
+        <Card title={t("Records")} sub={sel ? [sel.check_id, sel.message].filter(Boolean).join(" ") : t("All rules")}>
+          {rows.isLoading ? <Skeleton lines={5} label={t("Loading the records")} /> : rows.isError ? <ErrorState heading={t("The records could not be loaded")} onRetry={() => void rows.refetch()} retryLabel={t("Try again")} /> : !list.length ? <EmptyState heading={t("No record matches")} body={sel ? t("This rule has no record in this status.") : t("Pick another status above.")} action={sel ? <Button onClick={() => setCheck(null)}>{t("Show all rules")}</Button> : undefined} /> : (
             <>
               <DataTable label={t("Records")} rows={list} rowKey={rowId} selected={pick ? rowId(pick) : null} onSelect={open}
                 columns={[
@@ -130,7 +131,9 @@ export function Work() {
       </div>
       {tab === "cleaning" ? <CleaningQueue /> : records}
       <SimulateSheet rows={list} open={sim} onClose={() => setSim(false)} />
-      <p className="mx-muted">{state.chip ? chipDef(state.chip).label : ""}</p>
+      <Confirm open={askAll} title={t("Accept every proposed value?")} confirmLabel={t("Accept all")} cancelLabel={t("Cancel")} onConfirm={() => { setAskAll(false); if (sel) void run(() => postAcceptAll(sel.check_id), (r) => t("{n} fixes accepted.", { n: r.accepted ?? r.updated ?? 0 })); }} onCancel={() => setAskAll(false)}>
+        <p>{sel ? t("Every record of {rule} with a proposed value gets that value. Each fix is logged and you can roll it back.", { rule: [sel.check_id, sel.message].filter(Boolean).join(" ") }) : ""}</p>
+      </Confirm>
     </>
   );
 }

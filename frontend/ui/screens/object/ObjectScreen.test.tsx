@@ -70,7 +70,7 @@ describe("ObjectScreen", () => {
     fireEvent.click(rows[0]);
     expect(await screen.findByRole("tab", { name: "Overview" })).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Why" }));
-    expect(screen.getByRole("link", { name: "Open the rule" }).getAttribute("href")).toContain("/more/rules?rule=");
+    expect(screen.getByRole("link", { name: "Open the rule" }).getAttribute("href")).toContain("/r/");
   });
 
   it("opens the Aletheia chat and answers a suggested prompt with evidence", async () => {

@@ -96,7 +96,7 @@ export function Records({ o, system, module }: { o: ObjectRun; system: string; m
             <Select aria-label={t("Severity")} value={severity} onChange={(e) => setSeverity(e.target.value)} options={[{ value: "", label: t("Any severity") }, ...["critical", "high", "medium", "low"].map((s) => ({ value: s, label: sevLabel(s) }))]} />
             <Select aria-label={t("Status")} value={status} onChange={(e) => setStatus(e.target.value)} options={[{ value: "", label: t("Any status") }, ...Object.keys(STATUS_LABEL).map((s) => ({ value: s, label: STATUS_LABEL[s] }))]} />
           </div>
-          {rowsQ.isLoading ? <Skeleton lines={6} label={t("Loading records")} /> : rowsQ.isError ? <ErrorState heading={t("The records could not be loaded")} /> : rows.length === 0 ? <EmptyState heading={t("No records match this filter.")} /> : (
+          {rowsQ.isLoading ? <Skeleton lines={6} label={t("Loading records")} /> : rowsQ.isError ? <ErrorState heading={t("The records could not be loaded")} retryLabel={t("Try again")} onRetry={() => void rowsQ.refetch()} /> : rows.length === 0 ? <EmptyState heading={t("No records match this filter.")} /> : (
             <DataTable
               label={t("Records with findings")}
               rows={rows}

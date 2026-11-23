@@ -113,7 +113,7 @@ export function Objects() {
       </Card>
       {pf.isLoading ? <Skeleton lines={8} label={t("Loading objects")} />
         : pf.isError ? <ErrorState heading={t("The objects could not be loaded")} retryLabel={t("Try again")} onRetry={() => void pf.refetch()} />
-        : !rows.length ? <EmptyState heading={t("No object matches")} body={t("Clear the search or the step filter.")} />
+        : !rows.length ? <EmptyState heading={t("No object matches")} body={t("Clear the search or the step filter.")} action={<Button onClick={() => { setQ(""); setStep(null); }}>{t("Clear filters")}</Button>} />
         : (
           <DataTable<PortfolioRow>
             label={t("Objects")}
@@ -123,7 +123,7 @@ export function Objects() {
             onSelect={(r) => setPick(key(r))}
             height={440}
             columns={[
-              { key: "label", label: t("Object"), sort: (r) => r.label, render: (r) => <><strong>{r.label}</strong> <FieldChip code={r.module} description={r.label} /></> },
+              { key: "label", label: t("Object"), sort: (r) => r.label, render: (r) => <><a href={href(objectPath(r, systems))} onClick={(e) => e.stopPropagation()}><strong>{r.label}</strong></a> <FieldChip code={r.module} description={r.label} /></> },
               { key: "system", label: t("System"), sort: sysName, render: sysName },
               { key: "score", label: t("Score"), align: "end", sort: (r) => r.composite_score ?? -1, render: (r) => <span className="mx-num">{r.composite_score === null ? t("n/a") : Math.round(r.composite_score)}</span> },
               { key: "ready", label: t("Readiness"), sort: (r) => r.readiness ?? "", render: (r) => readinessLabel(r.readiness) },

@@ -20,7 +20,7 @@ export function Readiness({ o, system, module }: { o: ObjectRun; system: string;
     evidence: rows.slice(0, 3).map((r) => `${r.wave}: ${VERDICT[r.verdict]()}`),
   }));
   if (q.isLoading) return <Skeleton lines={4} label={t("Loading readiness")} />;
-  if (q.isError) return <ErrorState heading={t("Readiness could not be loaded.")} />;
+  if (q.isError) return <ErrorState heading={t("Readiness could not be loaded.")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
   const cols: Column<ReadinessCell>[] = [
     { key: "w", label: t("Wave"), render: (r) => r.wave },
     { key: "v", label: t("Verdict"), render: (r) => VERDICT[r.verdict]() },

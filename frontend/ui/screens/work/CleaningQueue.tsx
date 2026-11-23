@@ -39,7 +39,7 @@ export function CleaningQueue() {
   const body = () => {
     if (tab === "waiting" && !g) {
       if (groups.isLoading) return <Skeleton lines={3} label={t("Loading the queue")} />;
-      if (!gl.length) return <EmptyState heading={t("No proposed fixes are waiting")} />;
+      if (!gl.length) return <EmptyState heading={t("No proposed fixes are waiting")} body={t("New proposals appear after the next run.")} />;
       return (
         <DataTable label={t("Proposed fixes by rule")} rows={gl} rowKey={(x) => `${x.version_id}|${x.object_type}|${x.kind}`} onSelect={setG}
           columns={[

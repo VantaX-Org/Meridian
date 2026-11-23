@@ -59,7 +59,7 @@ export function Material360({ matnr }: { matnr: string }) {
   const dup = useQuery({ queryKey: ["m360", "duplicates", fx, matnr], queryFn: () => getDuplicates(matnr), retry, enabled: mat.isSuccess });
 
   if (mat.isLoading) return <Skeleton lines={6} label={t("Loading material")} />;
-  if (mat.isError) return <ErrorState heading={errorText(mat.error)} />;
+  if (mat.isError) return <ErrorState heading={errorText(mat.error)} retryLabel={t("Try again")} onRetry={() => void mat.refetch()} />;
   const m = mat.data as M360;
 
   const failing = new Map<string, FailingRule[]>();

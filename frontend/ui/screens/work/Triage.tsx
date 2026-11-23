@@ -86,7 +86,7 @@ export function Triage() {
         ))}
       </div>
       <Card title={t("Queue")} sub={t("{n} selected", { n: chosen.length })}>
-        {q.isLoading ? <Skeleton lines={5} label={t("Loading the queue")} /> : q.isError ? <ErrorState heading={t("The queue could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : !items.length ? <EmptyState heading={t("Nothing is waiting here")} /> : (
+        {q.isLoading ? <Skeleton lines={5} label={t("Loading the queue")} /> : q.isError ? <ErrorState heading={t("The queue could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : !items.length ? <EmptyState heading={t("Nothing is waiting here")} body={t("Pick another filter, or open the work queue.")} action={<Button href="/work">{t("Open the work queue")}</Button>} /> : (
           <DataTable label={t("Queue")} rows={items} rowKey={(i: QueueItem) => i.id}
             columns={[
               { key: "p", label: t("Pick"), render: (i) => <input type="checkbox" aria-label={t("Pick {id}", { id: i.id })} checked={picked.has(i.id)} onChange={() => flip(i.id)} /> },
