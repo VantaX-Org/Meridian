@@ -12,11 +12,10 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { describeField } from "@/lib/v2/sap-fields";
 import type { RuleRow } from "@/lib/api/v2/types";
 import {
-  Badge, Button, Card, Chip, DataTable, DetailPanel, DqsPair, EmptyState, ErrorState, MasterList, PageHeader, ScoreRuler,
+  Badge, Button, Card, Chip, DataTable, DetailPanel, DqsPair, EmptyState, ErrorState, MasterList, PageHeader, RunLines, ScoreRuler, ToneBars,
   SeverityPill, SeverityStrip, Sheet, Skeleton, StatTile, FieldChip, useAletheia, useAletheiaScope, useStacked, type Severity,
 } from "@/ui/kit";
 import { ObjectCycle, ObjectTabNav, objectPath } from "@/ui/screens/object-tabs/TabFrame";
-import { RunLines, ToneBars } from "./Board";
 import { answerFor, type PromptId } from "./answers";
 import { AllRulesCard, FindingsCard, MonitorStrip, OldRunGate, RelatedObjects, ScoreReceipt } from "./ObjectExtras";
 import { compactCount, dqsOf, score as fmt, signed, verdictFor } from "./format";

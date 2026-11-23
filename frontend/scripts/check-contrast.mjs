@@ -114,7 +114,7 @@ const mxPairs = [
   ["env-prod", "sheet"], ["env-qa", "sheet"],
   ["ink", "row-hover"], ["ink", "row-selected"],
   ...[1, 2, 3, 4, 5, 6].flatMap((n) => ["sheet"].map((s) => [`chart-${n}`, s])),
-  ["cobalt", "sheet"], ["violet-ink", "violet-soft"], ["on-solid", "cobalt"],
+  ["cobalt", "sheet"], ["bad-ink", "stop-soft"], ["violet-ink", "violet-soft"], ["on-solid", "cobalt"],
 ];
 const mxSeriesOnWell = [1, 2, 3, 4, 5, 6].map((n) => [`chart-${n}`, "well"]);
 for (const [theme, vars] of Object.entries(mxThemes)) {

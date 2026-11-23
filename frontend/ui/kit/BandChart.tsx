@@ -2,36 +2,51 @@
 
 import { fixed } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
-import { ChartFrame } from "./ChartFrame";
-import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartFrame, type ChartStatus } from "./ChartFrame";
+import { PlotLayer, type PlotRange } from "./PlotLayer";
+import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
 /** One point: the observed value (runs) or the projected point with its band (future). */
 export interface BandDatum { axis: string; value?: number | null; point?: number | null; low?: number | null; high?: number | null }
 
-/** Observed line, projected line and its band, with an optional target line (recharts). */
-export function BandChart({ data, label, target, height = 160 }: { data: BandDatum[]; label: string; target?: number | null; height?: number }) {
+/**
+ * Observed line, projected line and its band, with an optional target line (recharts). `gates` fixes the scale to
+ * 0 to 100 and draws the 70 and 85 lines. `onSelect` and `brush`/`onRange` work as on TrendArea.
+ */
+export function BandChart({ data, label, target, height = 160, gates, onSelect, brush, onRange, ...status }: {
+  data: BandDatum[]; label: string; target?: number | null; height?: number; gates?: boolean;
+  onSelect?: (d: BandDatum) => void; brush?: boolean; onRange?: (r: { from: BandDatum; to: BandDatum } | null) => void;
+} & ChartStatus) {
   const rows = data.map((d) => ({ ...d, band: d.low != null && d.high != null ? [d.low, d.high] : null }));
   const seen = data.filter((d) => d.value != null);
   const reading = seen.length ? t("Latest {v}, with {n} points shown", { v: fixed(seen[seen.length - 1].value ?? 0, 1), n: String(data.length) }) : t("{n} points shown", { n: String(data.length) });
   const n = (v: number | null | undefined) => (v == null ? "" : fixed(v, 1));
+  const describe = (i: number) => {
+    const d = data[i];
+    const parts = [d.value != null ? n(d.value) : null, d.point != null ? `${t("Projected")} ${n(d.point)}` : null, d.low != null && d.high != null ? `${n(d.low)} - ${n(d.high)}` : null].filter(Boolean);
+    return `${d.axis}: ${parts.join(", ")}`;
+  };
+  const toRange = (r: PlotRange | null) => onRange?.(r ? { from: data[r.from], to: data[r.to] } : null);
   const plot = (
-    <div role="img" aria-label={`${label}. ${reading}`} className="mx-trend" style={{ blockSize: height }}>
-      <ResponsiveContainer width="100%" height={height} initialDimension={{ width: 320, height }}>
-        <ComposedChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
-          <CartesianGrid vertical={false} stroke="var(--mx-chart-grid)" />
-          <XAxis dataKey="axis" hide />
-          <YAxis domain={["auto", "auto"]} hide />
-          <Tooltip />
-          <Area dataKey="band" stroke="none" fill="var(--mx-aletheia)" fillOpacity={0.16} isAnimationActive={false} />
-          <Line dataKey="value" stroke="var(--mx-chart-1)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-          <Line dataKey="point" stroke="var(--mx-aletheia)" strokeWidth={2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
-          {target != null ? <ReferenceLine y={target} stroke="var(--mx-ink-2)" strokeDasharray="2 2" /> : null}
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
+    <PlotLayer n={data.length} label={label} describe={describe} onSelect={onSelect ? (i) => onSelect(data[i]) : undefined} brush={brush} onRange={toRange} inset={{ start: 0.012, end: gates ? 0.06 : 0.012 }}>
+      <div role="img" aria-label={`${label}. ${reading}`} className="mx-trend" style={{ blockSize: height }}>
+        <ResponsiveContainer width="100%" height={height} initialDimension={{ width: 320, height }}>
+          <ComposedChart data={rows} margin={{ top: 4, right: gates ? 20 : 4, bottom: 0, left: 4 }}>
+            <CartesianGrid vertical={false} stroke="var(--mx-chart-grid)" />
+            <XAxis dataKey="axis" hide />
+            <YAxis domain={gates ? [0, 100] : ["auto", "auto"]} hide />
+            {gates ? [85, 70].map((g) => <ReferenceLine key={g} y={g} stroke="var(--mx-ink-3)" strokeDasharray="3 3" label={{ value: String(g), position: "right", fill: "var(--mx-chart-axis)", fontSize: 10 }} />) : null}
+            <Area dataKey="band" stroke="none" fill="var(--mx-aletheia)" fillOpacity={0.16} isAnimationActive={false} />
+            <Line dataKey="value" stroke="var(--mx-chart-1)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+            <Line dataKey="point" stroke="var(--mx-aletheia)" strokeWidth={2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+            {target != null ? <ReferenceLine y={target} stroke="var(--mx-ink-2)" strokeDasharray="2 2" /> : null}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </PlotLayer>
   );
   return (
-    <ChartFrame label={label} reading={reading} rowKey={(d) => d.axis} rows={data}
+    <ChartFrame label={label} reading={reading} height={height} rowKey={(d) => d.axis} rows={data} {...status}
       columns={[
         { key: "axis", label: t("Point") },
         { key: "value", label: t("Value"), align: "end", render: (d) => n(d.value) },

@@ -40,6 +40,11 @@ export { StatTile } from "./StatTile";
 export { Tabs, type TabItem } from "./Tabs";
 export { TrendArea, type TrendPoint } from "./TrendArea";
 export { BandChart, type BandDatum } from "./BandChart";
+export { type ChartStatus } from "./ChartFrame";
+export { PlotLayer, type PlotRange } from "./PlotLayer";
+export { ToneBars, type ToneBar } from "./ToneBars";
+export { RunLines, type RunPoint } from "./RunLines";
+export { WeeklyChart, type Week } from "./WeeklyChart";
 export { AletheiaMark, AletheiaMarkImg, EvidenceNote } from "./Evidence";
 
 // Spec names (section 3) for the pieces that already match one to one.

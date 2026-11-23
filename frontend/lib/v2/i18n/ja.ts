@@ -15945,4 +15945,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "That did not save. Your change was put back.": "保存できませんでした。変更は元に戻しました。",
   "Group by": "グループ化",
   "{label}: {n} failing rules, {p}% of all": "{label}: 失敗ルール {n} 件、全体の {p}%",
+  "This did not load.": "読み込めませんでした。",
 };
