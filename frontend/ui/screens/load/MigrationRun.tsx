@@ -14,6 +14,7 @@ import { Button, Card, Confirm, DataTable, EmptyState, FieldChip, Input, PageHea
 import { gapText, labelText } from "@/lib/v2/labels";
 import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, useRecon, useRecords, useRun } from "./hooks";
+import { ReconRecords, TargetWorkbook, ValueMapping } from "./RunExtras";
 import { modeLabel } from "./MigrationRuns";
 import { displayKey } from "@/lib/v2/work";
 
@@ -74,19 +75,23 @@ export function MigrationRun({ id }: { id: string }) {
           { id: "gaps", label: t("Gaps"), badge: String(gaps.length) },
           { id: "findings", label: t("Findings") },
           { id: "sim", label: t("Load simulation") },
+          { id: "values", label: t("Value mapping") },
           { id: "recon", label: t("Reconciliation") },
           { id: "records", label: t("Records") },
           { id: "approval", label: t("Approval") },
           { id: "files", label: t("Load files") },
+          { id: "workbook", label: t("Target workbook") },
         ]} />
         <div id={`mx-run-panel-${tab}`} role="tabpanel">
           {tab === "gaps" ? <Gaps gaps={gaps} /> : null}
           {tab === "findings" ? <Findings id={id} modules={run?.modules ?? []} /> : null}
           {tab === "sim" ? <Simulation id={id} /> : null}
+          {tab === "values" ? <ValueMapping id={id} modules={run?.modules ?? []} /> : null}
           {tab === "recon" ? <Recon id={id} q={recon} /> : null}
           {tab === "records" ? <Records id={id} /> : null}
           {tab === "approval" ? <Approval id={id} /> : null}
           {tab === "files" ? <Files id={id} dry={!!dry} /> : null}
+          {tab === "workbook" ? <TargetWorkbook versionId={run?.source_version_id ?? null} /> : null}
         </div>
       </Card>
       </div>
@@ -259,6 +264,7 @@ function Recon({ id, q }: { id: string; q: ReturnType<typeof useRecon> }) {
                 { key: "w", label: t("Why they differ"), render: (x) => x.reasons.slice(0, 3).map((y) => <FieldChip key={y.check_id} code={y.check_id} description={y.description ?? undefined} />) },
               ]}
             />
+            <ReconRecords id={id} tables={r.tables} />
           </>
         ) : <EmptyState heading={r?.needs_target_extraction ? t("The target has no analysis yet. Extract it first.") : r?.error_detail ?? t("No reconciliation yet")} body={t("Extract the target, or run the reconciliation again.")} />}
       </Gate>

@@ -47,8 +47,9 @@ Statuses:
 | Survivorship: put, preview | `previewSurvivorship`, `putSurvivorshipRulesV2` (`putSurvivorship` in `designer.ts` is an unused duplicate client of the same preview route) | `ui/screens/mdm/SurvivorshipSave.tsx`: Save rules opens a preview sheet, then a confirm that names the rule and golden value counts | Rules |
 | Fix drafts and cleaning plan | `draftFix`, `getCleaningPlan` | `ui/screens/work/CleaningPlan.tsx`, the Plan tab in Clean; Draft a fix needs manage_rules and stores the draft as pending | Clean |
 | Split scope | `splitScope` | `ui/screens/runs/SplitCapped.tsx` on the Run overview: preview, then a confirm naming the scope count before the SAP read is queued (trigger_sync) | Run |
+| Migration run: value candidates and value-map proposals, reconciliation records, target workbook check | GET `/migration/runs/{id}/value-candidates`, PUT `/migration/value-map`, GET `/migration/runs/{id}/reconciliation/records`, POST `/migration/target-workbook/{version_id}/check` (`loadParams` is its query builder) | `ui/screens/load/RunExtras.tsx`: Value mapping tab, records under Reconciliation, Target workbook tab of the run screen | Load |
 
-Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `LearnedReview.test.tsx`, `BreakEvidenceSheet.test.tsx`, `MinedDependencies.test.tsx`, `SurvivorshipSave.test.tsx`, `CleaningPlan.test.tsx`, `SplitCapped.test.tsx`.
+Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `LearnedReview.test.tsx`, `BreakEvidenceSheet.test.tsx`, `MinedDependencies.test.tsx`, `SurvivorshipSave.test.tsx`, `CleaningPlan.test.tsx`, `SplitCapped.test.tsx`, `RunExtras.test.tsx`.
 
 ## ORPHAN capabilities (client exists, no screen)
 
@@ -72,7 +73,6 @@ Suggested home is the journey where the user would expect it.
 | Reference data usage | `getRefUsage` | `/reference-data/lists/{id}/usage` | Objects, reference data |
 | Workflow definitions: get, new version, create | `getDefinition`, `newVersion`, `createDefinition` | `/workflows/definitions*` | Work, Requests |
 | Z-object registry: get, update, anomaly feedback | `getZEntry`, `updateZEntry`, `feedbackZAnomaly` | `/z-objects/*` | Objects, Z-objects |
-| Migration: value candidates, value map, load params, reconciliation records, target workbook check | `getValueCandidates`, `saveValueMap`, `loadParams`, `getReconciliationRecords`, `checkTargetWorkbook` | migration routes | Load |
 | Batches: run records, send to SAP, confirm loaded | `getBatchRunRecords`, `sendBatchToSap`, `confirmBatchLoaded` | `/writeback/batches/*`, `/remediation/batches/*` | Load |
 | External database preview and load | `previewDb`, `loadDb` | external-db routes | Load |
 | Report schedule update | `updateSchedule` | `/reports/schedules/{id}` | Reports |
