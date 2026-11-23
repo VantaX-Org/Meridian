@@ -856,7 +856,8 @@ async def _suggestions(db: AsyncSession, tenant: Tenant, rows, extra: dict) -> d
             if scope not in ctx:
                 _s, st, live = await dvc.load_live(db, str(tenant.id), scope)
                 ctx[scope] = (dictionary_for_system(st), live, dvc.baseline_values(st))
-            ev = dvc.check_value(*ctx[scope][:1], q, sg["value"], *ctx[scope][1:])
+            d, live, base = ctx[scope]
+            ev = dvc.check_value(d, q, sg["value"], live, base)
             safety = {"verdict": ev["verdict"], "reasons": ev["reasons"], "source": ev.get("source")}
         out[key] = {"value": sg["value"], "source": sg["source"], "confidence": sg.get("confidence"),
                     "why": sg.get("why"), "safety": safety}

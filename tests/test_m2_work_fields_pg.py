@@ -235,6 +235,7 @@ async def test_tenant_isolation(owner, monkeypatch):
         assert summary["version_ids"] == [b["run"]] and summary["objects"][0]["records"] == 5
 
 
+@pytest.mark.anyio
 async def test_suggestion_filters_and_groups(monkeypatch, owner):
     """suggestion {value, source, confidence, why, safety} per row; dimension / field / source / min_confidence filters;
     group_by returns {key, label, count}; with_proposal on the groups."""
@@ -263,6 +264,7 @@ async def test_suggestion_filters_and_groups(monkeypatch, owner):
     assert all("with_proposal" in x for x in r.json()["groups"])
 
 
+@pytest.mark.anyio
 async def test_findings_group_by(monkeypatch, owner):
     s = seed_m2(owner)
     client = await start(monkeypatch, s["tid"])
