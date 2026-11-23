@@ -5,6 +5,8 @@ import { stubLayout } from "@/ui/testing/layout-stub";
 import { AletheiaProvider, ToastHost } from "@/ui/kit";
 import { getRunSchedule, listApiKeys, listFieldMappings, listUsers } from "@/lib/api/v2/admin";
 import { resetAdminFixture } from "@/lib/api/v2/fixtures/admin";
+import { getSchedules } from "@/lib/api/v2/reports";
+import { Reports } from "../Reports";
 import { Mappings } from "./Mappings";
 import { Schedules } from "./Schedules";
 import { ApiKeys } from "../access/ApiKeys";
@@ -55,5 +57,20 @@ describe("admin writes", () => {
     await waitFor(async () => expect((await getRunSchedule("rs-1")).name).toBe("Monday material run"));
     fireEvent.change(screen.getAllByLabelText(/^System/).at(-1)!, { target: { value: "a1b2c3d4-0001-4000-8000-000000000001" } });
     expect(await screen.findByLabelText("Sync runs")).toBeTruthy();
+  });
+
+  it("edits a report schedule and keeps what the form does not show", async () => {
+    wrap(<Reports />);
+    fireEvent.click((await screen.findAllByRole("button", { name: "Edit" }))[0]);
+    await screen.findByRole("dialog");
+    fireEvent.change(screen.getAllByLabelText(/^Name/).at(-1)!, { target: { value: "Board pack, Mondays" } });
+    fireEvent.click(screen.getByRole("switch", { name: "Schedule is on" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save schedule" }));
+    await waitFor(async () => {
+      const x = (await getSchedules()).find((r) => r.id === "sch-1");
+      expect(x?.name).toBe("Board pack, Mondays");
+      expect(x?.enabled).toBe(false);
+      expect(x?.recipient_user_ids).toEqual(["u-2"]);
+    });
   });
 });

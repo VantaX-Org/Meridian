@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { buildReport, createSchedule, deleteReportFile, deleteSchedule, downloadReportFile, runScheduleNow, startExport, type ExportFormat } from "@/lib/api/v2/reports";
+import { buildReport, createSchedule, deleteReportFile, deleteSchedule, downloadReportFile, runScheduleNow, startExport, updateSchedule, type ExportFormat, type ReportSchedule } from "@/lib/api/v2/reports";
 import type { ScheduleCadence } from "@/lib/api/reports";
 import { formatInt } from "@/lib/format";
 import { useCatalogue, useExportOptions, useReportHistory, useScheduleOptions, useSchedules } from "@/lib/v2/admin-queries";
 import { exportRequest } from "@/lib/v2/export-centre";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, Field, Input, Select, useSheet, EmptyState } from "@/ui/kit";
+import { Button, Card, Code, DataTable, EmptyState, Field, Input, Select, Sheet, Toggle, useSheet } from "@/ui/kit";
 import { Row, Sec, useAct, when } from "./ops/shared";
 
 const kb = (n: number) => `${formatInt(Math.max(1, Math.round(n / 1024)))} KB`;
@@ -26,6 +26,7 @@ export function Reports() {
   const [cadence, setCadence] = useState<ScheduleCadence>("weekly");
   const [time, setTime] = useState("08:00");
   const [dataset, setDataset] = useState("");
+  const [edit, setEdit] = useState("");
   const [format, setFormat] = useState<ExportFormat>("xlsx");
   const entries = cat.data ?? [];
   const files = hist.data?.items ?? [];
@@ -80,6 +81,7 @@ export function Reports() {
               { key: "act", label: t("Actions"), render: (r) => (
                 <Row>
                   <Button variant="secondary" disabled={busy} onClick={() => run(() => runScheduleNow(r.id), t("Queued to run now."))}>{t("Run now")}</Button>
+                  {r.can_edit && <Button variant="ghost" onClick={() => setEdit(r.id)}>{t("Edit")}</Button>}
                   <Button variant="ghost" disabled={busy} onClick={() => run(() => deleteSchedule(r.id), t("Schedule removed."))}>{t("Remove")}</Button>
                 </Row>
               ) },
@@ -102,6 +104,32 @@ export function Reports() {
             onClick={() => run(() => startExport(exportRequest({ dataset: ds, format, columns: [], system: "", module: "", run: "latest", severity: [], split: "none" })), t("Export queued."))}>{t("Start export")}</Button>
         </Row>
       </Card>
+      <Sheet open={!!edit} onClose={() => setEdit("")} label={t("Edit schedule")} closeLabel={t("Close")}>
+        {schedules.filter((x) => x.id === edit).map((x) => <EditSchedule key={x.id} s={x} onDone={() => setEdit("")} />)}
+      </Sheet>
     </Sec>
+  );
+}
+
+/** PUT replaces the schedule, so the whole input is sent back with the three fields the person may change. */
+function EditSchedule({ s, onDone }: { s: ReportSchedule; onDone: () => void }) {
+  const { run, busy } = useAct("reports");
+  const [name, setName] = useState(s.name);
+  const [cadence, setCadence] = useState<ScheduleCadence>(s.cadence);
+  const [time, setTime] = useState(s.time_of_day);
+  const [on, setOn] = useState(s.enabled);
+  const save = async () => {
+    const body = { name: name.trim(), kind: s.kind, format: s.format, params: s.params, cadence, time_of_day: time, weekday: s.weekday, day_of_month: s.day_of_month, timezone: s.timezone, recipient_user_ids: s.recipient_user_ids, recipient_channel_ids: s.recipient_channel_ids, enabled: on };
+    if (await run(() => updateSchedule(s.id, body), t("Schedule saved."))) onDone();
+  };
+  return (
+    <form className="mx-col" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+      <p className="mx-muted">{s.summary}</p>
+      <Field label={t("Name")}><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
+      <Field label={t("Runs")}><Select value={cadence} onChange={(e) => setCadence(e.target.value as ScheduleCadence)} options={[{ value: "daily", label: t("Daily") }, { value: "weekly", label: t("Weekly") }, { value: "monthly", label: t("Monthly") }]} /></Field>
+      <Field label={t("Time")} hint={t("HH:MM in {zone}.", { zone: s.timezone })}><Input value={time} onChange={(e) => setTime(e.target.value)} /></Field>
+      <Toggle label={t("Schedule is on")} checked={on} onChange={setOn} />
+      <div><Button variant="primary" type="submit" disabled={busy || !name.trim() || !/^\d{2}:\d{2}$/.test(time)}>{t("Save schedule")}</Button></div>
+    </form>
   );
 }

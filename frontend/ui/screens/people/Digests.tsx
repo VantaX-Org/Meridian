@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createDigest, deleteDigest, getDigestNumbers, listDigestDeliveries, listDigests, sendDigestNow, updateDigest, type Digest, type DigestBody } from "@/lib/api/v2/step10";
+import { createDigest, deleteDigest, getDigest, getDigestNumbers, listDigestDeliveries, listDigests, sendDigestNow, updateDigest, type Digest, type DigestBody } from "@/lib/api/v2/step10";
 import { CUSTOM, PRESETS, cronError, describeCron, isPreset } from "@/lib/v2/cron";
 import { relTime } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
@@ -119,6 +119,12 @@ function Detail({ d, onEdit, onGone }: { d: Digest; onEdit: () => void; onGone: 
   );
 }
 
+/** Reads the digest again before the form opens, so an edit starts from what the server holds now. */
+function EditLoad({ id, onDone }: { id: string; onDone: () => void }) {
+  const q = useQ(["digest", id], () => getDigest(id));
+  return <Gate q={q} label={t("Loading digests")}>{(d) => <Form id={id} initial={{ ...BLANK, ...d, role: d.role ?? "" }} onDone={onDone} />}</Gate>;
+}
+
 export function Digests() {
   const q = useQ(["digests"], () => listDigests());
   const chat = useAletheia();
@@ -148,7 +154,7 @@ export function Digests() {
     </Gate>
   );
   const right = mode === "new" ? <Form initial={BLANK} onDone={(d) => { setMode("view"); if (d) setSel(d.id); }} />
-    : mode === "edit" && cur ? <Form id={cur.id} initial={{ ...BLANK, ...cur, role: cur.role ?? "" }} onDone={() => setMode("view")} />
+    : mode === "edit" && cur ? <EditLoad key={cur.id} id={cur.id} onDone={() => setMode("view")} />
     : cur ? <Detail d={cur} onEdit={() => setMode("edit")} onGone={() => setSel(null)} />
     : <EmptyState heading={t("Select a digest")} body={t("Its schedule, numbers and deliveries appear here.")} />;
   return (
