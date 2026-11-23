@@ -393,3 +393,5 @@
 .mx-root .mx-rulerow-w { flex: 0 0 6rem; }
 .mx-root .mx-rulerow-end { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--mx-s2); margin-block-start: calc(var(--mx-fs-small) * 1.5 + var(--mx-s1)); }
 .mx-root .mx-field > .mx-input[type="number"] { justify-self: start; inline-size: 10ch; max-inline-size: 100%; }
+.mx-root .mx-ruler-link { cursor: pointer; }
+.mx-root .mx-ruler-link:hover .mx-ruler-name, .mx-root .mx-ruler-link:focus-visible .mx-ruler-name { text-decoration: underline; }

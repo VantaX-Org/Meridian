@@ -7,6 +7,8 @@ export interface RulerMark {
   /** The measured score. When it differs from shown the mark is capped: a hollow mark sits at it, tethered. */
   measured?: number | null;
   tone?: RulerTone;
+  /** When set, the mark's row is a link to the object. */
+  href?: string;
 }
 export interface RulerLabels {
   /** Gate names, already translated. */
@@ -38,7 +40,7 @@ export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width, zones, f
   for (let n = from; n <= 100; n += 10) ticks.push(n);
   const fs = from === 50 ? 10 : 11;
   return (
-    <svg className="mx-ruler" viewBox={`-20 0 ${W + 40} ${H}`} role="img" aria-label={ariaLabel} data-compact={from === 50 ? "" : undefined}>
+    <svg className="mx-ruler" viewBox={`-20 0 ${W + 40} ${H}`} role={marks.some((m) => m.href) ? "group" : "img"} aria-label={ariaLabel} data-compact={from === 50 ? "" : undefined}>
       <rect className="mx-ruler-z" data-tone="stop" x={x(from)} y={top} width={x(70) - x(from)} height={bandH} />
       <rect className="mx-ruler-z" data-tone="watch" x={x(70)} y={top} width={x(85) - x(70)} height={bandH} />
       <rect className="mx-ruler-z" data-tone="go" x={x(85)} y={top} width={x(100) - x(85)} height={bandH} />
@@ -54,7 +56,7 @@ export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width, zones, f
         const capped = m.measured != null && m.measured > m.shown;
         const t = m.tone ?? tone(m.shown);
         const sx = x(m.shown);
-        return (
+        const row = (
           <g key={m.id} data-mark={m.id} data-capped={capped ? "" : undefined}>
             {capped ? (
               <>
@@ -79,6 +81,7 @@ export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width, zones, f
             {showName ? <text className="mx-ruler-name" x={x(from)} y={cy - 14} fontSize={fs}>{m.label}</text> : null}
           </g>
         );
+        return m.href ? <a key={m.id} href={m.href} className="mx-ruler-link" aria-label={m.label}>{row}</a> : row;
       })}
     </svg>
   );

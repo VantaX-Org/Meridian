@@ -23,9 +23,17 @@ describe("Home", () => {
   it("shows the header, the lowest scoring objects and the attention list", async () => {
     wrap(<Home />);
     expect(await screen.findByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeTruthy();
-    expect(await screen.findByRole("img", { name: "Score of every object against the gates" })).toBeTruthy();
+    expect(await screen.findByRole("group", { name: "Score of every object against the gates" })).toBeTruthy();
     expect(await screen.findByRole("list", { name: "Next action per object" })).toBeTruthy();
     expect(await screen.findByRole("list", { name: "Attention items" })).toBeTruthy();
+  });
+
+  it("links every ruler mark to its object", async () => {
+    wrap(<Home />);
+    const ruler = await screen.findByRole("group", { name: "Score of every object against the gates" });
+    const links = ruler.querySelectorAll("a[href^='/o/']");
+    expect(links.length).toBe(ruler.querySelectorAll("[data-mark]").length);
+    expect(links.length).toBeGreaterThan(0);
   });
 
   it("asks before pulling every object", async () => {
@@ -56,12 +64,12 @@ describe("Home order", () => {
 describe("Home ruler", () => {
   it("shows the 12 lowest objects first and expands to all", async () => {
     wrap(<Home />);
-    const ruler = await screen.findByRole("img", { name: "Score of every object against the gates" });
+    const ruler = await screen.findByRole("group", { name: "Score of every object against the gates" });
     const more = screen.queryByRole("button", { name: /^Show all \d+$/ });
     if (!more) return; // fixture holds 12 or fewer scored objects
     expect(ruler.querySelectorAll("[data-mark]").length).toBe(12);
     fireEvent.click(more);
-    await waitFor(() => expect(screen.getByRole("img", { name: "Score of every object against the gates" }).querySelectorAll("[data-mark]").length).toBeGreaterThan(12));
+    await waitFor(() => expect(screen.getByRole("group", { name: "Score of every object against the gates" }).querySelectorAll("[data-mark]").length).toBeGreaterThan(12));
   });
 });
 

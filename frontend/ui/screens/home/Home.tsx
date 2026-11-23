@@ -147,6 +147,7 @@ export function Home() {
     label: r.system_id && sysName.get(r.system_id) ? t("{object} in {system}", { object: r.label, system: sysName.get(r.system_id) as string }) : r.label,
     shown: r.composite_score ?? 0,
     measured: r.capped ? r.measured_score : null, tone: toneOf(r.composite_score),
+    href: href(objectPath(r, systems)),
   }));
   const labels = { atRisk: t("At risk"), go: t("Go"), cap70: t("Cap at 70"), cap85: t("Cap at 85"), measured: (n: number) => t("Measured {n}", { n }) };
 
