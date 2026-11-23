@@ -28,6 +28,9 @@
 .mx-root .mx-fixstrip-nums b { font-size: var(--mx-fs-title); line-height: 1.1; }
 .mx-root .mx-fixstrip-proj { color: var(--mx-violet-ink); }
 .mx-root .mx-fixstrip-ruler { display: grid; gap: var(--mx-s1); min-width: 0; }
+.mx-root .mx-fixstrip-legend { display: flex; gap: var(--mx-s4); margin: 0; padding: 0; list-style: none; font-size: var(--mx-fs-micro); color: var(--mx-ink-2); }
+.mx-root .mx-fixstrip-legend li { display: inline-flex; align-items: center; gap: var(--mx-s1); }
+.mx-root .mx-fixstrip-legend svg { inline-size: 0.8rem; block-size: 0.8rem; flex: none; }
 .mx-root .mx-fixstrip-held { margin: 0; max-inline-size: 22rem; font-size: var(--mx-fs-small); color: var(--mx-ink-2); }
 .mx-root .mx-fixstrip-act { display: grid; justify-items: end; gap: var(--mx-s1); }
 .mx-root .mx-fixstrip-hint { font-size: var(--mx-fs-micro); color: var(--mx-ink-3); }
