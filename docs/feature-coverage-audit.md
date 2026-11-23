@@ -40,6 +40,7 @@ Statuses:
 | --- | --- | --- | --- |
 | Steward queue: filter, approve, reject, escalate, bulk approve confident items, item lifecycle stepper | GET `/stewardship/queue`, POST resolve, POST escalate, POST bulk-approve | `ui/screens/people/StewardQueue.tsx`, rendered in Stewardship | People, Stewardship |
 | Maintenance windows: add and remove (PUT replaces list, max 20, UTC) | PUT `/settings/maintenance` | `ui/screens/admin/ops/MaintenanceEditor.tsx`, in Admin, Enterprise | Admin, Enterprise |
+| Dedup candidates, preview, merge | GET `/dedup/candidates`, POST `/dedup/preview`, POST `/dedup/merge` | `ui/screens/work/Dedup.tsx`, Duplicates tab of the cleaning queue | Clean |
 
 Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`.
 
@@ -54,7 +55,6 @@ Suggested home is the journey where the user would expect it.
 | Triage configuration: SLA delete, settings, team update and members, assign rules and reorder, escalation chain | `deleteSlaPolicy`, `getTriageSettings`, `updateTeam`, `setTeamMembers`, `createAssignRule`, `reorderAssignRules`, `putEscalationChain` | `/triage/*` | Work, Triage settings |
 | Subscriptions, delegations | `putSubscriptions`, `getAllDelegations` | `/me/subscriptions`, `/delegations` | Me |
 | Data contracts: update, enforcement, create per object | `updateContract`, `setEnforcement`, `createObjectContract` | `/contracts` | People, Contracts |
-| Dedup candidates, preview, merge | `getDedupCandidates`, `getDedupCandidatesFor`, `previewDedup`, `mergeDedup` | `/dedup/*` | Clean |
 | Learned monitors: break evidence | `getBreakEvidence` | `/aletheia/monitors/{id}/evidence` | Monitor |
 | Learned rules: review, mine, approve; mined rule accept | `getLearnedReview`, `mineFixes`, `acceptMinedRule` | `/learned-rules/*`, `/rules/mined` | Rules |
 | Rule authoring: dry run, publish, update draft, version diff | `dryRunDraft`, `publishDraft`, `updateDraft`, `createRuleVersion` | `/rule-authoring/*`, `/rules/{id}/versions/{v}/diff` | Rules |
