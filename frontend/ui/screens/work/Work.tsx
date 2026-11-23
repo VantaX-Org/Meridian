@@ -10,8 +10,7 @@ import { CHIPS, displayKey, exportQueryOf, filtersOf, readState, viewFilters, ty
 import { useWorkGroups, useWorkRows, useWorkSummary, useWorkViews } from "@/lib/v2/work-queries";
 import {
   Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, Field, Input, MasterList, Select, Sheet, Skeleton, Toggle,
-  useSheet, useStacked, type MasterRow,
-} from "@/ui/kit";
+  useSheet, useStacked, type MasterRow, ExportMenu } from "@/ui/kit";
 import { CleanBoard } from "./CleanBoard";
 import { CleaningQueue } from "./CleaningQueue";
 import { ObjChip } from "./ObjChip";
@@ -59,7 +58,6 @@ export function Work() {
   const chip = (id: ChipId) => { setState({ ...state, chip: id }); setPick(null); if (id === "proposed") setTab("cleaning"); };
   /** One bulk write at a time: a second click while one runs does nothing. */
   const once = async (fn: () => Promise<unknown>) => { if (busy) return; setBusy(true); try { await fn(); } finally { setBusy(false); } };
-  const exp = () => void run(() => exportFixSheet(exportQueryOf(state)), (r) => t("Saved {file}.", { file: r.filename }));
   const imp = (f: File) => once(() => run(() => importFixSheet(f), (r) => t("{n} rows updated, {s} skipped.", { n: r.updated, s: r.skipped.length })));
   const saveView = () => {
     const name = viewName.trim();
@@ -71,7 +69,7 @@ export function Work() {
 
   const toolbar = (
     <div className="mx-links">
-      <Button onClick={exp}>{t("Export workbook")}</Button>
+      <ExportMenu label={t("Export workbook")} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => exportFixSheet(exportQueryOf(state))} />
       <Button disabled={busy} onClick={() => file.current?.click()}>{t("Import workbook")}</Button>
       <input ref={file} type="file" accept=".xlsx" hidden aria-label={t("Import workbook")} onChange={(e) => { const f = e.target.files?.[0]; if (f) void imp(f); e.target.value = ""; }} />
       <Button variant="ghost" onClick={() => sheets.open("whatif", { module: state.module })}>{t("What if")}</Button>

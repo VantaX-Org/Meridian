@@ -16,6 +16,7 @@ export { SeverityPill } from "./SeverityPill";
 export { SheetHost, useSheet, type SheetDef } from "./SheetHost";
 export { Split } from "./Split";
 export { Stepper, type Step } from "./Stepper";
+export { ExportMenu, type ExportFormat } from "./ExportMenu";
 export { ToastHost, useToast, type ToastTone } from "./Toast";
 export { useStacked } from "./useStacked";
 export { AletheiaDock } from "./AletheiaDock";

@@ -4,10 +4,9 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { gapText } from "@/lib/v2/labels";
-import { errorSentence } from "@/lib/api/v2/client";
 import { deleteWave, downloadWaveReport, draftBlockerFixBatch, runWave, signOffWave, updateWave } from "@/lib/api/v2/reports";
 import type { WaveBlocker, WaveObject } from "@/types/api";
-import { ActionMenu, Button, Card, Confirm, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, StatTile, TrendArea, useAletheiaScope, useToast } from "@/ui/kit";
+import { ActionMenu, Button, Card, Confirm, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, StatTile, TrendArea, useAletheiaScope, useToast, ExportMenu } from "@/ui/kit";
 import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, useCockpit } from "./hooks";
 
@@ -26,8 +25,6 @@ export function Wave({ id }: { id: string }) {
   const c = q.data;
   const done = () => invalidateLoad(qc);
   const sign = useMutation({ mutationFn: () => signOffWave(id), onSuccess: () => { toast(t("Wave signed off"), "good"); done(); }, onError: () => toast(t("The wave is not a go yet, so it cannot be signed off"), "bad") });
-  const [busy, setBusy] = useState<string | null>(null);
-  const dl = (fmt: "xlsx" | "pdf") => { setBusy(fmt); downloadWaveReport(id, fmt).catch((e) => toast(errorSentence(e, t("That did not work. Try again.")), "bad")).finally(() => setBusy(null)); };
   const run = useMutation({ mutationFn: () => runWave(id), onSuccess: () => { toast(t("Wave analysis started"), "good"); done(); }, onError: () => toast(t("The wave analysis could not start"), "bad") });
   const patch = useMutation({ mutationFn: () => updateWave(id, { min_readiness: Number(min) }), onSuccess: () => { toast(t("Threshold saved"), "good"); done(); }, onError: () => toast(t("The threshold could not be saved"), "bad") });
   const del = useMutation({ mutationFn: () => deleteWave(id), onSuccess: () => { toast(t("Wave deleted"), "good"); window.location.assign(href("/load/waves")); }, onError: () => toast(t("The wave could not be deleted"), "bad") });
@@ -56,9 +53,8 @@ export function Wave({ id }: { id: string }) {
         actions={<>
           <Button variant="primary" disabled={run.isPending} onClick={() => run.mutate()}>{t("Run wave analysis")}</Button>
           <Button variant="secondary" disabled={sign.isPending || c?.verdict !== "go"} onClick={() => sign.mutate()}>{t("Sign off")}</Button>
+          <ExportMenu label={t("Export report")} formats={[{ id: "xlsx", label: t("Excel workbook") }, { id: "pdf", label: t("PDF report") }]} onExport={(f) => downloadWaveReport(id, f as "xlsx" | "pdf")} />
           <ActionMenu label={t("More actions")} items={[
-            { id: "xlsx", label: t("Download Excel"), disabled: busy !== null, onClick: () => dl("xlsx") },
-            { id: "pdf", label: t("Download PDF"), disabled: busy !== null, onClick: () => dl("pdf") },
             { id: "del", label: t("Delete wave"), onClick: () => setConfirm(true) },
           ]} />
           <AskButton />

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { downloadSubjectExport, dryRunErasure, executeErasure, liftSuppression, searchSubject, subjectError, type SubjectErase, type SubjectSearch } from "@/lib/api/v2/subject-requests";
 import { useSubjectRequests, useSuppressions } from "@/lib/v2/admin-queries";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, Confirm, DataTable, Field, Input, StatTile, useToast, EmptyState } from "@/ui/kit";
+import { Button, Card, Code, Confirm, DataTable, Field, Input, StatTile, useToast, EmptyState, ExportMenu } from "@/ui/kit";
 import { Row, Sec, useAct, when } from "./shared";
 
 export function SubjectRequests() {
@@ -33,7 +33,7 @@ export function SubjectRequests() {
         <Row>
           <Field label={t("Name, email or key")}><Input value={subject} onChange={(e) => { setSubject(e.target.value); setFound(null); setDry(null); }} /></Field>
           <Button variant="primary" disabled={busy || !subject.trim()} onClick={async () => { try { setFound(await searchSubject(subject.trim())); setDry(null); } catch (e) { fail(e); } }}>{t("Search")}</Button>
-          <Button variant="secondary" disabled={busy || !found} onClick={async () => { try { toast(t("Saved {name}.", { name: await downloadSubjectExport(subject.trim()) }), "good"); } catch (e) { fail(e); } }}>{t("Download export")}</Button>
+          <ExportMenu formats={[{ id: "json", label: t("Subject data"), hint: t("Everything held about this person") }]} personalData disabled={busy || !found} onExport={() => downloadSubjectExport(subject.trim())} />
           <Button variant="secondary" disabled={busy || !found} onClick={async () => { try { setDry(await dryRunErasure(subject.trim())); } catch (e) { fail(e); } }}>{t("Preview erasure")}</Button>
         </Row>
         {found && (

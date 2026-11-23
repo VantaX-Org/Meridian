@@ -11,7 +11,7 @@ import { Lead } from "@/ui/screens/object-tabs/Lead";
 import { formatDate } from "@/lib/format";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { int } from "@/lib/v2/score";
-import { Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, FieldChip, KpiStrip, PageHeader, Search, Skeleton, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, FieldChip, KpiStrip, PageHeader, Search, Skeleton, useAletheia, useAletheiaScope, useToast, ExportMenu } from "@/ui/kit";
 import { actionLabel, objectPath, readinessLabel, STEPS, stepLabel } from "./links";
 
 const SHOWN_MAX = 50;
@@ -67,7 +67,7 @@ export function Objects() {
         crumbs={[{ label: t("Objects") }]}
         meta={[pf.data ? t("{n} objects, each at its newest run", { n: pf.data.total }) : null, pinned ? t("Pinned to one run") : null]}
         actions={<>
-          <Button variant="secondary" disabled={!rows.length || rows.length > SHOWN_MAX} title={rows.length > SHOWN_MAX ? t("Narrow the list to {n} objects or fewer.", { n: SHOWN_MAX }) : undefined} onClick={() => void run(() => downloadWorkbooks(rows), t("Workbooks downloaded."))}>{t("Download workbooks")}</Button>
+          <ExportMenu formats={[{ id: "xlsx", label: t("Excel workbooks"), hint: t("One cleaning workbook per object") }]} disabled={!rows.length || rows.length > SHOWN_MAX} count={rows.length} summary={rows.length > SHOWN_MAX ? t("Narrow the list to {n} objects or fewer.", { n: SHOWN_MAX }) : undefined} onExport={() => downloadWorkbooks(rows)} />
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />
@@ -147,7 +147,7 @@ export function Objects() {
         <Card title={t("{object} on {system}", { object: sel.label, system: sysName(sel) })} sub={t("Next step: {step}", { step: actionLabel(sel) })}>
           <div className="mx-links">
             <Button variant="primary" href={href(objectPath(sel, systems))}>{t("Open object")}</Button>
-            <Button variant="secondary" onClick={() => void run(() => downloadWorkbook(sel), t("Workbook downloaded."))}>{t("Download workbook")}</Button>
+            <ExportMenu formats={[{ id: "xlsx", label: t("Excel workbook"), hint: t("The cleaning workbook for this object") }]} onExport={() => downloadWorkbook(sel)} />
             <Button variant="secondary" onClick={() => setAsk(true)}>{t("Pull again")}</Button>
           </div>
         </Card>

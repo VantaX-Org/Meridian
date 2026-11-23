@@ -18,8 +18,7 @@ import { getRunPrediction } from "@/lib/api/v2/step10";
 import { useObjectCycle, useRun, useRunsPage } from "@/lib/api/next/runs";
 import {
   Button, Card, Confirm, DataTable, EmptyState, ErrorState, FieldChip, Field, Input, PageHeader, Select, Skeleton, StatTile, CycleStepper, Tabs, TrendArea,
-  useAletheiaScope, useSheet, useToast, type Column,
-} from "@/ui/kit";
+  useAletheiaScope, useSheet, useToast, type Column, ExportMenu } from "@/ui/kit";
 import { answer } from "./answers";
 import { JobHairline } from "./JobHairline";
 import { Modules, StatusPill } from "./Runs";
@@ -119,9 +118,7 @@ function ProfileTab({ id, systemId, modules }: { id: string; systemId: string; m
     try { await putSemanticType(id, c.column, v as SemanticType | "none"); qc.invalidateQueries({ queryKey: ["next", "run", id, "sem"] }); toast(t("Column type saved"), "good"); }
     catch (e) { toast(baselineRefusalOf(e)?.detail ?? t("That did not work. Nothing was changed."), "bad"); }
   };
-  const save = async (format: "csv" | "xlsx") => {
-    try { toast(t("Saved {name}", { name: await exportVersionProfile(systemId, id, obj, format) }), "good"); } catch { toast(t("The export could not be made."), "bad"); }
-  };
+  const save = (format: string) => exportVersionProfile(systemId, id, obj, format as "csv" | "xlsx");
   const tables = profile.data?.tables ?? [];
   const tcols: Column<(typeof tables)[number]>[] = [
     { key: "table", label: t("Table"), render: (x) => <FieldChip code={x.table} description={moduleText(obj)} /> },
@@ -139,7 +136,7 @@ function ProfileTab({ id, systemId, modules }: { id: string; systemId: string; m
   return (
     <div className="mx-col">
       <Card title={t("Profile")} sub={t("What each table of the object holds.")}
-        action={<span className="rn-row-actions"><Button variant="ghost" onClick={() => save("csv")}>{t("Export as CSV")}</Button><Button variant="ghost" onClick={() => save("xlsx")}>{t("Export as Excel")}</Button></span>}>
+        action={<span className="rn-row-actions"><ExportMenu label={t("Export profile")} formats={[{ id: "xlsx", label: t("Excel workbook") }, { id: "csv", label: t("CSV") }]} onExport={save} /></span>}>
         <Field label={t("Object")}><Select value={obj} onChange={(e) => setObj(e.target.value)} options={modules.map((m) => ({ value: m, label: moduleText(m) }))} /></Field>
         {profile.isLoading ? <Skeleton lines={4} label={t("Loading the profile")} /> : tables.length === 0 ? <EmptyState heading={t("No profile for this object")} body={t("The run did not profile it.")} /> : (
           <DataTable columns={tcols} rows={tables} rowKey={(x) => x.table} label={t("Profiled tables")} height={240} />
@@ -250,7 +247,7 @@ export function Run({ id }: { id: string }) {
                 <Button variant="secondary" onClick={() => act(() => pinBaseline(id, !h.metadata?.baseline), h.metadata?.baseline ? t("Baseline removed") : t("Set as baseline"))}>{h.metadata?.baseline ? t("Remove baseline") : t("Set as baseline")}</Button>
                 <Button variant="secondary" onClick={() => act(() => rerunAgents(id), t("Agents started"))}>{t("Run the agents")}</Button>
                 <Button variant="secondary" onClick={() => { setText(h.label ?? ""); setDlg("rename"); }}>{t("Rename")}</Button>
-                <Button variant="secondary" onClick={() => act(() => downloadReconciliation(id, { top: 10 }), t("Reconciliation saved"))}>{t("Download reconciliation")}</Button>
+                <ExportMenu label={t("Download reconciliation")} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => downloadReconciliation(id, { top: 10 })} />
                 <Button variant="secondary" onClick={() => sheet.open("extract-target", { run: id })}>{t("Extract target files")}</Button>
                 <Button variant="secondary" onClick={() => setDlg("archive")}>{t("Archive older runs")}</Button>
                 <Button variant="secondary" onClick={() => setDlg("restore")}>{t("Restore archived runs")}</Button>

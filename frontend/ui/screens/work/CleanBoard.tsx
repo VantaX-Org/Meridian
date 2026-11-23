@@ -18,7 +18,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { systemForModule } from "@/lib/v2/score";
 import { useWorkGroups } from "@/lib/v2/work-queries";
-import { Button, Card, Chip, Confirm, EmptyState, ErrorState, FieldChip, PageHeader, ScoreRuler, Skeleton, Stepper, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, Card, Chip, Confirm, EmptyState, ErrorState, FieldChip, PageHeader, ScoreRuler, Skeleton, Stepper, useAletheia, useAletheiaScope, useToast, ExportMenu } from "@/ui/kit";
 import { compactCount, score } from "../object/format";
 import { day, fieldText, useDo } from "./shared";
 
@@ -115,7 +115,8 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
     if (!file || !head || !chk) return;
     void run(() => uploadCleaned(file, head.id, mod ?? undefined, true, rejected > 0), (r) => t("{n} rows applied. Rescoring.", { n: r.applied })).then((r) => { if (r) setApplied(true); });
   };
-  const download = () => { if (head && mod) void run(() => downloadCleaningWorkbook(head.id, mod), () => t("Workbook saved.")); };
+  const download = () => { if (!head || !mod) throw new Error(t("Pick a run and an object first")); return downloadCleaningWorkbook(head.id, mod); };
+  const dlMenu = (label: string) => <ExportMenu label={label} disabled={!head || !mod} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={download} />;
   /** Accepts every proposed rule, one at a time. A failed rule is counted, not hidden, and the rest still run. */
   const approveAll = () => {
     if (approving) return;
@@ -173,7 +174,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
         context={head ? t("Run {n}, pulled {date}", { n: runNo ?? "", date: day(head.run_at) }) : ""}
         actions={<>
           {chk || !head ? <Button variant="primary" disabled={!canApply} onClick={apply}>{applyLabel}</Button>
-            : <Button variant="primary" onClick={download}>{t("Download workbook")}</Button>}
+            : dlMenu(t("Download workbook"))}
           <Button href={withFixture("/approvals", fx)}>{t("Approvals")}</Button>
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
@@ -244,7 +245,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
             ) : null}
             <div className="mx-links">
               <Button variant="secondary" disabled={!canApply} onClick={apply}>{applyLabel}</Button>
-              <Button onClick={download}>{t("Download {n} to fix", { n: compactCount(rejected) })}</Button>
+              {dlMenu(t("Download {n} to fix", { n: compactCount(rejected) }))}
             </div>
           </>
         )}
@@ -302,7 +303,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
           <div className="mx-clean-sheet"><span className="mx-code">{t("Sheet {n}", { n: 1 })}</span>{sub(t("Start here"), t("what to change, in plain steps, with one worked example"))}</div>
           <div className="mx-clean-sheet"><span className="mx-code">{t("Sheet {n}", { n: 2 })}</span>{sub(t("Fix list"), t("one row per open finding, the rule and its description, the value now, a cell to type the fix"))}</div>
           <div className="mx-clean-sheet"><span className="mx-code">{t("Sheet {n}", { n: sheetCount })}</span>{sub(t("Allowed values"), t("every code with its description, as a dropdown on the fix cell"))}</div>
-          <div className="mx-links"><Button onClick={download} disabled={!head}>{t("Download workbook again")}</Button></div>
+          <div className="mx-links">{dlMenu(t("Download workbook again"))}</div>
         </Card>
       </div>
       <Confirm open={askAll} title={t("Approve all {n} proposed fixes?", { n: compactCount(proposedTotal) })} confirmLabel={t("Approve all")} cancelLabel={t("Cancel")} onConfirm={() => { setAskAll(false); approveAll(); }} onCancel={() => setAskAll(false)}>

@@ -25,20 +25,20 @@ describe("Wave", () => {
     expect(document.body.textContent ?? "").not.toContain(String.fromCharCode(0xb7));
   });
 
-  it("shows a toast when the report download fails", async () => {
+  it("shows the reason with Retry when the report export fails", async () => {
     renderScreen(<ToastHost><Wave id="w-1" /></ToastHost>);
-    fireEvent.click(await screen.findByRole("button", { name: "More actions" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Download Excel" }));
-    await waitFor(() => expect(document.body.textContent ?? "").toContain("boom"));
+    fireEvent.click(await screen.findByRole("button", { name: "Export report" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("boom");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(downloadWaveReport).toHaveBeenCalledWith("w-1", "xlsx");
   });
 
-  it("disables both download buttons while a report is being made", async () => {
+  it("disables the export while a report is being made", async () => {
     vi.mocked(downloadWaveReport).mockImplementationOnce(() => new Promise(() => undefined));
     renderScreen(<ToastHost><Wave id="w-1" /></ToastHost>);
-    fireEvent.click(await screen.findByRole("button", { name: "More actions" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Download Excel" }));
-    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
-    await waitFor(() => expect((screen.getByRole("menuitem", { name: "Download PDF" }) as HTMLButtonElement).disabled).toBe(true));
-    expect((screen.getByRole("menuitem", { name: "Download Excel" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(await screen.findByRole("button", { name: "Export report" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    await waitFor(() => expect((screen.getByRole("button", { name: "Export" }) as HTMLButtonElement).disabled).toBe(true));
   });
 });

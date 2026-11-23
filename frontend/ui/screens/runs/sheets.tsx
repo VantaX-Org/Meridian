@@ -12,7 +12,7 @@ import { startRun, useRunsPage } from "@/lib/api/next/runs";
 import { FIXTURE_MODULES } from "@/lib/api/next/runs-fixture";
 import { checkCleaned, checksOf, needsParent, uploadCleaned, uploadSentence, type UploadChecks } from "@/lib/api/v2/roundtrip";
 import { getRunExtractTarget, openExtractTargetFile, refillExtractTarget } from "@/lib/api/v2/extract-target";
-import { Button, Chip, DataTable, EmptyState, Field, FileDrop, Select, Skeleton, Toggle, useSheet, useToast, type Column, type SheetDef } from "@/ui/kit";
+import { Button, Chip, DataTable, EmptyState, Field, FileDrop, Select, Skeleton, Toggle, useSheet, useToast, type Column, type SheetDef, ExportMenu } from "@/ui/kit";
 import { runPath, runTitle } from "./util";
 import "./runs.css";
 
@@ -136,7 +136,7 @@ function ExtractTarget({ arg }: { arg: unknown }) {
     { key: "e", label: t("Problem"), render: (r) => r.error ?? "" },
     { key: "a", label: t("Actions"), render: (r) => (
       <span className="rn-row-actions">
-        {r.status === "filled" ? <Button variant="ghost" onClick={async () => { try { toast(t("Saved {name}", { name: await openExtractTargetFile(id, r.module) }), "good"); } catch { toast(t("The file could not be opened."), "bad"); } }}>{t("Open file")}</Button> : null}
+        {r.status === "filled" ? <ExportMenu label={t("Open file")} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => openExtractTargetFile(id, r.module)} /> : null}
         <Button variant="ghost" onClick={async () => { try { await refillExtractTarget(id, r.module); qc.invalidateQueries({ queryKey: ["next", "run", id, "extract-target"] }); toast(t("Filled again"), "good"); } catch { toast(t("It could not be filled again."), "bad"); } }}>{t("Fill again")}</Button>
       </span>
     ) },

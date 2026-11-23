@@ -6,7 +6,7 @@ import { getSystemsExtended } from "@/lib/api/v2/runs";
 import { apiDetail, downloadCleansingLog, downloadErrors, moveKeys, RUN_DONE, runAction, startRun, usePlan, useRun, type RunCleansing, type Unfixable } from "@/lib/api/next/move";
 import { labelText } from "@/lib/v2/labels";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Confirm, DataTable, FieldChip, StatTile, type Column } from "@/ui/kit";
+import { Button, Card, Confirm, DataTable, FieldChip, StatTile, type Column, ExportMenu } from "@/ui/kit";
 import { WaveProgress } from "./charts";
 import { displayKey } from "@/lib/v2/work";
 
@@ -68,10 +68,7 @@ export function MoveLoad({ planId, runId, onRun, onBack, onNext }: { planId: str
   const realOk = !!r && !r.dry_run && done;
   const stopping = r?.status === "stopping";
   const name = systems.find((x) => x.id === plan?.target)?.name ?? plan?.target ?? "";
-  const [dlErr, setDlErr] = useState<unknown>(null);
-  const [dlBusy, setDlBusy] = useState(false);
-  const dl = (p: Promise<unknown>) => { setDlErr(null); setDlBusy(true); p.catch(setDlErr).finally(() => setDlBusy(false)); };
-  const err = start.error ?? act.error ?? dlErr;
+  const err = start.error ?? act.error;
 
   return (
     <div className="mx-col">
@@ -93,8 +90,8 @@ export function MoveLoad({ planId, runId, onRun, onBack, onNext }: { planId: str
             {live ? <Button disabled={stopping || act.isPending} onClick={() => act.mutate("stop")}>{stopping ? t("Stopping after this batch") : t("Stop")}</Button> : null}
             {done && r?.status !== "completed" ? <Button disabled={act.isPending} onClick={() => act.mutate("resume")}>{t("Resume")}</Button> : null}
             {done && failed > 0 ? <Button disabled={act.isPending} onClick={() => act.mutate("retry-failed")}>{t("Retry failed")}</Button> : null}
-            {runId && plan?.mode === "cleansed" ? <Button disabled={dlBusy} onClick={() => dl(downloadCleansingLog(runId))}>{t("Download cleansing log (CSV)")}</Button> : null}
-            {failed > 0 && runId ? <Button disabled={dlBusy} onClick={() => dl(downloadErrors(runId))}>{t("Download errors (CSV)")}</Button> : null}
+            {runId && plan?.mode === "cleansed" ? <ExportMenu label={t("Download cleansing log")} formats={[{ id: "csv", label: t("CSV") }]} onExport={() => downloadCleansingLog(runId)} /> : null}
+            {failed > 0 && runId ? <ExportMenu label={t("Download errors")} formats={[{ id: "csv", label: t("CSV") }]} onExport={() => downloadErrors(runId)} /> : null}
             {realOk ? <Button variant="primary" onClick={onNext}>{t("Reconcile")}</Button> : null}
           </div>
           {err ? <p className="mx-field-e" role="alert">{apiDetail(err) ?? t("That did not work. Nothing was changed.")}</p> : null}

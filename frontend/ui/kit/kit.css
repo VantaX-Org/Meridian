@@ -490,3 +490,6 @@
 .mx-root .mx-phone-only, .mx-root .mx-narrow-only { display: none; }
 @media (max-width: 48rem) { .mx-root .mx-phone-only { display: block; } }
 @media (max-width: 64rem) { .mx-root .mx-narrow-only { display: block; } }
+.mx-root .mx-export { min-inline-size: 18rem; padding: var(--mx-s3); }
+.mx-root .mx-export-body, .mx-root .mx-export-fmt { display: grid; gap: var(--mx-s2); border: 0; margin: 0; padding: 0; }
+.mx-root .mx-export-opt { display: flex; align-items: flex-start; gap: var(--mx-s2); cursor: pointer; font-size: var(--mx-fs-body); }

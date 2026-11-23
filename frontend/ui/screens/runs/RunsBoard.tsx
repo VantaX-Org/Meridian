@@ -14,7 +14,7 @@ import { moduleText } from "@/lib/v2/labels";
 import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { systemForModule } from "@/lib/v2/score";
-import { Button, Card, Chip, EmptyState, ErrorState, Skeleton, StatTile, useAletheiaScope, useSheet, useToast } from "@/ui/kit";
+import { Button, Card, Chip, EmptyState, ErrorState, Skeleton, StatTile, useAletheiaScope, useSheet, ExportMenu } from "@/ui/kit";
 import { compactCount, dqsOf, score, signed } from "../object/format";
 import { answer } from "./answers";
 import { runPath } from "./util";
@@ -38,7 +38,6 @@ export function RunsBoard() {
   useInterfaceLang();
   const fx = useFixture();
   const sheet = useSheet();
-  const toast = useToast();
   const [chosen, setChosen] = useState<string | null>(null);
   const [pickA, setPickA] = useState<string | null>(null);
   const [pickB, setPickB] = useState<string | null>(null);
@@ -85,10 +84,6 @@ export function RunsBoard() {
   if (landscape.isError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void landscape.refetch()} />;
   if (!objects.length) return null;
 
-  const exportOne = async () => {
-    try { toast(t("Saved {name}", { name: await exportRuns("xlsx", { system_id: system?.id }) }), "good"); }
-    catch { toast(t("The export did not work. Try again."), "bad"); }
-  };
   const href = pair ? withFixture(`${runPath(pair[0].id)}/vs/${pair[1].id}`, fx) : null;
   const records = tl?.records_checked ?? receipt?.records_checked ?? null;
   const cover = receipt?.coverage ?? null;
@@ -100,7 +95,7 @@ export function RunsBoard() {
         {objects.map((o) => <Chip key={o.module} selected={o.module === mod} onClick={() => { setChosen(o.module); setPickA(null); setPickB(null); }}>{moduleText(o.module)}</Chip>)}
       </div>
       <Card title={t("All runs")} sub={t("{n, plural, one {# run} other {# runs}}", { n: heads.length })}
-        action={<span className="rn-row-actions"><Button onClick={() => sheet.open("cycle")}>{t("Run now")}</Button>{head && <Button variant="secondary" onClick={() => void exportOne()}>{t("Export run {n}", { n: head.run_number ?? "" })}</Button>}</span>}>
+        action={<span className="rn-row-actions"><Button onClick={() => sheet.open("cycle")}>{t("Run now")}</Button>{head && <ExportMenu label={t("Export run {n}", { n: head.run_number ?? "" })} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => exportRuns("xlsx", { system_id: system?.id })} />}</span>}>
         {runs.isLoading ? <Skeleton lines={4} label={t("Loading the runs")} /> : runs.isError ? <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void runs.refetch()} /> : rows.length === 0 ? <EmptyState heading={t("No runs yet")} body={t("Start a run to see this object on the ruler.")} /> : (
           <table className="rn-board-table">
             <thead><tr><th scope="col">{t("Run")}</th><th scope="col">{t("Finished")}</th><th scope="col">{t("On the ruler, 55 to 80")}</th><th scope="col" className="rn-num">{t("Shown")}</th><th scope="col" className="rn-num">{t("Measured")}</th><th scope="col" className="rn-num">{t("Change")}</th><th scope="col">{t("Compare")}</th></tr></thead>
