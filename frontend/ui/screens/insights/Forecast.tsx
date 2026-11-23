@@ -8,6 +8,7 @@ import { AletheiaMark, BandChart, BarList, Button, Card, EmptyState, EvidenceNot
 import { streamAnswer } from "@/ui/kit/aletheia/stream";
 import { useState } from "react";
 import { labelText } from "@/lib/v2/labels";
+import { PlanCard } from "./PlanCards";
 import { Gate, InsightsNav, Mod, Tbl, day, n0, n1, sevLabel, sevOf, useQ } from "./shared";
 
 const trendText = (s: string) => (s === "improving" ? t("Improving") : s === "declining" ? t("Declining") : s === "critical" ? t("Critical") : t("Stable"));
@@ -185,6 +186,7 @@ export function Forecast() {
       </Card>
       <ForesightCard q={fore} />
       <ReasonCard q={reason} />
+      <PlanCard />
       <Card title={t("Early warnings")} sub={t("Signals that an object may soon cross its threshold")}>
         <Gate q={pred} empty={warnings.length === 0} emptyHeading={t("No early warnings")} emptyBody={pred.data?.reason ?? t("No object is heading toward its threshold.")}>
           <Tbl label={t("Early warnings")} rows={warnings} rowKey={(r) => `${r.module_id}/${r.signal}`} cols={[

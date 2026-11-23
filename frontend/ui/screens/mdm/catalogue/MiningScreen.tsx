@@ -7,6 +7,7 @@ import { getAnomalies, getDuplicates, getMiningOverview, getPatterns, getRelatio
 import { getVersionsPage } from "@/lib/api/v2/runs";
 import { t } from "@/lib/v2/i18n";
 import { AletheiaMark, Button, Code, CodeView, DataTable, Sheet, StatTile, Tabs, useToast } from "@/ui/kit";
+import { MiningByObject, MiningSteps } from "./MiningRun";
 import { Async, Empty, Head, num, Sev, useRead, useScreenScope, when } from "./shared";
 import { displayKey } from "@/lib/v2/work";
 
@@ -116,7 +117,11 @@ export function MiningScreen() {
           { id: "anomalies", label: t("Anomalies"), badge: more(a.length, LIMITS.anomalies) },
           { id: "relationships", label: t("Relationships"), badge: more(r.length, LIMITS.relationships) },
           { id: "patterns", label: t("Patterns"), badge: num(p.length) },
+          { id: "by-object", label: t("By object") },
+          { id: "steps", label: t("Process steps") },
         ]} />
+      {tab === "by-object" ? <MiningByObject /> : null}
+      {tab === "steps" ? <MiningSteps /> : null}
       {tab === "duplicates" ? <Async q={dup}>{() => d.length ? (
         <DataTable<DuplicatePair> label={t("Duplicates")} rows={d} rowKey={(x) => x.id} height={420}
           columns={[
