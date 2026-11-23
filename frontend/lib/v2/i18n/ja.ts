@@ -15935,4 +15935,11 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Drop the fix sheet you filled in.": "入力済みの修正シートをドロップしてください。",
   "Load journey": "ロードの流れ",
   "{n} records blocked": "{n} 件のレコードがブロック",
+  "Create in SAP": "SAPで作成",
+  "Master data journey": "マスターデータの流れ",
+  "Data request": "データ依頼",
+  "Rule change": "ルールの変更",
+  "Drop a YAML file or an Excel workbook of rules.": "ルールのYAMLファイルまたはExcelブックをドロップします。",
+  "Subject request": "本人からの請求",
+  "Admin setup": "管理の設定",
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { activateContract, createContract, getContractDetail, listContracts, reviseContract, type Contract } from "@/lib/api/v2/roles";
@@ -125,6 +126,7 @@ function ContractDetailPane({ id }: { id: string }) {
 }
 
 export function Contracts() {
+  const crumbs = useCrumbs();
   const q = useQ(["contracts"], () => listContracts());
   const chat = useAletheia();
   const [sel, setSel] = useState<string | null>(null);
@@ -167,7 +169,7 @@ export function Contracts() {
   const right = adding === "plain" ? <NewContract onDone={() => setAdding("")} /> : adding === "object" ? <ObjectContractFlow onDone={() => setAdding("")} /> : sel ? <ContractDetailPane id={sel} /> : <EmptyState heading={t("Select a contract")} body={t("Its terms, breaches and notes appear here.")} />;
   return (
     <>
-      <PageHeader title={t("Data contracts")} context={t("What producers promise and consumers rely on")} actions={<>
+      <PageHeader crumbs={crumbs("people",t("Data contracts"))} title={t("Data contracts")} context={t("What producers promise and consumers rely on")} actions={<>
         <Button variant="secondary" onClick={() => setAdding("object")}>{t("New contract for an object")}</Button>
         <Button variant="primary" onClick={() => setAdding("plain")}>{t("New contract")}</Button>
         <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>

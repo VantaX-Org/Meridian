@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,6 +28,7 @@ type Step = (typeof STEPS)[number];
 
 /** The connect wizard (J10). The password lives in component state only until the system is registered, then it is dropped. */
 export function SystemNew() {
+  const crumbs = useCrumbs();
   const router = useRouter();
   const qc = useQueryClient();
   const toast = useToast();
@@ -92,7 +94,7 @@ export function SystemNew() {
 
   if (!allowed) return (
     <div className="mx-col">
-      <PageHeader title={t("Connect a system")} />
+      <PageHeader crumbs={crumbs("systems", t("Connect a system"))} title={t("Connect a system")} />
       <EmptyState heading={t("You cannot connect systems")} body={t("Ask a programme lead for the manage systems permission.")} action={<Button variant="secondary" href="/s">{t("All systems")}</Button>} />
     </div>
   );
@@ -101,7 +103,7 @@ export function SystemNew() {
 
   return (
     <div className="mx-col">
-      <PageHeader title={t("Connect a system")} actions={<Button variant="secondary" href="/s">{t("All systems")}</Button>} stepper={<Stepper steps={labelSteps} current={STEPS.indexOf(step)} label={t("Connection steps")} />} />
+      <PageHeader crumbs={crumbs("systems", t("Connect a system"))} title={t("Connect a system")} actions={<Button variant="secondary" href="/s">{t("All systems")}</Button>} stepper={<Stepper steps={labelSteps} current={STEPS.indexOf(step)} label={t("Connection steps")} />} />
       {error ? <ErrorState heading={t("That did not work")} body={error} /> : null}
 
       {step === "connect" ? (

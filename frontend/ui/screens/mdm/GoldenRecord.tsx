@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs, Flow, MDM_STEPS } from "@/ui/screens/flow";
 import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { promoteGolden, createWritebackRequest, decideWriteback, submitWritebackRequest } from "@/lib/api/v2/golden-writeback";
@@ -15,6 +16,7 @@ type Tab = "fields" | "sources" | "history" | "writeback" | "events";
 type Pending = null | { kind: "promote" | "undo" | "split" | "approve" | "reject" | "revert"; arg?: string };
 
 export function GoldenRecord({ id }: { id: string }) {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const href = useHref();
   const chat = useAletheia();
@@ -46,7 +48,7 @@ export function GoldenRecord({ id }: { id: string }) {
   });
 
   const header = (extra?: ReactNode) => (
-    <PageHeader
+    <PageHeader crumbs={crumbs("mdm",r ? r.sap_object_key : t("Golden record"))} stepper={<Flow label={t("Master data journey")} at={3} steps={MDM_STEPS()} />}
       title={r ? r.sap_object_key : t("Golden record")}
       context={r ? statusLabel(r.status) : undefined}
       actions={<>

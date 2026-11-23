@@ -6,10 +6,26 @@ gradients, blur, ad hoc shadows and motion literals elsewhere, and `scripts/lint
 
 ## Direction
 
-Design C, "Split analyst": a master list on the left, the detail of what is selected on the right, one place to act.
-The shell is a top bar with five sections (Home, Objects, Clean, Load, Monitor), a More menu and the palette for every other destination (Insights, Runs, Rules, MDM, Systems, People, Requests, Approvals, Reports, Admin), and an Aletheia dock at the foot of every screen that rises into the one chat sheet. On a phone the sections become a bottom tab bar, the Aletheia chat in a panel beside the
-content, and sheets for anything that is a task rather than a place. Light is the default; dark applies when
-`html[data-theme="dark"]` or when the system is dark and the person chose nothing.
+"The line": one score ruler with the 70 and 85 gates drawn on it, and the same few verbs on every screen. The shell is a
+top bar with five sections (Home, Objects, Clean, Load, Monitor), a More menu and the palette for every other destination
+(Insights, Runs, Rules, MDM, Systems, People, Requests, Approvals, Reports, Admin), and an Aletheia dock at the foot of
+every screen that rises into the one chat sheet. On a phone the sections become a bottom tab bar. Light is the default;
+dark applies when `html[data-theme="dark"]` or when the system is dark and the person chose nothing.
+
+## Orientation, process and data movement
+
+- **PageHeader** carries crumbs, title, context, a status badge, meta, actions and, where the page sits in a sequence, a
+  stepper. Pages with no sequence (Home, Objects list, Monitor, Insights, Reports, Status, People) get no stepper.
+- **Crumbs** come from `useCrumbs()` in `ui/screens/flow.tsx`: place, then page. The place label is a link once a page is
+  named. Shared frames (admin `Frame` and `Sec`, MDM catalogue `Head`) set them once for every page they hold.
+- **Steppers** use the kit `Stepper`; `Flow` and `Cycle` in `ui/screens/flow.tsx` fill it. Flows: the clean cycle (Pull,
+  Clean, Upload, Score, Compare), the load journey, the master data journey, rule change, data request (`requestFlow`
+  maps a real request status to a step), subject request and admin setup. A step state comes from real data, never
+  from a guess; a blocked or failed step shows its reason as the hint.
+- **Export** is `ExportMenu` calling a real API function. **Import** is `ImportSheet` (or `ImportDialog` in a sheet):
+  choose, validate, review, apply. Nothing is written before the confirm; rejected rows are listed and counted. An
+  endpoint with no check leaves `validate` out, and the file is checked when applied.
+- **Saved views** on a `DataTable` with an `id` live in the browser only.
 
 ## Where things live
 

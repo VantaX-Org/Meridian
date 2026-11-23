@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { getStewardMetrics } from "@/lib/api/v2/stewardship";
 import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
@@ -11,6 +12,7 @@ const pct = (v: number | null | undefined) => (v === null || v === undefined ? t
 const word = labelText;
 
 export function Stewardship() {
+  const crumbs = useCrumbs();
   const q = useQ(["stewardship-metrics"], () => getStewardMetrics());
   const chat = useAletheia();
   const d = q.data;
@@ -26,7 +28,7 @@ export function Stewardship() {
   });
   return (
     <>
-      <PageHeader title={t("Stewardship")} context={t("Backlog, SLA and who is carrying it")} actions={<Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>} />
+      <PageHeader crumbs={crumbs("people",t("Stewardship"))} title={t("Stewardship")} context={t("Backlog, SLA and who is carrying it")} actions={<Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>} />
       <Gate q={q} label={t("Loading stewardship")}>
         {(m) => (
           <div className="mx-col">

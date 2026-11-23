@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs, Flow, MDM_STEPS } from "@/ui/screens/flow";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -23,6 +24,7 @@ let keySeq = 0;
 const nextKey = () => ++keySeq;
 
 export function Survivorship() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const href = useHref();
   const fx = useFixture();
@@ -78,7 +80,7 @@ export function Survivorship() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader crumbs={crumbs("mdm",t("Survivorship"))} stepper={<Flow label={t("Master data journey")} at={2} steps={MDM_STEPS()} />}
         title={t("Survivorship")}
         context={t("{n} rules", { n: list.length })}
         actions={<>

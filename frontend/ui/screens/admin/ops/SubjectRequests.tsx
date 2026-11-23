@@ -5,6 +5,7 @@ import { downloadSubjectExport, dryRunErasure, executeErasure, liftSuppression, 
 import { useSubjectRequests, useSuppressions } from "@/lib/v2/admin-queries";
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Code, Confirm, DataTable, Field, Input, StatTile, useToast, EmptyState, ExportMenu } from "@/ui/kit";
+import { Flow } from "@/ui/screens/flow";
 import { Row, Sec, useAct, when } from "./shared";
 
 export function SubjectRequests() {
@@ -26,7 +27,7 @@ export function SubjectRequests() {
   const fail = (e: unknown) => toast(subjectError(e, t("The request failed.")), "bad");
 
   return (
-    <Sec title={t("Data subject requests")} scope="subject-requests" q={[ledger, supp]}
+    <Sec title={t("Data subject requests")} stepper={<Flow label={t("Subject request")} at={dry ? 2 : found ? 1 : 0} steps={[t("Find a person"), t("Preview erasure"), t("Erase")]} />} scope="subject-requests" q={[ledger, supp]}
       context={t("{n} requests on record", { n: rows.length })}
       facts={[t("{n} requests on record.", { n: rows.length }), t("{n} erased keys are suppressed.", { n: supp.data?.active_keys ?? 0 })]}>
       <Card title={t("Find a person")} sub={t("The subject is sent in the request body and is never kept in a URL.")}>

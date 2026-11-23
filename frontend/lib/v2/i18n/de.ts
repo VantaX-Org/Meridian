@@ -15935,4 +15935,11 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Drop the fix sheet you filled in.": "Ziehen Sie das ausgefüllte Korrekturblatt hierher.",
   "Load journey": "Ladereise",
   "{n} records blocked": "{n} Datensätze gesperrt",
+  "Create in SAP": "In SAP anlegen",
+  "Master data journey": "Stammdaten-Ablauf",
+  "Data request": "Datenanfrage",
+  "Rule change": "Regeländerung",
+  "Drop a YAML file or an Excel workbook of rules.": "Legen Sie eine YAML-Datei oder eine Excel-Arbeitsmappe mit Regeln ab.",
+  "Subject request": "Betroffenenanfrage",
+  "Admin setup": "Einrichtung",
 };

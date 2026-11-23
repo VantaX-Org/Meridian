@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { useQuery } from "@tanstack/react-query";
 import { getMdmHealth } from "@/lib/api/v2/mdm-health";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -24,6 +25,7 @@ const LINKS: { path: string; title: () => string; body: () => string; own: boole
 ];
 
 export function Mdm() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const fx = useFixture();
   const href = useHref();
@@ -47,7 +49,7 @@ export function Mdm() {
   });
 
   const header = (
-    <PageHeader
+    <PageHeader crumbs={crumbs("mdm")}
       title={t("Master data")}
       context={snap ? t("Snapshot of {date}", { date: day(snap.snapshot_date) }) : undefined}
       actions={<Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>}

@@ -1,11 +1,13 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { getImpactPortfolio, getValue } from "@/lib/api/v2/analytics";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { BarList, Button, Card, PageHeader, StatTile, TrendArea, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { Gate, InsightsNav, Tbl, money, n0, n1, useQ } from "./shared";
 
 export function Value() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const chat = useAletheia();
   const val = useQ("value", getValue);
@@ -21,7 +23,7 @@ export function Value() {
   const rows = port.data?.impacts ?? [];
   return (
     <div className="b8-page">
-      <PageHeader title={t("Value")} context={t("What the programme returns against what it costs, and how each figure is worked out.")}
+      <PageHeader crumbs={crumbs("insights",t("Value"))} title={t("Value")} context={t("What the programme returns against what it costs, and how each figure is worked out.")}
         actions={<><InsightsNav here="value" /><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
       <Gate q={val} empty={!v || !v.roi} emptyHeading={t("No value measured yet")} emptyBody={t("Value appears once findings are fixed and costed.")}>
         {v ? (

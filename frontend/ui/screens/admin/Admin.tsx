@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { AdminBoard } from "./AdminBoard";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
@@ -9,6 +10,7 @@ import { SECTIONS, isSection } from "./sections";
 
 /** The sections this viewer may open, grouped in the order they are registered. */
 export function Admin() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const fx = useFixture();
   const can = useCan();
@@ -19,7 +21,7 @@ export function Admin() {
   ], [t("What can I administer?")]);
   return (
     <div className="mx-col">
-      <PageHeader title={t("Administration")} context={t("People, tenant settings and integrations.")} />
+      <PageHeader crumbs={crumbs("admin")} title={t("Administration")} context={t("People, tenant settings and integrations.")} />
       {open.length === 0 ? (
         <EmptyState heading={t("You have no administration access")} body={t("Ask a tenant administrator for access to the sections you need.")} />
       ) : groups.map((g) => (

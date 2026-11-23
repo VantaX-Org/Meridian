@@ -5,8 +5,9 @@ import { t } from "@/lib/v2/i18n";
 import { CycleStepper, Stepper, type Crumb } from "@/ui/kit";
 import { CYCLE_STEPS } from "@/ui/kit";
 
-type Place = "work" | "load" | "runs" | "monitor" | "rules" | "insights" | "mdm" | "admin" | "people" | "requests" | "reports" | "systems";
+export type Place = "status" | "work" | "load" | "runs" | "monitor" | "rules" | "insights" | "mdm" | "admin" | "people" | "requests" | "reports" | "systems";
 const PLACE: Record<Place, { label: () => string; href: string }> = {
+  status: { label: () => t("Status"), href: "/status" },
   work: { label: () => t("Clean"), href: "/work" },
   load: { label: () => t("Load"), href: "/load" },
   runs: { label: () => t("Runs"), href: "/runs" },
@@ -42,3 +43,22 @@ export function Cycle({ at }: { at: (typeof CYCLE_STEPS)[number] }) {
 
 /** The load journey; each screen of it marks its own place. */
 export const LOAD_STEPS = () => [t("Overview"), t("Load order"), t("Field maps"), t("S/4 readiness"), t("Go-live")];
+
+/** The master data journey; each screen of it marks its own place. */
+export const MDM_STEPS = () => [t("Match review"), t("Cluster"), t("Survivorship"), t("Golden record")];
+
+/** The rule change journey from reading a rule to promoting it. */
+export const RULE_STEPS = () => [t("Rule"), t("Fix"), t("Try a change"), t("Promotion")];
+
+/** The data request journey. */
+export const REQUEST_STEPS = () => [t("Fill in"), t("Check"), t("Submit"), t("Approve"), t("Create in SAP")];
+
+/** Where a request stands, from its status. A rejected, failed or cancelled request marks the step it stopped at. */
+export function requestFlow(status: string, reason: string): { at: number; states: Record<number, "blocked" | "error" | "done">; hints: Record<number, string> } {
+  const at: Record<string, number> = { draft: 1, submitted: 2, in_approval: 3, approved: 4, creating: 4, created: 4, rejected: 3, failed: 4, cancelled: 2 };
+  const i = at[status] ?? 0;
+  if (status === "created") return { at: i, states: { 4: "done" }, hints: {} };
+  if (status === "rejected" || status === "failed") return { at: i, states: { [i]: "error" }, hints: { [i]: reason } };
+  if (status === "cancelled") return { at: i, states: { [i]: "blocked" }, hints: { [i]: reason } };
+  return { at: i, states: {}, hints: {} };
+}

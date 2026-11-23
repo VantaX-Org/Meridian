@@ -9,6 +9,11 @@ import { Templates } from "./load/Templates";
 import { Approvals } from "./work/Approvals";
 import { Work } from "./work/Work";
 import { MonitorBoard } from "./insights/MonitorBoard";
+import { Rules } from "./rules/Rules";
+import { DryRun } from "./rules/DryRun";
+import { Match } from "./mdm/Match";
+import { AdminBoard } from "./admin/AdminBoard";
+import { SubjectRequests } from "./admin/ops/SubjectRequests";
 
 vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
@@ -25,6 +30,9 @@ describe("breadcrumbs and steppers", () => {
     ["Plan", () => <Plan />, "Load journey"],
     ["Approvals", () => <Approvals />, "Approval"],
     ["Templates", () => <Templates />, "Workbook fill"],
+    ["DryRun", () => <DryRun />, "Rule change"],
+    ["Match", () => <Match />, "Master data journey"],
+    ["SubjectRequests", () => <SubjectRequests />, "Subject request"],
   ])("%s shows crumbs and its stepper", async (_n, el, stepper) => {
     wrap(el());
     expect(await screen.findByRole("navigation", { name: /breadcrumb/i }, { timeout: 5000 })).toBeTruthy();
@@ -49,5 +57,21 @@ describe("Monitor rows", () => {
     const rows = await screen.findAllByTestId("monitor-break", undefined, { timeout: 5000 });
     await waitFor(() => expect(rows[0].textContent).toMatch(/Last breach .*(GMT|UTC|[A-Z]{2,5})/));
     expect(rows[0].querySelector(".mx-badge")).toBeTruthy();
+  });
+});
+
+describe("Admin setup", () => {
+  it("shows the setup stepper on the board", async () => {
+    wrap(<AdminBoard />);
+    expect((await screen.findAllByLabelText("Admin setup", undefined, { timeout: 5000 })).length).toBeGreaterThan(0);
+  });
+});
+
+describe("Rules import", () => {
+  it("opens the shared import sheet instead of a bare file input", async () => {
+    window.history.replaceState(null, "", "/rules?fixture=1");
+    wrap(<Rules />);
+    fireEvent.click(await screen.findByRole("button", { name: "Import rules" }, { timeout: 5000 }));
+    expect(await screen.findByText("Drop a YAML file or an Excel workbook of rules.")).toBeTruthy();
   });
 });

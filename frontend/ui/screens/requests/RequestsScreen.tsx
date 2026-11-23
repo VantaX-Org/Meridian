@@ -27,7 +27,7 @@ export function RequestsScreen() {
   const views: { id: RequestView; label: string }[] = [{ id: "mine", label: t("My requests") }, { id: "to_approve", label: t("To approve") }, { id: "all", label: t("All requests") }];
   return (
     <>
-      <Head title={t("Change requests")} actions={<>
+      <Head place="requests" title={t("Change requests")} actions={<>
         <Button variant="secondary" href={withFixture("/requests/analytics", fx)}>{t("Process analytics")}</Button>
         <Button variant="secondary" href={withFixture("/requests/workflows", fx)}>{t("Workflows")}</Button>
         <Button variant="primary" href={withFixture("/requests/new", fx)}>{t("New request")}</Button>

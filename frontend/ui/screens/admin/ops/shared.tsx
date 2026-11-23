@@ -5,6 +5,7 @@ import { useCallback, useState, type ReactNode } from "react";
 import { formatDate } from "@/lib/format";
 import { refreshAdmin } from "@/lib/v2/admin-queries";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
+import { useCrumbs } from "@/ui/screens/flow";
 import { useAdminBack } from "../common";
 import { ErrorState, PageHeader, Skeleton, useAletheiaScope, useToast } from "@/ui/kit";
 
@@ -21,11 +22,12 @@ export const errText = (e: unknown): string => (e instanceof Error && e.message 
  * One admin section: the title always shows; the body waits for every read, shows a retry when one fails, and
  * hands the chat a one-line answer built from what is on screen.
  */
-export function Sec({ title, context, actions, q = [], scope, facts = [], children }: {
-  title: string; context?: ReactNode; actions?: ReactNode; q?: Q[]; scope: string; facts?: string[]; children: ReactNode;
+export function Sec({ title, context, actions, q = [], scope, facts = [], stepper, children }: {
+  title: string; stepper?: ReactNode; context?: ReactNode; actions?: ReactNode; q?: Q[]; scope: string; facts?: string[]; children: ReactNode;
 }) {
   useInterfaceLang();
   const back = useAdminBack();
+  const crumbs = useCrumbs();
   useAletheiaScope({
     key: `admin/${scope}`,
     label: t("Asking about {screen}", { screen: title }),
@@ -35,7 +37,7 @@ export function Sec({ title, context, actions, q = [], scope, facts = [], childr
   const failed = q.find((x) => x.isError);
   return (
     <>
-      <PageHeader back={back} title={title} context={context} actions={actions} />
+      <PageHeader crumbs={crumbs("admin", title)} back={back} title={title} context={context} actions={actions} stepper={stepper} />
       {failed ? <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => q.forEach((x) => x.refetch())} />
         : q.some((x) => x.isLoading) ? <Skeleton lines={8} label={t("Loading {screen}", { screen: title })} />
         : <Stack>{children}</Stack>}

@@ -15934,6 +15934,13 @@ export const en = {
   "Drop the fix sheet you filled in.": "Drop the fix sheet you filled in.",
   "Load journey": "Load journey",
   "{n} records blocked": "{n} records blocked",
+  "Create in SAP": "Create in SAP",
+  "Master data journey": "Master data journey",
+  "Data request": "Data request",
+  "Rule change": "Rule change",
+  "Drop a YAML file or an Excel workbook of rules.": "Drop a YAML file or an Excel workbook of rules.",
+  "Subject request": "Subject request",
+  "Admin setup": "Admin setup",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

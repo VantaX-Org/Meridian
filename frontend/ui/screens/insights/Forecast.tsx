@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { getForesight, getReason, type Anomaly, type Evidence, type Foresight, type GoLiveStatus, type Reason } from "@/lib/api/v2/aletheia-engine";
 import { getForecast, getPredictive } from "@/lib/api/v2/analytics";
 import { getHeatmap } from "@/lib/api/v2/score";
@@ -143,6 +144,7 @@ const streamed = (prompt: string, ctx?: AskContext) => new Promise<AletheiaAnswe
 });
 
 export function Forecast() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const chat = useAletheia();
   const heat = useQ("score-heat", getHeatmap);
@@ -179,7 +181,7 @@ export function Forecast() {
   const warnings = pred.data?.early_warnings ?? [];
   return (
     <div className="b8-page">
-      <PageHeader title={t("Forecast")} context={t("Where each object's score is heading, with the band it should stay in.")}
+      <PageHeader crumbs={crumbs("insights",t("Forecast"))} title={t("Forecast")} context={t("Where each object's score is heading, with the band it should stay in.")}
         actions={<><InsightsNav here="forecast" /><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
       <Card title={t("Object forecast")} action={mods.length ? <Select aria-label={t("Object")} value={mod ?? ""} onChange={(e) => setPicked(e.target.value)} options={mods.map((m) => ({ value: m, label: m }))} /> : undefined}>
         {mod ? <ModuleForecast module={mod} /> : <EmptyState heading={t("No object to forecast")} body={t("Objects appear after the first scored run.")} />}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs, Flow, RULE_STEPS } from "@/ui/screens/flow";
 import "./rules.css";
 import { useState } from "react";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
@@ -16,6 +17,7 @@ const bucketLabel = (b: PromotionBucket) => (b === "promote" ? t("Ready to switc
 
 /** Journey J5 step five: switch on the generated rules that earned it, with the evidence beside each. */
 export function Promotion() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const fx = useFixture();
   const chat = useAletheia();
@@ -57,7 +59,7 @@ export function Promotion() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader crumbs={crumbs("rules",t("Rule promotion"))} stepper={<Flow label={t("Rule change")} at={3} steps={RULE_STEPS()} />}
         title={t("Rule promotion")}
         context={t("Generated rules wait switched off until the evidence says they are safe.")}
         actions={<>
