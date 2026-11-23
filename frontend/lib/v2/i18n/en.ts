@@ -1540,6 +1540,7 @@ export const en = {
   "The rules that changed could not be read.": "The rules that changed could not be read.",
   "{module}, {v1_affected} to {v2_affected} records failing": "{module}, {v1_affected} to {v2_affected} records failing",
   "and {rest} more": "and {rest} more",
+  "Show all {n} objects": "Show all {n} objects",
   "Show fewer": "Show fewer",
   "Compare runs": "Compare runs",
   "These two runs could not be compared. Both must exist and belong to the same system.": "These two runs could not be compared. Both must exist and belong to the same system.",

@@ -6,7 +6,6 @@ import { formatDate } from "@/lib/format";
 import { useConfigImpact } from "@/lib/v2/object-queries";
 import { useReceipt } from "@/lib/v2/queries";
 import { DASH, VERDICT_LABEL, f1, int, pct1 } from "@/lib/v2/score";
-import type { Verdict } from "@/lib/api/v2/types";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
@@ -20,7 +19,7 @@ import { ObjectTabNav, objectPath } from "@/ui/screens/object-tabs/TabFrame";
 import { RunLines, ToneBars } from "./Board";
 import { answerFor, type PromptId } from "./answers";
 import { AllRulesCard, FindingsCard, MonitorStrip, OldRunGate, RelatedObjects, ScoreReceipt } from "./ObjectExtras";
-import { compactCount, dqsOf, score as fmt, signed } from "./format";
+import { compactCount, dqsOf, score as fmt, signed, verdictFor } from "./format";
 import { useObjectData, type ObjectData } from "./useObjectData";
 import { useObjectRun } from "./useObjectRun";
 
@@ -98,7 +97,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
   const proposed = g ? Math.min(g.proposed, g.open) : 0;
   const latest = (o.heads.find((h) => isAnalysed(h.status)) ?? o.heads[0])?.id ?? null;
   const onLatest = !latest || !o.runId || o.runId === latest;
-  const verdict: Verdict | null = d.cell?.verdict ?? (d.now === null ? null : d.now >= 85 ? "go" : d.now >= 70 ? "at-risk" : "no-go");
+  const verdict = verdictFor(d.cell, o.runId, d.now);
   const breaches = rc?.breaches ?? [];
   const hidden = d.capped && measuredNow !== null && d.now !== null ? measuredNow - d.now : 0;
   const prevDims = new Map((prev.data?.dimensions ?? []).map((x) => [x.key, x.score]));

@@ -25,6 +25,7 @@ const greeting = (): string => { const h = new Date().getHours(); return h < 12 
 
 /** A small trend line over the last runs of one object. Real points only; fewer than two draws nothing. */
 const RULER_ROWS = 12;
+const FIRST_OBJECTS = 6;
 
 function Trend({ points, label }: { points: number[]; label: string }) {
   if (points.length < 2) return null;
@@ -95,6 +96,7 @@ export function Home() {
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [allMarks, setAllMarks] = useState(false);
+  const [allObjects, setAllObjects] = useState(false);
   const href = (p: string) => withFixture(p, fx);
 
   const rows = pf.data?.objects ?? [];
@@ -173,18 +175,27 @@ export function Home() {
         </div>
       </header>
 
+      <Card title={t("Needs your attention")} sub={att.data ? t("{n} items, most urgent first", { n: items.length }) : undefined}>
+        {att.isError ? <ErrorState heading={t("The list could not be loaded")} retryLabel={t("Try again")} onRetry={() => void att.refetch()} />
+          : attRows.length ? <MasterList label={t("Attention items")} rows={attRows} selectedId={null} onSelect={(id) => { const it = items.find((x) => x.id === id); if (it) router.push(href(it.href)); }} />
+          : <EmptyState heading={t("Nothing needs you")} body={t("No approvals, failures or overdue items are waiting.")} />}
+      </Card>
+
       <Card title={t("Where every object stands")} sub={t("Gates at 70 and 85. A hollow mark is the measured score before a cap.")}>
         {scored.length > RULER_ROWS ? <p className="mx-muted">{allMarks ? t("All {n} objects, lowest score first.", { n: scored.length }) : t("The {k} lowest of {n} objects.", { k: RULER_ROWS, n: scored.length })} <Button variant="ghost" onClick={() => setAllMarks((v) => !v)}>{allMarks ? t("Show fewer") : t("Show all {n}", { n: scored.length })}</Button></p> : null}
         {marks.length ? <ScoreRuler marks={marks} labels={labels} ariaLabel={t("Score of every object against the gates")} from={stacked ? 50 : 0} /> : <EmptyState heading={t("No objects have run yet")} body={t("Pull an object to see its score here.")} />}
       </Card>
 
       {rows.length ? (
-        <ul className="mx-home-grid" aria-label={t("Next action per object")}>
-          {rows.map((r) => (
-            <ObjectCard key={r.module + r.system_id} row={r} cell={cells.find((c) => c.system_id === r.system_id && c.module === r.module)}
-              system={systems.find((x) => x.id === r.system_id)?.name ?? ""} href={href(objectPath(r, systems))} />
-          ))}
-        </ul>
+        <>
+          <ul className="mx-home-grid" aria-label={t("Next action per object")}>
+            {(allObjects ? rows : rows.slice(0, FIRST_OBJECTS)).map((r) => (
+              <ObjectCard key={r.module + r.system_id} row={r} cell={cells.find((c) => c.system_id === r.system_id && c.module === r.module)}
+                system={systems.find((x) => x.id === r.system_id)?.name ?? ""} href={href(objectPath(r, systems))} />
+            ))}
+          </ul>
+          {rows.length > FIRST_OBJECTS ? <Button variant="secondary" onClick={() => setAllObjects((v) => !v)}>{allObjects ? t("Show fewer") : t("Show all {n} objects", { n: rows.length })}</Button> : null}
+        </>
       ) : null}
 
       <div className="mx-home-panels">
@@ -203,11 +214,6 @@ export function Home() {
               ))}
             </ul>
           ) : <EmptyState heading={t("Nothing moved")} body={t("No issue was resolved, opened or regressed since the last run.")} />}
-        </Card>
-        <Card title={t("Needs your attention")} sub={att.data ? t("{n} items, most urgent first", { n: items.length }) : undefined}>
-          {att.isError ? <ErrorState heading={t("The list could not be loaded")} retryLabel={t("Try again")} onRetry={() => void att.refetch()} />
-            : attRows.length ? <MasterList label={t("Attention items")} rows={attRows} selectedId={null} onSelect={(id) => { const it = items.find((x) => x.id === id); if (it) router.push(href(it.href)); }} />
-            : <EmptyState heading={t("Nothing needs you")} body={t("No approvals, failures or overdue items are waiting.")} />}
         </Card>
         <Card title={t("Systems")} sub={strip?.licence_valid_to ? t("Licence valid to {d}", { d: strip.licence_valid_to.slice(0, 10) }) : undefined}>
           {systems.length ? (

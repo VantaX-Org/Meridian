@@ -1541,6 +1541,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The rules that changed could not be read.": "Die geänderten Regeln konnten nicht gelesen werden.",
   "{module}, {v1_affected} to {v2_affected} records failing": "{module}, {v1_affected} bis {v2_affected} fehlerhafte Datensätze",
   "and {rest} more": "und {rest} weitere",
+  "Show all {n} objects": "Alle {n} Objekte anzeigen",
   "Show fewer": "Weniger anzeigen",
   "Compare runs": "Läufe vergleichen",
   "These two runs could not be compared. Both must exist and belong to the same system.": "Diese zwei Läufe konnten nicht verglichen werden. Beide müssen existieren und zum selben System gehören.",

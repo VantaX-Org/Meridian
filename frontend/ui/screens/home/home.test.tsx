@@ -37,6 +37,22 @@ describe("Home", () => {
   });
 });
 
+describe("Home order", () => {
+  it("puts attention above the object grid and folds the grid to six cards", async () => {
+    wrap(<Home />);
+    const attention = await screen.findByRole("list", { name: "Attention items" });
+    const grid = await screen.findByRole("list", { name: "Next action per object" });
+    expect(attention.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const more = screen.queryByRole("button", { name: /^Show all \d+ objects$/ });
+    if (!more) return; // fixture holds 6 or fewer objects
+    expect(grid.children.length).toBe(6);
+    fireEvent.click(more);
+    await waitFor(() => expect(screen.getByRole("list", { name: "Next action per object" }).children.length).toBeGreaterThan(6));
+    fireEvent.click(screen.getByRole("button", { name: "Show fewer" }));
+    await waitFor(() => expect(screen.getByRole("list", { name: "Next action per object" }).children.length).toBe(6));
+  });
+});
+
 describe("Home ruler", () => {
   it("shows the 12 lowest objects first and expands to all", async () => {
     wrap(<Home />);

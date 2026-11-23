@@ -1541,6 +1541,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The rules that changed could not be read.": "変化したルールを読み込めませんでした。",
   "{module}, {v1_affected} to {v2_affected} records failing": "{module}、不合格レコード {v1_affected} → {v2_affected}",
   "and {rest} more": "ほか {rest} 件",
+  "Show all {n} objects": "{n} 件のオブジェクトをすべて表示",
   "Show fewer": "表示を減らす",
   "Compare runs": "実行を比較",
   "These two runs could not be compared. Both must exist and belong to the same system.": "この 2 つの実行は比較できませんでした。両方が存在し、同じシステムに属している必要があります。",
