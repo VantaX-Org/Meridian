@@ -51,6 +51,14 @@ const SAMPLE: [string, string][] = [
   ["/workbench?tab=batches&batch=B1", "/work?batch=B1&tab=batches"],
 ];
 
+/** Pages, not config: these three open a tool on the fix screen from the query, so the redirect is temporary (307). */
+const TOOL_PAGES: [string, string][] = [
+  ["/work/triage", "/work?open=triage"],
+  ["/work/exceptions", "/work?open=exceptions"],
+  ["/approvals", "/work?open=approvals"],
+  ["/approvals?rule=MM142", "/work?open=approvals&rule=MM142"],
+];
+
 /** The Location of a redirect as path and query, whether the server wrote it absolute or relative. */
 const where = (location: string | undefined): string => {
   if (!location) return "";
@@ -71,6 +79,15 @@ test.describe("old addresses", () => {
     test(`${from} answers with a permanent redirect to ${to}`, async ({ request }) => {
       const r = await request.get(from, { maxRedirects: 0 });
       expect(r.status(), from).toBe(308);
+      const got = where(r.headers()["location"]);
+      expect(same(got, to), `${from} went to ${got}`).toBe(true);
+    });
+  }
+
+  for (const [from, to] of TOOL_PAGES) {
+    test(`${from} answers with a temporary redirect to ${to}`, async ({ request }) => {
+      const r = await request.get(from, { maxRedirects: 0 });
+      expect(r.status(), from).toBe(307);
       const got = where(r.headers()["location"]);
       expect(same(got, to), `${from} went to ${got}`).toBe(true);
     });
