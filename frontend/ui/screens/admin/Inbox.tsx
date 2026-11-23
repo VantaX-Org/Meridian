@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getNotifications, putRead, putReadAll } from "@/lib/api/v2/inbox";
 import { useFixture } from "@/lib/api/v2/fixture";
+import { approvalKeys } from "@/lib/v2/approvals-queries";
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, DataTable } from "@/ui/kit";
 import { Row, Sec, errText, when } from "./ops/shared";
@@ -18,7 +19,7 @@ export function Inbox() {
   const rows = q.data?.items ?? [];
   const unread = rows.filter((r) => !r.is_read).length;
   const act = async (fn: () => Promise<unknown>) => {
-    try { await fn(); await qc.invalidateQueries({ queryKey: key }); } catch (e) { toast(errText(e), "bad"); }
+    try { await fn(); await Promise.all([qc.invalidateQueries({ queryKey: key }), qc.invalidateQueries({ queryKey: approvalKeys.unread(f) })]); } catch (e) { toast(errText(e), "bad"); }
   };
   return (
     <Sec title={t("Inbox")} scope="inbox" q={[q]} context={t("{n} unread", { n: unread })}
