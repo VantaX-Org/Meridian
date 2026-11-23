@@ -7,7 +7,7 @@
 import { useMultiCompare } from "@/lib/api/next/runs";
 import { DIMENSIONS } from "@/lib/api/v2/types";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
-import { Card, FieldChip, ScoreRuler, Skeleton, StatTile, useAletheiaScope } from "@/ui/kit";
+import { Card, ErrorState, FieldChip, ScoreRuler, Skeleton, StatTile, useAletheiaScope } from "@/ui/kit";
 import { compactCount, score, signed } from "../object/format";
 import { answer } from "./answers";
 import { moduleText } from "@/lib/v2/labels";
@@ -40,6 +40,7 @@ export function CompareBoard({ a, b, module }: { a: string; b: string; module: s
 
   if (!module) return null;
   if (q.isLoading) return <Skeleton lines={5} label={t("Loading the comparison")} />;
+  if (q.isError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
   if (!d || !ra || !rb) return null;
 
   const dimRows = DIMENSIONS.map((dim) => ({ dim, x: ra.dimension_scores[dim.key], y: rb.dimension_scores[dim.key] })).filter((r) => r.x != null && r.y != null);

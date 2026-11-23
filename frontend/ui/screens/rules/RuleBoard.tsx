@@ -11,7 +11,7 @@ import { useObjectRules, useReceipt } from "@/lib/v2/queries";
 import { RECORDS_PAGE, useFailingRecords, type FailingRecord } from "@/lib/api/next/failing";
 import { acceptAllInGroup, decide, downloadFixSheet } from "@/lib/api/work";
 import type { RuleRun, RuleScope } from "@/lib/api/v2/object";
-import { BarList, Button, Card, DataTable, EmptyState, FieldChip, Select, Skeleton, StatTile, YamlView, type Column } from "@/ui/kit";
+import { BarList, Button, Card, DataTable, EmptyState, ErrorState, FieldChip, Select, Skeleton, StatTile, YamlView, type Column } from "@/ui/kit";
 import { compactCount, pct, sevLabel } from "./format";
 import { useAct, useRuleReads } from "./queries";
 
@@ -69,7 +69,8 @@ const listParams = (p: Record<string, unknown>): [string, string[]][] =>
 export function RuleBoard({ id, scope }: { id: string; scope: RuleScope }) {
   const fx = useFixture();
   const d = scope.definition;
-  const hist = useRuleHistory(id).data ?? [];
+  const histQ = useRuleHistory(id);
+  const hist = histQ.data ?? [];
   const run = hist[0]?.version_id ?? scope.objects[0]?.run_id ?? null;
   const mod = scope.module ?? scope.objects[0]?.module ?? "";
   const rules = useObjectRules(mod, run).data ?? [];
@@ -101,6 +102,7 @@ export function RuleBoard({ id, scope }: { id: string; scope: RuleScope }) {
   const dimension = row?.dimension ?? d.dimension;
   const owner = reads?.owners.map((o) => o.owner_name ?? o.steward_name).find(Boolean);
 
+  if (histQ.isError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void histQ.refetch()} />;
   return (
     <div className="mx-rule-stack">
       <dl className="mx-tiles" aria-label={t("Rule in this run")}>

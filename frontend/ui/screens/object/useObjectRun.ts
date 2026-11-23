@@ -23,6 +23,8 @@ export interface ObjectRun {
   heads: VersionHead[];
   /** True until the run list resolves, so the run id is not settled yet. */
   runsLoading: boolean;
+  runsError: boolean;
+  refetchRuns: () => void;
   runId: string | null;
   run: VersionHead | null;
   previous: VersionHead | null;
@@ -98,5 +100,5 @@ export function useObjectRun(systemSeg: string, moduleSeg: string): ObjectRun {
   const prevOne = useRun(prevInList ? null : prevId);
   const previous = prevInList ?? prevOne.data ?? null;
 
-  return { systemId, systemName: system?.name ?? decodeURIComponent(systemSeg), module: mod, label, landscape, heads, runsLoading: runs.isLoading, runId, run, previous, hrefWith };
+  return { systemId, systemName: system?.name ?? decodeURIComponent(systemSeg), module: mod, label, landscape, heads, runsLoading: runs.isLoading, runsError: runs.isError, refetchRuns: () => void runs.refetch(), runId, run, previous, hrefWith };
 }
