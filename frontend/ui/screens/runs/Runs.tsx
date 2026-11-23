@@ -87,7 +87,7 @@ function RunsView({ onAsk }: { onAsk: (rows: VersionHead[], total: number) => vo
         <EmptyState heading={t("No runs match")} body={t("Change the filter, or start a run.")} />
       ) : (
         <Card title={t("Runs")} sub={t("{shown} of {total} runs", { shown: rows.length, total })}>
-          <DataTable columns={columns} rows={rows} rowKey={(h) => h.id} label={t("Runs")} height={440} onSelect={(h) => router.push(withFixture(runPath(h.id), fx))} />
+          <DataTable id="runs" viewMenu columns={columns} rows={rows} rowKey={(h) => h.id} label={t("Runs")} height={440} onSelect={(h) => router.push(withFixture(runPath(h.id), fx))} />
           <div className="mx-links">
             <Button variant="ghost" onClick={() => setOffset(Math.max(0, offset - PAGE))} disabled={offset === 0}>{t("Newer")}</Button>
             <Button variant="ghost" onClick={() => setOffset(offset + PAGE)} disabled={offset + PAGE >= total}>{t("Older")}</Button>
@@ -135,15 +135,16 @@ function JobsView() {
     { key: "label", label: t("Job"), render: (j) => j.label },
     { key: "status", label: t("Status"), render: (j) => <StatusPill s={j.status} /> },
     { key: "progress", label: t("Progress"), align: "end", render: (j) => <span className="rn-num">{j.status === "completed" ? "100%" : `${Math.round(j.percent ?? 0)}%`}</span> },
-    { key: "started", label: t("Started"), sort: (j) => j.started_at ?? 0, render: (j) => when(j.started_at ? j.started_at * 1000 : null) },
-    { key: "act", label: t("Actions"), render: (j) => (
-      <span className="rn-row-actions">
-        {j.status === "failed" || j.status === "cancelled" ? <Button variant="ghost" onClick={() => act(j, "retry")}>{t("Retry")}</Button> : null}
-        {j.status === "running" || j.status === "queued" ? <Button variant="ghost" onClick={() => act(j, "cancel")}>{t("Cancel")}</Button> : null}
+    { key: "started", label: t("Started"), sort: (j) => j.started_at ?? 0, render: (j) => (
+      <span className="mx-row-end"><span>{when(j.started_at ? j.started_at * 1000 : null)}</span>
+        <span className="mx-row-acts">
+          {j.status === "failed" || j.status === "cancelled" ? <Button variant="ghost" onClick={() => act(j, "retry")}>{t("Retry")}</Button> : null}
+          {j.status === "running" || j.status === "queued" ? <Button variant="ghost" onClick={() => act(j, "cancel")}>{t("Cancel")}</Button> : null}
+        </span>
       </span>
     ) },
   ];
-  return <Card title={t("Jobs")} sub={t("{n, plural, one {# job} other {# jobs}}", { n: list.length })}><DataTable columns={columns} rows={list} rowKey={(j) => j.id} label={t("Jobs")} height={440} /></Card>;
+  return <Card title={t("Jobs")} sub={t("{n, plural, one {# job} other {# jobs}}", { n: list.length })}><DataTable id="runs-jobs" viewMenu columns={columns} rows={list} rowKey={(j) => j.id} label={t("Jobs")} height={440} /></Card>;
 }
 
 /** Every finished run of the tenant, newest first, with each object's score in that run. */
@@ -164,7 +165,7 @@ function TimelineView() {
   if (q.isLoading) return <Skeleton lines={6} label={t("Loading the timeline")} />;
   if (q.isError) return <ErrorState heading={t("The timeline could not be loaded")} onRetry={() => void q.refetch()} retryLabel={t("Try again")} />;
   if (!list.length) return <EmptyState heading={t("No finished run yet")} body={t("Pull the object from Home to start its first run.")} />;
-  return <Card title={t("Timeline")} sub={t("Every finished run, newest first.")}><DataTable label={t("Timeline")} rows={list} rowKey={(r) => r.id} columns={columns} /></Card>;
+  return <Card title={t("Timeline")} sub={t("Every finished run, newest first.")}><DataTable id="runs-timeline" viewMenu label={t("Timeline")} rows={list} rowKey={(r) => r.id} columns={columns} /></Card>;
 }
 
 function SetsView() {
@@ -194,7 +195,7 @@ function SetsView() {
       </Card>
       {sets.isLoading ? <Skeleton lines={6} label={t("Loading the records")} /> : recs.length === 0 ? <EmptyState heading={t("No changed records")} body={t("These two runs hold the same findings.")} /> : (
         <Card title={t("Changed records")} sub={t("{n, plural, one {# record} other {# records}}", { n: sets.data?.total ?? recs.length })}>
-          <DataTable columns={columns} rows={recs} rowKey={(r) => `${r.check_id}/${r.record_key}/${r.change}`} label={t("Changed records")} height={440} />
+          <DataTable columns={columns} rows={recs} id="runs-changed" viewMenu rowKey={(r) => `${r.check_id}/${r.record_key}/${r.change}`} label={t("Changed records")} height={440} />
         </Card>
       )}
     </>
