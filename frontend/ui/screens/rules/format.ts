@@ -14,6 +14,12 @@ export const pct = (n: number | null | undefined): string => (n === null || n ==
 /** Library rule ids read "rule-MM142"; the rest of the app uses the bare check id. */
 export const checkId = (id: string): string => id.replace(/^rule-/, "");
 
+/** The check id of a library rule. The API id is a row UUID; the check id is the part of the name before the colon. */
+export const ruleCheck = (r: { id: string; name: string }): string => {
+  const at = r.name.indexOf(":");
+  return at > 0 ? r.name.slice(0, at).trim() : checkId(r.id);
+};
+
 /** Check ids and module codes are shown with their text; this is the one place a sheet arg is shaped. */
 export interface RuleArg { id: string }
 

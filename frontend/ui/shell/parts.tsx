@@ -16,7 +16,7 @@ import { formatDate } from "@/lib/format";
 import { useStatus } from "@/lib/v2/queries";
 import { useSandbox } from "@/lib/v2/step10-queries";
 import { useV2Session } from "@/lib/v2/hooks";
-import { useV2Jobs } from "@/lib/v2/runs-queries";
+import { useSystemsExtended, useV2Jobs } from "@/lib/v2/runs-queries";
 import { firstSentence, JOB_KIND_LABEL, jobObject, openFailures } from "@/lib/v2/jobs";
 import { useStatusPage } from "@/lib/v2/enterprise-queries";
 import { overallWord } from "@/lib/v2/status";
@@ -109,16 +109,34 @@ export function ViewAsSheet({ open, onClose }: { open: boolean; onClose: () => v
   );
 }
 
-/** The newest failed job nobody has dealt with, in one line with a link to the jobs list. Nothing otherwise. */
+const DISMISSED = "mx-dismissed-failures";
+const readDismissed = (): string[] => { try { return JSON.parse(window.sessionStorage.getItem(DISMISSED) ?? "[]") as string[]; } catch { return []; } };
+
+/** The newest failed job nobody has dealt with: what failed, on which system, when, with a link to the jobs list and a dismiss. */
 export function FailedJobLine() {
   const fx = useFixture();
-  const failed = openFailures(useV2Jobs().jobs)[0];
+  const jobs = useV2Jobs().jobs;
+  const systems = useSystemsExtended().data;
+  const [gone, setGone] = useState<string[]>(readDismissed);
+  const failed = openFailures(jobs).find((j) => !gone.includes(j.id));
   if (!failed) return null;
   const why = firstSentence(failed.error);
+  const system = systems?.find((s) => s.id === failed.system_id)?.name;
+  const when = failed.finished_at ? formatDate(failed.finished_at * 1000, "datetime") : "";
+  const where = [system, when].filter(Boolean).join(", ");
+  const dismiss = () => {
+    const next = [...gone, failed.id];
+    setGone(next);
+    try { window.sessionStorage.setItem(DISMISSED, JSON.stringify(next)); } catch { /* storage unavailable: the dismiss lasts until reload */ }
+  };
   return (
     <div className="mx-banner" data-tone="bad" role="status" data-testid="status-failure">
-      <p>{t("{JOB_KIND_LABEL} of {jobObject} failed{value}", { JOB_KIND_LABEL: JOB_KIND_LABEL[failed.kind], jobObject: jobObject(failed), value: why ? `: ${why}` : "" })}</p>
+      <p>
+        {t("{JOB_KIND_LABEL} of {jobObject} failed{value}", { JOB_KIND_LABEL: JOB_KIND_LABEL[failed.kind], jobObject: jobObject(failed), value: why ? `: ${why}` : "" })}
+        {where ? ` (${where})` : ""}
+      </p>
       <Link href={withFixture("/runs?view=jobs", fx)}>{t("Open")}</Link>
+      <button type="button" className="mx-topbtn" onClick={dismiss}>{t("Dismiss")}</button>
     </div>
   );
 }

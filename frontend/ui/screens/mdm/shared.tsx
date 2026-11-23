@@ -13,6 +13,7 @@ export const DEFAULT_DOMAIN = "material_master";
 export const domainOptions = () => [
   { value: "material_master", label: t("Material master") },
   { value: "sd_customer_master", label: t("Customer master") },
+  { value: "employee_central", label: t("Employee central") },
 ];
 
 export const domainLabel = (d: string): string => domainOptions().find((o) => o.value === d)?.label ?? d;

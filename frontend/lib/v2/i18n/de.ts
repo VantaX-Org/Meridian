@@ -14998,4 +14998,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Open the audit trail": "Prüfprotokoll öffnen",
   "Loading the audit trail": "Prüfprotokoll wird geladen",
   "No audit entries": "Keine Prüfprotokolleinträge",
+  "Leave empty to keep the stored secret": "Leer lassen, um das gespeicherte Geheimnis zu behalten",
+  "Change the address or the credentials, test, then save. A secret left empty keeps the stored one.": "Adresse oder Zugangsdaten ändern, testen, dann speichern. Ein leeres Geheimnis behält das gespeicherte.",
+  "Test these settings": "Diese Einstellungen testen",
+  "Save and test": "Speichern und testen",
 };

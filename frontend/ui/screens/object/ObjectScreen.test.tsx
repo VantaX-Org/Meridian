@@ -14,11 +14,14 @@ const screenWithChat = () => (
   </AletheiaProvider>
 );
 
+const dl = vi.hoisted(() => ({ fn: vi.fn() }));
+vi.mock("@/lib/api/next/runs", async (orig) => ({ ...(await orig<typeof import("@/lib/api/next/runs")>()), downloadCleaningWorkbook: dl.fn }));
 vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
 let undo: () => void = () => undefined;
 beforeEach(() => {
+  dl.fn.mockReset().mockResolvedValue(undefined);
   undo = stubLayout();
   window.sessionStorage.clear();
   window.history.replaceState(null, "", "/o/ecc-production/material-master?fixture=1");
@@ -26,6 +29,16 @@ beforeEach(() => {
 afterEach(() => undo());
 
 describe("ObjectScreen", () => {
+  it("shows why the workbook download failed", async () => {
+    dl.fn.mockRejectedValue(new Error("That run has not finished."));
+    renderWithQuery(screenWithChat());
+    await screen.findByRole("list", { name: "Failing rules" });
+    await waitFor(() => expect((screen.getByRole("button", { name: "Download workbook" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "Download workbook" }));
+    expect((await screen.findByTestId("download-error")).textContent).toBe("That run has not finished.");
+    expect(dl.fn).toHaveBeenCalledTimes(1);
+  });
+
   it("turns an old as_of link into run", async () => {
     window.history.replaceState(null, "", "/o/ecc-production/material-master?fixture=1&as_of=b0500000-0000-4000-8000-000000000005");
     renderWithQuery(screenWithChat());

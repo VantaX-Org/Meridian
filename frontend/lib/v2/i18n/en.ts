@@ -14997,6 +14997,10 @@ export const en = {
   "Open the audit trail": "Open the audit trail",
   "Loading the audit trail": "Loading the audit trail",
   "No audit entries": "No audit entries",
+  "Leave empty to keep the stored secret": "Leave empty to keep the stored secret",
+  "Change the address or the credentials, test, then save. A secret left empty keeps the stored one.": "Change the address or the credentials, test, then save. A secret left empty keeps the stored one.",
+  "Test these settings": "Test these settings",
+  "Save and test": "Save and test",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

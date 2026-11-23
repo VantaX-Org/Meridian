@@ -74,6 +74,19 @@ describe("top bar parts in fixture mode", () => {
   });
 });
 
+describe("failed-job line", () => {
+  it("names the system and time, and a dismiss hides it", async () => {
+    const jobs = [{ id: "j1", kind: "extraction", status: "failed", label: "Extraction | Material master", modules: ["material_master"], error: "RFC_LOGON_FAILURE. Check the user.", started_at: 1700000000, finished_at: 1700000100, system_id: "sys1" }];
+    const rq = await import("@/lib/v2/runs-queries");
+    vi.spyOn(rq, "useV2Jobs").mockReturnValue({ jobs } as unknown as ReturnType<typeof rq.useV2Jobs>);
+    vi.spyOn(rq, "useSystemsExtended").mockReturnValue({ data: [{ id: "sys1", name: "Sanbox (KMZ)" }] } as unknown as ReturnType<typeof rq.useSystemsExtended>);
+    const { container } = renderWithQuery(<FailedJobLine />);
+    expect(container.textContent).toContain("Sanbox (KMZ)");
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(container.querySelector("[data-testid=status-failure]")).toBeNull();
+  });
+});
+
 describe("palette server search", () => {
   it("returns nothing for empty text", () => {
     renderWithQuery(<Search q="" />);

@@ -8,6 +8,7 @@ import { runKeys, useSystemsExtended } from "@/lib/v2/runs-queries";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { Button, EmptyState, ErrorState, PageHeader, Skeleton, Tabs, useAletheia, useAletheiaScope, useTab, useToast } from "@/ui/kit";
 import { ConfigTab } from "./ConfigTab";
+import { ConnectionTab } from "./ConnectionTab";
 import { CustomTab } from "./CustomTab";
 import { DesignTab } from "./DesignTab";
 import { ExtractionsTab } from "./ExtractionsTab";
@@ -15,7 +16,7 @@ import { PilotTab } from "./PilotTab";
 import { ReferenceTab } from "./ReferenceTab";
 import { Health, envLabel, errMsg, typeLabel, when } from "./shared";
 
-const TABS = ["extractions", "design", "config", "pilot", "reference", "custom"] as const;
+const TABS = ["extractions", "connection", "design", "config", "pilot", "reference", "custom"] as const;
 
 export function System({ id }: { id: string }) {
   useInterfaceLang();
@@ -51,7 +52,7 @@ export function System({ id }: { id: string }) {
     } catch (e) { toast(errMsg(e), "bad"); } finally { setBusy(false); }
   };
   const label: Record<(typeof TABS)[number], string> = {
-    extractions: t("Extractions"), design: t("Design"), config: t("Configuration"), pilot: t("Pilot"), reference: t("Reference files"), custom: t("Custom objects"),
+    extractions: t("Extractions"), connection: t("Connection"), design: t("Design"), config: t("Configuration"), pilot: t("Pilot"), reference: t("Reference files"), custom: t("Custom objects"),
   };
   return (
     <>
@@ -68,6 +69,7 @@ export function System({ id }: { id: string }) {
       <Tabs idBase="system" label={t("System sections")} items={TABS.map((x) => ({ id: x, label: label[x] }))} value={tab} onChange={(id) => setTab(id as typeof tab)} />
       <div role="tabpanel" id={`system-panel-${tab}`} aria-labelledby={`system-tab-${tab}`}>
         {tab === "extractions" ? <ExtractionsTab id={id} source={sys.role !== "target"} /> : null}
+        {tab === "connection" ? <ConnectionTab s={sys} /> : null}
         {tab === "design" ? <DesignTab id={id} /> : null}
         {tab === "config" ? <ConfigTab id={id} /> : null}
         {tab === "pilot" ? <PilotTab id={id} /> : null}

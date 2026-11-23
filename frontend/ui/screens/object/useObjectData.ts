@@ -25,6 +25,7 @@ export function useObjectData(o: ObjectRun) {
   const work = useWorkGroups(o.module, o.runId);
   const pairs = useQuery({ queryKey: ["system-compare", "pairs", fx], queryFn: getPairs, staleTime: 60_000 });
   const [busy, setBusy] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   return useMemo(() => {
     const cell = o.landscape.data?.cells.find((c) => c.system_id === o.systemId && c.module === o.module) ?? null;
@@ -66,15 +67,19 @@ export function useObjectData(o: ObjectRun) {
       capLevel: receipt.data?.cap_level ?? cell?.cap_level ?? null,
       capIds: breaches.map((b) => b.check_id),
       busy,
+      downloadError,
       download: o.runId
         ? () => {
             setBusy(true);
-            downloadCleaningWorkbook(o.runId as string, o.module).catch(() => undefined).finally(() => setBusy(false));
+            setDownloadError(null);
+            downloadCleaningWorkbook(o.runId as string, o.module)
+              .catch((e: unknown) => setDownloadError(e instanceof Error && e.message && !/status code/i.test(e.message) ? e.message : t("The workbook could not be downloaded. Try again.")))
+              .finally(() => setBusy(false));
           }
         : null,
       fixPath: (seg: "proposed" | "manual", rule?: string) => `/work?module=${encodeURIComponent(o.module)}&seg=${seg}${rule ? `&rule=${encodeURIComponent(rule)}` : ""}`,
     };
-  }, [o, rules.data, rules.isLoading, rules.isError, receipt.data, work.data, pairs.data, busy]);
+  }, [o, rules.data, rules.isLoading, rules.isError, receipt.data, work.data, pairs.data, busy, downloadError]);
 }
 
 export type ObjectData = ReturnType<typeof useObjectData>;

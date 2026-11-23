@@ -28,7 +28,7 @@ describe("Systems screens (fixture)", () => {
     open("/s/a1b2c3d4-0001-4000-8000-000000000001?fixture=1");
     renderWithQuery(<AletheiaProvider><System id="a1b2c3d4-0001-4000-8000-000000000001" /></AletheiaProvider>);
     expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
-    for (const name of ["Extractions", "Design", "Configuration", "Pilot", "Reference files", "Custom objects"]) {
+    for (const name of ["Extractions", "Connection", "Design", "Configuration", "Pilot", "Reference files", "Custom objects"]) {
       expect(await screen.findByRole("tab", { name })).toBeTruthy();
     }
   });

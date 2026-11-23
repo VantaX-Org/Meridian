@@ -14998,4 +14998,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Open the audit trail": "監査証跡を開く",
   "Loading the audit trail": "監査証跡を読み込み中",
   "No audit entries": "監査エントリなし",
+  "Leave empty to keep the stored secret": "空のままにすると保存済みのシークレットを保持します",
+  "Change the address or the credentials, test, then save. A secret left empty keeps the stored one.": "アドレスまたは認証情報を変更し、テストしてから保存します。空のシークレットは保存済みのものを保持します。",
+  "Test these settings": "この設定をテスト",
+  "Save and test": "保存してテスト",
 };
