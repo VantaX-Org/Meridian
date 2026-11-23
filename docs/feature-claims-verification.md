@@ -18,5 +18,5 @@ Branch feat/claims, 2026-11-23. Results: PASS (already true, test exists), FIXED
 | Process export routes | docs/roles-and-features.md | route-existence check | FIXED (doc named nonexistent /process-export/*) |
 | User guide PDF renders | help guide | tests/test_user_guide.py | PASS |
 | Board workbook, export packages, target workbook, work-exceptions export | export docs | test_board_workbook, test_export_packages_pg, test_target_workbook_pg, test_work_exceptions_export_pg | FAILS-ENV |
-| Upload and AI column match | upload journey | none (api/routes/upload_match.py, api/services/ai_column_matcher.py); only parse/path/origin/checks are tested | NOT-TRUE as "verified": untested. Needs a deterministic fixture test of detect_module_and_match. |
+| Upload and AI column match | upload journey | tests/test_claims_upload_match.py (api/routes/upload_match.py, api/services/ai_column_matcher.py) | FIXED: tests/test_claims_upload_match.py (material master, customer master, SuccessFactors headers; module, mapping and match type; route incl. 422/403; dead LLM leaves columns unmatched). Found and fixed a real bug: module-score ties (e.g. KNA1 columns, accounts_receivable vs sd_customer_master) were resolved by yaml load order; now tie-break on field count then name. |
 | Baseline of 44 export/import test files | all | pytest | 450 passed, 11 skipped (PG-gated) |
