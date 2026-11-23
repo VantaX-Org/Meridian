@@ -1,5 +1,6 @@
 "use client";
 
+import { Flow, REQUEST_STEPS, requestFlow } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -189,7 +190,7 @@ export function RequestScreen({ id }: { id: string }) {
   ];
   return (
     <>
-      <Head title={r?.title ?? `${t("Request")} ${id}`} context={<Code code={id} description={r ? statusText(r.status) : undefined} />} actions={actions} />
+      <Head place="requests" stepper={r ? <Flow label={t("Data request")} steps={REQUEST_STEPS()} {...requestFlow(r.status, statusText(r.status))} /> : undefined} title={r?.title ?? `${t("Request")} ${id}`} context={<Code code={id} description={r ? statusText(r.status) : undefined} />} actions={actions} />
       <Async q={q}>{(d) => (
         <DetailPanel idBase="cr" label={t("Request detail")} tabsLabel={t("Request views")} header={null} tabs={tabs} value={tab} onChange={setTab}>
           {tab === "overview" ? <Overview d={d} /> : null}

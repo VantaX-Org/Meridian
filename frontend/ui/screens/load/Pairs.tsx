@@ -8,6 +8,7 @@ import { createPair, deletePair, runPair, type ComparePair } from "@/lib/api/v2/
 import { Button, Card, Confirm, DataTable, EmptyState, Field, FieldChip, PageHeader, Select, Sheet, useAletheiaScope, useToast } from "@/ui/kit";
 import { AskButton, Gate, humanize, pct, useHref, when, useBack } from "./common";
 import { invalidateLoad, usePairs } from "./hooks";
+import { useCrumbs } from "@/ui/screens/flow";
 
 /** Every source and target pair, with its last scores. A row opens the Pair card. */
 export function Pairs() {
@@ -44,9 +45,10 @@ export function Pairs() {
   const mods = q.data?.modules ?? [];
   const ok = form.module && form.source && form.target && form.source !== form.target;
 
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader back={back}
+      <PageHeader crumbs={crumbs("load", t("Paired systems"))} back={back}
         title={t("Paired systems")}
         context={t("Compare a source system with its target, object by object.")}
         actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("New pair")}</Button><AskButton /></>}

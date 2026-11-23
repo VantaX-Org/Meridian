@@ -38,7 +38,7 @@ export function PostClean({ rule }: { rule?: string }) {
         emptyLabel={t("Not enough weeks to draw a trend yet")}
       />
       {rules.length ? (
-        <DataTable
+        <DataTable id="object-records-rules"
           label={t("Rules whose fixed records came back")}
           rows={rules.slice(0, 8)}
           rowKey={(r) => r.check_id}
@@ -97,7 +97,7 @@ export function Records({ o, system, module }: { o: ObjectRun; system: string; m
             <Select aria-label={t("Status")} value={status} onChange={(e) => setStatus(e.target.value)} options={[{ value: "", label: t("Any status") }, ...Object.keys(STATUS_LABEL).map((s) => ({ value: s, label: STATUS_LABEL[s] }))]} />
           </div>
           {rowsQ.isLoading ? <Skeleton lines={6} label={t("Loading records")} /> : rowsQ.isError ? <ErrorState heading={t("The records could not be loaded")} retryLabel={t("Try again")} onRetry={() => void rowsQ.refetch()} /> : rows.length === 0 ? <EmptyState heading={t("No records match this filter.")} body={t("Clear the filter or choose another one to see records.")} /> : (
-            <DataTable
+            <DataTable id="object-records"
               label={t("Records with findings")}
               rows={rows}
               rowKey={(r) => r.record_key}

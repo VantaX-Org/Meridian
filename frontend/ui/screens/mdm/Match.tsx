@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs, Flow, MDM_STEPS } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -17,6 +18,7 @@ type Pending = null | { kind: "merge" | "dismiss"; pair: ReviewPair } | { kind: 
 const BAND_SEV = { auto_merge: "low", review: "medium", low: "info" } as const;
 
 export function Match() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const href = useHref();
   const fx = useFixture();
@@ -67,7 +69,7 @@ export function Match() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader crumbs={crumbs("mdm",t("Match review"))} stepper={<Flow label={t("Master data journey")} at={0} steps={MDM_STEPS()} />}
         title={t("Match review")}
         context={t("{n} pairs waiting", { n: pairs.data?.total ?? 0 })}
         actions={<>

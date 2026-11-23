@@ -44,8 +44,8 @@ describe("Clean board in fixture mode", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Choose file" }, { timeout: 5000 }));
     fireEvent.change(screen.getByLabelText("Choose the cleaned file"), { target: { files: [new File(["x"], "cleaned.xlsx")] } });
     fireEvent.click(await screen.findByRole("button", { name: "Continue to review" }, { timeout: 5000 }));
-    expect(screen.getByRole("button", { name: "Apply to PROD" })).toBeTruthy();
-    expect(screen.getByText("This will write to PROD.")).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Apply to PROD" }, { timeout: 5000 })).toBeTruthy();
+    expect(await screen.findByText("This will write to PROD.", {}, { timeout: 5000 })).toBeTruthy();
   });
 
 });

@@ -9,6 +9,7 @@ import { fixed, whole } from "@/lib/v2/format";
 import { BarList, Button, Card, DataTable, EmptyState, FieldChip, PageHeader, Skeleton, StatTile, TrendArea, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { ObjChip } from "./ObjChip";
 import { day } from "./shared";
+import { useCrumbs } from "@/ui/screens/flow";
 
 const pct = (n: number | null | undefined) => (n == null ? "-" : `${fixed(n, 0)}%`);
 
@@ -45,9 +46,10 @@ export function WorkAnalytics() {
   });
 
   const dim = roots.data?.dimensions[0];
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader title={t("Work analytics")} context={t("Pace, causes and quality of the fixing")}
+      <PageHeader crumbs={crumbs("work", t("Work analytics"))} title={t("Work analytics")} context={t("Pace, causes and quality of the fixing")}
         actions={<Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>} />
       <Wait q={burn}>
         {b ? (

@@ -27,6 +27,7 @@ import { JobHairline } from "./JobHairline";
 import { Modules, StatusPill } from "./Runs";
 import { modulesOf, runPath, runScore, runTitle, scoreText, sourceLabel, when } from "./util";
 import "./runs.css";
+import { useCrumbs } from "@/ui/screens/flow";
 
 const TABS = ["overview", "profile", "config"] as const;
 type Tab = (typeof TABS)[number];
@@ -183,6 +184,7 @@ function ConfigTab({ id }: { id: string }) {
 export function Run({ id }: { id: string }) {
   useInterfaceLang();
   const fx = useFixture();
+  const crumbs = useCrumbs();
   const href = (p: string) => withFixture(p, fx);
   const router = useRouter();
   const params = useSearchParams();
@@ -233,7 +235,7 @@ export function Run({ id }: { id: string }) {
   return (
     <div className="mx-col">
       <JobHairline />
-      <PageHeader title={runTitle(h)} context={`${sourceLabel(h)}, ${when(h.run_at)}`} stepper={focus ? <Cycle id={id} module={focus} /> : undefined}
+      <PageHeader crumbs={crumbs("runs", runTitle(h))} title={runTitle(h)} context={`${sourceLabel(h)}, ${when(h.run_at)}`} stepper={focus ? <Cycle id={id} module={focus} /> : undefined}
         actions={
           <span className="rn-row-actions">
             <Button variant="secondary" onClick={() => sheet.open("compare", { run: id })}>{t("Compare")}</Button>

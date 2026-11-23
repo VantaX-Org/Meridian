@@ -7,6 +7,7 @@ import { addFieldMapping, decideValueEntry, deleteFieldMapping, deleteValueEntry
 import { Button, Card, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Select, Tabs, Toggle, useAletheiaScope, useToast } from "@/ui/kit";
 import { AskButton, Gate, humanize, when, useBack } from "./common";
 import { invalidateLoad, useFieldMap, useLoadPlan, useValueMap } from "./hooks";
+import { useCrumbs, Flow, LOAD_STEPS } from "@/ui/screens/flow";
 
 const DEST = [{ value: "s4hana", label: "S/4HANA" }, { value: "ecc", label: "ECC" }];
 
@@ -45,9 +46,10 @@ export function Maps() {
     answer: () => ({ text: t("{n} mappings wait for confirmation.", { n: open }), evidence: maps.filter((m) => !m.is_confirmed).slice(0, 5).map((m) => m.source_field) }),
   });
 
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader back={back} title={t("Field and value maps")} context={t("How source fields and values become target fields and values")} actions={<><Button onClick={() => seed.mutate()} disabled={seed.isPending}>{t("Propose from the dictionary")}</Button><AskButton /></>} />
+      <PageHeader crumbs={crumbs("load", t("Field and value maps"))} stepper={<Flow label={t("Load journey")} at={2} steps={LOAD_STEPS()} />} back={back} title={t("Field and value maps")} context={t("How source fields and values become target fields and values")} actions={<><Button onClick={() => seed.mutate()} disabled={seed.isPending}>{t("Propose from the dictionary")}</Button><AskButton /></>} />
       <div className="mx-col">
       <div className="mx-links">
         <Field label={t("Object")}><Select value={mod} onChange={(e) => setPick(e.target.value)} options={(mods.length ? mods : [mod]).map((m) => ({ value: m, label: `${m} ${humanize(m)}` }))} /></Field>

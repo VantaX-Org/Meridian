@@ -101,7 +101,7 @@ export function WorkflowsScreen() {
   };
   return (
     <>
-      <Head title={t("Workflows")} actions={<><Button variant="primary" onClick={() => setEdit("new")}>{t("New workflow")}</Button><Button variant="secondary" href="/requests">{t("Back to requests")}</Button></>} />
+      <Head place="requests" title={t("Workflows")} actions={<><Button variant="primary" onClick={() => setEdit("new")}>{t("New workflow")}</Button><Button variant="secondary" href="/requests">{t("Back to requests")}</Button></>} />
       <Sheet open={!!edit} onClose={() => setEdit("")} label={edit === "new" ? t("New workflow") : t("New version")} closeLabel={t("Close")}>
         {edit ? <WorkflowEditor key={edit + (cur?.id ?? "")} id={edit === "version" ? cur?.id : undefined} onDone={() => setEdit("")} /> : null}
       </Sheet>

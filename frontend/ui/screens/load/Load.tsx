@@ -7,6 +7,7 @@ import { Button, Card, DataTable, EmptyState, PageHeader, StatTile, useAletheiaS
 import { AskButton, Gate, useHref, when } from "./common";
 import { useLoadPlan } from "./hooks";
 import { LoadBoard } from "./LoadBoard";
+import { useCrumbs, Flow, LOAD_STEPS } from "@/ui/screens/flow";
 
 /** The Load area home: the order to load in, the files handed over, and a way into every part of the area. */
 export function Load() {
@@ -43,9 +44,10 @@ export function Load() {
     { to: "/load/compare", title: t("Paired systems"), note: t("Source against target, object by object.") },
   ];
 
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader title={t("Load")} context={t("Move clean data into the new system, in the right order.")} actions={<><Button variant="primary" href={href("/load/plan")}>{t("Review the load order")}</Button><AskButton /></>} />
+      <PageHeader crumbs={crumbs("load")} stepper={<Flow label={t("Load journey")} at={0} steps={LOAD_STEPS()} />} title={t("Load")} context={t("Move clean data into the new system, in the right order.")} actions={<><Button variant="primary" href={href("/load/plan")}>{t("Review the load order")}</Button><AskButton /></>} />
       <div className="mx-col">
         <Card title={t("Everything in Load")}>
           <DataTable

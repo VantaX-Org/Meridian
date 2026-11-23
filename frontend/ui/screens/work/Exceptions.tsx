@@ -18,6 +18,7 @@ import { Button, Card, Chip, DataTable, EmptyState, ErrorState, Field, FieldChip
 import { useAssignable } from "@/lib/v2/approvals-queries";
 import { useV2Session } from "@/lib/v2/hooks";
 import { day, sevLabel, useDo } from "./shared";
+import { useCrumbs } from "@/ui/screens/flow";
 
 const STATUS_TEXT = (s: string) => ({ open: t("Open"), investigating: t("Investigating"), pending_approval: t("Pending approval"), resolved: t("Resolved"), verified: t("Verified"), closed: t("Closed") })[s] ?? s;
 const SEVS = ["", "critical", "high", "medium", "low"];
@@ -177,9 +178,10 @@ export function Exceptions() {
   });
 
   const detail = pick ? <Detail id={pick} /> : <EmptyState heading={t("Pick an exception")} body={t("Its detail and actions show here.")} />;
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader title={t("Exceptions")} context={t("Things that need a person to decide")}
+      <PageHeader crumbs={crumbs("work", t("Exceptions"))} title={t("Exceptions")} context={t("Things that need a person to decide")}
         actions={<>
           <ExportMenu label={t("Export sign-offs")} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => exportExceptions({})} />
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>

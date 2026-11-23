@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
@@ -56,6 +57,7 @@ function ShareCard() {
 }
 
 export function People() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const fx = useFixture();
   const qc = useQueryClient();
@@ -93,7 +95,7 @@ export function People() {
   const open = (id: string, arg?: unknown) => sheet.open(id, arg);
   return (
     <>
-      <PageHeader
+      <PageHeader crumbs={crumbs("people")}
         title={t("People")}
         context={t("{n} people, {late} items overdue, {w} approvals waiting", { n: list.length, late, w: waiting })}
         actions={<>

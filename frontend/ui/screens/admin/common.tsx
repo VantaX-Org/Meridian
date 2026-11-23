@@ -5,6 +5,7 @@ import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-quer
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { usePermissionsContext } from "@/lib/permissions";
 import { apiErrorMessage } from "@/lib/error";
+import { useCrumbs } from "@/ui/screens/flow";
 import { t, tx, useInterfaceLang } from "@/lib/v2/i18n";
 import { v2Locale } from "@/lib/v2/format";
 import { refreshAdmin } from "@/lib/v2/admin-queries";
@@ -92,9 +93,10 @@ export function Frame({ slug, title, lead, actions, loading, error, children }: 
   useInterfaceLang();
   const qc = useQueryClient();
   const back = useAdminBack();
+  const crumbs = useCrumbs();
   return (
     <div className="mx-col" data-admin={slug}>
-      <PageHeader back={back} title={title} context={lead} actions={actions} />
+      <PageHeader crumbs={crumbs("admin", title)} back={back} title={title} context={lead} actions={actions} />
       {loading ? <Skeleton lines={6} label={t("Loading {section}", { section: title })} />
         : error ? <ErrorState heading={t("{section} could not be loaded", { section: title })} retryLabel={t("Try again")} onRetry={() => void qc.invalidateQueries({ queryKey: ["v2", "admin"] })} />
         : children}

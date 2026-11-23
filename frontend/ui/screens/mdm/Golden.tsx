@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { useState } from "react";
 import Link from "next/link";
 import { GOLDEN_PAGE, type GoldenRow } from "@/lib/api/v2/mdm";
@@ -9,6 +10,7 @@ import { Button, Card, DataTable, EmptyState, ErrorState, FieldChip, PageHeader,
 import { DEFAULT_DOMAIN, DomainSelect, day, pct, statusLabel, useHref } from "./shared";
 
 export function Golden() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const href = useHref();
   const sheet = useSheet();
@@ -32,7 +34,7 @@ export function Golden() {
   });
 
   const header = (
-    <PageHeader
+    <PageHeader crumbs={crumbs("mdm",t("Golden records"))}
       title={t("Golden records")}
       context={t("{total} records", { total })}
       actions={<Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>}

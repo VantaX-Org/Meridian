@@ -37,7 +37,7 @@ export function Rules({ o, system, module }: { o: ObjectRun; system: string; mod
     <Lead tab="rules" title={t("Passing and failing rules")} sentence={t("{f} of {n} rules fail on at least one record.", { f: failingRules, n: all.length })}
       bars={[{ id: "pass", label: t("Passing"), value: all.length - failingRules, tone: "good" }, { id: "fail", label: t("Failing"), value: failingRules, tone: "bad" }]} />
     <Card title={t("Rules")} sub={t("{n} rules ran on this object", { n: all.length })} action={<Search value={q} onChange={setQ} label={t("Search rules")} clearLabel={t("Clear search")} placeholder={t("Search rules")} />}>
-      {rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => r.check_id} label={t("Rules")} height={480} /> : <EmptyState heading={t("No rule matches.")} body={t("Clear the search or choose another filter to see rules.")} />}
+      {rows.length ? <DataTable id="object-rules" columns={cols} rows={rows} rowKey={(r) => r.check_id} label={t("Rules")} height={480} /> : <EmptyState heading={t("No rule matches.")} body={t("Clear the search or choose another filter to see rules.")} />}
     </Card>
     </div>
   );

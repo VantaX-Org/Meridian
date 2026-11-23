@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createDigest, deleteDigest, getDigest, getDigestNumbers, listDigestDeliveries, listDigests, sendDigestNow, updateDigest, type Digest, type DigestBody } from "@/lib/api/v2/step10";
@@ -130,6 +131,7 @@ function EditLoad({ id, onDone }: { id: string; onDone: () => void }) {
 }
 
 export function Digests() {
+  const crumbs = useCrumbs();
   const q = useQ(["digests"], () => listDigests());
   const chat = useAletheia();
   const [sel, setSel] = useState<string | null>(null);
@@ -163,7 +165,7 @@ export function Digests() {
     : <EmptyState heading={t("Select a digest")} body={t("Its schedule, numbers and deliveries appear here.")} />;
   return (
     <>
-      <PageHeader title={t("Digests")} context={t("Scheduled summaries for roles and waves")} actions={<>
+      <PageHeader crumbs={crumbs("people",t("Digests"))} title={t("Digests")} context={t("Scheduled summaries for roles and waves")} actions={<>
         <Button variant="primary" onClick={() => setMode("new")}>{t("New digest")}</Button>
         <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
       </>} />

@@ -4,7 +4,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { withFixture, useFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
-import { Button, PageHeader, useAletheia, useAletheiaScope, type AletheiaAnswer } from "@/ui/kit";
+import { useLandscape } from "@/lib/v2/queries";
+import { usePortfolio } from "@/lib/api/next/portfolio";
+import { objectPath as rowPath, stepLabel } from "@/ui/screens/home/links";
+import { Button, CycleStepper, PageHeader, useAletheia, useAletheiaScope, type AletheiaAnswer } from "@/ui/kit";
 import type { ObjectRun } from "@/ui/screens/object/useObjectRun";
 
 export type Tab = "records" | "record" | "trend" | "runs" | "fixes" | "rules" | "golden" | "glossary" | "lineage" | "profile" | "readiness" | "processes" | "design";
@@ -58,18 +61,31 @@ export function ObjectTabNav({ o, system, module, active }: { o: ObjectRun; syst
   );
 }
 
+/** The clean cycle for this object at its newest run. Shows nothing until the portfolio row is known. */
+export function ObjectCycle({ system, module }: { system: string; module: string }) {
+  const pf = usePortfolio({}, true);
+  const land = useLandscape(null);
+  const systems = land.data?.systems ?? [];
+  const row = pf.data?.objects.find((r) => rowPath(r, systems) === objectPath(system, module));
+  if (!row) return null;
+  return <CycleStepper label={t("Clean cycle")} step={row.step ?? "pull"} labels={{ pull: stepLabel("pull"), clean: stepLabel("clean"), upload: stepLabel("upload"), score: stepLabel("score"), compare: stepLabel("compare") }} />;
+}
+
 /** Header, the strip of sub-screens, and the Ask Aletheia button shared by every object sub-screen. */
 export function TabFrame({ o, system, module, tab, title, actions, children }: {
   o: ObjectRun; system: string; module: string; tab: Tab; title: string; actions?: ReactNode; children: ReactNode;
 }) {
   useInterfaceLang();
   const chat = useAletheia();
+  const fx = useFixture();
   const active = tab === "record" ? "records" : tab === "design" ? "processes" : tab;
   return (
     <>
       <PageHeader
         title={title}
         context={<>{o.label}{", "}{o.systemName}</>}
+        crumbs={[{ label: t("Objects"), href: withFixture("/o", fx) }, { label: o.systemName }, { label: o.label, href: withFixture(o.hrefWith(objectPath(system, module), {}), fx) }, { label: title }]}
+        stepper={tab === "runs" || tab === "fixes" ? <ObjectCycle system={system} module={module} /> : undefined}
         actions={<>
           {actions}
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>

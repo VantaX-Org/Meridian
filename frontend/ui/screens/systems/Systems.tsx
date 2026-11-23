@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
@@ -14,6 +15,7 @@ import Link from "next/link";
 import { Health, envLabel, errMsg, typeLabel, when } from "./shared";
 
 export function Systems() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const fx = useFixture();
   const href = (p: string) => withFixture(p, fx);
@@ -84,7 +86,7 @@ export function Systems() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader crumbs={crumbs("systems")}
         title={t("Systems")}
         context={t("{n} connected", { n: systems.length })}
         actions={<>

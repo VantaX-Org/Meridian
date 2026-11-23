@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
@@ -19,6 +20,7 @@ import { Health, envLabel, errMsg, typeLabel, when } from "./shared";
 const TABS = ["extractions", "connection", "design", "config", "pilot", "reference", "custom"] as const;
 
 export function System({ id }: { id: string }) {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const fx = useFixture();
   const href = (p: string) => withFixture(p, fx);
@@ -56,7 +58,7 @@ export function System({ id }: { id: string }) {
   };
   return (
     <>
-      <PageHeader
+      <PageHeader crumbs={crumbs("systems",sys.name)}
         title={sys.name}
         context={`${typeLabel(sys.system_type)} - ${envLabel(sys.environment)}`}
         actions={<>

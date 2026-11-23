@@ -9,6 +9,7 @@ import { sortWaves } from "@/lib/v2/waves";
 import { Button, Card, Chip, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Select, Sheet, TrendArea, useAletheiaScope, useToast } from "@/ui/kit";
 import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, usePairs, useLoadPlan, useWaves } from "./hooks";
+import { useCrumbs } from "@/ui/screens/flow";
 
 const STAGES = ["plan", "mock1", "mock2", "dress", "cutover"] as const;
 const stageLabel = (s: string): string => (s === "plan" ? t("Plan") : s === "mock1" ? t("Mock load 1") : s === "mock2" ? t("Mock load 2") : s === "dress" ? t("Dress rehearsal") : t("Cutover"));
@@ -45,9 +46,10 @@ export function Waves() {
     },
   });
 
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader back={back} title={t("Migration waves")} context={t("Group objects into waves and track each wave to sign-off.")} actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("New wave")}</Button><AskButton /></>} />
+      <PageHeader crumbs={crumbs("load", t("Migration waves"))} back={back} title={t("Migration waves")} context={t("Group objects into waves and track each wave to sign-off.")} actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("New wave")}</Button><AskButton /></>} />
       <Card title={t("Waves")} sub={t("{n} waves", { n: waves.length })}>
         <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the waves")}>
           {waves.length ? (

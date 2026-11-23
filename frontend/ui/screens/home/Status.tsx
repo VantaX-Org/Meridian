@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { useStatusPage } from "@/lib/v2/enterprise-queries";
 import { formatDate } from "@/lib/format";
 import { currentMaintenance, dayCells, overallVerdict, overallWord, statusWord } from "@/lib/v2/status";
@@ -11,6 +12,7 @@ const SEV: Record<string, Severity> = { go: "low", "at-risk": "medium", "no-go":
 
 /** Whether Meridian is running: overall state, the last 30 days, each component, server errors and planned maintenance. Reads only. */
 export function Status() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const q = useStatusPage();
   const page = q.data;
@@ -22,7 +24,7 @@ export function Status() {
   const upBy = new Map(page.uptime.components.map((c) => [c.id, c.uptime_pct]));
   return (
     <>
-      <PageHeader title={t("Status")} context={t("Checked {updated}. This page reads again every minute.", { updated: formatDate(page.generated_at, "datetime") })} />
+      <PageHeader crumbs={crumbs("status")} title={t("Status")} context={t("Checked {updated}. This page reads again every minute.", { updated: formatDate(page.generated_at, "datetime") })} />
       <dl className="mx-tiles">
         <StatTile label={t("Overall")} value={<SeverityPill sev={SEV[verdict]} label={overallWord(page.status)} />} note={page.status === "operational" ? t("Every part of the platform is working.") : page.status === "degraded" ? t("Part of the platform is slower or less available than usual.") : t("A core part of the platform is down.")} />
         <StatTile label={t("Uptime, last 30 days")} value={pct(page.uptime.overall_pct)} bar={page.uptime.overall_pct ?? 0} barTone="pass" />
