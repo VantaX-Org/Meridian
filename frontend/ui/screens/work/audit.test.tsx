@@ -104,7 +104,9 @@ describe("Work saved view and bulk guard", () => {
     fireEvent.click(await within(list).findByRole("button", { name: /Blank base unit/ }));
     const btn = await screen.findByRole("button", { name: "Accept every proposed value" }, { timeout: 5000 });
     fireEvent.click(btn);
-    fireEvent.click(btn);
+    const ok = await screen.findByRole("button", { name: "Accept all" }, { timeout: 5000 });
+    fireEvent.click(ok);
+    fireEvent.click(ok);
     await waitFor(() => expect((btn as HTMLButtonElement).disabled).toBe(true));
     expect(m.postAcceptAll).toHaveBeenCalledTimes(1);
     done({ accepted: 1 });
@@ -171,7 +173,8 @@ describe("Clean board failures", () => {
     m.getGroups.mockResolvedValue(groupsOf(3));
     m.postAcceptAll.mockRejectedValueOnce(new Error("no")).mockResolvedValue({ accepted: 2 });
     mount("/work?fixture=1", <CleanBoard />);
-    fireEvent.click(await screen.findByRole("button", { name: /^Approve all/ }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Approve all \d/ }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole("button", { name: "Approve all" }, { timeout: 5000 }));
     expect(await screen.findByText("1 rules failed. Try again.", {}, { timeout: 5000 })).toBeTruthy();
     expect(m.postAcceptAll).toHaveBeenCalledTimes(3);
   });
