@@ -7,6 +7,10 @@ export interface RulerMark {
   /** The measured score. When it differs from shown the mark is capped: a hollow mark sits at it, tethered. */
   measured?: number | null;
   tone?: RulerTone;
+  /** Where the score is projected to land once the proposed fixes apply. Drawn as a diamond. */
+  projected?: number | null;
+  /** The score measured after the fixes were applied. Drawn as a square. */
+  actual?: number | null;
   /** When set, the mark's row is a link to the object. */
   href?: string;
 }
@@ -15,6 +19,24 @@ export interface RulerLabels {
   atRisk: string; go: string; cap70: string; cap85: string;
   /** "Measured 92" style text for a capped mark. */
   measured: (n: number) => string;
+  /** "Projected 88" and "Actual 86" style text. Needed only when a mark has projected or actual. */
+  projected?: (n: number) => string;
+  actual?: (n: number) => string;
+}
+
+/** Two markers closer than this (in ruler units, about px at full width) put their labels on opposite sides. */
+export const LABEL_GAP = 48;
+
+/**
+ * Which side each label sits on, given the marker x positions in row order. A marker starts above;
+ * when it is closer than LABEL_GAP to the one before it, it flips to the opposite side of that one.
+ */
+export function labelSides(xs: number[]): ("up" | "down")[] {
+  const out: ("up" | "down")[] = [];
+  xs.forEach((x, i) => {
+    out.push(i > 0 && Math.abs(x - xs[i - 1]) < LABEL_GAP ? (out[i - 1] === "up" ? "down" : "up") : "up");
+  });
+  return out;
 }
 
 const tone = (s: number): RulerTone => (s >= 85 ? "go" : s >= 70 ? "watch" : "stop");
@@ -56,6 +78,11 @@ export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width, zones, f
         const capped = m.measured != null && m.measured > m.shown;
         const t = m.tone ?? tone(m.shown);
         const sx = x(m.shown);
+        // Label sides for projected and actual: order every marker by x, then apply the collision rule.
+        const extra = ([["projected", m.projected], ["actual", m.actual]] as const).filter(([, v]) => v != null) as ["projected" | "actual", number][];
+        const order = [{ k: "shown", x: sx }, ...(capped ? [{ k: "measured", x: x(m.measured as number) }] : []), ...extra.map(([k, v]) => ({ k, x: x(v) }))].sort((a, b) => a.x - b.x);
+        const sides = labelSides(order.map((o) => o.x));
+        const sideOf = (k: string) => sides[order.findIndex((o) => o.k === k)];
         const row = (
           <g key={m.id} data-mark={m.id} data-capped={capped ? "" : undefined}>
             {capped ? (
@@ -72,6 +99,18 @@ export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width, zones, f
                 <text className="mx-ruler-t" x={sx + 12} y={cy + 4} fontSize={fs}>{Math.round(m.shown)}</text>
               </>
             )}
+            {extra.map(([k, v]) => {
+              const label = labels[k];
+              const up = sideOf(k) === "up";
+              return (
+                <g key={k} className="mx-ruler-mk" data-testid={`ruler-${k}`} data-side={up ? "up" : "down"} style={{ transform: `translateX(${x(v)}px)` }}>
+                  {k === "projected"
+                    ? <polygon className="mx-ruler-proj" points="0,-7 7,0 0,7 -7,0" />
+                    : <rect className="mx-ruler-act" x={-5} y={-5} width={10} height={10} />}
+                  {label ? <text className="mx-ruler-t" x={0} y={cy + (up ? -12 : 22)} textAnchor="middle" fontSize={fs}>{label(Math.round(v))}</text> : null}
+                </g>
+              );
+            })}
             {first && i === 0 && first.value >= from ? (
               <g data-testid="ruler-first">
                 <circle className="mx-ruler-first" cx={x(first.value)} cy={cy} r={4} />

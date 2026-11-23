@@ -312,6 +312,8 @@
 .mx-root .mx-ruler-hollow { fill: var(--mx-sheet); stroke: var(--mx-ink); stroke-width: 1.5; }
 .mx-root .mx-ruler-solid { fill: var(--mx-ink); }
 .mx-root .mx-ruler-solid-t { fill: var(--mx-on-solid); font-weight: 600; font-family: var(--mx-font-mono); }
+.mx-root .mx-ruler-proj { fill: var(--mx-sheet); stroke: var(--mx-accent); stroke-width: 2; }
+.mx-root .mx-ruler-act { fill: var(--mx-accent); stroke: var(--mx-sheet); stroke-width: 1.5; }
 .mx-root .mx-ruler-dot[data-tone="go"] { fill: var(--mx-go); }
 .mx-root .mx-ruler-dot[data-tone="watch"] { fill: var(--mx-watch); }
 .mx-root .mx-ruler-dot[data-tone="stop"] { fill: var(--mx-stop); }
