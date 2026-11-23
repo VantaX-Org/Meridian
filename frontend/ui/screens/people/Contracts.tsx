@@ -10,6 +10,7 @@ import { labelText } from "@/lib/v2/labels";
 import { Button, Card, Chip, DataTable, EmptyState, Field, Input, PageHeader, Split, StatTile, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
 import { CommentsPanel } from "./Comments";
 import { Gate, day, refreshV2, useQ } from "./common";
+import { ContractEditor, ObjectContractFlow, TermsEditor } from "./ContractTerms";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 const status = labelText;
@@ -75,16 +76,12 @@ function ContractDetailPane({ id }: { id: string }) {
               <Field label={t("What changed")} hint={t("Optional")}><Input value={note} onChange={(e) => setNote(e.target.value)} /></Field>
               <Button variant="secondary" disabled={revise.isPending} onClick={() => revise.mutate()}>{t("Create new version")}</Button>
             </Card>
-            <Card title={t("Contract terms")} sub={t("Read only here")}>
+            <ContractEditor c={c} />
+            <Card title={t("Contract terms")} sub={t("Limits and enforcement")}>
               <Gate q={breaches} label={t("Loading terms")}>
                 {(b) => (
                   <>
-                    <p>{b.enforce ? t("Enforced on load") : t("Not enforced")}</p>
-                    <ul className="mx-list" aria-label={t("Thresholds")}>
-                      {b.thresholds.min_score !== undefined ? <li>{t("Minimum score")}: {b.thresholds.min_score}</li> : null}
-                      {b.thresholds.max_critical_breaches !== undefined ? <li>{t("Critical breaches allowed")}: {b.thresholds.max_critical_breaches}</li> : null}
-                      {Object.entries(b.thresholds.dimensions ?? {}).map(([k, v]) => <li key={k}>{k}: {String(v)}</li>)}
-                    </ul>
+                    <TermsEditor id={id} b={b} />
                     <h3 className="mx-card-t">{t("Breaches now")}</h3>
                     {b.current.length === 0 ? <EmptyState heading={t("No breach right now")} body={t("Every contract is within its limit.")} /> : (
                       <ul className="mx-list" aria-label={t("Breaches now")}>{b.current.map((x, i) => <li key={i}>{x.metric}: {x.actual} {t("against")} {x.threshold}</li>)}</ul>
@@ -131,7 +128,7 @@ export function Contracts() {
   const q = useQ(["contracts"], () => listContracts());
   const chat = useAletheia();
   const [sel, setSel] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState<"" | "plain" | "object">("");
   const [filter, setFilter] = useState("all");
   const rows = (q.data?.contracts ?? []).filter((c) => filter === "all" || c.status === filter);
   useAletheiaScope({
@@ -155,7 +152,7 @@ export function Contracts() {
             rows={rows}
             rowKey={(c) => c.id}
             selected={sel ?? undefined}
-            onSelect={(c) => { setSel(c.id); setAdding(false); }}
+            onSelect={(c) => { setSel(c.id); setAdding(""); }}
             columns={[
               { key: "name", label: t("Contract"), sort: (c) => c.name, render: (c) => c.name },
               { key: "route", label: t("Producer to consumer"), render: (c) => `${c.producer} ${t("to")} ${c.consumer}` },
@@ -167,11 +164,12 @@ export function Contracts() {
       </Gate>
     </div>
   );
-  const right = adding ? <NewContract onDone={() => setAdding(false)} /> : sel ? <ContractDetailPane id={sel} /> : <EmptyState heading={t("Select a contract")} body={t("Its terms, breaches and notes appear here.")} />;
+  const right = adding === "plain" ? <NewContract onDone={() => setAdding("")} /> : adding === "object" ? <ObjectContractFlow onDone={() => setAdding("")} /> : sel ? <ContractDetailPane id={sel} /> : <EmptyState heading={t("Select a contract")} body={t("Its terms, breaches and notes appear here.")} />;
   return (
     <>
       <PageHeader title={t("Data contracts")} context={t("What producers promise and consumers rely on")} actions={<>
-        <Button variant="primary" onClick={() => setAdding(true)}>{t("New contract")}</Button>
+        <Button variant="secondary" onClick={() => setAdding("object")}>{t("New contract for an object")}</Button>
+        <Button variant="primary" onClick={() => setAdding("plain")}>{t("New contract")}</Button>
         <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
       </>} />
       <Split left={left} right={right} leftLabel={t("Contracts")} rightLabel={t("Contract detail")} />
