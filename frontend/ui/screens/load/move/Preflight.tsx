@@ -24,7 +24,7 @@ export function Preflight({ planId, onBack, onNext }: { planId: string; onBack: 
   useEffect(() => { if (!asked.current) { asked.current = true; start.mutate(); } }, [start]);
 
   const pre = q.data?.preflight;
-  const checking = start.isPending || !pre || pre.status === "queued";
+  const checking = !pre || pre.status === "queued";
   const issues = pre?.issues ?? [];
   const errors = issues.filter((i) => i.severity === "error");
 

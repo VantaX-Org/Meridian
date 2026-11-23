@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 
 const NAV = { timeout: 90_000 };
 const ROUTES = [
-  { url: "/?fixture=1", title: "Home", row: (p: import("@playwright/test").Page) => p.getByRole("list", { name: "Attention items" }).getByRole("button").first() },
+  { url: "/?fixture=1", title: /^Good (morning|afternoon|evening)/, row: (p: import("@playwright/test").Page) => p.getByRole("list", { name: "Attention items" }).getByRole("button").first() },
   { url: "/o?fixture=1", title: "Objects", row: (p: import("@playwright/test").Page) => p.getByRole("main").getByRole("row").nth(1) },
   { url: "/status?fixture=1", title: "Status", row: (p: import("@playwright/test").Page) => p.getByRole("main").getByRole("row").nth(1) },
 ];
@@ -27,6 +27,5 @@ for (const r of ROUTES) {
     await expect(page.getByRole("heading", { level: 1, name: r.title })).toBeVisible(NAV);
     await expect(r.row(page)).toBeVisible(NAV);
     expect(await page.locator("body").innerText()).not.toContain(String.fromCharCode(0xb7));
-    if (r.title === "Home") await page.screenshot({ path: "/private/tmp/claude-501/-Users-reshigan/d1c5bf99-9d06-4fbf-b894-bf4df80b630f/scratchpad/b2-main.png" });
   });
 }

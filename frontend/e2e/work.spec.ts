@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 
 const NAV = { timeout: 90_000 };
 const ROUTES: [string, string][] = [
-  ["/work", "Work"],
+  ["/work", "Clean cycle"],
   ["/work/triage", "Triage"],
   ["/work/exceptions", "Exceptions"],
   ["/work/exceptions?view=rules", "Exceptions"],
