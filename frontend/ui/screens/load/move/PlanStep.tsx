@@ -89,7 +89,7 @@ export function PlanStep({ planId, onBack, onNext }: { planId: string; onBack: (
     </Card>
   );
   return (
-    <Gate loading={q.isLoading} error={q.isError} what={t("the plan")}>
+    <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the plan")}>
       <div className="mx-col">
         {unplaced.length ? (
           <Card title={t("{n} not placed in any wave", { n: unplaced.length })} sub={t("These will not move until you fix the reason shown.")}>

@@ -44,4 +44,18 @@ describe("Reconcile", () => {
     await screen.findAllByText("PerPerson");
     expect(screen.queryByText("Projected target")).toBeNull();
   });
+
+  it("shows the server reason when the comparison cannot start, and again after a first run", async () => {
+    route({});
+    renderScreen(<Reconcile planId="p1" onBack={() => undefined} onNext={() => undefined} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reconcile now" }));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+  });
+
+  it("offers a retry when the comparison cannot be loaded", async () => {
+    route({ [`POST ${B}/plans/p1/reconcile`]: { id: "c1" } });
+    renderScreen(<Reconcile planId="p1" onBack={() => undefined} onNext={() => undefined} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reconcile now" }));
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy();
+  });
 });
