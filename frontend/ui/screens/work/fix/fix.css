@@ -43,7 +43,7 @@
 .mx-root .mx-fixrule-h { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: var(--mx-s2); }
 .mx-root .mx-fixrule-sq { inline-size: 0.6rem; block-size: 0.6rem; border-radius: 2px; background: var(--sev, var(--mx-ink-3)); }
 .mx-root .mx-fixrule-t { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; font-size: var(--mx-fs-small); }
-.mx-root .mx-fixrule[data-top] { border-color: var(--mx-accent); background: var(--mx-row-selected); }
+.mx-root .mx-fixrule[data-top]:not([aria-pressed="true"]) { box-shadow: inset 2px 0 0 var(--mx-ink-3); }
 .mx-root .mx-fixrule-c { font-size: var(--mx-fs-small); font-weight: var(--mx-w-label); }
 .mx-root .mx-fixrule-bar { display: block; block-size: 3px; border-radius: 2px; background: var(--mx-well); overflow: hidden; }
 .mx-root .mx-fixrule-bar > i { display: block; block-size: 100%; background: var(--sev, var(--mx-ink-3)); }

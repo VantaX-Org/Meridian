@@ -97,7 +97,7 @@ export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMor
     },
     {
       key: "field", label: t("Field"), width: 200, groupable: true, value: (r) => r.top_field ?? "",
-      render: (r) => <span className="mx-fix-field"><span className="mx-code">{r.top_field ?? ""}</span><span className="mx-muted">{fieldText(r.top_field, r.field_description)}</span></span>,
+      render: (r) => <span className="mx-fix-field" title={fieldText(r.top_field, r.field_description) || undefined}><span className="mx-code">{r.top_field ?? ""}</span></span>,
     },
     {
       key: "current", label: t("Current value"), width: 160, value: currentText,
@@ -128,9 +128,9 @@ export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMor
       key: "value", label: t("Value at risk"), width: 130, value: (r: WorkRow) => r.value_at_risk ?? -1,
       render: (r: WorkRow) => (typeof r.value_at_risk === "number" ? <span className="mx-num">{formatMoneyCompact(r.value_at_risk)}</span> : <span className="mx-muted">-</span>),
     } satisfies Column<WorkRow>] : []),
-    { key: "source", label: t("Source"), width: 110, value: source, render: source },
-    { key: "confidence", label: t("Confidence"), width: 110, value: conf, render: conf },
-    { key: "status", label: t("Status"), width: 150, groupable: true, value: (r) => STATUS_LABEL[r.status] ?? r.status, render: (r) => STATUS_LABEL[r.status] ?? r.status },
+    ...(rows.some((r) => source(r) !== "-") ? [{ key: "source", label: t("Source"), width: 110, value: source, render: source } satisfies Column<WorkRow>] : []),
+    ...(rows.some((r) => conf(r) !== "-") ? [{ key: "confidence", label: t("Confidence"), width: 110, value: conf, render: conf } satisfies Column<WorkRow>] : []),
+    { key: "status", label: t("Status"), width: 190, groupable: true, value: (r) => STATUS_LABEL[r.status] ?? r.status, render: (r) => { const v = STATUS_LABEL[r.status] ?? r.status; return <span className="mx-fix-rec" title={v}>{v}</span>; } },
   ];
 
   const filtered = Object.values(grid.filters).some((v) => v.length > 0) || grid.groupBy;
