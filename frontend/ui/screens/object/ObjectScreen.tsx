@@ -175,6 +175,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />
+      {d.downloadError ? <p role="alert" data-testid="download-error">{d.downloadError}</p> : null}
       <ObjectTabNav o={o} system={system} module={module} active="overview" />
       <section className="mx-hero" aria-label={t("Score")} data-testid="score-hero">
         {d.now !== null ? (
