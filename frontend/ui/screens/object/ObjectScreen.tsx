@@ -19,7 +19,7 @@ import {
 import { ObjectTabNav, objectPath } from "@/ui/screens/object-tabs/TabFrame";
 import { RunLines, ToneBars } from "./Board";
 import { answerFor, type PromptId } from "./answers";
-import { FindingsCard, MonitorStrip, OldRunGate, RelatedObjects, ScoreReceipt } from "./ObjectExtras";
+import { AllRulesCard, FindingsCard, MonitorStrip, OldRunGate, RelatedObjects, ScoreReceipt } from "./ObjectExtras";
 import { compactCount, dqsOf, score as fmt, signed } from "./format";
 import { useObjectData, type ObjectData } from "./useObjectData";
 import { useObjectRun } from "./useObjectRun";
@@ -260,6 +260,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
           ]}
         />
       </Card>
+      <AllRulesCard rules={d.all} href={href} />
       <div className="mx-split">
         <div className="mx-col">
           <Card title={t("Score receipt")}>

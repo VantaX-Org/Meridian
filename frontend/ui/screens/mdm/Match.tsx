@@ -97,7 +97,7 @@ export function Match() {
           ]}
         />
         {tab === "review" && (
-          pairs.isLoading ? <Skeleton lines={8} label={t("Loading match pairs")} /> : pairs.isError ? <ErrorState heading={t("Match pairs could not be loaded")} /> : list.length === 0 ? (
+          pairs.isLoading ? <Skeleton lines={8} label={t("Loading match pairs")} /> : pairs.isError ? <ErrorState heading={t("Match pairs could not be loaded")} retryLabel={t("Try again")} onRetry={() => void pairs.refetch()} /> : list.length === 0 ? (
             <EmptyState heading={t("No pairs waiting")} body={t("Every candidate pair has a decision.")} />
           ) : (
             <>
@@ -158,7 +158,7 @@ export function Match() {
         )}
         {tab === "clusters" && (
           <Card title={t("Cross-system clusters")} sub={t("Duplicates whose records sit in different connected systems.")}>
-            {(across.data?.clusters ?? []).length === 0 ? <EmptyState heading={t("No cross-system clusters")} /> : (
+            {across.isError ? <ErrorState heading={t("Cross-system clusters could not be loaded")} retryLabel={t("Try again")} onRetry={() => void across.refetch()} /> : (across.data?.clusters ?? []).length === 0 ? <EmptyState heading={t("No cross-system clusters")} /> : (
               <DataTable
                 label={t("Cross-system clusters")}
                 rows={across.data?.clusters ?? []}
@@ -177,7 +177,7 @@ export function Match() {
         )}
         {tab === "constraints" && (
           <Card title={t("Pair constraints")} sub={t("Pairs a steward decided. Clear one to offer it again.")}>
-            {(cons.data ?? []).length === 0 ? <EmptyState heading={t("No pair constraints")} /> : (
+            {cons.isError ? <ErrorState heading={t("Pair constraints could not be loaded")} retryLabel={t("Try again")} onRetry={() => void cons.refetch()} /> : (cons.data ?? []).length === 0 ? <EmptyState heading={t("No pair constraints")} /> : (
               <DataTable
                 label={t("Pair constraints")}
                 rows={cons.data ?? []}
@@ -201,7 +201,7 @@ export function Match() {
               sub={cal.data ? t("{a} accepted and {r} rejected decisions. At least {m} are needed.", { a: cal.data.accepted, r: cal.data.rejected, m: cal.data.min_decisions }) : undefined}
               action={<Button variant="secondary" disabled={busy || cal.data?.status !== "ready"} onClick={() => setPending({ kind: "apply" })}>{t("Apply recommended weights")}</Button>}
             >
-              {cal.isLoading ? <Skeleton lines={4} label={t("Loading calibration")} /> : (cal.data?.fields ?? []).length === 0 ? <EmptyState heading={t("No calibration data yet")} body={t("Decide more pairs so Meridian can learn the weights.")} /> : (
+              {cal.isLoading ? <Skeleton lines={4} label={t("Loading calibration")} /> : cal.isError ? <ErrorState heading={t("Calibration could not be loaded")} retryLabel={t("Try again")} onRetry={() => void cal.refetch()} /> :  (cal.data?.fields ?? []).length === 0 ? <EmptyState heading={t("No calibration data yet")} body={t("Decide more pairs so Meridian can learn the weights.")} /> : (
                 <DataTable
                   label={t("Calibration by field")}
                   rows={cal.data?.fields ?? []}
@@ -237,7 +237,7 @@ export function Match() {
               <Button variant="secondary" disabled={busy} onClick={() => act(() => downloadConsolidationPack(domain, "xlsx"), t("Excel downloaded"))}>{t("Download Excel")}</Button>
             </span>}
           >
-            {(pack.data?.rows ?? []).length === 0 ? <EmptyState heading={t("Nothing merged yet")} body={t("The pack lists the records that retire once pairs are merged.")} /> : (
+            {pack.isError ? <ErrorState heading={t("The consolidation pack could not be loaded")} retryLabel={t("Try again")} onRetry={() => void pack.refetch()} /> : (pack.data?.rows ?? []).length === 0 ? <EmptyState heading={t("Nothing merged yet")} body={t("The pack lists the records that retire once pairs are merged.")} /> : (
               <DataTable
                 label={t("Consolidation pack")}
                 rows={(pack.data?.rows ?? []).map((r, i) => ({ ...r, i }))}

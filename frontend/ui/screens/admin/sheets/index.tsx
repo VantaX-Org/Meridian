@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLicence, useUpdateStatus } from "@/lib/v2/admin-queries";
-import { loadHelp, videoUrl, type HelpIndex } from "@/lib/v2/help";
+import { loadHelp, videoUrl } from "@/lib/v2/help";
 import { t } from "@/lib/v2/i18n";
 import type { SheetDef } from "@/ui/kit";
-import { Card, Code, DataTable, Skeleton, StatTile } from "@/ui/kit";
+import { Card, Code, DataTable, ErrorState, Skeleton, StatTile } from "@/ui/kit";
 import { PrefsForm } from "../PrefsForm";
 import { Stack, day } from "../ops/shared";
 
@@ -47,8 +47,9 @@ function UpdateSheet() {
 }
 
 function HelpSheet() {
-  const [h, setH] = useState<HelpIndex | null>(null);
-  useEffect(() => { loadHelp().then(setH).catch(() => undefined); }, []);
+  const q = useQuery({ queryKey: ["help-index"], queryFn: loadHelp, retry: false });
+  if (q.isError) return <ErrorState heading={t("Help could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
+  const h = q.data;
   if (!h) return <Skeleton lines={6} label={t("Loading help")} />;
   return (
     <Stack>

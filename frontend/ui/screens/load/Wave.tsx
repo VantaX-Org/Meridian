@@ -59,7 +59,7 @@ export function Wave({ id }: { id: string }) {
           <AskButton />
         </>}
       />
-      <Gate loading={q.isLoading} error={q.isError} what={t("the wave")}>
+      <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the wave")}>
         {c ? (
           <>
             <dl className="mx-tiles">

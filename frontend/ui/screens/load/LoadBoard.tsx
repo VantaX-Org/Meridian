@@ -11,7 +11,7 @@ import type { LoadObject } from "@/lib/api/v2/load-plan";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
 import { describeTable } from "@/lib/v2/sap-fields";
-import { Button, Card, Chip, DataTable, EmptyState, FieldChip, ScoreRuler, Skeleton, StatTile, Stepper, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, ScoreRuler, Skeleton, StatTile, Stepper, useAletheiaScope, useToast } from "@/ui/kit";
 import { compactCount, score, signed } from "../object/format";
 import { Verdict, humanize, useHref, when } from "./common";
 import { useLoadPlan, usePairLatest, usePairs, useRecords } from "./hooks";
@@ -27,7 +27,7 @@ function Failures({ runId, tables }: { runId: string; tables: TableCompare[] }) 
   return (
     <Card title={t("Load failures to clear")} sub={t("{n, plural, one {# record} other {# records}}", { n: q.data?.total ?? 0 })}
       action={<Button variant="secondary" href={href("/load/maps")}>{t("Open value mapping")}</Button>}>
-      {q.isLoading ? <Skeleton lines={3} label={t("Loading the load failures")} /> : rows.length === 0 ? <EmptyState heading={t("No load failures")} /> : (
+      {q.isLoading ? <Skeleton lines={3} label={t("Loading the load failures")} /> : q.isError ? <ErrorState heading={t("The load failures could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : rows.length === 0 ? <EmptyState heading={t("No load failures")} /> : (
         <DataTable
           label={t("Load failures to clear")}
           rows={rows}
@@ -92,6 +92,7 @@ export function LoadBoard() {
   });
 
   if (pairs.isLoading) return <Skeleton lines={5} label={t("Loading the load board")} />;
+  if (pairs.isError) return <ErrorState heading={t("The load board could not be loaded")} retryLabel={t("Try again")} onRetry={() => void pairs.refetch()} />;
   const exportRecon = () => { if (cmp) exportComparison(cmp.id, "xlsx", {}).catch(() => toast(t("The export failed"), "bad")); };
   const marks: { id: string; label: string; shown: number }[] = [];
   if (sc) for (const [id, label, v] of [["source", t("Source"), sc.source], ["projected", t("Projected target"), sc.projected], ["actual", t("Actual target"), sc.actual]] as const) if (v !== null) marks.push({ id, label, shown: v });
@@ -103,6 +104,7 @@ export function LoadBoard() {
           {list.map((p) => <Chip key={p.id} selected={p.id === pairId} onClick={() => setChosen(p.id)}>{`${labelText(p.module)}, ${p.source.name} ${t("to")} ${p.target.name}`}</Chip>)}
         </div>
       )}
+      {latest.isError && <ErrorState heading={t("The comparison for this pair could not be loaded")} retryLabel={t("Try again")} onRetry={() => void latest.refetch()} />}
       {!pair ? <EmptyState heading={t("No pair to load yet")} body={t("Pair a source system with its target to compare them.")} action={<Button variant="secondary" href={href("/load/compare")}>{t("Paired systems")}</Button>} /> : (
         <>
           <Card title={t("Three scores on one ruler")} sub={`${labelText(pair.module)}, ${pair.source.name} ${t("to")} ${pair.target.name}${cmp ? `, ${t("compared {when}", { when: when(cmp.completed_at ?? cmp.created_at) })}` : ""}`}>
@@ -166,7 +168,7 @@ export function LoadBoard() {
         </>
       )}
       <Card title={t("Load plan")} sub={t("Order set by dependencies")}>
-        {plan.isLoading ? <Skeleton lines={3} label={t("Loading the load order")} /> : objects.length === 0 ? <EmptyState heading={t("No load order yet")} body={t("Analyse an object first.")} /> : (
+        {plan.isLoading ? <Skeleton lines={3} label={t("Loading the load order")} /> : plan.isError ? <ErrorState heading={t("The load order could not be loaded")} retryLabel={t("Try again")} onRetry={() => void plan.refetch()} /> : objects.length === 0 ? <EmptyState heading={t("No load order yet")} body={t("Analyse an object first.")} /> : (
           <>
             <Stepper label={t("Load order")} current={firstOpen < 0 ? objects.length : firstOpen} steps={objects.map((o) => ({ id: o.module, label: o.label || humanize(o.module) }))} />
             <DataTable

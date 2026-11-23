@@ -11656,6 +11656,10 @@ export const en = {
   "By steward": "By steward",
   "No steward breakdown": "No steward breakdown",
   "The breakdown appears once items are assigned to people.": "The breakdown appears once items are assigned to people.",
+  "The load failures could not be loaded": "The load failures could not be loaded",
+  "The load board could not be loaded": "The load board could not be loaded",
+  "The comparison for this pair could not be loaded": "The comparison for this pair could not be loaded",
+  "The load order could not be loaded": "The load order could not be loaded",
   "This could not be loaded": "This could not be loaded",
   "Steward work by period": "Steward work by period",
   "Loading steward work": "Loading steward work",
@@ -12666,6 +12670,7 @@ export const en = {
   "Release notes": "Release notes",
   "Updates are run by your Meridian operator, not from this screen.": "Updates are run by your Meridian operator, not from this screen.",
   "Loading help": "Loading help",
+  "Help could not be loaded": "Help could not be loaded",
   "Build makes a file now and saves it under built files. A schedule builds the same report on a set day and sends it to people or channels. Export writes one dataset with the columns you choose.": "Build makes a file now and saves it under built files. A schedule builds the same report on a set day and sends it to people or channels. Export writes one dataset with the columns you choose.",
   "You can open {n} of {total} administration sections.": "You can open {n} of {total} administration sections.",
   "What can I administer?": "What can I administer?",
@@ -15001,6 +15006,11 @@ export const en = {
   "Change the address or the credentials, test, then save. A secret left empty keeps the stored one.": "Change the address or the credentials, test, then save. A secret left empty keeps the stored one.",
   "Test these settings": "Test these settings",
   "Save and test": "Save and test",
+  "Every measured rule": "Every measured rule",
+  "Cross-system clusters could not be loaded": "Cross-system clusters could not be loaded",
+  "Pair constraints could not be loaded": "Pair constraints could not be loaded",
+  "Calibration could not be loaded": "Calibration could not be loaded",
+  "The consolidation pack could not be loaded": "The consolidation pack could not be loaded",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

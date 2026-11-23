@@ -56,7 +56,7 @@ export function Load() {
         <StatTile label={t("Files handed over")} value={String(hist.data?.total ?? 0)} />
       </dl>
           <Card title={t("Load order")} sub={plan.data ? t("{n} steps for release {r}", { n: plan.data.steps, r: plan.data.release }) : undefined}>
-            <Gate loading={plan.isLoading} error={plan.isError} what={t("the load order")}>
+            <Gate loading={plan.isLoading} error={plan.isError} retry={() => void plan.refetch()} what={t("the load order")}>
               {objects.length ? (
                 <DataTable
                   label={t("Load order")}
@@ -74,7 +74,7 @@ export function Load() {
             </Gate>
           </Card>
           <Card title={t("Files handed over")} sub={t("{n} in total", { n: hist.data?.total ?? 0 })}>
-            <Gate loading={hist.isLoading} error={hist.isError} what={t("the load history")}>
+            <Gate loading={hist.isLoading} error={hist.isError} retry={() => void hist.refetch()} what={t("the load history")}>
               {hist.data?.items.length ? (
                 <DataTable
                   label={t("Files handed over")}

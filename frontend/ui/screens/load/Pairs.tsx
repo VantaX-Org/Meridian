@@ -51,7 +51,7 @@ export function Pairs() {
         actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("New pair")}</Button><AskButton /></>}
       />
       <Card title={t("Pairs")} sub={t("{n} pairs", { n: pairs.length })}>
-        <Gate loading={q.isLoading} error={q.isError} what={t("the pairs")}>
+        <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the pairs")}>
           {pairs.length ? (
             <DataTable
               label={t("Pairs")}

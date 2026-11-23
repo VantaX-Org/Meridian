@@ -54,7 +54,7 @@ export function Mdm() {
     />
   );
   if (q.isLoading) return <>{header}<Skeleton lines={6} label={t("Loading master data health")} /></>;
-  if (q.isError) return <>{header}<ErrorState heading={t("Master data health could not be loaded")} /></>;
+  if (q.isError) return <>{header}<ErrorState heading={t("Master data health could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /></>;
 
   return (
     <>

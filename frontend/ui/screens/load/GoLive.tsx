@@ -52,7 +52,7 @@ function Certificates({ g }: { g: WaveGate }) {
   });
   const vs = q.data?.versions ?? [];
   return (
-    <Gate loading={q.isLoading} error={q.isError} what={t("the certificates")}>
+    <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the certificates")}>
       <Button variant="primary" disabled={issue.isPending} onClick={() => issue.mutate()}>{t("Issue certificate")}</Button>
       {refusal ? (
         <div role="alert">
@@ -111,7 +111,7 @@ export function GoLive() {
     <>
       <PageHeader title={t("Go-live readiness")} context={t("Each wave must pass its gate before it is signed off and certified.")} actions={<AskButton />} />
       <Card title={t("Wave gates")} sub={t("{n} waves", { n: gates.length })}>
-        <Gate loading={q.isLoading} error={q.isError} what={t("the wave gates")}>
+        <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the wave gates")}>
           {gates.length ? (
             <DataTable
               label={t("Wave gates")}

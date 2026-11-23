@@ -87,11 +87,12 @@ export function Frame({ slug, title, lead, actions, loading, error, children }: 
   slug: string; title: string; lead: string; actions?: ReactNode; loading?: boolean; error?: boolean; children: ReactNode;
 }) {
   useInterfaceLang();
+  const qc = useQueryClient();
   return (
     <div className="mx-col" data-admin={slug}>
       <PageHeader title={title} context={lead} actions={actions} />
       {loading ? <Skeleton lines={6} label={t("Loading {section}", { section: title })} />
-        : error ? <ErrorState heading={t("{section} could not be loaded", { section: title })} />
+        : error ? <ErrorState heading={t("{section} could not be loaded", { section: title })} retryLabel={t("Try again")} onRetry={() => void qc.invalidateQueries({ queryKey: ["v2", "admin"] })} />
         : children}
     </div>
   );

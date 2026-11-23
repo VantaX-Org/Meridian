@@ -48,7 +48,7 @@ export function MigrationRun({ id }: { id: string }) {
   });
 
   return (
-    <Gate loading={q.isLoading} error={q.isError} what={t("the run")}>
+    <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the run")}>
       <PageHeader
         title={t("Run {run}", { run: id })}
         context={run ? `${modeLabel(run.mode)}, ${run.modules.map(humanize).join(", ")}` : ""}
@@ -127,7 +127,7 @@ function Findings({ id, modules }: { id: string; modules: string[] }) {
         <Input aria-label={t("Search findings")} placeholder={t("Search findings")} value={search} onChange={(e) => setSearch(e.target.value)} />
         <Button onClick={() => exportMigrationFindings(id, f).catch(() => toast(t("The export failed"), "bad"))}>{t("Download Excel")}</Button>
       </div>
-      <Gate loading={q.isLoading} error={q.isError} what={t("the findings")}>
+      <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the findings")}>
         {q.data?.items.length ? (
           <DataTable<MigrationFinding>
             label={t("Findings")}
@@ -154,7 +154,7 @@ function Simulation({ id }: { id: string }) {
   const q = useLoadSimulation(id);
   const s = q.data;
   return (
-    <Gate loading={q.isLoading} error={q.isError} what={t("the load simulation")}>
+    <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the load simulation")}>
       {s ? (
         <>
           <dl className="mx-tiles">
@@ -268,7 +268,7 @@ function Records({ id }: { id: string }) {
   return (
     <>
       <Select aria-label={t("Record status")} value={status} onChange={(e) => setStatus(e.target.value as "load_fail" | "load_ready")} options={[{ value: "load_fail", label: t("Will not load") }, { value: "load_ready", label: t("Will load") }]} />
-      <Gate loading={q.isLoading} error={q.isError} what={t("the records")}>
+      <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the records")}>
         {q.data?.rows.length ? (
           <DataTable
             label={t("Records")}
@@ -295,7 +295,7 @@ function Approval({ id }: { id: string }) {
   const a = q.data;
   const act = (decision: "approved" | "rejected") => decide.mutate({ decision, comment: comment || undefined }, { onSuccess: () => toast(decision === "approved" ? t("Load approved") : t("Load rejected"), "good"), onError: () => toast(t("The decision could not be saved. The preparer cannot decide."), "bad") });
   return (
-    <Gate loading={q.isLoading} error={q.isError} what={t("the approval")}>
+    <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the approval")}>
       {a ? (
         <>
           <dl className="mx-tiles">
@@ -330,7 +330,7 @@ function Files({ id, dry }: { id: string; dry: boolean }) {
         {dry ? <Button onClick={() => exportDryRunReport(id, "xlsx").catch(bad)}>{t("Download dry-run report (Excel)")}</Button> : null}
         {dry ? <Button onClick={() => exportDryRunReport(id, "pdf").catch(bad)}>{t("Download dry-run report (PDF)")}</Button> : null}
       </div>
-      <Gate loading={q.isLoading} error={q.isError} what={t("the load files")}>
+      <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the load files")}>
         {rows.length ? (
           <DataTable<LoadEvent>
             label={t("Files handed over")}

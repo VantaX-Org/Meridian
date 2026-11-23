@@ -61,7 +61,7 @@ export function Templates() {
       <div className="mx-links">
         <Select aria-label={t("Object")} value={mod} onChange={(e) => { setPick(e.target.value); setSel(null); setReport(null); }} options={(mods.length ? mods : [mod]).map((m) => ({ value: m, label: `${m} ${humanize(m)}` }))} />
       </div>
-      <Gate loading={q.isLoading} error={q.isError} what={t("the templates")}>
+      <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the templates")}>
         {rows.length ? (
           <Card title={t("Kept templates")}>
             <DataTable<TargetTemplate>

@@ -78,7 +78,7 @@ export function Plan() {
       <div className="mx-split">
         <div className="mx-col">
           <Card title={t("Objects in load order")}>
-            <Gate loading={q.isLoading} error={q.isError} what={t("the load order")}>
+            <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the load order")}>
               {objects.length ? (
                 <DataTable
                   label={t("Objects in load order")}

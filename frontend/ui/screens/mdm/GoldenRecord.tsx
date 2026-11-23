@@ -57,7 +57,7 @@ export function GoldenRecord({ id }: { id: string }) {
     />
   );
   if (rec.isLoading) return <>{header()}<Skeleton lines={8} label={t("Loading the golden record")} /></>;
-  if (rec.isError || !r) return <>{header()}<ErrorState heading={t("The golden record could not be loaded")} /></>;
+  if (rec.isError || !r) return <>{header()}<ErrorState heading={t("The golden record could not be loaded")} retryLabel={t("Try again")} onRetry={() => void rec.refetch()} /></>;
 
   const members = explain.data?.members ?? [];
   const refresh = () => { qc.invalidateQueries({ queryKey: ["v2", "mdm"] }); };
@@ -190,7 +190,7 @@ export function GoldenRecord({ id }: { id: string }) {
               sub={preview.data?.message}
               action={<Button variant="secondary" disabled={busy || !preview.data?.writeback_supported} onClick={async () => { await act(() => createWritebackRequest(id), t("Write-back simulation started")); refresh(); }}>{t("Plan and simulate")}</Button>}
             >
-              {preview.isLoading ? <Skeleton lines={4} label={t("Loading the write-back plan")} /> : preview.isError ? <ErrorState heading={t("The write-back plan could not be loaded")} /> : (preview.data?.targets ?? []).length === 0 ? <EmptyState heading={t("No write-back targets")} body={t("No connected system can take this record back.")} /> : (
+              {preview.isLoading ? <Skeleton lines={4} label={t("Loading the write-back plan")} /> : preview.isError ? <ErrorState heading={t("The write-back plan could not be loaded")} retryLabel={t("Try again")} onRetry={() => void preview.refetch()} /> : (preview.data?.targets ?? []).length === 0 ? <EmptyState heading={t("No write-back targets")} body={t("No connected system can take this record back.")} /> : (
                 <DataTable
                   label={t("Write-back fields")}
                   rows={(preview.data?.targets ?? []).flatMap((tg) => tg.fields.map((f) => ({ id: `${tg.system_id}:${f.field}`, sys: tg.system_name ?? tg.system_id, f })))}

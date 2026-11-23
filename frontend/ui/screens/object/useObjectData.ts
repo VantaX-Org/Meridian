@@ -34,6 +34,7 @@ export function useObjectData(o: ObjectRun) {
     const failing: RuleRow[] = (rules.data ?? [])
       .filter((r) => r.affected_count > 0)
       .sort((a, b) => (RANK[a.severity] ?? 9) - (RANK[b.severity] ?? 9) || b.affected_count - a.affected_count);
+    const all: RuleRow[] = [...(rules.data ?? [])].sort((a, b) => Number(b.affected_count > 0) - Number(a.affected_count > 0) || (RANK[a.severity] ?? 9) - (RANK[b.severity] ?? 9) || b.affected_count - a.affected_count);
     const bySev = SEV_ORDER.map((s) => {
       const rs = failing.filter((r) => r.severity === s);
       return { sev: s, rules: rs.length, records: rs.reduce((n, r) => n + r.affected_count, 0) };
@@ -53,6 +54,7 @@ export function useObjectData(o: ObjectRun) {
       now,
       delta: now !== null && before !== null ? now - before : null,
       failing,
+      all,
       measured: (rules.data ?? []).length,
       bySev,
       trend,

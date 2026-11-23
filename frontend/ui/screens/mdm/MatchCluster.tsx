@@ -61,7 +61,7 @@ export function MatchCluster({ id }: { id: string }) {
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />
-      {q.isLoading ? <Skeleton lines={8} label={t("Loading cluster")} /> : q.isError || !g ? <ErrorState heading={t("The cluster could not be loaded")} /> : g.nodes.length === 0 ? <EmptyState heading={t("This record has no cluster")} /> : (
+      {q.isLoading ? <Skeleton lines={8} label={t("Loading cluster")} /> : q.isError || !g ? <ErrorState heading={t("The cluster could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : g.nodes.length === 0 ? <EmptyState heading={t("This record has no cluster")} /> : (
         <div className="mx-col">
           <dl className="mx-tiles">
             <StatTile label={t("Records")} value={String(g.nodes.length)} />

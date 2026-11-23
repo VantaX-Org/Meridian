@@ -72,7 +72,7 @@ export function S4() {
       <div className="mx-split">
         <div className="mx-col">
           <Card title={t("Areas")}>
-            <Gate loading={q.isLoading} error={q.isError} what={t("S/4 readiness")}>
+            <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("S/4 readiness")}>
               {areas.length ? (
                 <MasterList
                   label={t("Areas")}
