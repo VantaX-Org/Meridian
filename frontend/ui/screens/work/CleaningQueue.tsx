@@ -10,7 +10,7 @@ import {
   type CleaningGroup, type ExportFormat,
 } from "@/lib/api/v2/cleaning";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Confirm, DataTable, EmptyState, Field, Input, Select, Skeleton, StatTile, Tabs } from "@/ui/kit";
+import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, Input, Select, Skeleton, StatTile, Tabs } from "@/ui/kit";
 import { ObjChip } from "./ObjChip";
 import { day, useDo } from "./shared";
 
@@ -39,6 +39,7 @@ export function CleaningQueue() {
   const body = () => {
     if (tab === "waiting" && !g) {
       if (groups.isLoading) return <Skeleton lines={3} label={t("Loading the queue")} />;
+      if (groups.isError) return <ErrorState heading={t("The queue could not be loaded")} retryLabel={t("Try again")} onRetry={() => void groups.refetch()} />;
       if (!gl.length) return <EmptyState heading={t("No proposed fixes are waiting")} />;
       return (
         <DataTable label={t("Proposed fixes by rule")} rows={gl} rowKey={(x) => `${x.version_id}|${x.object_type}|${x.kind}`} onSelect={setG}
@@ -62,7 +63,7 @@ export function CleaningQueue() {
               <Button onClick={() => setReject({ group: g })}>{t("Reject the group")}</Button>
             </div>
           ) : null}
-          {props.isLoading ? <Skeleton lines={3} label={t("Loading the queue")} /> : !rows.length ? <EmptyState heading={t("Nothing here")} /> : (
+          {props.isLoading ? <Skeleton lines={3} label={t("Loading the queue")} /> : props.isError ? <ErrorState heading={t("The queue could not be loaded")} retryLabel={t("Try again")} onRetry={() => void props.refetch()} /> : !rows.length ? <EmptyState heading={t("Nothing here")} /> : (
             <DataTable label={t("Proposed fixes")} rows={rows} rowKey={(x) => x.id}
               columns={[
                 { key: "o", label: t("Object"), render: (x) => <ObjChip code={x.object_type} /> },
@@ -164,9 +165,10 @@ export function CleaningQueue() {
       <Tabs idBase="mx-cq" label={t("Cleaning queue views")} items={items} value={tab} onChange={(v) => { setTab(v); setG(null); }} />
       <div id={`mx-cq-panel-${tab}`} role="tabpanel" aria-labelledby={`mx-cq-tab-${tab}`}>{body()}</div>
       <Confirm open={!!reject} title={t("Reject the fix")} confirmLabel={t("Reject")} cancelLabel={t("Cancel")} danger
-        onCancel={() => setReject(null)}
-        onConfirm={() => { const r = reject; setReject(null); if (r && reason.trim()) void run(async () => { if (r.group) await rejectGroup(r.group, reason); else await rejectProposal(r.id as string, reason); }, () => t("Rejected.")).then(done); setReason(""); }}>
+        onCancel={() => { setReject(null); setReason(""); }}
+        onConfirm={() => { const r = reject; if (!r || !reason.trim()) return; const why = reason.trim(); setReject(null); setReason(""); void run(async () => { if (r.group) await rejectGroup(r.group, why); else await rejectProposal(r.id as string, why); }, () => t("Rejected.")).then(done); }}>
         <Field label={t("Why is it rejected?")}><Input value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+        {reason.trim() ? null : <p className="mx-muted" role="status">{t("A reason is required.")}</p>}
       </Confirm>
     </Card>
   );

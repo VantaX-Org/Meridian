@@ -20,7 +20,7 @@ export function RecordDetail({ module, recordKey, version }: { module: string; r
   const sheets = useSheet();
   const rec = useWorkRecord(module, recordKey, version);
   if (rec.isLoading) return <Skeleton lines={5} label={t("Loading the record")} />;
-  if (rec.isError || !rec.data) return <ErrorState heading={t("The record could not be loaded")} />;
+  if (rec.isError || !rec.data) return <ErrorState heading={t("The record could not be loaded")} retryLabel={t("Try again")} onRetry={() => void rec.refetch()} />;
   const d = rec.data;
   const top = d.issues[0];
   const decide = async (check: string, action: "accept" | "edit" | "not_an_issue", value?: string) => {
@@ -58,7 +58,7 @@ export function RecordDetail({ module, recordKey, version }: { module: string; r
               {d.issues.map((i) => (
                 <li key={i.check_id} className="mx-section">
                   <p><FieldChip code={i.field ?? ""} description={fieldText(i.field ?? undefined, d.field_descriptions?.[i.field ?? ""])} /> {i.message}</p>
-                  <p className="mx-muted">{t("Now")}: {i.current_value ?? t("empty")} {i.suggestion ? `${t("Proposed")}: ${i.suggestion}` : ""}</p>
+                  <p className="mx-muted">{t("Now")}: {i.current_value ?? t("empty")} {i.suggestion ? `${t("Proposed")}: ${i.suggestion.value}` : ""}</p>
                   <div className="mx-links">
                     {i.suggestion ? <Button variant="primary" disabled={!d.can.fix} onClick={() => void decide(i.check_id, "accept")}>{t("Accept the proposed value")}</Button> : null}
                     <Button disabled={!d.can.fix} onClick={() => void decide(i.check_id, "not_an_issue")}>{t("Not an issue")}</Button>

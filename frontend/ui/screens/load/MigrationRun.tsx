@@ -222,7 +222,7 @@ function Recon({ id, q }: { id: string; q: ReturnType<typeof useRecon> }) {
         {r?.status === "done" ? <Button onClick={() => accept.mutate()} disabled={!!r.accepted_at || accept.isPending}>{r.accepted_at ? t("Accepted") : t("Accept reconciliation")}</Button> : null}
         {r?.status === "done" ? <Button onClick={() => exportReconciliation(id).catch(bad)}>{t("Download Excel")}</Button> : null}
       </div>
-      <Gate loading={q.isLoading} error={false} what={t("the reconciliation")}>
+      <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the reconciliation")}>
         {r && r.status === "done" ? (
           <>
             <dl className="mx-tiles">

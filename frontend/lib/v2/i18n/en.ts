@@ -15011,6 +15011,20 @@ export const en = {
   "Pair constraints could not be loaded": "Pair constraints could not be loaded",
   "Calibration could not be loaded": "Calibration could not be loaded",
   "The consolidation pack could not be loaded": "The consolidation pack could not be loaded",
+  "Loading approvals": "Loading approvals",
+  "Approvals could not be loaded": "Approvals could not be loaded",
+  "The SAP monitor could not be loaded": "The SAP monitor could not be loaded",
+  "{f} rules failed. Try again.": "{f} rules failed. Try again.",
+  "The clean cycle could not be loaded": "The clean cycle could not be loaded",
+  "Admins only": "Admins only",
+  "Billing is open to people who manage settings.": "Billing is open to people who manage settings.",
+  "View name": "View name",
+  "A name is required.": "A name is required.",
+  "Unavailable": "Unavailable",
+  "The comparison could not be started": "The comparison could not be started",
+  "Pair deleted": "Pair deleted",
+  "The pair could not be deleted": "The pair could not be deleted",
+  "The target fields could not be loaded": "The target fields could not be loaded",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

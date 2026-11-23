@@ -3,7 +3,7 @@
 import "./rules.css";
 import { t } from "@/lib/v2/i18n";
 import { describeField } from "@/lib/v2/sap-fields";
-import { BarList, Button, Card, DataTable, EmptyState, FieldChip, Skeleton, StatTile, YamlView } from "@/ui/kit";
+import { BarList, Button, Card, DataTable, EmptyState, ErrorState, FieldChip, Skeleton, StatTile, YamlView } from "@/ui/kit";
 import type { RuleScope } from "@/lib/api/v2/object";
 import { useRuleFailuresBy, useRuleHistory } from "@/lib/v2/object-queries";
 import { compactCount, pct, sevLabel } from "./format";
@@ -64,6 +64,7 @@ export function WhyTab({ id, scope }: { id: string; scope: RuleScope }) {
 export function HistoryTab({ id }: { id: string }) {
   const q = useRuleHistory(id);
   if (q.isLoading) return <Skeleton lines={4} label={t("Loading the history")} />;
+  if (q.isError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
   const runs = q.data ?? [];
   if (!runs.length) return <EmptyState heading={t("This rule has not run yet")} />;
   return (

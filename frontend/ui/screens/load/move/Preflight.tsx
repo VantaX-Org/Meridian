@@ -29,7 +29,7 @@ export function Preflight({ planId, onBack, onNext }: { planId: string; onBack: 
   const errors = issues.filter((i) => i.severity === "error");
 
   return (
-    <Gate loading={q.isLoading} error={q.isError} what={t("the checks")}>
+    <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the checks")}>
       <div className="mx-col">
         {checking ? <p className="mx-muted" role="status">{t("Checking the target. This page updates by itself.")}</p> : (
           <>

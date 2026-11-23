@@ -62,8 +62,9 @@ export function BatchDetail({ b }: { b: BatchRow }) {
         {t("{n} records go to the approved list.", { n: whole(b.records) })}
       </Confirm>
       <Confirm open={ask === "back"} title={t("Send this batch back?")} confirmLabel={t("Send back")} cancelLabel={t("Cancel")} danger onCancel={() => setAsk(null)}
-        onConfirm={() => { setAsk(null); void run(() => postSendBack(b.id, note), () => t("The batch is sent back.")); setNote(""); }}>
+        onConfirm={() => { if (!note.trim()) return; setAsk(null); void run(() => postSendBack(b.id, note.trim()), () => t("The batch is sent back.")); setNote(""); }}>
         <Field label={t("Reason")}><Input value={note} onChange={(e) => setNote(e.target.value)} /></Field>
+        {note.trim() ? null : <p className="mx-muted" role="status">{t("A reason is required.")}</p>}
       </Confirm>
     </>
   );
@@ -156,6 +157,7 @@ function Send() {
   const wb = useQuery({ queryKey: ["v2", "writeback-approvals", fx], queryFn: getPendingWritebacks, retry: false });
   const bq = useBatches();
   const [pick, setPick] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const live = wb.data?.live_enabled ?? false;
   const ready = bq.rows.filter((b) => b.status === "approved" || b.status === "awaiting_load" || b.status === "exported");
   const sel = ready.find((r) => r.id === pick) ?? null;
@@ -165,14 +167,14 @@ function Send() {
     <div className="mx-split">
       <div className="mx-col">
         <Card title={t("Waiting for a second person")} sub={t("{n} write-backs", { n: pending.length })}>
-          {!pending.length ? <EmptyState heading={t("Nothing waits for approval")} /> : (
+          {wb.isLoading ? <Skeleton lines={3} label={t("Loading approvals")} /> : wb.isError ? <ErrorState heading={t("Approvals could not be loaded")} retryLabel={t("Try again")} onRetry={() => void wb.refetch()} /> : !pending.length ? <EmptyState heading={t("Nothing waits for approval")} /> : (
             <DataTable label={t("Write-back approvals")} rows={pending} rowKey={(p: PendingWriteback) => p.id}
               columns={[
                 { key: "m", label: t("Object"), render: (p) => (p.module ? <ObjChip code={p.module} /> : "") },
                 { key: "c", label: t("Rule"), render: (p) => (p.check_id ? <FieldChip code={p.check_id} description={p.rule_message ?? undefined} /> : "") },
                 { key: "n", label: t("Records"), render: (p) => whole(p.records_updated), align: "end" },
                 { key: "u", label: t("Asked by"), render: (p) => p.requested_by_name ?? "" },
-                { key: "a", label: t("Approve"), render: (p) => <Button variant="secondary" onClick={() => void run(() => approveWriteback(p.id), (x) => t("{n} records are written.", { n: whole(x.applied) }))}>{t("Approve")}</Button> },
+                { key: "a", label: t("Approve"), render: (p) => <Button variant="secondary" disabled={busy === p.id} onClick={() => { setBusy(p.id); void run(() => approveWriteback(p.id), (x) => t("{n} records are written.", { n: whole(x.applied) })).finally(() => setBusy(null)); }}>{t("Approve")}</Button> },
               ]} />
           )}
         </Card>

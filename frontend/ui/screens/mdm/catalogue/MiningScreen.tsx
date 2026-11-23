@@ -22,12 +22,13 @@ const LEVEL: Record<"high" | "medium" | "low", () => string> = { high: () => t("
 /** Propose a rule from one anomaly, show its dry run and grounding, and approve it as a draft. */
 function ProposeSheet({ anomaly, onClose }: { anomaly: AnomalyItem | null; onClose: () => void }) {
   const toast = useToast();
+  const qc = useQueryClient();
   const id = anomaly?.id ?? "";
   const q = useRead(["mining", "propose", id], () => proposeAnomalyRule(id), !!anomaly);
   const approve = useMutation({
     mutationFn: (p: AnomalyRuleProposal) => approveAnomalyRule(p.grounding.module, p.rule_yaml ?? "",
       t("Proposed by Aletheia from an anomaly on {field}", { field: p.grounding.field })),
-    onSuccess: () => { toast(t("Saved as a draft rule. Review it in the rule workbench."), "good"); onClose(); },
+    onSuccess: () => { toast(t("Saved as a draft rule. Review it in the rule workbench."), "good"); void qc.invalidateQueries(); onClose(); },
     onError: () => toast(t("The draft could not be saved"), "bad"),
   });
   return (
@@ -81,19 +82,24 @@ export function MiningScreen() {
   useScreenScope("mining", t("Data mining"), [
     { prompt: t("What did mining find?"), answer: () => ({ text: `${sum.data?.total_patterns ?? 0} ${t("patterns")}, ${sum.data?.new_anomalies ?? 0} ${t("new anomalies")}` }) },
   ]);
-  const run = async () => {
-    try {
+  const run = useMutation({
+    mutationFn: async () => {
       const v = (await getVersionsPage({ limit: 1 })).versions[0];
-      if (!v) { toast(t("There is no run to mine"), "bad"); return; }
+      if (!v) return false;
       await runMining(v.id, v.metadata?.modules ?? []);
+      return true;
+    },
+    onSuccess: (started) => {
+      if (!started) { toast(t("There is no run to mine"), "bad"); return; }
       toast(t("Mining started"), "good");
-      await qc.invalidateQueries({ queryKey: ["b7b"] });
-    } catch { toast(t("Mining could not be started"), "bad"); }
-  };
+      void qc.invalidateQueries({ queryKey: ["b7b"] });
+    },
+    onError: () => toast(t("Mining could not be started"), "bad"),
+  });
   const d = dup.data ?? []; const a = ano.data ?? []; const r = rel.data ?? []; const p = pat.data?.patterns ?? [];
   return (
     <>
-      <Head title={t("Data mining")} actions={<Button variant="primary" onClick={() => void run()}>{t("Mine the latest run")}</Button>} />
+      <Head title={t("Data mining")} actions={<Button variant="primary" disabled={run.isPending} onClick={() => run.mutate()}>{t("Mine the latest run")}</Button>} />
       <Async q={sum} lines={2}>
         {(s) => (
           <dl className="mx-tiles">

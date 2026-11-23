@@ -88,8 +88,8 @@ export function Rules() {
             <Button variant="secondary" href={href("/rules/dry-run")}>{t("Write a rule")}</Button>
             <Button variant="secondary" href={href("/rules/promotion")}>{t("Rule promotion")}</Button>
             <Button variant="secondary" href={href("/admin/scoring")}>{t("Scoring weights and thresholds")}</Button>
-            <Button variant="secondary" onClick={() => doExport.mutate("yaml")}>{t("Export YAML")}</Button>
-            <Button variant="secondary" onClick={() => doExport.mutate("xlsx")}>{t("Export Excel")}</Button>
+            <Button variant="secondary" disabled={doExport.isPending} onClick={() => doExport.mutate("yaml")}>{t("Export YAML")}</Button>
+            <Button variant="secondary" disabled={doExport.isPending} onClick={() => doExport.mutate("xlsx")}>{t("Export Excel")}</Button>
             <Button variant="secondary" onClick={() => file.current?.click()}>{t("Import rules")}</Button>
             <Button variant="primary" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
           </>

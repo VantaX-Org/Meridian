@@ -32,6 +32,7 @@ export function Triage() {
   const [user, setUser] = useState("");
   const [reason, setReason] = useState("");
   const [until, setUntil] = useState("");
+  const [now, setNow] = useState(() => Date.now());
   const [prio, setPrio] = useState("1");
   const [ask, setAsk] = useState(false);
   const q = useQuery({ queryKey: ["v2", "triage", fx, who, snoozed], queryFn: () => getTriageQueue(who, snoozed), retry: false });
@@ -50,13 +51,14 @@ export function Triage() {
 
   const flip = (id: string) => setPicked((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const chosen = items.filter((i) => picked.has(i.id));
-  const need = (action === "assign" && !user) || (action === "snooze" && (!reason.trim() || !until));
+  const need = (action === "assign" && !user) || (action === "snooze" && (!reason.trim() || !until || !(new Date(until).getTime() > now))) || (action === "priority" && !(Number(prio) >= 1 && Number(prio) <= 5));
   const apply = async () => {
     setAsk(false);
     for (const kind of ["issue", "queue"] as const) {
       const ids = chosen.filter((i) => i.kind === kind).map((i) => i.id);
       if (!ids.length) continue;
-      await run(() => bulkTriage({ kind, ids, action, user_id: action === "assign" ? user : undefined, reason: action === "snooze" ? reason : undefined, until: action === "snooze" ? new Date(until).toISOString() : undefined, priority: action === "priority" ? Number(prio) : undefined }), (r) => t("{n} items updated.", { n: r.updated }));
+      const r = await run(() => bulkTriage({ kind, ids, action, user_id: action === "assign" ? user : undefined, reason: action === "snooze" ? reason : undefined, until: action === "snooze" ? new Date(until).toISOString() : undefined, priority: action === "priority" ? Number(prio) : undefined }), (r) => t("{n} items updated.", { n: r.updated }));
+      if (!r) return;
     }
     setPicked(new Set());
   };
@@ -104,10 +106,10 @@ export function Triage() {
         {action === "snooze" ? (
           <>
             <Field label={t("Why snooze")}><Input value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
-            <Field label={t("Until")}><Input type="datetime-local" value={until} onChange={(e) => setUntil(e.target.value)} /></Field>
+            <Field label={t("Until")}><Input type="datetime-local" value={until} onChange={(e) => { setNow(Date.now()); setUntil(e.target.value); }} /></Field>
           </>
         ) : null}
-        {action === "priority" ? <Field label={t("Priority (1 is highest)")}><Input type="number" min={1} value={prio} onChange={(e) => setPrio(e.target.value)} /></Field> : null}
+        {action === "priority" ? <Field label={t("Priority (1 is highest)")}><Input type="number" min={1} max={5} value={prio} onChange={(e) => setPrio(e.target.value)} /></Field> : null}
         <Button variant="primary" disabled={!chosen.length || need} onClick={() => setAsk(true)}>{t("Apply to {n} items", { n: chosen.length })}</Button>
       </Card>
       <Confirm open={ask} title={t("Apply this action?")} confirmLabel={t("Apply")} cancelLabel={t("Cancel")} onConfirm={() => void apply()} onCancel={() => setAsk(false)}>

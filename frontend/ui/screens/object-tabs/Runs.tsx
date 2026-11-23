@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { withFixture, useFixture } from "@/lib/api/v2/fixture";
 import { t } from "@/lib/v2/i18n";
 import type { VersionHead } from "@/lib/api/v2/runs";
-import { Card, DataTable, EmptyState, Skeleton, Stepper, type Column } from "@/ui/kit";
+import { Card, DataTable, EmptyState, ErrorState, Skeleton, Stepper, type Column } from "@/ui/kit";
 import { dqsOf, score } from "@/ui/screens/object/format";
 import type { ObjectRun } from "@/ui/screens/object/useObjectRun";
 import { objectPath, useTabChat } from "./TabFrame";
@@ -18,6 +18,7 @@ export function Runs({ o, system, module }: { o: ObjectRun; system: string; modu
     return { text: best ? t("Run {n} scored best with {s}.", { n: best.run_number ?? best.label ?? best.id, s: score(dqsOf(best, module) ?? 0) }) : t("There are no runs yet."), evidence: o.heads.slice(0, 3).map((h) => `${h.run_at.slice(0, 10)}: ${score(dqsOf(h, module) ?? 0)}`) };
   });
   if (o.runsLoading) return <Skeleton lines={5} label={t("Loading runs")} />;
+  if (o.runsError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={o.refetchRuns} />;
   const rows = o.heads.filter((h) => h.dqs_summary?.[module]);
   if (!rows.length) return <EmptyState heading={t("This object has no runs yet.")} />;
   // ponytail: the run list carries no cycle field, so the stepper shows the newest five runs oldest first.

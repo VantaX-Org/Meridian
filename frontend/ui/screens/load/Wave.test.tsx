@@ -4,6 +4,7 @@ import { renderScreen } from "./test-utils";
 import { stubLayout } from "@/ui/testing/layout-stub";
 import { ToastHost } from "@/ui/kit";
 import { Wave } from "./Wave";
+import { downloadWaveReport } from "@/lib/api/v2/reports";
 
 vi.mock("@/lib/api/v2/reports", async (orig) => ({ ...(await orig<typeof import("@/lib/api/v2/reports")>()), downloadWaveReport: vi.fn(() => Promise.reject(new Error("boom"))) }));
 vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
@@ -28,5 +29,13 @@ describe("Wave", () => {
     renderScreen(<ToastHost><Wave id="w-1" /></ToastHost>);
     fireEvent.click(await screen.findByRole("button", { name: "Download Excel" }));
     await waitFor(() => expect(document.body.textContent ?? "").toContain("boom"));
+  });
+
+  it("disables both download buttons while a report is being made", async () => {
+    vi.mocked(downloadWaveReport).mockImplementationOnce(() => new Promise(() => undefined));
+    renderScreen(<ToastHost><Wave id="w-1" /></ToastHost>);
+    fireEvent.click(await screen.findByRole("button", { name: "Download Excel" }));
+    await waitFor(() => expect((screen.getByRole("button", { name: "Download PDF" }) as HTMLButtonElement).disabled).toBe(true));
+    expect((screen.getByRole("button", { name: "Download Excel" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

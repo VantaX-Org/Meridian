@@ -20,7 +20,7 @@ import { moneyCompactText } from "@/lib/v2/labels";
 import { notFound, useRelated } from "@/lib/v2/roles-queries";
 import { describeField } from "@/lib/v2/sap-fields";
 import { DASH, f1, int, pct1 } from "@/lib/v2/score";
-import { Badge, Button, Card, DataTable, FieldChip, Select, SeverityPill, StatTile, Tabs } from "@/ui/kit";
+import { Badge, Button, Card, DataTable, FieldChip, Select, SeverityPill, StatTile, Tabs, useToast } from "@/ui/kit";
 import { ruleCheck, sevLabel } from "../rules/format";
 import { objectPath } from "../object-tabs/TabFrame";
 
@@ -171,6 +171,7 @@ export function FindingsCard({ system, module, latest }: { system: string; modul
 function FindingAction({ f, system, queryKey }: { f: AletheiaFinding; system: string; queryKey: unknown[] }) {
   const fx = useFixture();
   const qc = useQueryClient();
+  const toast = useToast();
   const session = useV2Session();
   const [done, setDone] = useState(false);
   const kind = f.action.kind;
@@ -181,6 +182,7 @@ function FindingAction({ f, system, queryKey }: { f: AletheiaFinding; system: st
       return markActed({ module: f.module, check_id: f.check_id, action: kind });
     },
     onSuccess: () => { setDone(true); void qc.invalidateQueries({ queryKey }); },
+    onError: () => toast(t("The change did not go through"), "bad"),
   });
   const mark = () => void markActed({ module: f.module, check_id: f.check_id, action: kind }).catch(() => undefined);
   if (kind === "assign") return <AssignAction f={f} queryKey={queryKey} />;
@@ -202,6 +204,7 @@ function FindingAction({ f, system, queryKey }: { f: AletheiaFinding; system: st
 /** Neither the rule nor its object has an owner: pick a person as the rule's owner (PUT /owners). Needs the assign permission. */
 function AssignAction({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[] }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const session = useV2Session();
   const allowed = session.can("assign") && !session.shared && !session.viewAs;
   const people = useAssignable(allowed);
@@ -213,6 +216,7 @@ function AssignAction({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[]
       return markActed({ module: f.module, check_id: f.check_id, action: "assign" });
     },
     onSuccess: () => { setDone(true); void qc.invalidateQueries({ queryKey }); },
+    onError: () => toast(t("The change did not go through"), "bad"),
   });
   if (done) return <span className="mx-muted" role="status">{ACTION_DONE.assign()}</span>;
   if (!allowed) return <span className="mx-muted">{t("No owner. Someone with the assign permission can set one.")}</span>;

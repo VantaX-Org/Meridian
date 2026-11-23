@@ -92,7 +92,7 @@ export function DryRun() {
                   <dl className="mx-tiles">
                     <StatTile label={t("Records failing")} value={compactCount(r.records_failing ?? 0)} note={t("of {n} checked", { n: compactCount(r.records_evaluated ?? 0) })} />
                     <StatTile label={t("Failure rate")} value={pct(r.failure_rate)} />
-                    {r.dqs ? <StatTile label={t("Quality score")} value={`${Math.round(r.dqs.before)} / ${Math.round(r.dqs.after)}`} note={t("before and after")} /> : null}
+                    {r.dqs && r.dqs.before != null && r.dqs.after != null ? <StatTile label={t("Quality score")} value={`${Math.round(r.dqs.before)} / ${Math.round(r.dqs.after)}`} note={t("before and after")} /> : null}
                     {r.delta ? <StatTile label={t("Newly failing")} value={compactCount(r.delta.newly_failing)} note={t("{n} newly passing", { n: compactCount(r.delta.newly_passing) })} /> : null}
                   </dl>
                   {r.failing_shapes?.length ? <BarList label={t("What the failures look like")} items={r.failing_shapes.map((s) => ({ id: s.shape, label: s.shape, value: s.count }))} /> : null}

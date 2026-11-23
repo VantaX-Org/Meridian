@@ -31,7 +31,7 @@ export interface ImpactResult {
   records_failing?: number;
   failure_rate?: number;
   failing_shapes?: { shape: string; count: number }[];
-  dqs?: { before: number; after: number; delta: number; breaches_before: number; breaches_after: number };
+  dqs?: { before: number | null; after: number | null; delta: number | null; breaches_before: string[]; breaches_after: string[] };
   delta?: { current_failing: number; newly_failing: number; newly_passing: number; unchanged_failing: number; basis: string };
 }
 

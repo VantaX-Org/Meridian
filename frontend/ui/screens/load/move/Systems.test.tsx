@@ -38,4 +38,15 @@ describe("Systems", () => {
     await waitFor(() => expect(calls[0]).toEqual({ key: "PATCH /api/v1/systems/s2/migration-target", body: { enabled: true } }));
     await waitFor(() => expect((screen.getByRole("button", { name: "Continue to scope" }) as HTMLButtonElement).disabled).toBe(false));
   });
+
+  it("disables the switch while saving, and offers a retry when the flag fails", async () => {
+    let fail = true;
+    route({ "PATCH /api/v1/systems/s2/migration-target": () => { if (fail) throw new Error("boom"); return { id: "s2", migration_target: true }; } });
+    renderScreen(<Systems pick={{ source: "s1", target: "s2" }} onPick={() => undefined} onNext={() => undefined} />);
+    fireEvent.click(await screen.findByRole("switch"));
+    expect(await screen.findByText(/The flag could not be saved/)).toBeTruthy();
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByText(/The flag could not be saved/)).toBeNull());
+  });
 });

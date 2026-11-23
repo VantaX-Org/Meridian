@@ -32,7 +32,7 @@ function Form({ initial, id, onDone }: { initial: DigestBody; id?: string; onDon
       <div className="mx-col">
         <Field label={t("Name")}><Input value={b.name} onChange={(e) => set("name", e.target.value)} /></Field>
         <Field label={t("Audience")}>
-          <Select value={b.audience} onChange={(e) => set("audience", e.target.value as DigestBody["audience"])} options={[{ value: "role", label: t("A role") }, { value: "wave", label: t("A migration wave") }]} />
+          <Select disabled={!!id} value={b.audience} onChange={(e) => set("audience", e.target.value as DigestBody["audience"])} options={[{ value: "role", label: t("A role") }, { value: "wave", label: t("A migration wave") }]} />
         </Field>
         {b.audience === "role"
           ? <Field label={t("Role")}><Input value={b.role ?? ""} onChange={(e) => set("role", e.target.value)} /></Field>
