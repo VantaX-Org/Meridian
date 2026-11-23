@@ -9,6 +9,7 @@ import { getMigrationRuns, releaseFor, startMigration, type MigrationMode, type 
 import { Button, Card, Chip, DataTable, EmptyState, Field, FieldChip, PageHeader, Select, Sheet, useAletheiaScope, useToast } from "@/ui/kit";
 import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, useLoadPlan, usePairs } from "./hooks";
+import { useCrumbs } from "@/ui/screens/flow";
 
 export const modeLabel = (m: MigrationMode): string => (m === "s4_dry_run" ? t("S/4HANA dry run") : m === "source_to_destination" ? t("Source to target") : t("Source to source"));
 
@@ -47,9 +48,10 @@ export function MigrationRuns() {
   });
 
   const sysName = (id: string | null) => (id ? sys.find((s) => s.id === id)?.name ?? id : t("Not set"));
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader back={back} title={t("Migration runs")} context={t("Each run measures how much of the source data can load into the target.")} actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("Start a run")}</Button><AskButton /></>} />
+      <PageHeader crumbs={crumbs("load", t("Migration runs"))} back={back} title={t("Migration runs")} context={t("Each run measures how much of the source data can load into the target.")} actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("Start a run")}</Button><AskButton /></>} />
       <Card title={t("Runs")} sub={t("{n} runs", { n: runs.length })}>
         <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the runs")}>
           {runs.length ? (

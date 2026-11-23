@@ -7,6 +7,7 @@ import { exportComparison, runPair, type CompareKind, type DiffRow } from "@/lib
 import { Button, Card, DataTable, DqsPair, EmptyState, FieldChip, PageHeader, Select, StatTile, Tabs, TrendArea, useAletheiaScope, useToast, ExportMenu } from "@/ui/kit";
 import { AskButton, Gate, humanize, pct, useHref, when, useBack } from "./common";
 import { invalidateLoad, useDiffs, usePairLatest, usePairTrend } from "./hooks";
+import { useCrumbs } from "@/ui/screens/flow";
 
 const kindLabel = (k: CompareKind): string => (k === "missing" ? t("Missing in target") : k === "extra" ? t("Only in target") : t("Differs"));
 
@@ -45,9 +46,10 @@ export function Pair({ id }: { id: string }) {
   const exp = async (f: string) => { if (cmp) await exportComparison(cmp.id, f as "xlsx" | "csv", filter); };
   const s = cmp?.summary;
 
+  const crumbs = useCrumbs();
   return (
     <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the pair")}>
-      <PageHeader back={back}
+      <PageHeader crumbs={crumbs("load", t("Pair"), { label: t("Paired systems"), href: href("/load/compare") })} back={back}
         title={name}
         context={pair ? <>{<FieldChip code={pair.module} description={humanize(pair.module)} />}{cmp ? `, ${t("compared {when}", { when: when(cmp.completed_at ?? cmp.created_at) })}` : ""}</> : null}
         actions={<>

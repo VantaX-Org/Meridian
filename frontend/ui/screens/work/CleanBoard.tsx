@@ -21,6 +21,7 @@ import { useWorkGroups } from "@/lib/v2/work-queries";
 import { Button, Card, Chip, Confirm, EmptyState, ErrorState, FieldChip, PageHeader, ScoreRuler, Skeleton, Stepper, useAletheia, useAletheiaScope, useToast, ExportMenu, ImportDialog } from "@/ui/kit";
 import { compactCount, score } from "../object/format";
 import { day, fieldText, useDo } from "./shared";
+import { useCrumbs, Cycle as CleanCycle } from "@/ui/screens/flow";
 
 const GATE = 70;
 const labels = () => ({ atRisk: t("At risk"), go: t("Go"), cap70: t("Cap at 70"), cap85: t("Cap at 85"), measured: (n: number) => t("Measured {n}", { n }) });
@@ -52,6 +53,7 @@ function WeeklyChart({ weeks }: { weeks: Week[] }) {
 export function CleanBoard({ module: initial, onReview }: { module?: string | null; onReview?: (checkId: string) => void }) {
   useInterfaceLang();
   const fx = useFixture();
+  const crumbs = useCrumbs();
   const chat = useAletheia();
   const run = useDo();
   const toast = useToast();
@@ -155,10 +157,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
 
   return (
     <div className="mx-clean">
-      <nav className="mx-crumb" aria-label={t("Where you are")}>
-        <span>{t("Clean")}</span> / <span>{object.label}{system ? `, ${system.name}` : ""}</span>
-      </nav>
-      <PageHeader
+      <PageHeader crumbs={crumbs("work", object.label)}
         title={t("Clean cycle")}
         context={head ? t("Run {n}, pulled {date}", { n: runNo ?? "", date: day(head.run_at) }) : ""}
         actions={<>

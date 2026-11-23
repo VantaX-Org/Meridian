@@ -9,6 +9,7 @@ import type { WaveBlocker, WaveObject } from "@/types/api";
 import { ActionMenu, Button, Card, Confirm, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, StatTile, TrendArea, useAletheiaScope, useToast, ExportMenu } from "@/ui/kit";
 import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, useCockpit } from "./hooks";
+import { useCrumbs, Flow } from "@/ui/screens/flow";
 
 const STATUS_FORECAST = (s: string): string => (s === "passing" ? t("Passing now") : s === "projected" ? t("On track") : s === "not_converging" ? t("Not converging") : t("Not enough runs"));
 
@@ -45,9 +46,12 @@ export function Wave({ id }: { id: string }) {
 
   const dqs = (n: number | null | undefined) => (n === null || n === undefined ? t("Not analysed") : pct(n));
 
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader back={back}
+      <PageHeader crumbs={crumbs("load", t("Wave"), { label: t("Migration waves"), href: href("/load/waves") })} stepper={<Flow label={t("Wave")} at={c?.wave.signed_off_at ? 3 : c?.verdict === "go" ? 2 : 1} steps={[t("Scope the objects"), t("Pass the gate"), t("Sign off"), t("Certify")]}
+        states={c && c.verdict !== "go" && !c.wave.signed_off_at ? { 1: "blocked" } : undefined}
+        hints={c && c.verdict !== "go" && !c.wave.signed_off_at ? { 1: t("{n} records blocked", { n: c.records_blocked.toLocaleString() }) } : undefined} />} back={back}
         title={c?.wave.name ?? t("Wave")}
         context={t("Readiness of every object in the wave against the target system.")}
         actions={<>

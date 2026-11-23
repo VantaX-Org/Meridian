@@ -17,6 +17,7 @@ import { invalidateLoad, useRecon, useRecords, useRun } from "./hooks";
 import { ReconRecords, TargetWorkbook, ValueMapping } from "./RunExtras";
 import { modeLabel } from "./MigrationRuns";
 import { displayKey } from "@/lib/v2/work";
+import { useCrumbs, Flow } from "@/ui/screens/flow";
 
 const sevLabel = (s: string): string => (s === "critical" ? t("Critical") : s === "high" ? t("High") : s === "medium" ? t("Medium") : s === "low" ? t("Low") : humanize(s));
 const Sev = ({ s }: { s: string }) => <SeverityPill sev={s as Severity} label={sevLabel(s)} />;
@@ -50,9 +51,10 @@ export function MigrationRun({ id }: { id: string }) {
     },
   });
 
+  const crumbs = useCrumbs();
   return (
     <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the run")}>
-      <PageHeader back={back}
+      <PageHeader crumbs={crumbs("load", t("Run {run}", { run: id }), { label: t("Migration runs"), href: href("/load/runs") })} stepper={<Flow label={t("Migration run")} at={run?.readiness_verdict ? 3 : 2} steps={[t("Analyse"), t("Extract the target"), t("Review the gaps"), t("Decide")]} />} back={back}
         title={t("Run {run}", { run: id })}
         context={run ? `${modeLabel(run.mode)}, ${run.modules.map(humanize).join(", ")}` : ""}
         actions={<>

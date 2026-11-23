@@ -13,6 +13,7 @@ import { CompareObject } from "./CompareObject";
 import { JobHairline } from "./JobHairline";
 import { modulesOf, runPath, runTitle } from "./util";
 import "./runs.css";
+import { useCrumbs, Cycle as CleanCycle } from "@/ui/screens/flow";
 
 const CHANGES: Change[] = ["new", "resolved", "regressed", "persisting"];
 const changeText = (c: Change) => ({ new: t("Newly failing"), resolved: t("Fixed"), regressed: t("Got worse"), persisting: t("Still failing") })[c];
@@ -21,6 +22,7 @@ const cell = (v: Record<string, unknown> | null) => (v ? Object.entries(v).map((
 export function RunCompare({ a, b, runs, objects }: { a: string; b: string; runs?: readonly string[]; objects?: readonly string[] }) {
   useInterfaceLang();
   const fx = useFixture();
+  const crumbs = useCrumbs();
   const href = (p: string) => withFixture(p, fx);
   const [change, setChange] = useState<Change | "">("");
   const [check, setCheck] = useState("");
@@ -53,7 +55,7 @@ export function RunCompare({ a, b, runs, objects }: { a: string; b: string; runs
   return (
     <div className="mx-col">
       <JobHairline />
-      <PageHeader title={t("Compare runs")} context={`${ra.data ? runTitle(ra.data) : a} ${t("with")} ${rb.data ? runTitle(rb.data) : b}`}
+      <PageHeader crumbs={crumbs("runs", t("Compare runs"))} stepper={<CleanCycle at="compare" />} title={t("Compare runs")} context={`${ra.data ? runTitle(ra.data) : a} ${t("with")} ${rb.data ? runTitle(rb.data) : b}`}
         actions={<span className="rn-row-actions"><Button variant="secondary" href={href(runPath(a))}>{t("Open first run")}</Button><Button variant="secondary" href={href(runPath(b))}>{t("Open second run")}</Button></span>} />
       <CompareBoard a={a} b={b} module={objects?.[0] ?? (ra.data ? modulesOf(ra.data)[0] ?? null : null)} />
       <dl className="mx-tiles">{CHANGES.map((c) => <StatTile key={c} label={changeText(c)} value={String(s.totals[c] ?? 0)} />)}</dl>

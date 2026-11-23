@@ -11,6 +11,7 @@ import {
 import { Button, Card, DataTable, EmptyState, Field, FieldChip, PageHeader, Select, StatTile, useAletheiaScope, useToast, ExportMenu, ImportDialog } from "@/ui/kit";
 import { AskButton, Gate, humanize, when, useBack } from "./common";
 import { invalidateLoad, useLoadPlan, useTemplateList } from "./hooks";
+import { useCrumbs, Flow } from "@/ui/screens/flow";
 
 type Unmapped = { sheet: string; header: string; id: string; label: string; mandatory: boolean };
 
@@ -46,9 +47,10 @@ export function Templates() {
     answer: () => ({ text: t("{n} columns are not mapped in the selected template.", { n: unmapped.length }), evidence: unmapped.slice(0, 5).map((u) => `${u.sheet}: ${u.header}`) }),
   });
 
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader back={back}
+      <PageHeader crumbs={crumbs("load", t("Load templates"))} stepper={<Flow label={t("Workbook fill")} at={1} steps={[t("Get the template"), t("Fill it"), t("Upload it"), t("Check the load")]} />} back={back}
         title={t("Target templates")}
         context={t("Kept workbooks that the load reads and fills")}
         actions={<>

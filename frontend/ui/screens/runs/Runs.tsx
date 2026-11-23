@@ -23,6 +23,7 @@ import { JobHairline } from "./JobHairline";
 import { RunsBoard } from "./RunsBoard";
 import { isLive, modulesOf, runPath, runScore, runTitle, scoreText, sourceLabel, statusLabel, statusTone, when } from "./util";
 import "./runs.css";
+import { useCrumbs } from "@/ui/screens/flow";
 
 const VIEWS = ["runs", "jobs", "sets", "full"] as const;
 const PAGE = 50;
@@ -226,10 +227,11 @@ export function Runs() {
     },
   });
 
+  const crumbs = useCrumbs();
   return (
     <div className="mx-col">
       <JobHairline />
-      <PageHeader title={t("Runs")} context={t("{n, plural, one {# run} other {# runs}}", { n: facts.total })} actions={<Button onClick={() => sheet.open("cycle")}>{t("Start a run")}</Button>} />
+      <PageHeader crumbs={crumbs("runs")} title={t("Runs")} context={t("{n, plural, one {# run} other {# runs}}", { n: facts.total })} actions={<Button onClick={() => sheet.open("cycle")}>{t("Start a run")}</Button>} />
       <Tabs idBase="runs-view" label={t("Runs views")} value={view} onChange={(v) => setView(v as (typeof VIEWS)[number])}
         items={[{ id: "runs", label: t("Runs") }, { id: "jobs", label: t("Jobs") }, { id: "sets", label: t("Compare sets") }, { id: "full", label: t("Timeline") }]} />
       <div role="tabpanel" id={`runs-view-panel-${view}`} aria-labelledby={`runs-view-tab-${view}`} className="mx-col">

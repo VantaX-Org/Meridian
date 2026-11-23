@@ -9,6 +9,7 @@ import { useWorkGroups } from "@/lib/v2/work-queries";
 import { Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Skeleton, StatTile, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { ObjChip } from "./ObjChip";
 import { day, sevLabel, useDo } from "./shared";
+import { useCrumbs } from "@/ui/screens/flow";
 
 const ACTIONS: { value: BulkAction; label: () => string }[] = [
   { value: "acknowledge", label: () => t("Acknowledge") },
@@ -73,9 +74,10 @@ export function Triage() {
     setPicked(new Set());
   };
 
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader title={t("Triage")} context={t("Who must act next, latest first")}
+      <PageHeader crumbs={crumbs("work", t("Triage"))} title={t("Triage")} context={t("Who must act next, latest first")}
         actions={<Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>} />
       {m ? (
         <dl className="mx-tiles">

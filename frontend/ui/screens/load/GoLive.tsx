@@ -10,6 +10,7 @@ import { downloadCertificate, gateRefusalOf, issueCertificate, signCertificate, 
 import { Button, Card, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Toggle, useAletheiaScope, useToast, ExportMenu } from "@/ui/kit";
 import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, useCerts } from "./hooks";
+import { useCrumbs, Flow, LOAD_STEPS } from "@/ui/screens/flow";
 
 const checkLabel = (k: GateCheck["key"]): string => (k === "min_score" ? t("Minimum score") : k === "zero_criticals" ? t("No failing critical rule") : t("Contracts met"));
 
@@ -107,9 +108,10 @@ export function GoLive() {
     },
   });
 
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader back={back} title={t("Go-live readiness")} context={t("Each wave must pass its gate before it is signed off and certified.")} actions={<AskButton />} />
+      <PageHeader crumbs={crumbs("load", t("Go-live readiness"))} stepper={<Flow label={t("Load journey")} at={4} steps={LOAD_STEPS()} />} back={back} title={t("Go-live readiness")} context={t("Each wave must pass its gate before it is signed off and certified.")} actions={<AskButton />} />
       <div className="mx-col">
       <Card title={t("Wave gates")} sub={t("{n} waves", { n: gates.length })}>
         <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the wave gates")}>

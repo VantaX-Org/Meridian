@@ -15,6 +15,7 @@ import { ObjChip } from "./ObjChip";
 import { ExportPanel, RunRecords } from "./BatchSend";
 import { day, useDo } from "./shared";
 import { displayKey } from "@/lib/v2/work";
+import { useCrumbs, Flow } from "@/ui/screens/flow";
 
 function Trail({ id }: { id: string }) {
   const q = useBatchEvents(id);
@@ -210,9 +211,10 @@ export function Approvals() {
       return { text: t("{n} batches wait for approval.", { n: w.length }), evidence: w.slice(0, 3).map((b) => `${b.label} ${b.name}`), actions: [] };
     },
   });
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader title={t("Approvals")} context={t("Four eyes before anything reaches SAP")}
+      <PageHeader crumbs={crumbs("work", t("Approvals"))} stepper={<Flow label={t("Approval")} at={1} steps={[t("Proposed"), t("Reviewed"), t("Approved"), t("Sent to SAP")]} />} title={t("Approvals")} context={t("Four eyes before anything reaches SAP")}
         actions={<Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>} />
       <Tabs idBase="mx-apr" label={t("Approval views")} value={tab} onChange={setTab}
         items={[{ id: "batches", label: t("Batches") }, { id: "send", label: t("Send to SAP") }]} />

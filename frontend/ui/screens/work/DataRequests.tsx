@@ -11,6 +11,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { Button, Card, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Sheet, Skeleton, Tabs, Toggle, useAletheia, useAletheiaScope, useStacked } from "@/ui/kit";
 import { ObjChip } from "./ObjChip";
 import { day, useDo } from "./shared";
+import { useCrumbs } from "@/ui/screens/flow";
 
 const STATE = (s: string) => ({ open: t("Open"), submitted: t("Submitted"), approved: t("Approved"), rejected: t("Rejected") })[s] ?? s;
 
@@ -106,9 +107,10 @@ export function DataRequests() {
   });
 
   const detail = pick ? <Answer id={pick} /> : <EmptyState heading={t("Pick a request")} body={t("Its records show here, ready to answer.")} />;
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader title={t("Data requests")} context={t("Ask for values only a person knows")}
+      <PageHeader crumbs={crumbs("work", t("Data requests"))} title={t("Data requests")} context={t("Ask for values only a person knows")}
         actions={<Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>} />
       <Tabs idBase="mx-req" label={t("Request views")} value={tab} onChange={(v) => { setTab(v); setPick(null); }}
         items={[{ id: "mine", label: t("Asked of me") }, { id: "all", label: t("All requests") }, { id: "new", label: t("New request") }]} />
