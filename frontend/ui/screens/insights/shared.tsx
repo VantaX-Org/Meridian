@@ -8,9 +8,9 @@ import { t } from "@/lib/v2/i18n";
 import { Button, EmptyState, ErrorState, FieldChip, Skeleton, type Severity } from "@/ui/kit";
 
 /** One read, keyed with the fixture flag so ?fixture=1 never shares a cache with live data. */
-export function useQ<T>(key: string, fn: () => Promise<T>, extra: unknown[] = []) {
+export function useQ<T>(key: string, fn: () => Promise<T>, extra: unknown[] = [], enabled = true) {
   const fixture = useFixture();
-  return useQuery({ queryKey: ["b8", key, fixture, ...extra], queryFn: fn });
+  return useQuery({ queryKey: ["b8", key, fixture, ...extra], queryFn: fn, enabled });
 }
 
 export const n0 = (n: number | null | undefined): string => (n === null || n === undefined ? t("n/a") : new Intl.NumberFormat("en").format(Math.round(n)));

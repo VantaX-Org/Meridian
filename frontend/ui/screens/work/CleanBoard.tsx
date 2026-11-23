@@ -4,6 +4,7 @@
  * The top of the Clean route: one clean cycle of one object, from the pull to the new score. Every figure is read from
  * an existing endpoint; where none exists the section says so or leaves the figure out (see the report of this change).
  */
+import { isAnalysed } from "@/lib/v2/run-label";
 import "./clean.css";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -68,7 +69,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
   const cell = L?.cells.find((c) => c.module === mod && c.system_id === system?.id);
   const runs = useRunsInfinite(system?.id ?? null, mod);
   const heads = runs.data?.pages.flatMap((p) => p.versions) ?? [];
-  const head = heads[0] ?? null;
+  const head = heads.find((h) => isAnalysed(h.status)) ?? heads[0] ?? null;
   const receipt = useReceipt(mod ?? "", head?.id ?? null, !!mod && !!head).data;
   const groups = useWorkGroups({ module: mod ?? undefined }, !!mod).data?.groups ?? [];
   const metrics = useQuery({ queryKey: ["v2", "clean-board-metrics", fx], queryFn: getCleaningMetrics, retry: false });

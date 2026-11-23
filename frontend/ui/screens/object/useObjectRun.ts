@@ -12,6 +12,7 @@ import { formatModuleName } from "@/lib/format";
 import { useRun, useRunsInfinite } from "@/lib/api/next/runs";
 import type { VersionHead } from "@/lib/api/v2/runs";
 import { recalledRun, rememberRun } from "./format";
+import { isAnalysed } from "@/lib/v2/run-label";
 
 export interface ObjectRun {
   systemId: string | null;
@@ -44,8 +45,12 @@ export function useObjectRun(systemSeg: string, moduleSeg: string): ObjectRun {
   const runs = useRunsInfinite(systemId, mod);
   const heads = useMemo(() => runs.data?.pages.flatMap((p) => p.versions) ?? [], [runs.data]);
 
-  const recalled = systemId ? recalledRun(systemId, mod) : null;
-  const runId = urlRun ?? recalled ?? heads[0]?.id ?? null;
+  // Open on the newest analysed run: an extracted-only run has no findings, receipts or workbook yet.
+  // A remembered run counts only once the list has loaded and shows it analysed (or not in the first page).
+  const remembered = systemId ? recalledRun(systemId, mod) : null;
+  const rememberedHead = heads.find((h) => h.id === remembered);
+  const recalled = remembered && runs.data && (!rememberedHead || isAnalysed(rememberedHead.status)) ? remembered : null;
+  const runId = urlRun ?? recalled ?? heads.find((h) => isAnalysed(h.status))?.id ?? heads[0]?.id ?? null;
 
   const hrefWith = useCallback(
     (path: string, extra: Record<string, string | null> = {}) => {

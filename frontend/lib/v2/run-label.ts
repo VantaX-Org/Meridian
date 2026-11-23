@@ -11,9 +11,18 @@ export function runStatusWord(status: string | undefined): string {
       return t("Archived");
     case "agents_complete":
       return t("Finished, Aletheia checked");
+    case "extracted":
+      return t("Extracted, not analysed");
     default:
       return t("Finished");
   }
+}
+
+const ANALYSED = new Set(["complete", "partial", "agents_running", "agents_complete", "agents_failed"]);
+
+/** True when the run's checks have run, so it has findings, receipts and a workbook. Unknown status counts as analysed. */
+export function isAnalysed(status: string | undefined): boolean {
+  return status == null || ANALYSED.has(status);
 }
 
 /** "SAP ECC run 12": the run's name; the date is secondary text beside it. */
