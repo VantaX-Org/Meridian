@@ -43,7 +43,7 @@ export function Golden({ o, system, module }: { o: ObjectRun; system: string; mo
         <StatTile label={t("Duplicate pairs across systems")} value={String(cl?.pairs ?? 0)} />
       </dl>
       <Card title={t("Golden records")} action={<span className="mx-links"><Button variant="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>{t("Previous page")}</Button><span className="mx-muted">{t("Page {p} of {n}", { p: page, n: last })}</span><Button variant="ghost" disabled={page >= last} onClick={() => setPage(page + 1)}>{t("Next page")}</Button></span>}>
-        {g.data.records.length ? <DataTable columns={cols} rows={g.data.records} rowKey={(r) => r.id} label={t("Golden records")} /> : <EmptyState heading={t("No golden records exist for this object yet.")} body={t("Run matching for this object to create golden records.")} />}
+        {g.data.records.length ? <DataTable id="object-golden" columns={cols} rows={g.data.records} rowKey={(r) => r.id} label={t("Golden records")} /> : <EmptyState heading={t("No golden records exist for this object yet.")} body={t("Run matching for this object to create golden records.")} />}
       </Card>
       <Card title={t("Duplicates across systems")}>
         {cl?.clusters.length ? (

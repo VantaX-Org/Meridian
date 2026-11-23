@@ -32,7 +32,7 @@ export function Runs({ o, system, module }: { o: ObjectRun; system: string; modu
   return (
     <div className="mx-col">
       <Card title={t("All runs")} sub={t("Choose a run to see the other screens as of that run.")}>
-        <DataTable columns={cols} rows={rows} rowKey={(h) => h.id} label={t("Runs")} selected={o.runId ?? undefined} onSelect={(h) => router.push(withFixture(o.hrefWith(objectPath(system, module, "runs"), { run: h.id }), fx))} />
+        <DataTable id="object-runs" columns={cols} rows={rows} rowKey={(h) => h.id} label={t("Runs")} selected={o.runId ?? undefined} onSelect={(h) => router.push(withFixture(o.hrefWith(objectPath(system, module, "runs"), { run: h.id }), fx))} />
       </Card>
     </div>
   );

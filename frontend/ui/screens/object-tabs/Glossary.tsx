@@ -35,7 +35,7 @@ export function Glossary({ o, system, module }: { o: ObjectRun; system: string; 
     <Lead tab="glossary" title={t("Terms by status")} sentence={t("{n} of {m} terms are active.", { n: st("active"), m: rows.length })}
       bars={[{ id: "active", label: STATUS.active(), value: st("active"), tone: "good" }, { id: "under_review", label: STATUS.under_review(), value: st("under_review"), tone: "warn" }, { id: "deprecated", label: STATUS.deprecated(), value: st("deprecated"), tone: "bad" }]} />
     <Card title={t("Glossary")} sub={t("{n} terms", { n: g.data?.total ?? rows.length })} action={<Search value={q} onChange={setQ} label={t("Search the glossary")} clearLabel={t("Clear search")} placeholder={t("Search the glossary")} />}>
-      {rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => r.id} label={t("Glossary")} height={480} /> : <EmptyState heading={t("No glossary term matches.")} body={t("Clear the search to see every term.")} />}
+      {rows.length ? <DataTable id="object-glossary" columns={cols} rows={rows} rowKey={(r) => r.id} label={t("Glossary")} height={480} /> : <EmptyState heading={t("No glossary term matches.")} body={t("Clear the search to see every term.")} />}
     </Card>
     </div>
   );

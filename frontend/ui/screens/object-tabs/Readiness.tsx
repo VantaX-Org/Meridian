@@ -39,7 +39,7 @@ export function Readiness({ o, system, module }: { o: ObjectRun; system: string;
         <StatTile label={t("Blockers")} value={String(rows.reduce((n, r) => n + r.blocker_count, 0))} />
       </dl>
       <Card title={t("Readiness by wave")}>
-        {rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => r.wave} label={t("Readiness by wave")} /> : <EmptyState heading={t("This object is not planned into a wave yet.")} body={t("Add the object to a wave in the load plan to see its readiness here.")} />}
+        {rows.length ? <DataTable id="object-readiness" columns={cols} rows={rows} rowKey={(r) => r.wave} label={t("Readiness by wave")} /> : <EmptyState heading={t("This object is not planned into a wave yet.")} body={t("Add the object to a wave in the load plan to see its readiness here.")} />}
       </Card>
     </div>
   );

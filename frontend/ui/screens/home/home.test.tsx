@@ -24,7 +24,7 @@ describe("Home", () => {
     wrap(<Home />);
     expect(await screen.findByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeTruthy();
     expect(await screen.findByRole("group", { name: "Score of every object against the gates" })).toBeTruthy();
-    expect(await screen.findByRole("list", { name: "Next action per object" })).toBeTruthy();
+    expect(await screen.findByRole("group", { name: "Next action per object" })).toBeTruthy();
     expect(await screen.findByRole("list", { name: "Attention items" })).toBeTruthy();
   });
 
@@ -46,18 +46,12 @@ describe("Home", () => {
 });
 
 describe("Home order", () => {
-  it("puts attention above the object grid and folds the grid to six cards", async () => {
+  it("puts attention above the objects table and keeps the header meta and a 6 cell strip", async () => {
     wrap(<Home />);
     const attention = await screen.findByRole("list", { name: "Attention items" });
-    const grid = await screen.findByRole("list", { name: "Next action per object" });
-    expect(attention.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const more = screen.queryByRole("button", { name: /^Show all \d+ objects$/ });
-    if (!more) return; // fixture holds 6 or fewer objects
-    expect(grid.children.length).toBe(6);
-    fireEvent.click(more);
-    await waitFor(() => expect(screen.getByRole("list", { name: "Next action per object" }).children.length).toBeGreaterThan(6));
-    fireEvent.click(screen.getByRole("button", { name: "Show fewer" }));
-    await waitFor(() => expect(screen.getByRole("list", { name: "Next action per object" }).children.length).toBe(6));
+    const table = await screen.findByRole("group", { name: "Next action per object" });
+    expect(attention.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: /breadcrumb/i })).toBeTruthy();
   });
 });
 

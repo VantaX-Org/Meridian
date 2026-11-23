@@ -15914,4 +15914,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Show as table": "表で表示",
   "Table tools": "表ツール",
   "This applies to {n} rows.": "{n} 行に適用されます。",
+  "Cycle step": "サイクルの段階",
+  "Next action": "次の操作",
 };

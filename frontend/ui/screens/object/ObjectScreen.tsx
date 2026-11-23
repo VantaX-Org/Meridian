@@ -15,7 +15,7 @@ import {
   Badge, Button, Card, Chip, DataTable, DetailPanel, DqsPair, EmptyState, ErrorState, MasterList, PageHeader, ScoreRuler,
   SeverityPill, SeverityStrip, Sheet, Skeleton, StatTile, FieldChip, useAletheia, useAletheiaScope, useStacked, type Severity,
 } from "@/ui/kit";
-import { ObjectTabNav, objectPath } from "@/ui/screens/object-tabs/TabFrame";
+import { ObjectCycle, ObjectTabNav, objectPath } from "@/ui/screens/object-tabs/TabFrame";
 import { RunLines, ToneBars } from "./Board";
 import { answerFor, type PromptId } from "./answers";
 import { AllRulesCard, FindingsCard, MonitorStrip, OldRunGate, RelatedObjects, ScoreReceipt } from "./ObjectExtras";
@@ -162,6 +162,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
       <PageHeader
         title={o.label}
         crumbs={[{ label: t("Objects"), href: href("/o") }, { label: o.systemName }, { label: o.label }]}
+        stepper={<ObjectCycle system={system} module={module} />}
         meta={[
           o.systemName,
           o.run ? t("Run {n}", { n: o.run.run_number ?? "" }) : null,

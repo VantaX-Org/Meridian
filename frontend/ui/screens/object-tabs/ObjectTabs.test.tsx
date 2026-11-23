@@ -50,6 +50,14 @@ describe("object sub-screens", () => {
     );
     expect((await screen.findAllByRole("heading", { level: 1, name: title }, { timeout: 5000 })).length).toBeGreaterThan(0);
   });
+  it("Runs and Fixes show the clean cycle and breadcrumbs", async () => {
+    for (const tab of ["runs", "fixes"] as Tab[]) {
+      const { unmount } = renderWithQuery(<AletheiaProvider><Screen tab={tab} system="ecc-production" module="material-master" /></AletheiaProvider>);
+      expect(await screen.findByRole("navigation", { name: /breadcrumb/i })).toBeTruthy();
+      expect((await screen.findAllByLabelText("Clean cycle", {}, { timeout: 5000 })).length).toBeGreaterThan(0);
+      unmount();
+    }
+  });
   it("shows five tabs and puts the rest under More, every one still a link", async () => {
     renderWithQuery(<AletheiaProvider><Screen tab="runs" system="ecc-production" module="material-master" /></AletheiaProvider>);
     const nav = await screen.findByRole("navigation", { name: "Object screens" });

@@ -15914,4 +15914,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Show as table": "Als Tabelle anzeigen",
   "Table tools": "Tabellenwerkzeuge",
   "This applies to {n} rows.": "Das betrifft {n} Zeilen.",
+  "Cycle step": "Zyklusschritt",
+  "Next action": "Nächste Aktion",
 };

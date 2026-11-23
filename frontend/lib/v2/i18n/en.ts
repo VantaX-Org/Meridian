@@ -15913,6 +15913,8 @@ export const en = {
   "Show as table": "Show as table",
   "Table tools": "Table tools",
   "This applies to {n} rows.": "This applies to {n} rows.",
+  "Cycle step": "Cycle step",
+  "Next action": "Next action",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
