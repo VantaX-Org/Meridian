@@ -1,0 +1,85 @@
+{
+ "route": "/monitor/controls",
+ "url": "/monitor/controls",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Insights",
+   "target": "/insights",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cost and owners",
+   "target": "/insights/money",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Score lens",
+   "target": "/insights/score",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Forecast",
+   "target": "/insights/forecast",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Value",
+   "target": "/insights/value",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Monitor",
+   "target": "/monitor",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Controls",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Configuration",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Contracts",
+   "effect": "DOM changes (16)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Gate",
+   "effect": "DOM changes (13)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Schedule",
+   "effect": "DOM changes (13); requests: GET /admin/schedules",
+   "ok": true
+  }
+ ]
+}

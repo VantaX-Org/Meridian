@@ -1,0 +1,25 @@
+{
+ "route": "/mdm/links",
+ "url": "/mdm/links",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (7)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "From",
+   "effect": "DOM changes (41)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "To",
+   "effect": "DOM changes (46)",
+   "ok": true
+  }
+ ]
+}

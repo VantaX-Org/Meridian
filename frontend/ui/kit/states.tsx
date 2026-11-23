@@ -16,12 +16,13 @@ export function EmptyState({ heading, body, action }: { heading: string; body?: 
  * A failed request. `request` names it ("Score by run") and builds the heading when none is given. `stale` is the last good
  * data: it stays on screen under the error so a failed refresh never blanks the page.
  */
-export function ErrorState({ heading, body, retryLabel, onRetry, request, stale }: { heading?: string; body?: string; retryLabel?: string; onRetry?: () => void; request?: string; stale?: ReactNode }) {
+export function ErrorState({ heading, body, retryLabel, onRetry, request, stale, page }: { heading?: string; body?: string; retryLabel?: string; onRetry?: () => void; request?: string; stale?: ReactNode; page?: boolean }) {
+  const H = page ? "h1" : "p";
   const h = heading ?? (request ? t("{name} did not load.", { name: request }) : t("This did not load."));
   return (
     <>
       <div className="mx-state" role="alert" data-tone="error">
-        <p className="mx-state-h">{h}</p>
+        <H className="mx-state-h">{h}</H>
         {body ? <p className="mx-muted">{body}</p> : null}
         {onRetry ? <button type="button" className="mx-btn" data-variant="secondary" onClick={onRetry}>{retryLabel ?? t("Retry")}</button> : null}
       </div>

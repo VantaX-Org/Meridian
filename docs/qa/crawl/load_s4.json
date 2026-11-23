@@ -1,0 +1,62 @@
+{
+ "route": "/load/s4",
+ "url": "/load/s4",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to Load",
+   "target": "/load?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Failing1876business_partner Business Partner / CVIBusiness Partner Approach (SAP",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Warning2904material Material masterMaterial Number Field Length ExtensionMateria",
+   "effect": "DOM changes (17)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Passing0finance Universal Journal / General LedgerData Model Changes in Financia",
+   "effect": "DOM changes (16)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not evaluated0warehouse_ewm Warehouse Management to EWMWarehouse Management (LE-",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Rule",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records affected",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Pass rate",
+   "effect": "DOM changes (1)",
+   "ok": true
+  }
+ ]
+}

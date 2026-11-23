@@ -86,4 +86,5 @@ export const bulkIssues = (body: { ids: string[]; status?: IssueStatus; resoluti
 export const commentIssue = (id: string, body: string) =>
   v2Send<{ ok: boolean }>("POST", `/issues/${encodeURIComponent(id)}/comments`, { body });
 
-export const exportIssues = (q: IssueQuery) => v2Download("/issues/export", { format: "xlsx", ...params({ ...q, limit: undefined, offset: undefined }) }, "issues.xlsx");
+export const exportIssues = (q: IssueQuery, format: "csv" | "xlsx" = "xlsx") =>
+  v2Download("/issues/export", { format, ...params({ ...q, limit: undefined, offset: undefined }) }, `issues.${format}`);

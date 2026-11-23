@@ -26,6 +26,12 @@ class _Res:
     def fetchall(self):
         return []
 
+    def mappings(self):
+        return self
+
+    def all(self):
+        return []
+
     def scalar(self):
         return self.row
 
@@ -60,7 +66,7 @@ async def _approve(monkeypatch, status="detected", proposer=False):
     monkeypatch.setattr(cleaning, "mark_work_changed", lambda *a: None)
     monkeypatch.setattr(cleaning, "current_user_label", lambda: "steward@example.com")
     db = _DB(status, proposer)
-    out = await cleaning.approve_cleaning_item("i1", cleaning.ApproveBody(), db=db,
+    out = await cleaning.approve_cleaning_item("i1", cleaning.ApproveBody(), None, db=db,
                                                tenant=Tenant(uuid.uuid4(), "T", []), _role="approver")
     return db, out
 
@@ -87,7 +93,7 @@ async def test_the_proposer_cannot_approve(monkeypatch):
 @pytest.mark.asyncio
 async def test_another_user_approves_a_waiting_item(monkeypatch):
     db, out = await _approve(monkeypatch, status="recommended")
-    assert out == {"id": "i1", "status": "approved"}
+    assert out["id"] == "i1" and out["status"] == "approved"
     update = next(s for s in db.calls if s.startswith("UPDATE cleaning_queue"))
     assert "status IN ('detected', 'recommended')" in update
 

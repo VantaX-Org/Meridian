@@ -1,0 +1,151 @@
+{
+ "route": "/load",
+ "url": "/load",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Review the load order",
+   "target": "/load/plan?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Move to new instance",
+   "target": "/load/move?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "S/4 readiness",
+   "target": "/load/s4?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Go-live gates",
+   "target": "/load/go-live?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Waves",
+   "target": "/load/waves?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Migration runs",
+   "target": "/load/runs?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Load templates",
+   "target": "/load/templates?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Field and value maps",
+   "target": "/load/maps?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Paired systems",
+   "target": "/load/compare?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open missing records",
+   "target": "/load/compare/pair-0001?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "mig-0002",
+   "target": "/load/runs/mig-0002?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Wave 1",
+   "target": "/load/waves/wave-1?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Source pass rate",
+   "effect": "DOM changes (11); requests: GET /load/compare/pair-0001",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Target pass rate",
+   "effect": "DOM changes (9); requests: GET /load/compare/pair-0001",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Change",
+   "effect": "DOM changes (8); requests: GET /load/compare/pair-0001",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Export reconciliation",
+   "effect": "opens dialog or menu; DOM changes (2); requests: GET /load/compare/pair-0001",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Missing",
+   "effect": "DOM changes (10); requests: GET /load/compare/pair-0001",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Compared",
+   "effect": "DOM changes (1); requests: GET /load/compare/pair-0001",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Differ",
+   "effect": "DOM changes (12); requests: GET /load/compare/pair-0001",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records",
+   "effect": "DOM changes (1); requests: GET /load/runs/mig-0002, GET /load/waves/wave-1",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Date",
+   "effect": "DOM changes (1); requests: GET /load/runs/mig-0002, GET /load/waves/wave-1",
+   "ok": true
+  }
+ ]
+}

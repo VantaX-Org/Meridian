@@ -1,0 +1,55 @@
+{
+ "route": "/status",
+ "url": "/status",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Component",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "State",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Latency",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Uptime, 30 days",
+   "effect": "DOM changes (20)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Reference",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Errors",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Last seen",
+   "effect": "DOM changes (15)",
+   "ok": true
+  }
+ ]
+}

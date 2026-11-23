@@ -1,0 +1,146 @@
+{
+ "route": "/me/notifications",
+ "url": "/me/notifications",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to Administration",
+   "target": "/admin?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/work?filter=approvals&open=batch:B-241",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/o/ecc-production/material-master",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/work?due=overdue",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/runs",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/work?filter=open&batch=B-236&open=batch:B-236",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/r/MM142",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/work?filter=exceptions",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/people",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/reports",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/o/ecc-production/mm-purchasing",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/o/ecc-production/business-partner",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Mark all read",
+   "effect": "DOM changes (25)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Mark read",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Mark read",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Mark read",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Mark read",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Mark read",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Mark read",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Mark read",
+   "effect": "DOM changes (9)",
+   "ok": true
+  }
+ ]
+}

@@ -91,7 +91,7 @@ async def test_decide_then_undo_restores_status_and_value(s, owner, monkeypatch,
         assert u.status_code == 200, u.text
         body = u.json()
         assert (body["action_id"], body["kind"]) == (action_id, "decide")
-        assert body["restored"] == {"issues": 1, "items_restored": 0, "items_removed": 1, "batch": False}
+        assert body["restored"] == {"issues": 1, "items_restored": 0, "items_removed": 1, "batch": False, "cleaning": 0}
         assert items(owner, s, R1) == []
         assert issue(owner, s, R1, "MM014")[0] == "open"
         after = (await client.get(f"/api/v1/work/records/material_master/{R1}", headers=headers())).json()
