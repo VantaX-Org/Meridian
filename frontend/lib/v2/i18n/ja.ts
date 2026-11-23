@@ -15946,4 +15946,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Group by": "グループ化",
   "{label}: {n} failing rules, {p}% of all": "{label}: 失敗ルール {n} 件、全体の {p}%",
   "This did not load.": "読み込めませんでした。",
+  "Proposed fix: {from} to {to}": "修正案: {from} から {to}",
+  "Why reject": "却下の理由",
+  "{name} did not load.": "{name} を読み込めませんでした。",
 };

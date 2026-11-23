@@ -15945,6 +15945,9 @@ export const en = {
   "Group by": "Group by",
   "{label}: {n} failing rules, {p}% of all": "{label}: {n} failing rules, {p}% of all",
   "This did not load.": "This did not load.",
+  "Proposed fix: {from} to {to}": "Proposed fix: {from} to {to}",
+  "Why reject": "Why reject",
+  "{name} did not load.": "{name} did not load.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

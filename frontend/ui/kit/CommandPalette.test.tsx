@@ -46,4 +46,15 @@ describe("CommandPalette", () => {
     fireEvent.keyDown(box, { key: "Enter" });
     expect(hit).toHaveBeenCalled();
   });
+  it("shows screen context commands first with their shortcut", () => {
+    const run = vi.fn();
+    render(<CommandPalette open onClose={vi.fn()} onAsk={vi.fn()} label="Command palette" placeholder="Type" askLabel={(q) => `Ask: ${q}`} emptyLabel="None"
+      commands={[{ id: "home", label: "Go to Home", run: vi.fn() }]} context={[{ id: "acc", label: "Accept all", shortcut: "Shift+A", run }]} contextLabel="On this screen" />);
+    const opts = screen.getAllByRole("option");
+    expect(opts[0].textContent).toContain("Accept all");
+    expect(opts[0].textContent).toContain("Shift+A");
+    expect(screen.getByText("On this screen")).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "Enter" });
+    expect(run).toHaveBeenCalled();
+  });
 });

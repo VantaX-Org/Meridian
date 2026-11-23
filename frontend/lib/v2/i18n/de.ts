@@ -15946,4 +15946,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Group by": "Gruppieren nach",
   "{label}: {n} failing rules, {p}% of all": "{label}: {n} fehlgeschlagene Regeln, {p} % aller",
   "This did not load.": "Das wurde nicht geladen.",
+  "Proposed fix: {from} to {to}": "Vorgeschlagene Korrektur: {from} zu {to}",
+  "Why reject": "Grund der Ablehnung",
+  "{name} did not load.": "{name} wurde nicht geladen.",
 };

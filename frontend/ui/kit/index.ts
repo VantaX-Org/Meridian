@@ -35,7 +35,9 @@ export { KpiStrip, type KpiCell } from "./KpiStrip";
 export { ScoreRing } from "./ScoreRing";
 export { ScoreRuler, type RulerLabels, type RulerMark, type RulerTone } from "./ScoreRuler";
 export { SeverityStrip, type Severity, type SeverityTile } from "./SeverityStrip";
-export { EmptyState, ErrorState, Skeleton } from "./states";
+export { ChartSkeleton, EmptyState, ErrorState, GridSkeleton, HeroSkeleton, Skeleton } from "./states";
+export { ProposalChip, type RejectReason } from "./ProposalChip";
+export { ShortcutSheet, type Shortcut } from "./ShortcutSheet";
 export { StatTile } from "./StatTile";
 export { Tabs, type TabItem } from "./Tabs";
 export { TrendArea, type TrendPoint } from "./TrendArea";
@@ -45,7 +47,7 @@ export { PlotLayer, type PlotRange } from "./PlotLayer";
 export { ToneBars, type ToneBar } from "./ToneBars";
 export { RunLines, type RunPoint } from "./RunLines";
 export { WeeklyChart, type Week } from "./WeeklyChart";
-export { AletheiaMark, AletheiaMarkImg, EvidenceNote } from "./Evidence";
+export { AletheiaMark, AletheiaMarkImg, EvidenceNote, EvidencePopover } from "./Evidence";
 
 // Spec names (section 3) for the pieces that already match one to one.
 export { PageHeader as Page } from "./PageHeader";
