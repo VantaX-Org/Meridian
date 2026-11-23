@@ -40,6 +40,7 @@ Statuses:
 | --- | --- | --- | --- |
 | Steward queue: filter, approve, reject, escalate, bulk approve confident items, item lifecycle stepper | GET `/stewardship/queue`, POST resolve, POST escalate, POST bulk-approve | `ui/screens/people/StewardQueue.tsx`, rendered in Stewardship | People, Stewardship |
 | Maintenance windows: add and remove (PUT replaces list, max 20, UTC) | PUT `/settings/maintenance` | `ui/screens/admin/ops/MaintenanceEditor.tsx`, in Admin, Enterprise | Admin, Enterprise |
+| Analytics: ranked remediation plan, sprint plan with hours picker, finding cost, queue bottlenecks, steward capacity, MDM health series and backlog history | GET `/analytics/prescriptive`, `/analytics/sprints`, `/analytics/impact/{id}`, `/analytics/bottlenecks`, `/analytics/capacity`, `/analytics/mdm-health`, `/mdm-metrics/history` | `ui/screens/insights/PlanCards.tsx` in Forecast; `ui/screens/insights/MonitorSeries.tsx` in Monitor | Insights, Monitor |
 
 Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`.
 
@@ -59,7 +60,6 @@ Suggested home is the journey where the user would expect it.
 | Learned rules: review, mine, approve; mined rule accept | `getLearnedReview`, `mineFixes`, `acceptMinedRule` | `/learned-rules/*`, `/rules/mined` | Rules |
 | Rule authoring: dry run, publish, update draft, version diff | `dryRunDraft`, `publishDraft`, `updateDraft`, `createRuleVersion` | `/rule-authoring/*`, `/rules/{id}/versions/{v}/diff` | Rules |
 | Sandbox enter and exit, digest read | `enterSandbox`, `exitSandbox`, `getDigest` | `/admin/sandbox/*`, `/digests` | Admin, People Digests |
-| Analytics: prescriptive, bottlenecks, capacity, sprints, finding impact, MDM health series and history | `getPrescriptive`, `getBottlenecks`, `getCapacity`, `getSprintPlan`, `getFindingImpact`, `getMdmHealthSeries`, `getMdmHistory` | `/analytics/*`, `/mdm-metrics/history` | Home and Monitor |
 | Design: table, config, diff | `getDesignTable`, `getDesignConfig`, `getDesignDiff` | `/systems/{id}/design/*` | Objects, per system |
 | Process mining summary and graph | `getMiningRunSummary`, `getMiningGraph` | `/mining/summary/*`, `/process/mining/graph/*` | Objects, processes |
 | Config: process, root cause v2, rediscover, match summary | `getConfigProcess`, `getConfigRootCauseV2`, `rediscoverConfig`, `getConfigMatchSummary` | `/config/*`, `/versions/{id}/config-matches/summary` | Objects, config |

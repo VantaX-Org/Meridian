@@ -16,6 +16,7 @@ import { labelText, moduleText } from "@/lib/v2/labels";
 import { describeField } from "@/lib/v2/sap-fields";
 import { BandChart, BarList, Button, Card, Chip, EmptyState, FieldChip, ScoreRuler, SeverityPill, Skeleton, StatTile, useToast } from "@/ui/kit";
 import { compactCount, score } from "../object/format";
+import { MdmSeriesCard, QueueCards } from "./MonitorSeries";
 import { day, sevLabel, sevOf, useQ } from "./shared";
 import "./monitorboard.css";
 
@@ -175,6 +176,8 @@ export function MonitorBoard() {
           </Card>
         </>
       )}
+      <QueueCards />
+      <MdmSeriesCard />
     </section>
   );
 }

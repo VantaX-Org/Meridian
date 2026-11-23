@@ -91,5 +91,7 @@ export function analyticsRead(path: string): unknown {
     kpis: { throughput: 412.5, automation_rate: 38.2, mttr_hours: 6.4, rejection_rate: 4.1, rollback_rate: 0.3, items_in_flight: 61_906, top_object_type: "material_master", total_processed: 7_425, total_detected: 69_331, sla_compliance_pct: 100, avg_queue_age_hours: 0, top_rule_by_volume: "material_master" },
     bottlenecks: [], capacity: {},
   };
+  const one = /^\/analytics\/impact\/([^/]+)$/.exec(path);
+  if (one) return { finding_id: one[1], finding: { id: one[1] }, impacts: impacts.slice(0, 3) };
   return NONE_ANALYTICS;
 }
