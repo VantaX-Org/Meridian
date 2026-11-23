@@ -127,3 +127,10 @@ def test_save_to_folder_stays_inside_the_tenant_folder(tmp_path):
     note = rs.save_to_folder(TID, gen, base=str(tmp_path))
     assert (tmp_path / TID / "escape.csv").read_bytes() == b"a,b\n" and "escape.csv" in note
     assert "not configured" in rs.save_to_folder(TID, gen, base="")
+
+
+def test_csv_says_so_when_rows_are_cut_at_the_cap(findings, monkeypatch):
+    monkeypatch.setattr(ec, "ROW_CAP", 1)
+    gen = ec.build(_Session(), TID, "findings", {"format": "csv", "columns": ["check_id"]})
+    lines = gen.data.decode("utf-8-sig").strip().splitlines()
+    assert len(lines) == 3 and lines[-1].startswith("Truncated to 1 rows")

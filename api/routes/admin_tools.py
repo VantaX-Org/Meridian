@@ -49,6 +49,8 @@ from api.services.rbac import (
 
 router = APIRouter(prefix="/api/v1", tags=["admin-tools"])
 
+BULK_MAX = 5000  # one cap for export and import, so a file Meridian wrote can always be imported back
+
 
 async def _rls(db: AsyncSession, tenant: Tenant) -> str:
     await db.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant.id)})
@@ -227,8 +229,8 @@ async def export_rules_bulk(format: Literal["yaml", "xlsx"] = Query("yaml"), mod
     t = await _rls(db, tenant)
     rows = (await db.execute(text(
         "SELECT module, name, description, category, severity, enabled, source_yaml, source FROM rules "
-        "WHERE tenant_id = CAST(:t AS uuid) AND (CAST(:m AS text) IS NULL OR module = :m) ORDER BY module, name LIMIT 5000"),
-        {"t": t, "m": module})).mappings().all()
+        "WHERE tenant_id = CAST(:t AS uuid) AND (CAST(:m AS text) IS NULL OR module = :m) ORDER BY module, name LIMIT :cap"),
+        {"t": t, "m": module, "cap": BULK_MAX})).mappings().all()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
     if format == "yaml":
         docs = []
@@ -315,8 +317,8 @@ async def import_rules_bulk(body: BulkIn, request: Request, db: AsyncSession = D
     rows = parse_bulk(body.format, body.content, body.module)
     if not rows:
         raise HTTPException(status_code=422, detail="The file has no rules.")
-    if len(rows) > 500:
-        raise HTTPException(status_code=422, detail="Import at most 500 rules at a time.")
+    if len(rows) > BULK_MAX:
+        raise HTTPException(status_code=422, detail=f"Import at most {BULK_MAX} rules at a time.")
     dictionaries: dict[str, Any] = {}
     results = []
     for r in rows:

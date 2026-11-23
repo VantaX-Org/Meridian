@@ -144,7 +144,7 @@ What is still partial or missing after this step, and why:
 | Process readiness by step | Object › Processes tab | `GET /business-process/{run}/{module}` | view | present | present | Celonis process readiness (inferred); SAP Signavio |
 | What if these rules were fixed (simulation) | Processes tab › What if these rules were fixed | client-side over the process document and the receipt (`lib/v2/what-if.ts`) | view | missing | present | Informatica none found; Anomalo root cause (closest) |
 | Hand a blocking rule to a steward | Step inspector › Hand off | `POST /stewardship/handoff` | handoff_rule | present | present | Collibra workflow task |
-| Export the as-is process | Processes, designer | `/process-export/*` | export_process | present | present | SAP Signavio export |
+| Export the as-is process | Processes, designer | `/process-designer/models/{id}/export/signavio|pptx`, `/process-discovery/runs/{id}/export/signavio|bpmn/{node}` | export_process | present | present | SAP Signavio export |
 | Comment on a rule or step's rule | Rule inspector › Comments | `POST /comments` | view | missing | present | Collibra comments |
 | Related objects and fix order | Object canvas › Related objects | `GET /objects/{module}/related` | view | missing | present | Monte Carlo lineage |
 

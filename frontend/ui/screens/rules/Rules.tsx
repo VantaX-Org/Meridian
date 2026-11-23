@@ -8,6 +8,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { formatModuleName } from "@/lib/format";
 import { exportRulesBulk, importRulesBulk, type BulkResult } from "@/lib/api/v2/roles";
 import type { Rule } from "@/lib/api/rules";
+import { bytesToBase64 } from "@/lib/api/download";
 import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, Search, Select, SeverityPill, Skeleton, StatTile, useAletheia, useAletheiaScope, useSheet, useToast, type Column } from "@/ui/kit";
 import type { Severity } from "@/ui/kit/SeverityStrip";
 import { compactCount, pct, ruleCheck, SEVERITIES, sevLabel } from "./format";
@@ -70,8 +71,10 @@ export function Rules() {
   const pick = async (f: File | undefined) => {
     if (!f) return;
     const format = f.name.toLowerCase().endsWith(".xlsx") ? "xlsx" : "yaml";
-    const content = format === "xlsx" ? btoa(String.fromCharCode(...new Uint8Array(await f.arrayBuffer()))) : await f.text();
-    try { setBulk({ format, content, result: await importRulesBulk(format, content, true) }); } catch (e) { toast(e instanceof Error ? e.message : t("The change did not go through"), "bad"); }
+    try {
+      const content = format === "xlsx" ? bytesToBase64(new Uint8Array(await f.arrayBuffer())) : await f.text();
+      setBulk({ format, content, result: await importRulesBulk(format, content, true) });
+    } catch (e) { toast(e instanceof Error ? e.message : t("The change did not go through"), "bad"); }
   };
   const doImport = useAct(async () => { if (bulk) { await importRulesBulk(bulk.format, bulk.content, false); setBulk(null); } }, () => t("Rules imported"));
 
