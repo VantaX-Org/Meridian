@@ -12,6 +12,7 @@ import { analyseRun, archiveRuns, getRuleTrend, pinBaseline, restoreRuns } from 
 import { downloadReconciliation, getRunSteps, renameRun, rerunAgents, streamRunEvents, type RunEvent } from "@/lib/api/v2/run-ops";
 import { purgeVersion } from "@/lib/api/v2/admin";
 import { getConfigMatches } from "@/lib/api/v2/config";
+import { MatchSummary, RootCauseSheet } from "./ConfigDetail";
 import { exportVersionProfile, getProfile } from "@/lib/api/v2/profile";
 import { baselineRefusalOf, getSemanticTypes, putSemanticType, type SemanticColumn, type SemanticType } from "@/lib/api/v2/step9";
 import { getRunPrediction } from "@/lib/api/v2/step10";
@@ -160,6 +161,7 @@ function ProfileTab({ id, systemId, modules }: { id: string; systemId: string; m
 
 function ConfigTab({ id }: { id: string }) {
   const q = useQuery({ queryKey: ["next", "run", id, "config", useFixture()], queryFn: () => getConfigMatches(id) });
+  const [cause, setCause] = useState<{ id: string; module: string } | null>(null);
   if (q.isLoading) return <Skeleton lines={5} label={t("Loading the configuration matches")} />;
   const items = q.data?.items ?? [];
   if (!items.length) return <EmptyState heading={t("No configuration matches")} body={t("No failing record of this run traces to configuration.")} />;
@@ -171,7 +173,15 @@ function ConfigTab({ id }: { id: string }) {
     { key: "evid", label: t("Configuration evidence"), render: (m) => m.config_evidence ?? "" },
     { key: "act", label: t("What to do"), render: (m) => m.recommended_action ?? "" },
   ];
-  return <Card title={t("Configuration matches")} sub={t("{n, plural, one {# record} other {# records}}", { n: q.data?.total ?? items.length })}><DataTable columns={cols} rows={items} rowKey={(m) => `${m.check_id}/${m.record_key}/${m.field}`} label={t("Configuration matches")} height={400} /></Card>;
+  return (
+    <div className="mx-col">
+      <Card title={t("What the run's failures trace to")}><MatchSummary id={id} /></Card>
+      <Card title={t("Configuration matches")} sub={t("{n, plural, one {# record} other {# records}}", { n: q.data?.total ?? items.length })}>
+        <DataTable columns={cols} rows={items} rowKey={(m) => `${m.check_id}/${m.record_key}/${m.field}`} label={t("Configuration matches")} height={400} onSelect={(m) => setCause({ id: m.check_id, module: m.module })} />
+      </Card>
+      <RootCauseSheet checkId={cause?.id ?? null} module={cause?.module} onClose={() => setCause(null)} />
+    </div>
+  );
 }
 
 export function Run({ id }: { id: string }) {

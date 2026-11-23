@@ -62,7 +62,7 @@ Suggested home is the journey where the user would expect it.
 | Learned rules: review, mine, approve; mined rule accept | `getLearnedReview`, `mineFixes`, `acceptMinedRule` | `/learned-rules/*`, `/rules/mined` | Rules |
 | Rule authoring: dry run, publish, update draft, version diff | `dryRunDraft`, `publishDraft`, `updateDraft`, `createRuleVersion` | `/rule-authoring/*`, `/rules/{id}/versions/{v}/diff` | Rules |
 | Sandbox enter and exit, digest read | `enterSandbox`, `exitSandbox`, `getDigest` | `/admin/sandbox/*`, `/digests` | Admin, People Digests |
-| Config: process, root cause v2, rediscover, match summary | `getConfigProcess`, `getConfigRootCauseV2`, `rediscoverConfig`, `getConfigMatchSummary` | `/config/*`, `/versions/{id}/config-matches/summary` | Objects, config |
+| Config: process steps with volume and exceptions, rediscover (Stepper), root cause sheet, verdict summary | GET `/config/processes`, `/config/processes/{id}`, `/config/root-cause/{id}`, `/versions/{id}/config-matches/summary`; POST `/config/discover/latest` | `ui/screens/systems/ConfigProcess.tsx` in systems ConfigTab; `ui/screens/runs/ConfigDetail.tsx` in the run Configuration tab | Objects, config |
 | Discovery: health, schedules, run model | `getDiscoveryHealth`, `addSchedule`, `patchSchedule`, `getRunModel` | discovery routes | Admin, Systems |
 | Connectivity config snapshot | `getConfigSnapshot` | `/connectivity/config/{system}/{module}` | Admin, Systems |
 | Lineage blast radius | `getBlastRadius` | `/lineage/blast-radius/*` | Objects, lineage |
