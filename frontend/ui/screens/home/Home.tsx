@@ -126,7 +126,7 @@ export function Home() {
   };
 
   if (land.isLoading || pf.isLoading) return <Skeleton lines={8} label={t("Loading the home screen")} />;
-  if (land.isError) return <ErrorState heading={t("The overview could not be loaded")} retryLabel={t("Try again")} onRetry={() => void land.refetch()} />;
+  if (land.isError || pf.isError) return <ErrorState heading={t("The overview could not be loaded")} retryLabel={t("Try again")} onRetry={() => void Promise.all([land.refetch(), pf.refetch()])} />;
 
   const strip = land.data?.status_strip;
   const s = land.data?.sentence;

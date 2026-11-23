@@ -86,3 +86,11 @@ describe("old monitor links", () => {
     expect(replace).toHaveBeenCalledWith("/monitor/controls?view=schedule");
   });
 });
+
+describe("insight finding links", () => {
+  it("open the object on a real /o/{system}/{module-slug} route", async () => {
+    renderWithQuery(wrap(<InsightsScreen />));
+    const links = await screen.findAllByRole("link", { name: "Open the object" }, { timeout: 5000 });
+    for (const a of links) expect(a.getAttribute("href")).toMatch(/^\/o\/_\/[a-z0-9-]+$/);
+  });
+});
