@@ -49,7 +49,7 @@ const write = (k: string, v: unknown) => { try { window.localStorage.setItem(k, 
  * A table that renders only the rows in view (fixed `rowHeight`, scroll box `height`), with a sticky header, sortable
  * columns, one selected row and arrow-key navigation (Up, Down, Home, End; Enter or Space selects).
  */
-export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selected: selectedProp, onSelect, height = 360, rowHeight = 32, expand, id, selection, selectedKeys, onSelectedKeys, bulkActions, matching, onSelectAllMatching, paging, footer, toolbar, grid: gridApi, filters, lead, viewMenu, groupSum, stickyFirst, bulkBar, density, rowHref }: {
+export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selected: selectedProp, onSelect, height = 360, rowHeight = 36, expand, id, selection, selectedKeys, onSelectedKeys, bulkActions, matching, onSelectAllMatching, paging, footer, toolbar, grid: gridApi, filters, lead, viewMenu, groupSum, stickyFirst, bulkBar, density, rowHref }: {
   columns: Column<T>[]; rows: T[]; rowKey: (row: T) => string; label: string;
   selected?: string | null; onSelect?: (row: T) => void; height?: number; rowHeight?: number;
   /** v2: a stable table id turns on the toolbar (views, columns, density) and keeps the user's choices per table. */
@@ -121,8 +121,11 @@ export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selecte
   const columns = useMemo(() => {
     const by = new Map(allColumns.map((c) => [c.key, c]));
     const ordered = [...prefs.order.filter((k) => by.has(k)), ...allColumns.map((c) => c.key).filter((k) => !prefs.order.includes(k))];
-    return ordered.map((k) => by.get(k)!).filter((c) => !prefs.hidden.includes(c.key) || c.hideable === false);
-  }, [allColumns, prefs.order, prefs.hidden]);
+    const blank = (v: unknown) => v == null || v === "" || v === "-" || v === "\u2014";
+    const empty = (c: Column<T>) => rows.length > 0 && !c.edit && (c.value || c.sort || !c.render) && rows.every((r) => blank((c.value ?? c.sort ?? ((x: T) => (x as Record<string, unknown>)[c.key]))(r)));
+    return ordered.map((k) => by.get(k)!).filter((c) => (!prefs.hidden.includes(c.key) || c.hideable === false) && !empty(c));
+  }, [allColumns, rows, prefs.order, prefs.hidden]);
+  const tip = (e: React.MouseEvent<HTMLTableCellElement>) => { const el = e.currentTarget; if (!el.title && el.scrollWidth > el.clientWidth) el.title = el.textContent ?? ""; };
   const mode = density ?? prefs.density;
   const dense = mode === "comfortable" ? Math.max(rowHeight, 40) : rowHeight;
   rowHeight = dense;
@@ -303,7 +306,7 @@ export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selecte
                 {columns.map((c, ci) => {
                   const ed = editing && editing.row === id && editing.col === c.key && c.edit ? editing : null;
                   return (
-                    <td key={c.key} data-align={c.align} data-sticky={stickyFirst && ci === 0 ? "" : undefined} onDoubleClick={c.edit ? () => startEdit(r) : undefined}>
+                    <td key={c.key} data-align={c.align} onMouseEnter={tip} data-sticky={stickyFirst && ci === 0 ? "" : undefined} onDoubleClick={c.edit ? () => startEdit(r) : undefined}>
                       {ed && c.edit ? (
                         <input className="mx-input mx-dt-edit" autoFocus aria-label={c.edit.label} value={ed.text}
                           onChange={(e) => setEditing({ ...ed, text: e.target.value })}

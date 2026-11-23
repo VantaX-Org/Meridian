@@ -549,6 +549,11 @@
 .mx-dt-groupby select { margin-inline-start: var(--mx-s1); }
 .mx-table td[data-sticky] { position: sticky; inset-inline-start: 0; background: var(--mx-bg); }
 .mx-table td { position: relative; }
+/* Last cell holding a value with its hover actions at the far end. */
+.mx-root .mx-row-end { display: flex; align-items: center; justify-content: space-between; gap: var(--mx-s2); }
+/* Inline row actions: hidden until the row is hovered, active or holds focus. */
+.mx-root .mx-row-acts { display: inline-flex; gap: var(--mx-s1); opacity: 0; }
+.mx-root .mx-table tr:hover .mx-row-acts, .mx-root .mx-table tr[data-active] .mx-row-acts, .mx-root .mx-row-acts:focus-within { opacity: 1; }
 .mx-dt-link { position: absolute; inset: 0; }
 .mx-dt-edit { inline-size: 100%; }
 
