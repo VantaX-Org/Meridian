@@ -15220,4 +15220,11 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Up and down to move": "上下キーで移動",
   "Enter to open": "Enterで開く",
   "Escape to close": "Escapeで閉じる",
+  "Critical rules over limit": "上限を超えた重要ルール",
+  "Objects at a glance": "オブジェクト概況",
+  "Pinned to one run": "1回の実行に固定",
+  "Portfolio at a glance": "ポートフォリオ概況",
+  "Score 70 to 85": "スコア70から85",
+  "Score 85 or more": "スコア85以上",
+  "Score under 70": "スコア70未満",
 };

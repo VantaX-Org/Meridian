@@ -28,6 +28,7 @@ export { DqsPair, type PairRow } from "./DqsPair";
 export { FieldChip } from "./FieldChip";
 export { MasterList, type MasterRow } from "./MasterList";
 export { PageHeader } from "./PageHeader";
+export { KpiStrip, type KpiCell } from "./KpiStrip";
 export { ScoreRing } from "./ScoreRing";
 export { ScoreRuler, type RulerLabels, type RulerMark, type RulerTone } from "./ScoreRuler";
 export { SeverityStrip, type Severity, type SeverityTile } from "./SeverityStrip";

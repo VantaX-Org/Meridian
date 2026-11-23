@@ -15219,6 +15219,13 @@ export const en = {
   "Up and down to move": "Up and down to move",
   "Enter to open": "Enter to open",
   "Escape to close": "Escape to close",
+  "Critical rules over limit": "Critical rules over limit",
+  "Objects at a glance": "Objects at a glance",
+  "Pinned to one run": "Pinned to one run",
+  "Portfolio at a glance": "Portfolio at a glance",
+  "Score 70 to 85": "Score 70 to 85",
+  "Score 85 or more": "Score 85 or more",
+  "Score under 70": "Score under 70",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

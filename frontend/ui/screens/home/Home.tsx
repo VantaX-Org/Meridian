@@ -14,7 +14,7 @@ import { relTime } from "@/lib/v2/format";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { DASH, dimensionShort, int, VERDICT_LABEL } from "@/lib/v2/score";
 import {
-  Button, Card, Confirm, EmptyState, ErrorState, MasterList, ScoreRuler, Skeleton, useAletheia, useAletheiaScope, useStacked, useToast,
+  Button, Card, Confirm, EmptyState, ErrorState, KpiStrip, MasterList, ScoreRuler, Skeleton, useAletheia, useAletheiaScope, useStacked, useToast,
   type RulerMark, type Severity,
 } from "@/ui/kit";
 import { actionLabel, objectPath, stepLabel } from "./links";
@@ -174,6 +174,14 @@ export function Home() {
           <Button variant="secondary" href={href("/o")}>{t("All objects")}</Button>
         </div>
       </header>
+
+      <KpiStrip label={t("Portfolio at a glance")} cells={[
+        { label: t("Objects"), value: int(rows.length), href: href("/o") },
+        { label: t("Scored"), value: scored.length ? int(scored.length) : null },
+        { label: t("Ready"), value: scored.length ? int(scored.filter((r) => (r.composite_score ?? 0) >= 85).length) : null, note: t("Score 85 or more") },
+        { label: t("Held under 85"), value: s ? int(s.held_under_85) : null },
+        { label: t("Critical rules over limit"), value: s ? int(s.critical_over_tolerance) : null },
+      ]} />
 
       <Card title={t("Needs your attention")} sub={att.data ? t("{n} items, most urgent first", { n: items.length }) : undefined}>
         {att.isError ? <ErrorState heading={t("The list could not be loaded")} retryLabel={t("Try again")} onRetry={() => void att.refetch()} />

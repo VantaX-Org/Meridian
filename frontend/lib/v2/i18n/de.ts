@@ -15220,4 +15220,11 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Up and down to move": "Pfeiltasten zum Bewegen",
   "Enter to open": "Eingabe zum Öffnen",
   "Escape to close": "Escape zum Schließen",
+  "Critical rules over limit": "Kritische Regeln über dem Limit",
+  "Objects at a glance": "Objekte auf einen Blick",
+  "Pinned to one run": "An einen Lauf gebunden",
+  "Portfolio at a glance": "Portfolio auf einen Blick",
+  "Score 70 to 85": "Wert 70 bis 85",
+  "Score 85 or more": "Wert 85 oder mehr",
+  "Score under 70": "Wert unter 70",
 };

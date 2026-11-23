@@ -85,11 +85,15 @@ describe("ObjectScreen", () => {
     });
   });
 
-  it("separates the run number from the record count in the subtitle", async () => {
+  it("lists the run number and the record count as separate meta items", async () => {
     renderWithQuery(screenWithChat());
     await screen.findByRole("list", { name: "Failing rules" });
     const h = await screen.findByRole("heading", { level: 1 });
-    await waitFor(() => expect(h.parentElement?.querySelector("p")?.textContent ?? "").toMatch(/run [^,]*, \S+ records checked against \d+ rules/));
+    await waitFor(() => {
+      const items = Array.from(h.closest("header")?.querySelectorAll(".mx-head-meta li") ?? []).map((x) => x.textContent ?? "");
+      expect(items.some((x) => /^Run \S+/.test(x))).toBe(true);
+      expect(items.some((x) => /^\S+ records checked against \d+ rules/.test(x))).toBe(true);
+    });
   });
 
   it("on a stacked layout a selected rule opens its detail in a bottom sheet, not in the page", async () => {
