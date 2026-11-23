@@ -16021,6 +16021,9 @@ export const en = {
   "{n, plural, one {# fix accepted} other {# fixes accepted}}": "{n, plural, one {# fix accepted} other {# fixes accepted}}",
   "{n, plural, one {# value changed} other {# values changed}}": "{n, plural, one {# value changed} other {# values changed}}",
   "{n, plural, one {# fix rejected} other {# fixes rejected}}": "{n, plural, one {# fix rejected} other {# fixes rejected}}",
+  "Clean board: upload, check and approve": "Clean board: upload, check and approve",
+  "Hide the clean board": "Hide the clean board",
+  "Show the clean board": "Show the clean board",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

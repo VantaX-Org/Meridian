@@ -16022,4 +16022,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{n, plural, one {# fix accepted} other {# fixes accepted}}": "{n, plural, other {#件の修正を承認}}",
   "{n, plural, one {# value changed} other {# values changed}}": "{n, plural, other {#件の値を変更}}",
   "{n, plural, one {# fix rejected} other {# fixes rejected}}": "{n, plural, other {#件の修正を却下}}",
+  "Clean board: upload, check and approve": "クリーンボード: アップロード、確認、承認",
+  "Hide the clean board": "クリーンボードを隠す",
+  "Show the clean board": "クリーンボードを表示",
 };

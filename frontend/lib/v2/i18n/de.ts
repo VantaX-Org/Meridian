@@ -16022,4 +16022,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{n, plural, one {# fix accepted} other {# fixes accepted}}": "{n, plural, one {# Korrektur übernommen} other {# Korrekturen übernommen}}",
   "{n, plural, one {# value changed} other {# values changed}}": "{n, plural, one {# Wert geändert} other {# Werte geändert}}",
   "{n, plural, one {# fix rejected} other {# fixes rejected}}": "{n, plural, one {# Korrektur abgelehnt} other {# Korrekturen abgelehnt}}",
+  "Clean board: upload, check and approve": "Bereinigungstafel: hochladen, prüfen und freigeben",
+  "Hide the clean board": "Bereinigungstafel ausblenden",
+  "Show the clean board": "Bereinigungstafel anzeigen",
 };

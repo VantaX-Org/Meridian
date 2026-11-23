@@ -1,4 +1,7 @@
-.mx-root .mx-fix { display: grid; gap: var(--mx-s4); }
+.mx-root .mx-fix { display: grid; gap: var(--mx-s3); }
+.mx-root .mx-fixboard { display: flex; align-items: center; justify-content: space-between; gap: var(--mx-s3); font-size: var(--mx-fs-small); color: var(--mx-ink-2); }
+.mx-root .mx-fixhead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mx-s3); }
+.mx-root .mx-fixhead .mx-h2 { margin: 0; }
 .mx-root .mx-fixstrip { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--mx-s5); align-items: center; padding: var(--mx-s3) var(--mx-s4); border: 1px solid var(--mx-border); border-radius: var(--mx-r-card); background: var(--mx-surface); box-shadow: var(--mx-elev-1); }
 .mx-root .mx-fixstrip-nums { display: flex; gap: var(--mx-s5); }
 .mx-root .mx-fixstrip-nums > div { display: grid; gap: var(--mx-s1); }
@@ -8,7 +11,7 @@
 .mx-root .mx-fixstrip-ruler { display: grid; gap: var(--mx-s2); min-width: 0; }
 .mx-root .mx-fixstrip-sentence { margin: 0; font-size: var(--mx-fs-small); }
 .mx-root .mx-fixlayout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: var(--mx-s4); align-items: start; }
-.mx-root .mx-fixrail { display: grid; gap: var(--mx-s2); }
+.mx-root .mx-fixrail { display: grid; gap: var(--mx-s2); max-block-size: calc(100dvh - 15rem); overflow-y: auto; }
 .mx-root .mx-fixrule { display: grid; gap: var(--mx-s1); width: 100%; padding: var(--mx-s3); text-align: start; border: 1px solid var(--mx-border); border-radius: var(--mx-r-control); background: var(--mx-surface); color: var(--mx-ink); cursor: pointer; }
 .mx-root .mx-fixrule:hover { background: var(--mx-row-hover); }
 .mx-root .mx-fixrule[aria-pressed="true"] { border-color: var(--mx-accent); background: var(--mx-row-selected); }

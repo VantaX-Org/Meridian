@@ -41,6 +41,7 @@ export function FixScreen({ scope }: { scope?: string }) {
   const params = useSearchParams();
   const [state, setState] = useState<LedgerState>(() => { const s = readState(new URLSearchParams(params.toString())); return scope ? { ...s, module: scope } : s; });
   const [tool, setTool] = useState<Tool | null>(() => { const o = params.get("open"); return TOOLS.includes(o as Tool) ? (o as Tool) : null; });
+  const [board, setBoard] = useState(false);
   const [load, setLoad] = useState(false);
   const [sim, setSim] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -107,17 +108,27 @@ export function FixScreen({ scope }: { scope?: string }) {
           onChange={(e) => { const v = vs.find((x) => x.id === e.target.value); if (v) setState(readState(new URLSearchParams(), v)); }} />
       ) : null}
       {TOOLS.map((k) => <Button key={k} variant="ghost" onClick={() => setTool(k)}>{TOOL_LABEL[k]()}</Button>)}
+      <ShortcutSheet triggerLabel={t("Shortcuts")} items={[
+        { keys: "A", label: t("Accept") }, { keys: "R", label: t("Reject") }, { keys: "E", label: t("Edit") },
+        { keys: "X", label: t("Select") }, { keys: "Shift+A", label: t("Accept all") }, { keys: "Ctrl+Z", label: t("Undo") },
+      ]} />
     </div>
   );
 
   return (
     <div className="mx-fix" data-testid="fix-screen">
-      <CleanBoard module={state.module} onReview={(id) => pickRule(id)} />
-      <h2 className="mx-h2">{t("Fixes")}</h2>
-      <p className="mx-muted">{mod ? <ObjChip code={mod} /> : t("Everything waiting for a decision")}</p>
+      <div className="mx-fixboard">
+        <span>{t("Clean board: upload, check and approve")}</span>
+        <Button variant="ghost" aria-expanded={board} aria-controls="fix-board" onClick={() => setBoard((v) => !v)}>{board ? t("Hide the clean board") : t("Show the clean board")}</Button>
+      </div>
+      {board ? <div id="fix-board"><CleanBoard module={state.module} onReview={(id) => pickRule(id)} /></div> : null}
       <ScoreStrip module={mod} drafts={drafts} fullRules={fullRules} onCreate={() => setLoad(true)} />
-      <div className="mx-chips" role="group" aria-label={t("Work status")}>
-        {CHIPS.map((c) => <Chip key={c.id} selected={state.chip === c.id} count={c.count(summary.data) ?? undefined} onClick={() => chip(c.id)}>{c.label}</Chip>)}
+      <div className="mx-fixhead">
+        <h2 className="mx-h2">{t("Fixes")}</h2>
+        {mod ? <ObjChip code={mod} /> : <span className="mx-muted">{t("Everything waiting for a decision")}</span>}
+        <div className="mx-chips" role="group" aria-label={t("Work status")}>
+          {CHIPS.map((c) => <Chip key={c.id} selected={state.chip === c.id} count={c.count(summary.data) ?? undefined} onClick={() => chip(c.id)}>{c.label}</Chip>)}
+        </div>
       </div>
       {toolbar}
       <div className="mx-fixlayout">
@@ -138,10 +149,6 @@ export function FixScreen({ scope }: { scope?: string }) {
                 decide={readOnly ? () => undefined : (v) => decide.mutate(v)} hasMore={!!q.hasNextPage} loadingMore={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} />}
         </div>
       </div>
-      <ShortcutSheet items={[
-        { keys: "A", label: t("Accept") }, { keys: "R", label: t("Reject") }, { keys: "E", label: t("Edit") },
-        { keys: "X", label: t("Select") }, { keys: "Shift+A", label: t("Accept all") }, { keys: "Ctrl+Z", label: t("Undo") },
-      ]} />
       <LoadFileDialog open={load} onClose={() => setLoad(false)} count={drafts.length} batchId={batchId} />
       <Sheet open={tool !== null} onClose={() => setTool(null)} label={tool ? TOOL_LABEL[tool]() : ""} closeLabel={t("Close")}>
         {tool === "cleaning" ? <CleaningQueue /> : tool === "approvals" ? <Approvals /> : tool === "triage" ? <Triage /> : tool === "exceptions" ? <Exceptions /> : null}
