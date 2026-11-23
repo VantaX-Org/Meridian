@@ -10,7 +10,7 @@ import { exportRulesBulk, importRulesBulk, type BulkResult } from "@/lib/api/v2/
 import type { Rule } from "@/lib/api/rules";
 import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, Search, Select, SeverityPill, Skeleton, StatTile, useAletheia, useAletheiaScope, useSheet, useToast, type Column } from "@/ui/kit";
 import type { Severity } from "@/ui/kit/SeverityStrip";
-import { checkId, compactCount, pct, SEVERITIES, sevLabel } from "./format";
+import { compactCount, pct, ruleCheck, SEVERITIES, sevLabel } from "./format";
 import { useAct, useRuleLibrary } from "./queries";
 import { CoverageView, DraftsView, FixDraftsView, LearnedView, PacksView } from "./RulesViews";
 
@@ -52,13 +52,13 @@ export function Rules() {
         const by = modules.map((m) => ({ m, n: rules.filter((r) => r.module === m).length })).sort((a, b) => a.n - b.n).slice(0, 3);
         return { text: by.map((x) => t("{module} has {n} rules", { module: formatModuleName(x.m), n: x.n })).join(". "), evidence: by.map((x) => formatModuleName(x.m)), actions: [{ id: "cov", label: t("Open coverage"), onClick: () => { go("coverage"); chat.setOpen(false); } }] };
       }
-      return { text: worst.map((r) => `${checkId(r.id)}: ${compactCount(r.last_affected_count ?? 0)}`).join(", ") || t("No rule has run yet."), evidence: worst.map((r) => r.name), actions: [{ id: "lib", label: t("Open the library"), onClick: () => { go("library"); chat.setOpen(false); } }] };
+      return { text: worst.map((r) => `${ruleCheck(r)}: ${compactCount(r.last_affected_count ?? 0)}`).join(", ") || t("No rule has run yet."), evidence: worst.map((r) => r.name), actions: [{ id: "lib", label: t("Open the library"), onClick: () => { go("library"); chat.setOpen(false); } }] };
     },
   });
 
-  const shown = rules.filter((r) => (!q || `${r.id} ${r.name} ${r.description}`.toLowerCase().includes(q.toLowerCase())) && (!sev || r.severity === sev) && (!module || r.module === module));
+  const shown = rules.filter((r) => (!q || `${ruleCheck(r)} ${r.name} ${r.description}`.toLowerCase().includes(q.toLowerCase())) && (!sev || r.severity === sev) && (!module || r.module === module));
   const cols: Column<Rule>[] = [
-    { key: "rule", label: t("Rule"), render: (r) => <FieldChip code={checkId(r.id)} description={r.name.replace(new RegExp("^" + checkId(r.id) + "\\s*:\\s*"), "")} />, sort: (r) => r.id },
+    { key: "rule", label: t("Rule"), render: (r) => <FieldChip code={ruleCheck(r)} description={r.name.slice(ruleCheck(r).length).replace(/^\s*:\s*/, "")} />, sort: (r) => ruleCheck(r) },
     { key: "mod", label: t("Object"), render: (r) => formatModuleName(r.module), sort: (r) => r.module },
     { key: "sev", label: t("Severity"), render: (r) => <SeverityPill sev={r.severity as Severity} label={sevLabel(r.severity)} />, sort: (r) => SEVERITIES.indexOf(r.severity as (typeof SEVERITIES)[number]) },
     { key: "on", label: t("State"), render: (r) => (r.enabled ? t("On") : t("Off")), sort: (r) => Number(r.enabled) },

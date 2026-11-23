@@ -8,18 +8,18 @@ import { useRuleScope } from "@/lib/v2/object-queries";
 import { setRuleEnabled } from "@/lib/api/v2/rulelib";
 import { Button, FieldChip, SeverityPill, Skeleton, StatTile, Toggle } from "@/ui/kit";
 import type { Severity } from "@/ui/kit/SeverityStrip";
-import { checkId, compactCount, pct, sevLabel, type RuleArg } from "./format";
+import { checkId, compactCount, pct, ruleCheck, sevLabel, type RuleArg } from "./format";
 import { useAct, useRuleLibrary } from "./queries";
 
 /** The library row's quick view: what the rule is, whether it is on, and the way into its page. */
 export function LibraryRuleSheet({ arg }: { arg: RuleArg }) {
   const fx = useFixture();
-  const r = useRuleLibrary().data?.rules.find((x) => x.id === arg.id || checkId(x.id) === arg.id);
+  const r = useRuleLibrary().data?.rules.find((x) => x.id === arg.id || ruleCheck(x) === arg.id);
   const toggle = useAct((on: boolean) => setRuleEnabled(arg.id, on), () => t("Rule switch saved"));
   if (!r) return <Skeleton lines={4} label={t("Loading the rule")} />;
   return (
     <div className="mx-rules-form">
-      <FieldChip code={checkId(r.id)} description={r.name} />
+      <FieldChip code={ruleCheck(r)} description={r.name.slice(ruleCheck(r).length).replace(/^\s*:\s*/, "")} />
       <p>{r.description}</p>
       <p><SeverityPill sev={r.severity as Severity} label={sevLabel(r.severity)} /> <span className="mx-muted">{formatModuleName(r.module)}</span></p>
       <dl className="mx-tiles">
@@ -27,7 +27,7 @@ export function LibraryRuleSheet({ arg }: { arg: RuleArg }) {
         <StatTile label={t("Records failing")} value={r.last_affected_count == null ? t("n/a") : compactCount(r.last_affected_count)} />
       </dl>
       <Toggle label={t("Rule is on")} checked={r.enabled} onChange={(v) => toggle.mutate(v)} />
-      <Button variant="primary" href={withFixture(`/r/${encodeURIComponent(checkId(r.id))}`, fx)}>{t("Open the rule")}</Button>
+      <Button variant="primary" href={withFixture(`/r/${encodeURIComponent(ruleCheck(r))}`, fx)}>{t("Open the rule")}</Button>
     </div>
   );
 }
