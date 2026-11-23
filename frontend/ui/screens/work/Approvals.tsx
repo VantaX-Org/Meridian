@@ -167,7 +167,7 @@ function Send() {
     <div className="mx-split">
       <div className="mx-col">
         <Card title={t("Waiting for a second person")} sub={t("{n} write-backs", { n: pending.length })}>
-          {wb.isLoading ? <Skeleton lines={3} label={t("Loading approvals")} /> : wb.isError ? <ErrorState heading={t("Approvals could not be loaded")} retryLabel={t("Try again")} onRetry={() => void wb.refetch()} /> : !pending.length ? <EmptyState heading={t("Nothing waits for approval")} /> : (
+          {wb.isLoading ? <Skeleton lines={3} label={t("Loading approvals")} /> : wb.isError ? <ErrorState heading={t("Approvals could not be loaded")} retryLabel={t("Try again")} onRetry={() => void wb.refetch()} /> : !pending.length ? <EmptyState heading={t("Nothing waits for approval")} body={t("Batches appear here when a cleaner sends fixes for approval.")} /> : (
             <DataTable label={t("Write-back approvals")} rows={pending} rowKey={(p: PendingWriteback) => p.id}
               columns={[
                 { key: "m", label: t("Object"), render: (p) => (p.module ? <ObjChip code={p.module} /> : "") },

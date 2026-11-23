@@ -18,7 +18,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { systemForModule } from "@/lib/v2/score";
 import { useWorkGroups } from "@/lib/v2/work-queries";
-import { Button, Card, Chip, EmptyState, ErrorState, FieldChip, PageHeader, ScoreRuler, Skeleton, Stepper, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, Card, Chip, Confirm, EmptyState, ErrorState, FieldChip, PageHeader, ScoreRuler, Skeleton, Stepper, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
 import { compactCount, score } from "../object/format";
 import { day, fieldText, useDo } from "./shared";
 
@@ -61,6 +61,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
   const [file, setFile] = useState<File | null>(null);
   const [chk, setChk] = useState<UploadChecks | null>(null);
   const [applied, setApplied] = useState(false);
+  const [askAll, setAskAll] = useState(false);
 
   const landscape = useLandscape(null);
   const L = landscape.data;
@@ -160,7 +161,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
 
   if (landscape.isLoading) return <Skeleton lines={6} label={t("Loading the clean cycle")} />;
   if (landscape.isError) return <ErrorState heading={t("The clean cycle could not be loaded")} retryLabel={t("Try again")} onRetry={() => void landscape.refetch()} />;
-  if (!mod || !object) return <EmptyState heading={t("No object is licensed to clean")} />;
+  if (!mod || !object) return <EmptyState heading={t("No object is licensed to clean")} body={t("Ask an administrator to license an object, then pull it.")} action={<Button href={withFixture("/o", fx)}>{t("Open objects")}</Button>} />;
 
   return (
     <div className="mx-clean">
@@ -171,7 +172,8 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
         title={t("Clean cycle")}
         context={head ? t("Run {n}, pulled {date}", { n: runNo ?? "", date: day(head.run_at) }) : ""}
         actions={<>
-          <Button variant="primary" disabled={!canApply} onClick={apply}>{applyLabel}</Button>
+          {chk || !head ? <Button variant="primary" disabled={!canApply} onClick={apply}>{applyLabel}</Button>
+            : <Button variant="primary" onClick={download}>{t("Download workbook")}</Button>}
           <Button href={withFixture("/approvals", fx)}>{t("Approvals")}</Button>
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>} />
@@ -204,7 +206,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
       </ul>
 
       <Card title={t("Score and gates")} sub={t("Shown score, measured score and the 70 and 85 gates")}>
-        {shown === null ? <EmptyState heading={t("This run has no score for the object")} /> : (
+        {shown === null ? <EmptyState heading={t("This run has no score for the object")} body={t("Pull the object again to score it.")} /> : (
           <>
             <ScoreRuler marks={[{ id: mod, label: object.label, shown, measured: receipt?.capped && measured !== null ? measured : null }]} labels={labels()} ariaLabel={t("Score of this object against the gates")} showName={false} />
             <div className="mx-clean-hold">
@@ -220,7 +222,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
       <Card title={t("Upload check")} sub={file ? file.name : t("No file yet")}
         action={<><input ref={pick} type="file" accept=".xlsx" hidden aria-label={t("Choose the cleaned file")} onChange={(e) => { onFile(e.target.files?.[0] ?? null); e.target.value = ""; }} />
           <Button onClick={() => pick.current?.click()}>{file ? t("Replace file") : t("Choose file")}</Button></>}>
-        {!chk ? <EmptyState heading={t("No upload to check yet")} /> : (
+        {!chk ? <EmptyState heading={t("No upload to check yet")} body={t("Download the workbook, type the fixes in Excel, then choose the saved file here.")} /> : (
           <>
             <ul className="mx-tiles" aria-label={t("Upload counts")}>
               <li><b>{ready}</b> {t("Ready to apply")}</li>
@@ -240,7 +242,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
               </>
             ) : null}
             <div className="mx-links">
-              <Button variant="primary" disabled={!canApply} onClick={apply}>{applyLabel}</Button>
+              <Button variant="secondary" disabled={!canApply} onClick={apply}>{applyLabel}</Button>
               <Button onClick={download}>{t("Download {n} to fix", { n: compactCount(rejected) })}</Button>
             </div>
           </>
@@ -249,7 +251,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
 
       <div className="mx-clean-pair">
         <Card title={t("Findings and fixes by week")} sub={t("Applied is the solid line, verified the dashed line")}>
-          {weeks.length < 2 ? <EmptyState heading={t("Not enough weeks yet")} /> : (
+          {weeks.length < 2 ? <EmptyState heading={t("Not enough weeks yet")} body={t("The chart appears after two weeks of applied fixes.")} /> : (
             <>
               <WeeklyChart weeks={weeks} />
               <p className="mx-clean-sub">{t("Week of {date}: {a} applied, {v} verified, {r} rolled back.", { date: lastWeek.period, a: lastWeek.applied, v: lastWeek.verified, r: lastWeek.rolled })}</p>
@@ -258,7 +260,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
         </Card>
 
         <Card title={t("Auto-cleanse")} sub={t("{n} proposed fixes", { n: proposedTotal })}>
-          {!proposed.length ? <EmptyState heading={t("No fix is proposed for this object")} /> : (
+          {!proposed.length ? <EmptyState heading={t("No fix is proposed for this object")} body={t("Clean the open findings in the workbook instead.")} /> : (
             <>
               <ul className="mx-clean-list">
                 {proposed.slice(0, 5).map((g) => (
@@ -271,7 +273,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
                 ))}
               </ul>
               <div className="mx-links">
-                <Button variant="primary" disabled={approving} onClick={approveAll}>{t("Approve all {n}", { n: compactCount(proposedTotal) })}</Button>
+                <Button variant="secondary" disabled={approving} onClick={() => setAskAll(true)}>{t("Approve all {n}", { n: compactCount(proposedTotal) })}</Button>
                 <span className="mx-clean-sub">{t("Every fix is logged and can be rolled back.")}</span>
               </div>
             </>
@@ -281,7 +283,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
 
       <div className="mx-clean-pair">
         <Card title={t("Cycles so far")} sub={cycles.length ? t("Measured score, {a} to {b}, gate at 70", { a: score(Math.min(...cycles.map((c) => c.measured))), b: score(Math.max(...cycles.map((c) => c.measured))) }) : undefined}>
-          {cycles.length < 2 ? <EmptyState heading={t("Not enough runs yet")} /> : (
+          {cycles.length < 2 ? <EmptyState heading={t("Not enough runs yet")} body={t("The cycles appear after the second run of this object.")} /> : (
             <>
               {cycles.map((c) => (
                 <div key={c.id} className="mx-clean-cycle">
@@ -302,7 +304,9 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
           <div className="mx-links"><Button onClick={download} disabled={!head}>{t("Download workbook again")}</Button></div>
         </Card>
       </div>
-      
+      <Confirm open={askAll} title={t("Approve all {n} proposed fixes?", { n: compactCount(proposedTotal) })} confirmLabel={t("Approve all")} cancelLabel={t("Cancel")} onConfirm={() => { setAskAll(false); approveAll(); }} onCancel={() => setAskAll(false)}>
+        <p>{t("The fixes cover {r} rules of {object}. Each one is logged and you can roll it back.", { r: proposed.length, object: object.label })}</p>
+      </Confirm>
     </div>
   );
 }

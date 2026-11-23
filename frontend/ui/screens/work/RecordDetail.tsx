@@ -53,11 +53,11 @@ export function RecordDetail({ module, recordKey, version }: { module: string; r
             <Comments kind="record" id={`${module}|${recordKey}`} />
           </>
         ) : tab === "fix" ? (
-          !d.issues.length ? <EmptyState heading={t("Nothing to fix here")} /> : (
+          !d.issues.length ? <EmptyState heading={t("Nothing to fix here")} body={t("This record passes every rule. Pick another record from the list.")} /> : (
             <ul className="mx-list" aria-label={t("Issues")}>
               {d.issues.map((i) => (
                 <li key={i.check_id} className="mx-section">
-                  <p><FieldChip code={i.field ?? ""} description={fieldText(i.field ?? undefined, d.field_descriptions?.[i.field ?? ""])} /> {i.message}</p>
+                  <p>{i.field ? <FieldChip code={i.field} description={fieldText(i.field, d.field_descriptions?.[i.field])} /> : null} {i.message}</p>
                   <p className="mx-muted">{t("Now")}: {i.current_value ?? t("empty")} {i.suggestion ? `${t("Proposed")}: ${i.suggestion.value}` : ""}</p>
                   <div className="mx-links">
                     {i.suggestion ? <Button variant="primary" disabled={!d.can.fix} onClick={() => void decide(i.check_id, "accept")}>{t("Accept the proposed value")}</Button> : null}
@@ -75,13 +75,13 @@ export function RecordDetail({ module, recordKey, version }: { module: string; r
           <ul className="mx-list" aria-label={t("Why it matters")}>
             {d.issues.map((i) => (
               <li key={i.check_id} className="mx-section">
-                <p><FieldChip code={i.field ?? ""} description={fieldText(i.field ?? undefined, d.field_descriptions?.[i.field ?? ""])} /></p>
+                {i.field ? <p><FieldChip code={i.field} description={fieldText(i.field, d.field_descriptions?.[i.field])} /></p> : null}
                 <p>{i.why_it_matters}</p>
                 {i.sap_impact ? <p className="mx-muted">{i.sap_impact}</p> : null}
                 {i.instruction ? <p className="mx-muted">{i.instruction}</p> : null}
               </li>
             ))}
-            {!d.issues.length ? <EmptyState heading={t("No open issue on this record")} /> : null}
+            {!d.issues.length ? <EmptyState heading={t("No open issue on this record")} body={t("This record passes every rule. Pick another record from the list.")} /> : null}
           </ul>
         )}
       </DetailPanel>

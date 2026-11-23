@@ -116,7 +116,7 @@ export function ProcessDesign({ o, system, module }: { o: ObjectRun; system: str
   };
 
   if (models.isLoading || ref.isLoading) return <Skeleton lines={5} label={t("Loading process models")} />;
-  if (models.isError && ref.isError) return <ErrorState heading={t("Process models could not be loaded.")} />;
+  if (models.isError && ref.isError) return <ErrorState heading={t("Process models could not be loaded.")} retryLabel={t("Try again")} onRetry={() => { void models.refetch(); void ref.refetch(); }} />;
   const cols: Column<ModelSummary>[] = [
     { key: "n", label: t("Model"), render: (m) => <FieldChip code={m.id} description={m.name} /> },
     { key: "s", label: t("Status"), render: (m) => m.status === "published" ? t("Published") : t("Draft") },

@@ -23,7 +23,7 @@ export function Rules({ o, system, module }: { o: ObjectRun; system: string; mod
     return { text: top ? t("{rule} fails most: {n} records.", { rule: top.check_id, n: top.affected_count }) : t("No rule ran yet."), evidence: all.slice(0, 3).map((r) => `${r.check_id}: ${r.affected_count}`) };
   });
   if (rules.isLoading || o.runsLoading) return <Skeleton lines={6} label={t("Loading rules")} />;
-  if (rules.isError) return <ErrorState heading={t("The rules could not be loaded.")} />;
+  if (rules.isError) return <ErrorState heading={t("The rules could not be loaded.")} retryLabel={t("Try again")} onRetry={() => void rules.refetch()} />;
   const cols: Column<RuleRow>[] = [
     { key: "c", label: t("Rule"), sort: (r) => r.check_id, render: (r) => <><FieldChip code={r.check_id} description={r.name} /></> },
     { key: "f", label: t("Field"), render: (r) => (r.field ? <FieldChip code={r.field} description={r.field_description ?? describeField(r.field) ?? undefined} /> : "") },

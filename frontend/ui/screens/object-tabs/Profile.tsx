@@ -23,8 +23,8 @@ export function Profile({ o, system, module }: { o: ObjectRun; system: string; m
     return { text: empty.length ? t("The emptiest field is {f}.", { f: empty[0].k }) : t("No profile yet."), evidence: empty.map((e) => `${e.k}: ${score(e.b)}%`) };
   });
   if (o.runsLoading || p.isLoading) return <Skeleton lines={6} label={t("Loading the profile")} />;
-  if (p.isError) return <ErrorState heading={t("The profile could not be loaded.")} />;
-  if (!cur) return <EmptyState heading={t("No profile exists for this run.")} />;
+  if (p.isError) return <ErrorState heading={t("The profile could not be loaded.")} retryLabel={t("Try again")} onRetry={() => void p.refetch()} />;
+  if (!cur) return <EmptyState heading={t("No profile exists for this run.")} body={t("Pick a newer run, or pull the object again.")} />;
   const rows: Row[] = cur.fields.map((f) => ({
     field: f.field, rows: f.stats.rows, blank_pct: f.stats.blank_pct, distinct: f.stats.distinct, type: f.stats.ddic_type,
     desc: f.stats.description ?? describeField(`${cur.table}.${f.field}`),

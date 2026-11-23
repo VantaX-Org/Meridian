@@ -27,6 +27,8 @@ export function useObjectData(o: ObjectRun) {
   const [busy, setBusy] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
+  const refetchRules = rules.refetch;
+
   return useMemo(() => {
     const cell = o.landscape.data?.cells.find((c) => c.system_id === o.systemId && c.module === o.module) ?? null;
     const now = dqsOf(o.run, o.module);
@@ -50,6 +52,7 @@ export function useObjectData(o: ObjectRun) {
     return {
       loading: rules.isLoading || o.landscape.isLoading || o.runsLoading,
       error: rules.isError || o.landscape.isError,
+      retry: () => { void refetchRules(); void o.landscape.refetch(); },
       cell,
       now,
       delta: now !== null && before !== null ? now - before : null,
@@ -81,7 +84,7 @@ export function useObjectData(o: ObjectRun) {
         : null,
       fixPath: (seg: "proposed" | "manual", rule?: string) => `/work?module=${encodeURIComponent(o.module)}&seg=${seg}${rule ? `&rule=${encodeURIComponent(rule)}` : ""}`,
     };
-  }, [o, rules.data, rules.isLoading, rules.isError, receipt.data, work.data, pairs.data, busy, downloadError]);
+  }, [o, rules.data, rules.isLoading, rules.isError, refetchRules, receipt.data, work.data, pairs.data, busy, downloadError]);
 }
 
 export type ObjectData = ReturnType<typeof useObjectData>;

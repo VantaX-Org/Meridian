@@ -167,7 +167,7 @@ function TimelineView() {
   ], [fx]);
   if (q.isLoading) return <Skeleton lines={6} label={t("Loading the timeline")} />;
   if (q.isError) return <ErrorState heading={t("The timeline could not be loaded")} onRetry={() => void q.refetch()} retryLabel={t("Try again")} />;
-  if (!list.length) return <EmptyState heading={t("No finished run yet")} />;
+  if (!list.length) return <EmptyState heading={t("No finished run yet")} body={t("Pull the object from Home to start its first run.")} />;
   return <Card title={t("Timeline")} sub={t("Every finished run, newest first.")}><DataTable label={t("Timeline")} rows={list} rowKey={(r) => r.id} columns={columns} /></Card>;
 }
 

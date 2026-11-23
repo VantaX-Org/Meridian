@@ -69,7 +69,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
   });
 
   if (d.loading) return <Skeleton lines={8} label={t("Loading the object")} />;
-  if (d.error) return <ErrorState heading={t("The object could not be loaded")} />;
+  if (d.error) return <ErrorState heading={t("The object could not be loaded")} retryLabel={t("Try again")} onRetry={d.retry} />;
 
   const r = d.failing.find((x) => x.check_id === pick) ?? d.failing[0] ?? null;
   const g = r ? d.groups.find((x) => x.check_id === r.check_id) : undefined;
@@ -152,7 +152,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
               {tab === "why" ? (
                 <>
                   <p>{r.why || t("The rule sheet shows what it checks and which records fail.")}</p>
-                  <div className="mx-links"><Button variant="primary" href={href(`/more/rules?rule=${encodeURIComponent(r.check_id)}`)}>{t("Open the rule")}</Button></div>
+                  <div className="mx-links"><Button variant="primary" href={href(`/r/${encodeURIComponent(r.check_id)}`)}>{t("Open the rule")}</Button></div>
                 </>
               ) : null}
             </DetailPanel>
@@ -251,7 +251,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
           rows={shownFail}
           height={320}
           columns={[
-            { key: "rule", label: t("Rule"), render: (x) => <a href={href(`/more/rules?rule=${encodeURIComponent(x.check_id)}`)}><code className="mx-code">{x.check_id}</code></a> },
+            { key: "rule", label: t("Rule"), render: (x) => <a href={href(`/r/${encodeURIComponent(x.check_id)}`)}><code className="mx-code">{x.check_id}</code></a> },
             { key: "name", label: t("What it checks"), render: (x) => x.name },
             { key: "field", label: t("Field"), render: (x) => (x.field ? <FieldChip code={x.field} description={fieldText(x)} /> : DASH) },
             { key: "affected", label: checked !== null ? t("Records affected of {n}", { n: int(checked) }) : t("Records affected"), align: "end", render: (x) => int(x.affected_count), sort: (x) => x.affected_count },

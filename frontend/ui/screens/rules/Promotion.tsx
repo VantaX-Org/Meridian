@@ -66,7 +66,7 @@ export function Promotion() {
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />
-      {mods.isLoading ? <Skeleton lines={6} label={t("Loading the objects")} /> : mods.isError ? <ErrorState heading={t("Promotion could not be loaded")} /> : !list.length ? <EmptyState heading={t("No object has generated rules")} /> : (
+      {mods.isLoading ? <Skeleton lines={6} label={t("Loading the objects")} /> : mods.isError ? <ErrorState heading={t("Promotion could not be loaded")} retryLabel={t("Try again")} onRetry={() => void mods.refetch()} /> : !list.length ? <EmptyState heading={t("No object has generated rules")} /> : (
         <div className="mx-col">
           <Card title={t("Objects with generated rules")}>
             <DataTable
