@@ -430,7 +430,8 @@ async def groups(
     else:
         built = await _built(db, sel.runs[0])
     return {"version_id": sel.vid, "built": built, "total": int(total or 0),
-            "groups": [{**dict(r), "open": sum(int((r["statuses"] or {}).get(s, 0)) for s in OPEN)} for r in rows]}
+            "groups": [{**dict(r), "open": sum(int((r["statuses"] or {}).get(s, 0)) for s in OPEN),
+                        "with_proposal": int(r["proposed"] or 0)} for r in rows]}
 
 
 
@@ -476,7 +477,8 @@ async def _wave_filter(db: AsyncSession, tenant: Tenant, wave: Optional[uuid.UUI
 
 def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module, check_id, severity, status, assigned,
                    proposed, q, due=None, part=None, system=None, batch_id=None,
-                   policy: Optional[str] = None) -> tuple[list[str], dict]:
+                   policy: Optional[str] = None, dimension: Optional[str] = None, field: Optional[str] = None,
+                   source: Optional[str] = None, min_confidence: Optional[float] = None) -> tuple[list[str], dict]:
     """``sel``: the rows read (one run or the current state), or one run's id. ``policy``: a policy pack id or
     ``pack:class`` (sap/policy_packs.yaml): the records failing a rule that evidences it."""
     if isinstance(sel, str):
@@ -523,6 +525,25 @@ def _records_where(tenant: Tenant, sel: "_Rows | str", request: Request, module,
     if policy:
         where.append("w.checks && CAST(:pol AS text[])")
         p["pol"] = _policy_rules(policy)
+    if dimension or field:  # a record fails a rule of this dimension / on this field (any of its checks)
+        cond = []
+        if dimension:
+            cond.append("g2.dimension = :dim")
+            p["dim"] = dimension
+        if field:
+            cond.append("(upper(g2.field) = :fld OR upper(g2.field) LIKE '%.' || :fld)")
+            p["fld"] = field.strip().upper()
+        where.append("EXISTS (SELECT 1 FROM work_groups g2 WHERE g2.tenant_id = w.tenant_id AND g2.version_id = w.version_id "
+                     f"AND g2.check_id = ANY(w.checks) AND {' AND '.join(cond)})")
+    if source or min_confidence is not None:  # the record's suggestion (the one the row shows) by source / confidence
+        where.append("w.proposed > 0")
+        sg = _suggestion_sql(_AUTO_ANY)
+        if source:
+            where.append(f"{sg} ->> 'source' = :sg_src")
+            p["sg_src"] = source
+        if min_confidence is not None:
+            where.append(f"COALESCE(({sg} ->> 'conf_num')::numeric, -1) >= :sg_min")
+            p["sg_min"] = min_confidence
     if part:  # one part of the key, e.g. BUKRS=1000: the records of one company code, plant, sales org
         field, _, value = part.partition("=")
         if not field or not value or not field.replace("_", "").isalnum():
@@ -624,6 +645,14 @@ async def records(
                                                                  "separated, a leading minus for descending (-age: the oldest first, "
                                                                  "-value: the most at risk first); default severity"),
     since: Optional[uuid.UUID] = Query(None, description=_SINCE_DESC),
+    dimension: Optional[str] = Query(None, max_length=60, description="only records failing a rule of this quality dimension"),
+    field: Optional[str] = Query(None, max_length=120, description="only records failing a rule on this field (TABLE.FIELD or FIELD)"),
+    source: Optional[str] = Query(None, pattern="^(rule|value_map|cleaning)$",
+                                  description="only records whose suggestion comes from this source"),
+    min_confidence: Optional[float] = Query(None, ge=0, le=1, description="only records whose suggestion has at least this "
+                                                                          "confidence (0..1; high = 0.85, medium = 0.5)"),
+    group_by: Optional[str] = Query(None, pattern="^(dimension|field|source|module|severity|check_id)$",
+                                    description="also return groups: [{key, label, count}] of the filtered records"),
     scope: WorkScope = _SCOPE,
     as_of_run: Optional[uuid.UUID] = Query(None, description="time travel: the current state as it stood when this run "
                                                               "finished (each object at its newest run at or before "
@@ -644,7 +673,7 @@ async def records(
         sel = await _rows(db, tenant, version_id, scope)
     order = _parse_sort(sort)
     where, p = _records_where(tenant, sel, request, module, check_id, severity, status, assigned, proposed, q, due, part,
-                              system, batch_id, policy)
+                              system, batch_id, policy, dimension, field, source, min_confidence)
     wclauses, wp, wave_info = await _wave_filter(db, tenant, wave, verdict)
     where += wclauses
     p.update(wp)
@@ -673,8 +702,11 @@ async def records(
     fields = await _row_fields(db, tenant, request, rows, {k: v["suggested_value"] for k, v in extra.items()})
     total = (await db.execute(text(f"SELECT count(*) FROM (SELECT 1 FROM work_records w WHERE {' AND '.join(where)} "
                                    f"LIMIT {COUNT_CAP + 1}) x"), p)).scalar() or 0
+    suggestions = await _suggestions(db, tenant, rows, extra)
+    groups = await _record_groups(db, group_by, where, p) if group_by else None
     return {
         "version_id": sel.vid, "total": min(total, COUNT_CAP), "total_capped": total > COUNT_CAP,
+        **({"group_by": group_by, "groups": groups} if group_by else {}),
         "next": _cursor(order, rows[-1]) if more and rows else None,
         "wave": wave_info,  # with wave or verdict: the wave and the objects the filter kept, else None
         "cost_model": await cost_model_meta.for_tenant(db, tenant.id),  # what each value_at_risk is priced by
@@ -684,16 +716,98 @@ async def records(
                    "due_at": r.due_at.isoformat() if r.due_at else None,
                    "assigned_to": str(r.assigned_to) if r.assigned_to else None, "assignee_email": r.assignee_email,
                    "top_message": r.top_message, "top_field": r.top_field,
-                   **extra.get((r.version_id, r.module, r.record_key), {"first_seen_at": None, "suggested_value": None}),
-                   **fields.get((r.version_id, r.module, r.record_key), _NO_FIELDS)}
+                   **{k: v for k, v in extra.get((r.version_id, r.module, r.record_key),
+                                                 {"first_seen_at": None, "suggested_value": None}).items()
+                      if not k.startswith("_")},
+                   **fields.get((r.version_id, r.module, r.record_key), _NO_FIELDS),
+                   "suggestion": suggestions.get((r.version_id, r.module, r.record_key))}
                   for r in rows],
     }
+
+
+_GROUP_SQL = {  # group_by -> (FROM tail after work_records w, key expression)
+    "module": ("", "w.module"),
+    "severity": ("", "w.sev_rank::text"),
+    "check_id": ("CROSS JOIN LATERAL unnest(w.checks) AS k(v)", "k.v"),
+    "dimension": ("CROSS JOIN LATERAL (SELECT DISTINCT g.dimension AS v FROM work_groups g WHERE g.tenant_id = w.tenant_id "
+                  "AND g.version_id = w.version_id AND g.check_id = ANY(w.checks)) k", "k.v"),
+    "field": ("CROSS JOIN LATERAL (SELECT DISTINCT g.field AS v FROM work_groups g WHERE g.tenant_id = w.tenant_id "
+              "AND g.version_id = w.version_id AND g.check_id = ANY(w.checks)) k", "k.v"),
+}
+
+
+async def _record_groups(db: AsyncSession, group_by: str, where: list[str], p: dict) -> list[dict]:
+    """[{key, label, count}] of the filtered records by ``group_by`` (a record counts once per key; records of a
+    run with no such value are left out), biggest first, 200 at most."""
+    if group_by == "source":
+        frm, key, extra = "", _suggestion_sql(_AUTO_ANY) + " ->> 'source'", " AND w.proposed > 0"
+    else:
+        (frm, key), extra = _GROUP_SQL[group_by], ""
+    rows = (await db.execute(text(f"""
+        SELECT key, count(*) AS n FROM (SELECT {key} AS key FROM work_records w {frm}
+                                         WHERE {' AND '.join(where)}{extra}) x
+         WHERE key IS NOT NULL GROUP BY key ORDER BY n DESC, key LIMIT 200"""), p)).fetchall()
+    out = []
+    for r in rows:
+        k = str(r.key)
+        label = (module_label(k) if group_by == "module"
+                 else SEVERITIES[int(k)] if group_by == "severity" and int(k) < 4
+                 else "info" if group_by == "severity" else SOURCE_LABELS.get(k, k) if group_by == "source" else k)
+        out.append({"key": SEVERITIES[int(k)] if group_by == "severity" and int(k) < 4 else k, "label": label, "count": int(r.n)})
+    return out
+
+
+SOURCE_LABELS = {"rule": "Rule fix", "value_map": "Value map", "cleaning": "Cleaning engine"}
+
+# rule-fix confidence labels as a number, so min_confidence compares them with a cleaning proposal's own 0..1 value
+# (high is the same 0.85 cut the record panel uses); a value-map suggestion carries none and never passes the filter
+_CONF_NUM = "CASE a.conf WHEN 'high' THEN 0.85 WHEN 'medium' THEN 0.5 WHEN 'low' THEN 0.25 END"
+_AUTO_PAGE = ("LEFT JOIN auto a ON a.version_id = w.version_id AND a.check_id = c.check_id "
+              "AND a.record_key = w.record_key")
+_AUTO_ANY = """LEFT JOIN LATERAL (SELECT e->>'proposed_value' AS value, e->>'confidence' AS conf, e->>'fix_instruction' AS why
+                                  FROM jsonb_array_elements(CASE WHEN jsonb_typeof(f.record_fixes) = 'array'
+                                                                 THEN f.record_fixes ELSE '[]'::jsonb END) e
+                                 WHERE e->>'record_key' = w.record_key AND e->>'proposed_value' IS NOT NULL LIMIT 1) a ON true"""
+
+
+def _suggestion_sql(auto_join: str) -> str:
+    """SQL (over work_records ``w``) for the one suggestion of a record: the first of its checks, in check order, that
+    has a value: the rule's own fix for the record, else the rule's fix for its current value, else a pending
+    cleaning proposal. A jsonb {value, source, confidence, conf_num, why, check_id, field}, null when none."""
+    return f"""(SELECT jsonb_build_object('value', x.value, 'source', x.source, 'confidence', x.conf, 'conf_num', x.conf_num,
+                                         'why', x.why, 'check_id', c.check_id, 'field', f.details->>'field_checked')
+   FROM unnest(w.checks) WITH ORDINALITY c(check_id, n)
+   JOIN findings f ON f.version_id = w.version_id AND f.check_id = c.check_id
+   LEFT JOIN finding_records fr ON fr.version_id = w.version_id AND fr.check_id = c.check_id
+                               AND fr.module = w.module AND fr.record_key = w.record_key
+   {auto_join}
+   LEFT JOIN LATERAL (SELECT COALESCE(cq.record_data_after ->> (f.details->>'field_checked'),
+                                      cq.record_data_after ->> substring(f.details->>'field_checked' from '[^.]*$')) AS value,
+                             (CASE WHEN cq.confidence > 1 THEN cq.confidence / 100.0 ELSE cq.confidence END) AS conf_n
+                        FROM cleaning_queue cq
+                       WHERE {CLEANING_VALUE_MATCH} ORDER BY cq.detected_at DESC LIMIT 1) cl ON true
+   CROSS JOIN LATERAL (SELECT CASE WHEN jsonb_typeof(f.value_fix_map) = 'object'
+                                   THEN f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) END AS vm) v
+   CROSS JOIN LATERAL (SELECT
+        CASE WHEN a.value IS NOT NULL THEN a.value WHEN v.vm->>'suggested_value' IS NOT NULL THEN v.vm->>'suggested_value'
+             ELSE cl.value END AS value,
+        CASE WHEN a.value IS NOT NULL THEN 'rule' WHEN v.vm->>'suggested_value' IS NOT NULL THEN 'value_map'
+             ELSE 'cleaning' END AS source,
+        CASE WHEN a.value IS NOT NULL THEN a.conf WHEN v.vm->>'suggested_value' IS NOT NULL THEN NULL
+             WHEN cl.value IS NULL THEN NULL WHEN cl.conf_n >= 0.85 THEN 'high' ELSE 'medium' END AS conf,
+        CASE WHEN a.value IS NOT NULL THEN {_CONF_NUM} WHEN v.vm->>'suggested_value' IS NOT NULL THEN NULL
+             ELSE cl.conf_n END AS conf_num,
+        CASE WHEN a.value IS NOT NULL THEN a.why WHEN v.vm->>'suggested_value' IS NOT NULL THEN v.vm->>'fix_instruction'
+             ELSE 'Proposed by the cleaning engine' END AS why) x
+  WHERE x.value IS NOT NULL
+  ORDER BY c.n LIMIT 1)"""
 
 
 async def _row_extras(db: AsyncSession, tenant: Tenant, rows) -> dict[tuple[str, str, str], dict]:
     """Per row of one page, keyed (version_id, module, record_key): when the oldest of its failing issues was first seen (the
     record's age) and the first suggested value of its checks in check order (the rule's own fix for the record,
-    else the rule's fix for its current value: the values ``proposed`` counts). Read for the page only."""
+    else the rule's fix for its current value: the values ``proposed`` counts), with where it came from (``_sg``,
+    see _suggestion_sql). Read for the page only."""
     if not rows:
         return {}
     keys = {"t": str(tenant.id), "kv": [r.version_id for r in rows], "km": [r.module for r in rows],
@@ -702,36 +816,52 @@ async def _row_extras(db: AsyncSession, tenant: Tenant, rows) -> dict[tuple[str,
         WITH k AS (SELECT * FROM unnest(CAST(:kv AS uuid[]), CAST(:km AS text[]), CAST(:kk AS text[]))
                                  AS k(version_id, module, record_key)),
              pw AS (SELECT w.* FROM work_records w JOIN k USING (version_id, module, record_key)),
-             auto AS (SELECT f.version_id, f.check_id, e->>'record_key' AS record_key, e->>'proposed_value' AS value
+             auto AS (SELECT f.version_id, f.check_id, e->>'record_key' AS record_key, e->>'proposed_value' AS value,
+                             e->>'confidence' AS conf, e->>'fix_instruction' AS why
                         FROM findings f, jsonb_array_elements(CASE WHEN jsonb_typeof(f.record_fixes) = 'array'
                                                                    THEN f.record_fixes ELSE '[]'::jsonb END) e
                        WHERE (f.version_id, f.check_id) IN (SELECT version_id, unnest(checks) FROM pw WHERE proposed > 0)
                          AND e->>'proposed_value' IS NOT NULL AND e->>'record_key' = ANY(CAST(:kk AS text[])))
-        SELECT w.version_id::text AS version_id, w.module, w.record_key,
+        SELECT w.version_id::text AS version_id, w.module, w.record_key, w.scope,
                (SELECT min(ri.first_seen_at) FROM record_issues ri
                  WHERE ri.tenant_id = CAST(:t AS uuid) AND ri.scope = w.scope AND ri.record_key = w.record_key
                    AND ri.check_id = ANY(w.checks)) AS first_seen_at,
-               CASE WHEN w.proposed > 0 THEN (
-                 SELECT COALESCE(a.value, CASE WHEN jsonb_typeof(f.value_fix_map) = 'object' THEN
-                          f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END, cl.value)
-                   FROM unnest(w.checks) WITH ORDINALITY c(check_id, n)
-                   JOIN findings f ON f.version_id = w.version_id AND f.check_id = c.check_id
-                   LEFT JOIN finding_records fr ON fr.version_id = w.version_id AND fr.check_id = c.check_id
-                                               AND fr.module = w.module AND fr.record_key = w.record_key
-                   LEFT JOIN auto a ON a.version_id = w.version_id AND a.check_id = c.check_id
-                                   AND a.record_key = w.record_key
-                   LEFT JOIN LATERAL (SELECT COALESCE(cq.record_data_after ->> (f.details->>'field_checked'),
-                                                      cq.record_data_after ->> substring(f.details->>'field_checked' from '[^.]*$')) AS value
-                                        FROM cleaning_queue cq
-                                       WHERE """ + CLEANING_VALUE_MATCH + """ ORDER BY cq.detected_at DESC LIMIT 1) cl ON true
-                  WHERE COALESCE(a.value, CASE WHEN jsonb_typeof(f.value_fix_map) = 'object' THEN
-                          f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END, cl.value)
-                        IS NOT NULL
-                  ORDER BY c.n LIMIT 1) END AS suggested_value
+               CASE WHEN w.proposed > 0 THEN """ + _suggestion_sql(_AUTO_PAGE) + """ END AS sg
           FROM pw w"""), keys)).fetchall()
     return {(r.version_id, r.module, r.record_key): {
         "first_seen_at": r.first_seen_at.isoformat() if r.first_seen_at else None,
-        "suggested_value": r.suggested_value} for r in out}
+        "suggested_value": r.sg["value"] if r.sg else None, "_sg": r.sg, "_scope": r.scope} for r in out}
+
+
+async def _suggestions(db: AsyncSession, tenant: Tenant, rows, extra: dict) -> dict[tuple[str, str, str], Optional[dict]]:
+    """The ``suggestion`` {value, source, confidence, why, safety} of each row of a page, None where the row has none.
+    ``safety`` is ddic_value_check's verdict on the value for the field (safe, reject or unknown, with its reasons)
+    against the row's SAP system; None when the check names no field."""
+    from api.routes.cleaning import resolve_field
+    from api.services import ddic_value_check as dvc
+    from sap.ddic import dictionary_for_system
+    ctx: dict = {}
+    out: dict[tuple[str, str, str], Optional[dict]] = {}
+    for r in rows:
+        key = (r.version_id, r.module, r.record_key)
+        x = extra.get(key) or {}
+        sg = x.get("_sg")
+        if not sg:
+            out[key] = None
+            continue
+        safety = None
+        q = resolve_field(sg["field"], sg["field"], sg["check_id"], r.module) if sg.get("field") else None
+        if q:
+            scope = x.get("_scope")
+            if scope not in ctx:
+                _s, st, live = await dvc.load_live(db, str(tenant.id), scope)
+                ctx[scope] = (dictionary_for_system(st), live, dvc.baseline_values(st))
+            d, live, base = ctx[scope]
+            ev = dvc.check_value(d, q, sg["value"], live, base)
+            safety = {"verdict": ev["verdict"], "reasons": ev["reasons"], "source": ev.get("source")}
+        out[key] = {"value": sg["value"], "source": sg["source"], "confidence": sg.get("confidence"),
+                    "why": sg.get("why"), "safety": safety}
+    return out
 
 
 def _field_value(check) -> Optional[str]:

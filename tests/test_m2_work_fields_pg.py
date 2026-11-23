@@ -233,3 +233,44 @@ async def test_tenant_isolation(owner, monkeypatch):
         summary = (await client.get("/api/v1/work/summary", params={"scope": "current", "module": "material_master"},
                                     headers=headers())).json()
         assert summary["version_ids"] == [b["run"]] and summary["objects"][0]["records"] == 5
+
+
+@pytest.mark.anyio
+async def test_suggestion_filters_and_groups(monkeypatch, owner):
+    """suggestion {value, source, confidence, why, safety} per row; dimension / field / source / min_confidence filters;
+    group_by returns {key, label, count}; with_proposal on the groups."""
+    s = seed_work(owner)
+    fix = [{"record_key": R1, "proposed_value": "EA", "confidence": "high", "fix_instruction": "Use the base unit"}]
+    with owner.begin() as c:
+        c.execute(text("UPDATE findings SET record_fixes = CAST(:f AS jsonb) WHERE version_id = :v AND check_id = 'MM014'"),
+                  {"f": json.dumps(fix), "v": s["run"]})
+        c.execute(text("UPDATE work_records SET proposed = 1 WHERE version_id = :v AND record_key = :k"),
+                  {"v": s["run"], "k": R1})
+    client = await start(monkeypatch, s["tid"])
+    body = await listing(client)
+    by_key = {i["record_key"]: i for i in body["items"]}
+    sg = by_key[R1]["suggestion"]
+    assert sg["value"] == "EA" and sg["source"] == "rule" and sg["confidence"] == "high"
+    assert sg["why"] == "Use the base unit"
+    assert by_key[R2]["suggestion"] is None
+    assert [i["record_key"] for i in (await listing(client, source="rule"))["items"]] == [R1]
+    assert (await listing(client, source="cleaning"))["items"] == []
+    assert [i["record_key"] for i in (await listing(client, min_confidence=0.8))["items"]] == [R1]
+    assert (await listing(client, min_confidence=0.9))["items"] == []
+    g = (await listing(client, group_by="check_id"))["groups"]
+    assert {x["key"]: x["count"] for x in g}["MM014"] == 3
+    assert all(set(x) == {"key", "label", "count"} for x in g)
+    r = await client.get("/api/v1/work/groups", params={"scope": "current"}, headers=headers())
+    assert all("with_proposal" in x for x in r.json()["groups"])
+
+
+@pytest.mark.anyio
+async def test_findings_group_by(monkeypatch, owner):
+    s = seed_m2(owner)
+    client = await start(monkeypatch, s["tid"])
+    r = await client.get("/api/v1/findings", params={"version_id": s["run"], "group_by": "check_id"}, headers=headers())
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["group_by"] == "check_id" and sum(g["count"] for g in body["groups"]) == body["total"]
+    assert all(set(g) == {"key", "label", "count"} for g in body["groups"])
+    assert "groups" not in (await client.get("/api/v1/findings", headers=headers())).json()

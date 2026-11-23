@@ -32,7 +32,7 @@ class _DB:
 
 def _run(body):
     db = _DB()
-    return db, cleaning.bulk_reject(body, db=db, tenant=Tenant(uuid.uuid4(), "T", []), _role="steward")
+    return db, cleaning.bulk_reject(body, None, db=db, tenant=Tenant(uuid.uuid4(), "T", []), _role="steward")
 
 
 @pytest.mark.asyncio
@@ -45,7 +45,7 @@ async def test_rejects_group_and_audits_each(monkeypatch):
     monkeypatch.setattr(cleaning, "_create_audit", fake_audit)
     monkeypatch.setattr(cleaning, "mark_work_changed", lambda *a: None)
     db, co = _run(cleaning.BulkRejectBody(reason=" wrong plant ", kind="duplicate", version_id=uuid.uuid4()))
-    assert (await co) == {"rejected_count": 2}
+    assert (await co) == {"rejected_count": 2, "action_id": None}
     sql = next(s for s, _ in db.calls if "UPDATE cleaning_queue" in s)
     assert "status IN ('detected', 'recommended')" in sql and "tenant_id = :tid" in sql
     assert [a[0] for a in audits] == ["rejected", "rejected"]

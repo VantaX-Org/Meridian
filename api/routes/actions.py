@@ -34,11 +34,12 @@ class UndoRestoredOut(BaseModel):
     items_restored: int        # fix-batch items put back as they were
     items_removed: int         # fix-batch items the decision had created
     batch: bool                # a batch's approval state was put back
+    cleaning: int = 0          # cleaning-queue proposals put back to their previous status
 
 
 class UndoOut(BaseModel):
     action_id: str
-    kind: str                  # decide | accept_all | set_value | approve_batch | send_back_batch | reassign_batch
+    kind: str                  # decide | accept_all | set_value | approve_batch | send_back_batch | reassign_batch | cleaning_approve | cleaning_reject | cleaning_apply | cleaning_bulk_approve | cleaning_bulk_reject
     undone_at: str
     restored: UndoRestoredOut
 
