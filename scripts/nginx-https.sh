@@ -14,11 +14,12 @@ conf="${1:?usage: nginx-https.sh <path/to/meridian.conf>}"
 [[ -f "$conf" ]] || { echo "nginx-https.sh: $conf not found" >&2; exit 1; }
 grep -q 'MERIDIAN_HTTPS_BEGIN' "$conf" || { echo "nginx-https.sh: $conf has no HTTPS block" >&2; exit 1; }
 
-sed -i \
+sed -i.bak \
     -e 's/^##HTTPS## //' \
     -e 's/^##REDIRECT## //' \
-    -e '/# MERIDIAN_HTTP_PROXY_BEGIN/,/# MERIDIAN_HTTP_PROXY_END/{/^[[:space:]]*#/!s/^/##HTTP## /}' \
+    -e '/# MERIDIAN_HTTP_PROXY_BEGIN/,/# MERIDIAN_HTTP_PROXY_END/{/^[[:space:]]*#/!s/^/##HTTP## /;}' \
     "$conf"
+rm -f "$conf.bak"  # -i.bak is the one spelling GNU and BSD sed share
 
 if grep -q '^##HTTPS## ' "$conf"; then
     echo "nginx-https.sh: HTTPS block still commented in $conf" >&2

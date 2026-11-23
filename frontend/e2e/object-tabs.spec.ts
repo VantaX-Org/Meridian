@@ -12,7 +12,7 @@ const NAV = { timeout: 90_000 };
 // ponytail: "row" = any table row, list item or card heading below the title; tighten per screen if fixtures change.
 const ROUTES: [string, string][] = [
   ["records", "Records"],
-  ["records/000000000000000001", "000000000000000001"],
+  ["records/000000000000000001", "Hydraulic pump seal kit"],
   ["trend", "Trend"],
   ["runs", "Runs"],
   ["fixes", "Fixes"],

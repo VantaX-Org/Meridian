@@ -306,7 +306,8 @@ class TestApiDocsVisibility:
         from api.config import Settings
 
         monkeypatch.delenv("MERIDIAN_OPENAPI_PUBLIC", raising=False)
-        assert Settings(env="production").api_docs_enabled() is False
+        monkeypatch.setenv("MERIDIAN_ENV", "production")  # env is read from MERIDIAN_ENV (the conftest sets development)
+        assert Settings().api_docs_enabled() is False
 
     def test_docs_shown_in_development(self):
         from api.config import Settings

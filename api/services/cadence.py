@@ -38,8 +38,12 @@ def interval_seconds(cron: Optional[str], tz: Optional[str] = "UTC", now: Option
     None for a manual object (no cron) or an expression croniter rejects."""
     if not cron or not cron.strip() or not croniter.is_valid(cron):
         return None
-    it = croniter(cron, _aware(now or datetime.now(timezone.utc)).astimezone(_zone(tz)))
-    times = [it.get_next(datetime) for _ in range(_LOOKAHEAD)]
+    zone = _zone(tz)
+    # croniter 6 mis-steps across a fall-back day when handed an aware datetime (09:00 daily lands on 10:00 the next day),
+    # so walk the wall clock naively and attach the zone afterwards
+    start = _aware(now or datetime.now(timezone.utc)).astimezone(zone).replace(tzinfo=None)
+    it = croniter(cron, start)
+    times = [it.get_next(datetime).replace(tzinfo=zone) for _ in range(_LOOKAHEAD)]
     # timestamps, not datetime subtraction: same-zone aware datetimes subtract by wall clock, hiding a 23/25 h day
     return int(max(b.timestamp() - a.timestamp() for a, b in zip(times, times[1:])))
 
