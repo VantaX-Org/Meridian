@@ -15942,4 +15942,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Drop a YAML file or an Excel workbook of rules.": "ルールのYAMLファイルまたはExcelブックをドロップします。",
   "Subject request": "本人からの請求",
   "Admin setup": "管理の設定",
+  "That did not save. Your change was put back.": "保存できませんでした。変更は元に戻しました。",
 };

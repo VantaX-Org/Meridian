@@ -15941,6 +15941,7 @@ export const en = {
   "Drop a YAML file or an Excel workbook of rules.": "Drop a YAML file or an Excel workbook of rules.",
   "Subject request": "Subject request",
   "Admin setup": "Admin setup",
+  "That did not save. Your change was put back.": "That did not save. Your change was put back.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

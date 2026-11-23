@@ -15942,4 +15942,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Drop a YAML file or an Excel workbook of rules.": "Legen Sie eine YAML-Datei oder eine Excel-Arbeitsmappe mit Regeln ab.",
   "Subject request": "Betroffenenanfrage",
   "Admin setup": "Einrichtung",
+  "That did not save. Your change was put back.": "Das wurde nicht gespeichert. Ihre Änderung wurde zurückgesetzt.",
 };

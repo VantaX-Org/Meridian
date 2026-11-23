@@ -172,7 +172,10 @@
 /* Kit batch 2: layout, overlays, data, forms */
 .mx-root .mx-col { min-inline-size: 0; }
 .mx-root .mx-toasts { position: fixed; inset-block-end: calc(var(--mx-s4) + var(--mx-dock-h) + var(--mx-s2)); inset-inline-start: 50%; transform: translateX(-50%); z-index: 60; display: grid; gap: var(--mx-s2); justify-items: center; }
-.mx-root .mx-toast { margin: 0; padding: var(--mx-s2) var(--mx-s4); border-radius: var(--mx-r-pill); background: var(--mx-ink); color: var(--mx-bg); font-size: var(--mx-fs-small); box-shadow: var(--mx-elev-2); }
+.mx-root .mx-toast { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mx-s2) var(--mx-s3); padding: var(--mx-s2) var(--mx-s4); border-radius: var(--mx-r-pill); background: var(--mx-ink); color: var(--mx-bg); font-size: var(--mx-fs-small); box-shadow: var(--mx-elev-2); }
+.mx-root .mx-toast p { margin: 0; }
+.mx-root .mx-toast .mx-btn { color: inherit; }
+.mx-root .mx-toast-progress { inline-size: 100%; block-size: var(--mx-s1); accent-color: currentColor; }
 .mx-root .mx-toast[data-tone="good"] { background: var(--mx-good); color: var(--mx-good-ink); }
 .mx-root .mx-toast[data-tone="bad"] { background: var(--mx-bad); color: var(--mx-bad-ink); }
 .mx-root .mx-barlist { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--mx-s3); }
