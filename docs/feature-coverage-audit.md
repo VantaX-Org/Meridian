@@ -50,8 +50,9 @@ Statuses:
 | Migration run: value candidates and value-map proposals, reconciliation records, target workbook check | GET `/migration/runs/{id}/value-candidates`, PUT `/migration/value-map`, GET `/migration/runs/{id}/reconciliation/records`, POST `/migration/target-workbook/{version_id}/check` (`loadParams` is its query builder) | `ui/screens/load/RunExtras.tsx`: Value mapping tab, records under Reconciliation, Target workbook tab of the run screen | Load |
 | Batches: run records, export to SAP (preview then confirm), confirm loaded | `getBatchRunRecords`, `sendBatchToSap`, `confirmBatchLoaded` (GET `/writeback/batches/{id}/run/records`, POST `/remediation/batches/{id}/export`, POST `/remediation/batches/{id}/loaded`) | `ui/screens/work/BatchSend.tsx`, in the batch detail of Approvals; export needs the export permission, load confirmation needs approve or manage_systems | Load |
 | External database: preview and load | `previewDb`, `loadDb` | `ui/screens/admin/ops/DbLoad.tsx`, under a selected connection in External database; needs manage_systems, preview first, confirm names the row cap | Load |
+| Sandbox enter and exit, digest read | `enterSandbox`, `exitSandbox`, `getDigest` | `ui/screens/admin/access/SandboxPanel.tsx` in Admin Settings (anchor `#sandbox`): Stepper, confirm naming the copy choice and the held-back deliveries on entry, confirm naming the discarded runs and held-back count on exit, per-table row counts after; needs manage_system. `getDigest` is a fresh single read in the People Digests detail (it returns the same shape as the list) | Admin, People Digests |
 
-Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `LearnedReview.test.tsx`, `BreakEvidenceSheet.test.tsx`, `MinedDependencies.test.tsx`, `SurvivorshipSave.test.tsx`, `CleaningPlan.test.tsx`, `SplitCapped.test.tsx`, `RunExtras.test.tsx`, `BatchSend.test.tsx`, `DbLoad.test.tsx`.
+Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `LearnedReview.test.tsx`, `BreakEvidenceSheet.test.tsx`, `MinedDependencies.test.tsx`, `SurvivorshipSave.test.tsx`, `CleaningPlan.test.tsx`, `SplitCapped.test.tsx`, `RunExtras.test.tsx`, `BatchSend.test.tsx`, `DbLoad.test.tsx`. `SandboxPanel.test.tsx`, `Digests.test.tsx` (detail read).
 
 ## ORPHAN capabilities (client exists, no screen)
 
@@ -64,7 +65,6 @@ Suggested home is the journey where the user would expect it.
 | Triage configuration: SLA delete, settings, team update and members, assign rules and reorder, escalation chain | `deleteSlaPolicy`, `getTriageSettings`, `updateTeam`, `setTeamMembers`, `createAssignRule`, `reorderAssignRules`, `putEscalationChain` | `/triage/*` | Work, Triage settings |
 | Subscriptions, delegations | `putSubscriptions`, `getAllDelegations` | `/me/subscriptions`, `/delegations` | Me |
 | Data contracts: update, enforcement, create per object | `updateContract`, `setEnforcement`, `createObjectContract` | `/contracts` | People, Contracts |
-| Sandbox enter and exit, digest read | `enterSandbox`, `exitSandbox`, `getDigest` | `/admin/sandbox/*`, `/digests` | Admin, People Digests |
 | Analytics: prescriptive, bottlenecks, capacity, sprints, finding impact, MDM health series and history | `getPrescriptive`, `getBottlenecks`, `getCapacity`, `getSprintPlan`, `getFindingImpact`, `getMdmHealthSeries`, `getMdmHistory` | `/analytics/*`, `/mdm-metrics/history` | Home and Monitor |
 | Design: table, config, diff | `getDesignTable`, `getDesignConfig`, `getDesignDiff` | `/systems/{id}/design/*` | Objects, per system |
 | Process mining summary and graph | `getMiningRunSummary`, `getMiningGraph` | `/mining/summary/*`, `/process/mining/graph/*` | Objects, processes |
