@@ -3,9 +3,10 @@
 import "./rules.css";
 import { useState } from "react";
 import { t } from "@/lib/v2/i18n";
-import { Button, Field, Input, Select, StatTile, Toggle, EmptyState, DiffView } from "@/ui/kit";
+import { Button, Field, Input, Select, StatTile, Textarea, Toggle, EmptyState, DiffView } from "@/ui/kit";
+import { useCan } from "@/ui/screens/orphans/useCan";
 import { RULE_VERSION_TRANSITIONS } from "@/lib/api/rule-authoring";
-import { endSuppression, setRuleEnabled, transitionRuleVersion, type RuleVersionState } from "@/lib/api/v2/rulelib";
+import { createRuleVersion, endSuppression, setRuleEnabled, transitionRuleVersion, type RuleVersionState } from "@/lib/api/v2/rulelib";
 import { draftTunedVersion } from "@/lib/api/v2/pilot";
 import { handOffRule, suppressRule, type RuleScope } from "@/lib/api/v2/object";
 import { useStewards } from "@/lib/v2/object-queries";
@@ -40,6 +41,11 @@ export function RuleFix({ id, scope }: { id: string; scope: RuleScope }) {
   const unsuppress = useAct((sid: string) => endSuppression(sid), () => t("Suppression ended"));
   const tuned = useAct((rid: string) => draftTunedVersion(rid), () => t("Tuned version drafted"));
   const hand = useAct(() => handOffRule({ check_id: id, module: scope.module ?? "", assignee_id: assignee, note, due_date: due }), () => t("Rule handed off"));
+  const canWrite = useCan()("manage_rules");
+  const [vbody, setVbody] = useState("");
+  const [vnote, setVnote] = useState("");
+  const vparsed = (() => { try { const o: unknown = JSON.parse(vbody); return o && typeof o === "object" && !Array.isArray(o) ? (o as Record<string, unknown>) : null; } catch { return null; } })();
+  const propose = useAct(async () => { const r = (await createRuleVersion(rid, vparsed ?? {}, vnote)) as { version?: number }; if (r.version) setDiffAt(r.version); setVbody(""); setVnote(""); }, () => t("Version drafted"));
   const move = useAct((a: { version: number; to: RuleVersionState }) => transitionRuleVersion(rid, a.version, a.to), () => t("Version moved"));
 
   return (
@@ -109,6 +115,13 @@ export function RuleFix({ id, scope }: { id: string; scope: RuleScope }) {
           ))}
         </ul>
       ) : <EmptyState heading={t("No versions yet")} body={t("A version appears here after the rule is changed.")} />}
+      <h3 className="mx-card-t">{t("Propose a new version")}</h3>
+      <div className="mx-rules-form">
+        <Field label={t("Rule definition as JSON")}><Textarea rows={6} value={vbody} onChange={(e) => setVbody(e.target.value)} /></Field>
+        <Field label={t("Note")}><Input value={vnote} onChange={(e) => setVnote(e.target.value)} /></Field>
+        <Button variant="secondary" disabled={!canWrite || !vparsed || propose.isPending} onClick={() => propose.mutate(undefined)}>{t("Draft the version")}</Button>
+        {!canWrite ? <p className="mx-muted">{t("You need the manage rules permission to draft a version.")}</p> : vbody && !vparsed ? <p className="mx-muted">{t("The definition must be a JSON object.")}</p> : <p className="mx-muted">{t("A new version starts as a draft and shows its changes below. It applies only after review.")}</p>}
+      </div>
       {diff ? <DiffView label={t("Changes between versions")} diff={diff.diff} /> : null}
     </div>
   );

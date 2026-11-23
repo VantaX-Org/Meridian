@@ -16,14 +16,14 @@ import { useCompareSets, useRunsPage, type RunStatusFilter } from "@/lib/api/nex
 import type { Job } from "@/types/jobs";
 import {
   Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, FieldChip, Field, PageHeader, Select, Skeleton, Tabs,
-  useAletheiaScope, useSheet, useToast, type Column,
-} from "@/ui/kit";
+  useAletheiaScope, useSheet, useToast, type Column, ExportMenu } from "@/ui/kit";
 import type { VersionHead } from "@/lib/api/v2/runs";
 import { answer } from "./answers";
 import { JobHairline } from "./JobHairline";
 import { RunsBoard } from "./RunsBoard";
 import { isLive, modulesOf, runPath, runScore, runTitle, scoreText, sourceLabel, statusLabel, statusTone, when } from "./util";
 import "./runs.css";
+import { useCrumbs } from "@/ui/screens/flow";
 
 const VIEWS = ["runs", "jobs", "sets", "full"] as const;
 const PAGE = 50;
@@ -63,10 +63,7 @@ function RunsView({ onAsk }: { onAsk: (rows: VersionHead[], total: number) => vo
       qc.invalidateQueries({ queryKey: ["next"] });
     } catch { toast(t("That did not work. Nothing was changed."), "bad"); }
   };
-  const doExport = async (format: "csv" | "xlsx") => {
-    try { toast(t("Saved {name}", { name: await exportRuns(format, { system_id: system || undefined, status: status === "all" ? undefined : status }) }), "good"); }
-    catch { toast(t("The export could not be made."), "bad"); }
-  };
+  const doExport = (format: string) => exportRuns(format as "csv" | "xlsx", { system_id: system || undefined, status: status === "all" ? undefined : status });
 
   const columns: Column<VersionHead>[] = [
     { key: "run", label: t("Run"), sort: (h) => h.run_number ?? 0, render: (h) => (h.label?.trim() || h.run_number != null ? <span className="rn-num">{runTitle(h)}</span> : <FieldChip code={runTitle(h)} description={sourceLabel(h)} />) },
@@ -99,8 +96,7 @@ function RunsView({ onAsk }: { onAsk: (rows: VersionHead[], total: number) => vo
       )}
       <Card title={t("Keep the list tidy")} sub={t("Export what you see, or move older runs out of the way.")}>
         <div className="mx-links">
-          <Button variant="secondary" onClick={() => doExport("xlsx")}>{t("Export as Excel")}</Button>
-          <Button variant="secondary" onClick={() => doExport("csv")}>{t("Export as CSV")}</Button>
+          <ExportMenu label={t("Export runs")} formats={[{ id: "xlsx", label: t("Excel workbook") }, { id: "csv", label: t("CSV") }]} onExport={doExport} />
           <Button variant="secondary" onClick={() => setConfirm("archive")}>{t("Archive older runs")}</Button>
           <Button variant="secondary" onClick={() => setConfirm("restore")}>{t("Restore archived runs")}</Button>
         </div>
@@ -231,10 +227,11 @@ export function Runs() {
     },
   });
 
+  const crumbs = useCrumbs();
   return (
     <div className="mx-col">
       <JobHairline />
-      <PageHeader title={t("Runs")} context={t("{n, plural, one {# run} other {# runs}}", { n: facts.total })} actions={<Button onClick={() => sheet.open("cycle")}>{t("Start a run")}</Button>} />
+      <PageHeader crumbs={crumbs("runs")} title={t("Runs")} context={t("{n, plural, one {# run} other {# runs}}", { n: facts.total })} actions={<Button onClick={() => sheet.open("cycle")}>{t("Start a run")}</Button>} />
       <Tabs idBase="runs-view" label={t("Runs views")} value={view} onChange={(v) => setView(v as (typeof VIEWS)[number])}
         items={[{ id: "runs", label: t("Runs") }, { id: "jobs", label: t("Jobs") }, { id: "sets", label: t("Compare sets") }, { id: "full", label: t("Timeline") }]} />
       <div role="tabpanel" id={`runs-view-panel-${view}`} aria-labelledby={`runs-view-tab-${view}`} className="mx-col">

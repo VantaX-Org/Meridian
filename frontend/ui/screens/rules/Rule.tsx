@@ -1,5 +1,6 @@
 "use client";
 
+import { Flow, RULE_STEPS, useCrumbs } from "@/ui/screens/flow";
 import { useSearchParams } from "next/navigation";
 import "./rules.css";
 import { useState } from "react";
@@ -16,6 +17,7 @@ import { objectPath } from "@/ui/screens/object-tabs/TabFrame";
 
 /** One rule: what it checks, why, who fails it, and every way to change it. Journey J5 step two and three. */
 export function Rule({ id: raw }: { id: string }) {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const id = checkId(decodeURIComponent(raw));
   const fx = useFixture();
@@ -57,7 +59,7 @@ export function Rule({ id: raw }: { id: string }) {
         <a href={href("/rules")}>{t("Rules")}</a>
         {s.definition.dimension ? <> / {labelText(s.definition.dimension)}</> : null}
       </nav>
-      <PageHeader
+      <PageHeader stepper={<Flow label={t("Rule change")} at={tab === "fix" ? 1 : 0} steps={RULE_STEPS()} />} crumbs={crumbs("rules",`${id} ${s.name ?? ""}`.trim())}
         title={`${id} ${s.name ?? ""}`.trim()}
         context={<><span className="mx-sev" data-sev={s.definition.severity}><i className="mx-dot" aria-hidden="true" />{sevLabel(s.definition.severity)}</span></>}
         actions={<>

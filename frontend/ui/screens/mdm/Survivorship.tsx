@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs, Flow, MDM_STEPS } from "@/ui/screens/flow";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -10,6 +11,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useSurvivorship } from "@/lib/v2/mdm-queries";
 import { moveBy, needsSources, RULE_TYPES, toInput, typeLabel, validateRules, type DraftRule } from "@/lib/v2/survivorship";
 import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, SeverityPill, Skeleton, StatTile, Tabs, Toggle, useAletheia, useAletheiaScope } from "@/ui/kit";
+import { SurvivorshipSave } from "./SurvivorshipSave";
 import { DEFAULT_DOMAIN, DomainSelect, pct, useAct, useHref } from "./shared";
 
 type Tab = "rules" | "decisions";
@@ -22,6 +24,7 @@ let keySeq = 0;
 const nextKey = () => ++keySeq;
 
 export function Survivorship() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const href = useHref();
   const fx = useFixture();
@@ -31,6 +34,7 @@ export function Survivorship() {
   const [tab, setTab] = useState<Tab>("rules");
   const [edit, setEdit] = useState<{ d: string; list: DraftRule[] } | null>(null);
   const [tried, setTried] = useState(false);
+  const [check, setCheck] = useState(false);
   const [sel, setSel] = useState<SurvivorshipPick | null>(null);
   const [mode, setMode] = useState<null | "override" | "reject">(null);
   const [src, setSrc] = useState("");
@@ -76,7 +80,7 @@ export function Survivorship() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader crumbs={crumbs("mdm",t("Survivorship"))} stepper={<Flow label={t("Master data journey")} at={2} steps={MDM_STEPS()} />}
         title={t("Survivorship")}
         context={t("{n} rules", { n: list.length })}
         actions={<>
@@ -100,7 +104,7 @@ export function Survivorship() {
               sub={t("Rules run top to bottom. The first rule with a value wins for its field.")}
               action={<span className="mx-links">
                 <Button variant="ghost" onClick={() => setDraft([...list, { key: `n${nextKey()}`, field: "", rule_type: "most_recent", trusted_sources: [], weight: "50", active: true }])}>{t("Add rule")}</Button>
-                <Button variant="primary" disabled={busy} onClick={() => { setTried(true); if (!bad) void act(() => putSurvivorshipRulesV2(domain, toInput(list)), t("Rules saved")); }}>{t("Save rules")}</Button>
+                <Button variant="primary" disabled={busy} onClick={() => { setTried(true); if (!bad) setCheck(true); }}>{t("Save rules")}</Button>
               </span>}
             >
               {list.length === 0 ? <EmptyState heading={t("No survivorship rules")} body={t("Without a rule the most recent value wins.")} /> : (
@@ -211,6 +215,15 @@ export function Survivorship() {
           <Field label={t("Reason")} hint={t("A reason is required.")}><Input value={note} onChange={(e) => setNote(e.target.value)} /></Field>
         )}
       </Confirm>
+      <SurvivorshipSave
+        open={check}
+        domain={domain}
+        rules={toInput(list)}
+        removed={(rules.data ?? []).filter((r) => !list.some((x) => x.field.trim() === r.field)).length}
+        busy={busy}
+        onClose={() => setCheck(false)}
+        onSave={async () => (await act(() => putSurvivorshipRulesV2(domain, toInput(list)), t("Rules saved"))) !== undefined}
+      />
     </>
   );
 }

@@ -3,7 +3,10 @@
 import { useCompliance, useScimToken, useStatusPage, useThemeSettings } from "@/lib/v2/enterprise-queries";
 import { t } from "@/lib/v2/i18n";
 import { Card, Code, DataTable, SeverityPill, StatTile, EmptyState } from "@/ui/kit";
-import { day, Sec, when } from "./shared";
+import { ComplianceEditor } from "./ComplianceEditor";
+import { MaintenanceEditor } from "./MaintenanceEditor";
+import { day, Sec } from "./shared";
+import { ThemeEditor } from "./ThemeEditor";
 
 const SEV = { up: "low", degraded: "medium", down: "critical", not_configured: "info" } as const;
 
@@ -31,18 +34,11 @@ export function Enterprise() {
           ]} />
       </Card>
       <Card title={t("Maintenance windows")}>
-        {(s?.maintenance.length ?? 0) === 0 ? <EmptyState heading={t("No maintenance is planned.")} body={t("Add a maintenance window to tell users in advance.")} /> : (
-          <DataTable label={t("Maintenance windows")} rows={s?.maintenance ?? []} rowKey={(r) => r.id ?? r.starts_at} height={200}
-            columns={[
-              { key: "title", label: t("Title"), render: (r) => r.title },
-              { key: "from", label: t("From"), render: (r) => when(r.starts_at) },
-              { key: "to", label: t("To"), render: (r) => when(r.ends_at) },
-            ]} />
-        )}
+        {(s?.maintenance.length ?? 0) === 0 ? <EmptyState heading={t("No maintenance is planned.")} body={t("Add a maintenance window to tell users in advance.")} /> : null}
+        <MaintenanceEditor windows={s?.maintenance ?? []} />
       </Card>
       <Card title={t("Branding")}>
-        <p>{theme.data?.product_name_override ?? t("Default product name")}</p>
-        <p className="mx-muted">{theme.data?.accent ?? t("Default accent")}</p>
+        {theme.data ? <ThemeEditor key={`${theme.data.updated_at}`} theme={theme.data} /> : null}
       </Card>
       <Card title={t("Retention and residency")} sub={c ? day(c.generated_at) : ""}>
         <DataTable label={t("Retention families")} rows={c?.retention.families ?? []} rowKey={(r) => r.family} height={200}
@@ -50,6 +46,7 @@ export function Enterprise() {
             { key: "f", label: t("Data"), render: (r) => <Code code={r.family} description={r.label} /> },
             { key: "d", label: t("Kept for days"), align: "end", render: (r) => (r.days == null ? t("For ever") : r.days) },
           ]} />
+        <ComplianceEditor key={(c?.retention.families ?? []).map((f) => f.days).join(",")} families={c?.retention.families ?? []} />
       </Card>
       <Card title={t("SCIM provisioning")}>
         <p>{scim.data?.configured ? t("Token {p} is active.", { p: scim.data.token_prefix ?? "" }) : t("No SCIM token is set.")}</p>

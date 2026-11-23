@@ -11,6 +11,7 @@ import { t } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
 import { Button, Card, Chip, DataTable, FieldChip, SeverityPill, StatTile, useToast, EmptyState } from "@/ui/kit";
 import { errMsg, Gate, when } from "./shared";
+import { ProcessCard, RediscoverCard } from "./ConfigProcess";
 
 export function ConfigTab({ id }: { id: string }) {
   const qc = useQueryClient();
@@ -66,6 +67,8 @@ export function ConfigTab({ id }: { id: string }) {
           </Gate>
         </Card>
       ) : null}
+      <ProcessCard />
+      <RediscoverCard />
       <Card title={t("Configuration drift")}>
         <Gate q={drift} empty={{ heading: t("No drift to show"), body: t("Drift appears once two runs exist.") }}>
           {(d) => d.drift_entries.length === 0 ? <EmptyState heading={t("No drift between the last two runs.")} body={t("The configuration matches the last run.")} /> : (

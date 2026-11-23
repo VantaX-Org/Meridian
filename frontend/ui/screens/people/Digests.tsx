@@ -1,12 +1,13 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createDigest, deleteDigest, getDigestNumbers, listDigestDeliveries, listDigests, sendDigestNow, updateDigest, type Digest, type DigestBody } from "@/lib/api/v2/step10";
+import { createDigest, deleteDigest, getDigest, getDigestNumbers, listDigestDeliveries, listDigests, sendDigestNow, updateDigest, type Digest, type DigestBody } from "@/lib/api/v2/step10";
 import { CUSTOM, PRESETS, cronError, describeCron, isPreset } from "@/lib/v2/cron";
 import { relTime } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Confirm, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Select, Split, StatTile, Toggle, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Split, StatTile, Toggle, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
 import { Gate, day, refreshV2, useQ } from "./common";
 
 const BLANK: DigestBody = { name: "", audience: "role", role: "", wave_id: null, cron: PRESETS[1].value, timezone: "UTC", channel: "email", recipients: [], recipient_user_ids: [], alert_channel_id: null, attach_pdf: false, enabled: true };
@@ -57,8 +58,11 @@ function Form({ initial, id, onDone }: { initial: DigestBody; id?: string; onDon
   );
 }
 
-function Detail({ d, onEdit, onGone }: { d: Digest; onEdit: () => void; onGone: () => void }) {
+function Detail({ d: listed, onEdit, onGone }: { d: Digest; onEdit: () => void; onGone: () => void }) {
   const qc = useQueryClient();
+  // A fresh single read: last sent and next run change after a toggle or a send, and the list may be older.
+  const one = useQ(["digest", listed.id], () => getDigest(listed.id));
+  const d = one.data ?? listed;
   const toast = useToast();
   const [confirm, setConfirm] = useState(false);
   const deliveries = useQ(["digest-deliveries", d.id], () => listDigestDeliveries(d.id));
@@ -71,7 +75,8 @@ function Detail({ d, onEdit, onGone }: { d: Digest; onEdit: () => void; onGone: 
       <h2 className="mx-card-t">{d.name}</h2>
       <p className="mx-muted">{describeCron(d.cron)}, {d.channel.replace(/_/g, " ")}, {d.audience === "role" ? (d.role ?? "") : (d.wave_id ?? "")}</p>
       <Toggle label={t("Enabled")} checked={d.enabled} onChange={(v) => flip.mutate(v)} />
-      <dl className="mx-tiles">
+      {one.isError ? <ErrorState heading={t("The latest times could not be read")} body={t("The times below come from the list and may be out of date.")} retryLabel={t("Try again")} onRetry={() => void one.refetch()} /> : null}
+      <dl className="mx-tiles" aria-busy={one.isFetching}>
         <StatTile label={t("Last sent")} value={d.last_sent_at ? relTime(d.last_sent_at) : t("Never")} />
         <StatTile label={t("Next run")} value={d.next_run_at ? day(d.next_run_at) : t("Not scheduled")} />
       </dl>
@@ -119,7 +124,14 @@ function Detail({ d, onEdit, onGone }: { d: Digest; onEdit: () => void; onGone: 
   );
 }
 
+/** Reads the digest again before the form opens, so an edit starts from what the server holds now. */
+function EditLoad({ id, onDone }: { id: string; onDone: () => void }) {
+  const q = useQ(["digest", id], () => getDigest(id));
+  return <Gate q={q} label={t("Loading digests")}>{(d) => <Form id={id} initial={{ ...BLANK, ...d, role: d.role ?? "" }} onDone={onDone} />}</Gate>;
+}
+
 export function Digests() {
+  const crumbs = useCrumbs();
   const q = useQ(["digests"], () => listDigests());
   const chat = useAletheia();
   const [sel, setSel] = useState<string | null>(null);
@@ -148,12 +160,12 @@ export function Digests() {
     </Gate>
   );
   const right = mode === "new" ? <Form initial={BLANK} onDone={(d) => { setMode("view"); if (d) setSel(d.id); }} />
-    : mode === "edit" && cur ? <Form id={cur.id} initial={{ ...BLANK, ...cur, role: cur.role ?? "" }} onDone={() => setMode("view")} />
+    : mode === "edit" && cur ? <EditLoad key={cur.id} id={cur.id} onDone={() => setMode("view")} />
     : cur ? <Detail d={cur} onEdit={() => setMode("edit")} onGone={() => setSel(null)} />
     : <EmptyState heading={t("Select a digest")} body={t("Its schedule, numbers and deliveries appear here.")} />;
   return (
     <>
-      <PageHeader title={t("Digests")} context={t("Scheduled summaries for roles and waves")} actions={<>
+      <PageHeader crumbs={crumbs("people",t("Digests"))} title={t("Digests")} context={t("Scheduled summaries for roles and waves")} actions={<>
         <Button variant="primary" onClick={() => setMode("new")}>{t("New digest")}</Button>
         <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
       </>} />

@@ -1,11 +1,13 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { getConfigAwareScore, getHeatmap, getScoreHistory } from "@/lib/api/v2/score";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { Button, Card, FieldChip, PageHeader, StatTile, TrendArea, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { Gate, InsightsNav, Mod, Tbl, day, n0, n1, pc, sevLabel, sevOf, useQ } from "./shared";
 
 export function ScoreLens() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const chat = useAletheia();
   const hist = useQ("score-history", getScoreHistory);
@@ -22,7 +24,7 @@ export function ScoreLens() {
   const h = heat.data;
   return (
     <div className="b8-page">
-      <PageHeader title={t("Score lens")} context={t("The same run scored as it was then, under today's weights and from your loaded configuration.")}
+      <PageHeader crumbs={crumbs("insights",t("Score lens"))} title={t("Score lens")} context={t("The same run scored as it was then, under today's weights and from your loaded configuration.")}
         actions={<><InsightsNav here="score" /><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
       <Card title={t("Score by run")} sub={t("As scored at the time and under today's weights")}>
         <Gate q={hist} empty={runs.length === 0} emptyHeading={t("No scored runs yet")} emptyBody={t("The history fills after the first scored run.")}>

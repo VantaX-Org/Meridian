@@ -12,8 +12,10 @@ import { whole } from "@/lib/v2/format";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Sheet, Skeleton, StatTile, Tabs, useAletheia, useAletheiaScope, useStacked } from "@/ui/kit";
 import { ObjChip } from "./ObjChip";
+import { ExportPanel, RunRecords } from "./BatchSend";
 import { day, useDo } from "./shared";
 import { displayKey } from "@/lib/v2/work";
+import { useCrumbs, Flow } from "@/ui/screens/flow";
 
 function Trail({ id }: { id: string }) {
   const q = useBatchEvents(id);
@@ -122,6 +124,7 @@ function RunPanel({ id }: { id: string }) {
         <Button variant="secondary" disabled={!open} onClick={() => void run(() => cancelBatchRun(id), () => t("The run is cancelled."))}>{t("Cancel run")}</Button>
         <Button variant="secondary" disabled={open || r.counts.failed === 0} onClick={() => void run(() => retryFailedBatchRun(id), () => t("Failed records go again."))}>{t("Retry failed")}</Button>
       </div>
+      <RunRecords id={id} />
     </>
   );
 }
@@ -145,6 +148,7 @@ function SendDetail({ b, live }: { b: BatchRow; live: boolean }) {
           ]} />
       ) : null}
       {chk?.errors.map((e) => <p key={e} className="mx-muted">{e}</p>)}
+      <ExportPanel b={b} />
       <RunPanel id={b.id} />
     </Card>
   );
@@ -207,9 +211,10 @@ export function Approvals() {
       return { text: t("{n} batches wait for approval.", { n: w.length }), evidence: w.slice(0, 3).map((b) => `${b.label} ${b.name}`), actions: [] };
     },
   });
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader title={t("Approvals")} context={t("Four eyes before anything reaches SAP")}
+      <PageHeader crumbs={crumbs("work", t("Approvals"))} stepper={<Flow label={t("Approval")} at={1} steps={[t("Proposed"), t("Reviewed"), t("Approved"), t("Sent to SAP")]} />} title={t("Approvals")} context={t("Four eyes before anything reaches SAP")}
         actions={<Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>} />
       <Tabs idBase="mx-apr" label={t("Approval views")} value={tab} onChange={setTab}
         items={[{ id: "batches", label: t("Batches") }, { id: "send", label: t("Send to SAP") }]} />

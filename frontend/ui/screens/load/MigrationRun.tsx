@@ -10,12 +10,14 @@ import {
   extractMigrationTarget, getLoadEvents, getMigrationFindings, startReconciliation, type GapGroup, type LoadEvent, type MigrationFinding,
 } from "@/lib/api/v2/migration";
 import { useDecideLoad, useLoadApproval, useLoadSimulation } from "@/lib/api/next/load";
-import { Button, Card, Confirm, DataTable, EmptyState, FieldChip, Input, PageHeader, Select, SeverityPill, StatTile, Tabs, useAletheiaScope, useToast, type Severity } from "@/ui/kit";
+import { Button, Card, Confirm, DataTable, EmptyState, FieldChip, Input, PageHeader, Select, SeverityPill, StatTile, Tabs, useAletheiaScope, useToast, type Severity, ExportMenu } from "@/ui/kit";
 import { gapText, labelText } from "@/lib/v2/labels";
 import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, useRecon, useRecords, useRun } from "./hooks";
+import { ReconRecords, TargetWorkbook, ValueMapping } from "./RunExtras";
 import { modeLabel } from "./MigrationRuns";
 import { displayKey } from "@/lib/v2/work";
+import { useCrumbs, Flow } from "@/ui/screens/flow";
 
 const sevLabel = (s: string): string => (s === "critical" ? t("Critical") : s === "high" ? t("High") : s === "medium" ? t("Medium") : s === "low" ? t("Low") : humanize(s));
 const Sev = ({ s }: { s: string }) => <SeverityPill sev={s as Severity} label={sevLabel(s)} />;
@@ -49,9 +51,10 @@ export function MigrationRun({ id }: { id: string }) {
     },
   });
 
+  const crumbs = useCrumbs();
   return (
     <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the run")}>
-      <PageHeader back={back}
+      <PageHeader crumbs={crumbs("load", t("Run {run}", { run: id }), { label: t("Migration runs"), href: href("/load/runs") })} stepper={<Flow label={t("Migration run")} at={run?.readiness_verdict ? 3 : 2} steps={[t("Analyse"), t("Extract the target"), t("Review the gaps"), t("Decide")]} />} back={back}
         title={t("Run {run}", { run: id })}
         context={run ? `${modeLabel(run.mode)}, ${run.modules.map(humanize).join(", ")}` : ""}
         actions={<>
@@ -74,19 +77,23 @@ export function MigrationRun({ id }: { id: string }) {
           { id: "gaps", label: t("Gaps"), badge: String(gaps.length) },
           { id: "findings", label: t("Findings") },
           { id: "sim", label: t("Load simulation") },
+          { id: "values", label: t("Value mapping") },
           { id: "recon", label: t("Reconciliation") },
           { id: "records", label: t("Records") },
           { id: "approval", label: t("Approval") },
           { id: "files", label: t("Load files") },
+          { id: "workbook", label: t("Target workbook") },
         ]} />
         <div id={`mx-run-panel-${tab}`} role="tabpanel">
           {tab === "gaps" ? <Gaps gaps={gaps} /> : null}
           {tab === "findings" ? <Findings id={id} modules={run?.modules ?? []} /> : null}
           {tab === "sim" ? <Simulation id={id} /> : null}
+          {tab === "values" ? <ValueMapping id={id} modules={run?.modules ?? []} /> : null}
           {tab === "recon" ? <Recon id={id} q={recon} /> : null}
           {tab === "records" ? <Records id={id} /> : null}
           {tab === "approval" ? <Approval id={id} /> : null}
           {tab === "files" ? <Files id={id} dry={!!dry} /> : null}
+          {tab === "workbook" ? <TargetWorkbook versionId={run?.source_version_id ?? null} /> : null}
         </div>
       </Card>
       </div>
@@ -117,7 +124,6 @@ function Gaps({ gaps }: { gaps: GapGroup[] }) {
 
 function Findings({ id, modules }: { id: string; modules: string[] }) {
   const fx = useFixture();
-  const toast = useToast();
   const [module, setModule] = useState("");
   const [sev, setSev] = useState("");
   const [search, setSearch] = useState("");
@@ -129,7 +135,7 @@ function Findings({ id, modules }: { id: string; modules: string[] }) {
         <Select aria-label={t("Object")} value={module} onChange={(e) => setModule(e.target.value)} options={[{ value: "", label: t("All objects") }, ...modules.map((m) => ({ value: m, label: `${m} ${humanize(m)}` }))]} />
         <Select aria-label={t("Severity")} value={sev} onChange={(e) => setSev(e.target.value)} options={[{ value: "", label: t("All severities") }, ...["critical", "high", "medium", "low"].map((s) => ({ value: s, label: sevLabel(s) }))]} />
         <Input aria-label={t("Search findings")} placeholder={t("Search findings")} value={search} onChange={(e) => setSearch(e.target.value)} />
-        <Button onClick={() => exportMigrationFindings(id, f).catch(() => toast(t("The export failed"), "bad"))}>{t("Download Excel")}</Button>
+        <ExportMenu label={t("Export findings")} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => exportMigrationFindings(id, f)} />
       </div>
       <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the findings")}>
         {q.data?.items.length ? (
@@ -224,7 +230,7 @@ function Recon({ id, q }: { id: string; q: ReturnType<typeof useRecon> }) {
       <div className="mx-links">
         <Button variant="primary" onClick={() => start.mutate()} disabled={start.isPending}>{t("Reconcile against the target")}</Button>
         {r?.status === "done" ? <Button onClick={() => accept.mutate()} disabled={!!r.accepted_at || accept.isPending}>{r.accepted_at ? t("Accepted") : t("Accept reconciliation")}</Button> : null}
-        {r?.status === "done" ? <Button onClick={() => exportReconciliation(id).catch(bad)}>{t("Download Excel")}</Button> : null}
+        {r?.status === "done" ? <ExportMenu label={t("Export reconciliation")} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => exportReconciliation(id)} /> : null}
       </div>
       <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the reconciliation")}>
         {r && r.status === "done" ? (
@@ -259,6 +265,7 @@ function Recon({ id, q }: { id: string; q: ReturnType<typeof useRecon> }) {
                 { key: "w", label: t("Why they differ"), render: (x) => x.reasons.slice(0, 3).map((y) => <FieldChip key={y.check_id} code={y.check_id} description={y.description ?? undefined} />) },
               ]}
             />
+            <ReconRecords id={id} tables={r.tables} />
           </>
         ) : <EmptyState heading={r?.needs_target_extraction ? t("The target has no analysis yet. Extract it first.") : r?.error_detail ?? t("No reconciliation yet")} body={t("Extract the target, or run the reconciliation again.")} />}
       </Gate>
@@ -322,17 +329,13 @@ function Approval({ id }: { id: string }) {
 
 function Files({ id, dry }: { id: string; dry: boolean }) {
   const fx = useFixture();
-  const toast = useToast();
   const q = useQuery({ queryKey: ["ui", "load", fx, "events"], queryFn: getLoadEvents });
-  const bad = () => toast(t("The export failed"), "bad");
   const rows = (q.data?.items ?? []).filter((e) => e.run_id === id);
   return (
     <>
       <div className="mx-links">
-        <Button variant="primary" onClick={() => exportLoadFiles(id, "xlsx").catch(bad)}>{t("Download Excel load file")}</Button>
-        <Button onClick={() => exportLoadFiles(id, "csv").catch(bad)}>{t("Download CSV load files")}</Button>
-        {dry ? <Button onClick={() => exportDryRunReport(id, "xlsx").catch(bad)}>{t("Download dry-run report (Excel)")}</Button> : null}
-        {dry ? <Button onClick={() => exportDryRunReport(id, "pdf").catch(bad)}>{t("Download dry-run report (PDF)")}</Button> : null}
+        <ExportMenu label={t("Download load files")} formats={[{ id: "xlsx", label: t("Excel load file") }, { id: "csv", label: t("CSV load files") }]} onExport={(f) => exportLoadFiles(id, f as "xlsx" | "csv")} />
+        {dry ? <ExportMenu label={t("Download dry-run report")} formats={[{ id: "xlsx", label: t("Excel workbook") }, { id: "pdf", label: t("PDF report") }]} onExport={(f) => exportDryRunReport(id, f as "xlsx" | "pdf")} /> : null}
       </div>
       <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the load files")}>
         {rows.length ? (

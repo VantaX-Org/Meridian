@@ -14,6 +14,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { labelText, moduleText, roleText } from "@/lib/v2/labels";
 import { Button, Card, DataTable, EmptyState, Skeleton, StatTile, useSheet, useToast } from "@/ui/kit";
 import { Health, envLabel, errMsg, typeLabel, when } from "../systems/shared";
+import { Flow } from "@/ui/screens/flow";
 import { day, useCan } from "./common";
 import type { SAPSystemExtended } from "@/types/api";
 import "./adminboard.css";
@@ -71,8 +72,11 @@ export function AdminBoard() {
   const people = users.data?.users ?? [];
   const byRole = Object.entries(people.reduce<Record<string, number>>((m, u) => ({ ...m, [u.role]: (m[u.role] ?? 0) + 1 }), {}));
   const next = (schedules.data?.schedules ?? []).filter((x) => x.active && x.next_run_at).map((x) => x.next_run_at as string).sort()[0];
+  const setup = [list.length > 0, !!lic, !!next, people.length > 1];
   return (
     <section className="ab-board" data-testid="admin-board" aria-label={t("Administration board")}>
+      <Flow label={t("Admin setup")} at={Math.max(0, setup.findIndex((d) => !d))} steps={[t("Connect a system"), t("Licence"), t("Schedule"), t("People")]}
+        states={Object.fromEntries(setup.map((d, i) => [i, d ? "done" : undefined])) as Record<number, "done">} />
       <Card title={t("Systems")} sub={t("{n, plural, one {# system} other {# systems}}", { n: list.length })}
         action={<Button variant="primary" href={href("/s/new")}>{t("Add a system")}</Button>}>
         {systems.isLoading ? <Skeleton lines={3} label={t("Loading the systems")} /> : list.length === 0 ? <EmptyState heading={t("No system is connected yet")} body={t("Connect a system to start analysing it.")} /> : (

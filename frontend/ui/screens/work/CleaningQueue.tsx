@@ -10,7 +10,9 @@ import {
   type CleaningGroup, type ExportFormat,
 } from "@/lib/api/v2/cleaning";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, Input, Select, Skeleton, StatTile, Tabs } from "@/ui/kit";
+import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, Input, Skeleton, StatTile, Tabs, ExportMenu } from "@/ui/kit";
+import { CleaningPlan } from "./CleaningPlan";
+import { Dedup } from "./Dedup";
 import { ObjChip } from "./ObjChip";
 import { day, useDo } from "./shared";
 
@@ -25,7 +27,6 @@ export function CleaningQueue() {
   const [g, setG] = useState<CleaningGroup | null>(null);
   const [reject, setReject] = useState<{ id?: string; group?: CleaningGroup } | null>(null);
   const [reason, setReason] = useState("");
-  const [fmt, setFmt] = useState<ExportFormat>("csv");
   const groups = useQuery({ queryKey: q(fx, "groups"), queryFn: getCleaningGroups, retry: false });
   const props = useQuery({ queryKey: q(fx, "props", tab, g?.version_id, g?.kind), queryFn: () => getProposals(tab === "approved" ? { status: "approved" } : { status: WAITING, version_id: g?.version_id, kind: g?.kind }), enabled: tab === "waiting" || tab === "approved", retry: false });
   const applied = useQuery({ queryKey: q(fx, "applied"), queryFn: getAppliedCleaning, enabled: tab === "applied", retry: false });
@@ -95,6 +96,8 @@ export function CleaningQueue() {
           ]} />
       );
     }
+    if (tab === "plan") return <CleaningPlan />;
+    if (tab === "dups") return <Dedup />;
     if (tab === "safety") {
       const s = safety.data;
       if (!s) return <Skeleton lines={3} label={t("Checking the values")} />;
@@ -148,9 +151,9 @@ export function CleaningQueue() {
     }
     return (
       <div className="mx-links">
-        <Field label={t("File format")}><Select value={fmt} onChange={(e) => setFmt(e.target.value as ExportFormat)} options={EXPORT_FORMATS.map((f) => ({ value: f, label: f.toUpperCase() }))} /></Field>
+
         {(opts.data?.statuses ?? [{ value: "approved", count: 0 }]).map((s) => (
-          <Button key={s.value} onClick={() => void run(() => exportCleaning(fmt, s.value), () => t("The file is ready."))}>{t("Export {status} ({n})", { status: s.value, n: s.count })}</Button>
+          <ExportMenu key={s.value} label={t("Export {status} ({n})", { status: s.value, n: s.count })} formats={EXPORT_FORMATS.map((f) => ({ id: f, label: f.toUpperCase() }))} onExport={(f) => exportCleaning(f as ExportFormat, s.value)} />
         ))}
       </div>
     );
@@ -158,7 +161,7 @@ export function CleaningQueue() {
 
   const items = [
     { id: "waiting", label: t("Waiting"), badge: groups.data ? String(groups.data.records) : undefined }, { id: "approved", label: t("Approved") }, { id: "applied", label: t("Applied") },
-    { id: "safety", label: t("Safety") }, { id: "metrics", label: t("Numbers") }, { id: "audit", label: t("Audit") }, { id: "export", label: t("Export") },
+    { id: "plan", label: t("Plan") }, { id: "dups", label: t("Duplicates") }, { id: "safety", label: t("Safety") }, { id: "metrics", label: t("Numbers") }, { id: "audit", label: t("Audit") }, { id: "export", label: t("Export") },
   ];
   return (
     <Card title={t("Cleaning queue")} sub={t("Proposed fixes wait for a second person to approve them.")}>

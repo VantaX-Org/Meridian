@@ -10,15 +10,13 @@ import { getSystemsExtended } from "@/lib/api/v2/runs";
 import { getSystemObjects } from "@/lib/api/system-objects";
 import { startRun, useRunsPage } from "@/lib/api/next/runs";
 import { FIXTURE_MODULES } from "@/lib/api/next/runs-fixture";
-import { checkCleaned, checksOf, needsParent, uploadCleaned, uploadSentence, type UploadChecks } from "@/lib/api/v2/roundtrip";
+import { checkCleaned, checksOf, needsParent, uploadCleaned, uploadSentence } from "@/lib/api/v2/roundtrip";
+import { validationOf } from "@/lib/api/v2/upload-checks";
 import { getRunExtractTarget, openExtractTargetFile, refillExtractTarget } from "@/lib/api/v2/extract-target";
-import { Button, Chip, DataTable, EmptyState, Field, FileDrop, Select, Skeleton, Toggle, useSheet, useToast, type Column, type SheetDef } from "@/ui/kit";
+import { Button, Chip, DataTable, EmptyState, Field, Select, Skeleton, Toggle, useSheet, useToast, type Column, type SheetDef, ExportMenu, ImportSheet } from "@/ui/kit";
 import { runPath, runTitle } from "./util";
 import "./runs.css";
 
-const checkText = (id: string) =>
-  ({ fingerprint: t("File is from this system"), run: t("Run is known"), template: t("Template matches"), columns: t("Columns match"), rows: t("Rows match"), keys: t("Keys match"), values: t("Values are valid"), formulas: t("No formulas in the data") })[id] ?? id;
-const verdictText = (s: string) => (s === "pass" ? t("Passed") : s === "warn" ? t("Warning") : t("Failed"));
 
 function Cycle() {
   const fx = useFixture();
@@ -58,45 +56,27 @@ function Cycle() {
 function Upload({ arg }: { arg: unknown }) {
   const a = (arg ?? {}) as { run?: string; module?: string };
   const qc = useQueryClient();
-  const toast = useToast();
   const sheet = useSheet();
   const fx = useFixture();
   const router = useRouter();
-  const [file, setFile] = useState<File | null>(null);
-  const [checks, setChecks] = useState<UploadChecks | null>(null);
-  const [msg, setMsg] = useState("");
-  const [parent, setParent] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const pick = async (f: File | null) => {
-    setFile(f); setChecks(null); setMsg("");
-    if (!f) return;
-    try { setChecks(await checkCleaned(f, a.run, a.module)); }
-    catch (e) { if (needsParent(e)) setParent(true); const c = checksOf(e); setMsg(c ? t("The file did not pass its checks.") : uploadSentence(e, t("The file could not be checked."))); }
-  };
-  const send = async () => {
-    if (!file) return;
-    setBusy(true);
-    try {
-      const r = await uploadCleaned(file, a.run, a.module, checks?.verdict === "warn");
-      qc.invalidateQueries({ queryKey: ["next"] });
-      toast(t("Uploaded. {n} values changed.", { n: r.applied }), "good");
-      sheet.close();
-      router.push(withFixture(runPath(r.version_id), fx));
-    } catch (e) { setMsg(uploadSentence(e, t("The upload did not work."))); } finally { setBusy(false); }
-  };
-  const cols: Column<UploadChecks["checks"][number]>[] = [
-    { key: "c", label: t("Check"), render: (c) => checkText(c.id) },
-    { key: "s", label: t("Result"), render: (c) => verdictText(c.status) },
-    { key: "d", label: t("Detail"), render: (c) => c.detail },
-  ];
   return (
-    <div className="rn-stack">
-      <FileDrop accept=".xlsx,.csv" onFile={pick} label={t("Cleaned file")} status={file ? t("{name} ({kb} KB)", { name: file.name, kb: Math.max(1, Math.round(file.size / 1024)) }) : t("Drop the Excel file you cleaned.")} />
-      {parent && !a.run ? <p className="mx-muted">{t("The file does not say which run it came from. Open this sheet from a run.")}</p> : null}
-      {checks ? <DataTable columns={cols} rows={checks.checks} rowKey={(c) => c.id} label={t("File checks")} height={300} /> : null}
-      {msg ? <p role="alert">{msg}</p> : null}
-      <Button disabled={!file || !checks || checks.verdict === "fail" || busy} onClick={send}>{checks?.verdict === "warn" ? t("Upload with warnings") : t("Upload and score")}</Button>
-    </div>
+    <ImportSheet accept=".xlsx,.csv" fileLabel={t("Cleaned file")} hint={t("Drop the Excel file you cleaned.")} target={t("PROD")}
+      onDirty={sheet.guard}
+      validate={async (f) => {
+        try { return validationOf(await checkCleaned(f, a.run, a.module)); }
+        catch (e) {
+          const c = checksOf(e);
+          if (c) return validationOf(c);
+          throw new Error(needsParent(e) && !a.run ? t("The file does not say which run it came from. Open this sheet from a run.") : uploadSentence(e, t("The file could not be checked.")));
+        }
+      }}
+      apply={async (f, v) => {
+        const r = await uploadCleaned(f, a.run, a.module, (v?.warnings ?? 0) > 0);
+        qc.invalidateQueries({ queryKey: ["next"] });
+        sheet.close();
+        router.push(withFixture(runPath(r.version_id), fx));
+        return t("Uploaded. {n} values changed.", { n: r.applied });
+      }} />
   );
 }
 
@@ -136,7 +116,7 @@ function ExtractTarget({ arg }: { arg: unknown }) {
     { key: "e", label: t("Problem"), render: (r) => r.error ?? "" },
     { key: "a", label: t("Actions"), render: (r) => (
       <span className="rn-row-actions">
-        {r.status === "filled" ? <Button variant="ghost" onClick={async () => { try { toast(t("Saved {name}", { name: await openExtractTargetFile(id, r.module) }), "good"); } catch { toast(t("The file could not be opened."), "bad"); } }}>{t("Open file")}</Button> : null}
+        {r.status === "filled" ? <ExportMenu label={t("Open file")} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => openExtractTargetFile(id, r.module)} /> : null}
         <Button variant="ghost" onClick={async () => { try { await refillExtractTarget(id, r.module); qc.invalidateQueries({ queryKey: ["next", "run", id, "extract-target"] }); toast(t("Filled again"), "good"); } catch { toast(t("It could not be filled again."), "bad"); } }}>{t("Fill again")}</Button>
       </span>
     ) },

@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { exportBpmn, exportSignavio, getCase, getCases, getCatalogue, getConformance, getDfg, getDiscoveryRuns, getVariants, startDiscovery, type CaseRow, type CatalogueEntry, type NodeStats, type RunSummary, type Variant } from "@/lib/api/v2/discovery";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, DetailPanel, Split, Tabs, useToast } from "@/ui/kit";
+import { Button, Card, Code, DataTable, DetailPanel, Split, Tabs, useToast, ExportMenu } from "@/ui/kit";
 import { Async, Empty, Head, num, useRead, useScreenScope, useSystemPick, when } from "./shared";
 import { FlowGraph } from "./FlowGraph";
+import { HealthCard, ModelView } from "./DiscoveryHealth";
 
 const pct = (n: number | null | undefined) => (n === null || n === undefined ? t("n/a") : `${Math.round(n * 100)}%`);
 const secs = (n: number | null | undefined) => (n === null || n === undefined ? t("n/a") : n >= 86400 ? `${(n / 86400).toFixed(1)} ${t("days")}` : n >= 3600 ? `${(n / 3600).toFixed(1)} ${t("hours")}` : `${Math.round(n / 60)} ${t("minutes")}`);
@@ -14,7 +15,6 @@ const secs = (n: number | null | undefined) => (n === null || n === undefined ? 
 const stepName = (nodes: readonly NodeStats[], id: string) => nodes.find((n) => n.id === id)?.name ?? t("No description");
 
 function RunDetail({ runId }: { runId: string }) {
-  const toast = useToast();
   const [tab, setTab] = useState("map");
   const [node, setNode] = useState<string | null>(null);
   const [variant, setVariant] = useState<string | undefined>();
@@ -25,10 +25,9 @@ function RunDetail({ runId }: { runId: string }) {
   const conf = useRead(["pd", "conf", runId], () => getConformance(runId), tab === "conformance");
   const cases = useRead(["pd", "cases", runId, variant], () => getCases(runId, variant), tab === "cases");
   const ev = useRead(["pd", "case", runId, caseId], () => getCase(runId, caseId), !!caseId && tab === "cases");
-  const save = async (fn: () => Promise<unknown>) => { try { await fn(); toast(t("Export ready"), "good"); } catch { toast(t("The export failed"), "bad"); } };
   return (
     <DetailPanel idBase="pd" label={t("Run detail")} tabsLabel={t("Process views")}
-      header={<><Button variant="secondary" onClick={() => void save(() => exportSignavio(runId))}>{t("Export for Signavio")}</Button><Button variant="secondary" onClick={() => void save(() => exportBpmn(runId, node ?? ""))} disabled={!node}>{t("Export BPMN")}</Button></>}
+      header={<ExportMenu formats={[{ id: "signavio", label: t("Signavio"), hint: t("All processes in the run") }, ...(node ? [{ id: "bpmn", label: t("BPMN 2.0"), hint: t("The selected process") }] : [])]} onExport={(f) => f === "bpmn" ? exportBpmn(runId, node ?? "") : exportSignavio(runId)} />}
       tabs={[{ id: "map", label: t("Process map") }, { id: "variants", label: t("Variants") }, { id: "conformance", label: t("Conformance") }, { id: "cases", label: t("Cases") }]}
       value={tab} onChange={setTab}>
       {tab === "map" ? (
@@ -98,6 +97,7 @@ function RunDetail({ runId }: { runId: string }) {
           )}
         </Async>
       ) : null}
+      {tab === "model" ? <ModelView runId={runId} /> : null}
       {tab === "cases" ? (
         <>
           {variant ? <Button variant="ghost" onClick={() => setVariant(undefined)}>{t("All variants")}</Button> : null}
@@ -160,7 +160,7 @@ export function ProcessesScreen() {
         left={
           <>
             {sys.control}
-            <Tabs idBase="pdl" label={t("Process lists")} value={tab} onChange={setTab} items={[{ id: "catalogue", label: t("Systems catalogue") }, { id: "runs", label: t("Runs") }]} />
+            <Tabs idBase="pdl" label={t("Process lists")} value={tab} onChange={setTab} items={[{ id: "catalogue", label: t("Systems catalogue") }, { id: "runs", label: t("Runs") }, { id: "health", label: t("Health") }]} />
             {tab === "catalogue" ? (
               <Async q={cat}>
                 {() => rows.length ? (
@@ -173,6 +173,8 @@ export function ProcessesScreen() {
                     ]} />
                 ) : <Empty heading={t("No processes in this system")} />}
               </Async>
+            ) : tab === "health" ? (
+              <HealthCard systemId={sys.id} />
             ) : (
               <Async q={runs}>
                 {() => runRows.length ? (

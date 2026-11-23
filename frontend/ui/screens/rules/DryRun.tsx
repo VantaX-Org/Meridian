@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs, Flow, RULE_STEPS } from "@/ui/screens/flow";
 import "./rules.css";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +16,7 @@ const NO_CHANGE = "keep";
 
 /** Journey J5 steps three and four: write a rule, see what it would do, then save and publish it. */
 export function DryRun() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const fx = useFixture();
   const chat = useAletheia();
@@ -66,7 +68,7 @@ export function DryRun() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader crumbs={crumbs("rules",t("Try a rule change"))} stepper={<Flow label={t("Rule change")} at={2} steps={RULE_STEPS()} />}
         title={t("Try a rule change")}
         context={t("See what a rule would do to your records before it goes live.")}
         actions={<>

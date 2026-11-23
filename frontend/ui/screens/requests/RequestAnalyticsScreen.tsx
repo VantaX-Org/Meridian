@@ -20,7 +20,7 @@ export function RequestAnalyticsScreen() {
   ]);
   return (
     <>
-      <Head title={t("Process analytics")} context={<>
+      <Head place="requests" title={t("Process analytics")} context={<>
         <Field label={t("Period")}><Select value={days} onChange={(e) => setDays(e.target.value)} options={["30", "90", "180", "365"].map((d) => ({ value: d, label: `${d} ${t("days")}` }))} /></Field>
         <Field label={t("Object")}><Select value={obj} onChange={(e) => setObj(e.target.value)} options={[{ value: "", label: t("All objects") }, ...(["material", "customer", "vendor", "business_partner"] as const).map((o) => ({ value: o, label: objectText(o) }))]} /></Field>
       </>} />

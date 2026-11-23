@@ -43,7 +43,7 @@ describe("kit follow-up components", () => {
   });
   it("CycleStepper marks the step", () => {
     render(<CycleStepper label="c" step="upload" labels={{ pull: "Pull", clean: "Clean", upload: "Upload", score: "Score", compare: "Compare" }} />);
-    expect(screen.getByText("Upload").closest("li")?.getAttribute("aria-current")).toBe("step");
+    expect(screen.getAllByText("Upload")[0].closest("li")?.getAttribute("aria-current")).toBe("step");
   });
   it("Graph draws nodes and picks edges by key", () => {
     const pick = vi.fn();

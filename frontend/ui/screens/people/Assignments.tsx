@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { applyTemplate, getStewardAssignments, getTemplate, getTemplateGaps, type ApplyPlan, type ApplyRow, type Gap, type StewardAssignment } from "@/lib/api/v2/roles";
@@ -27,6 +28,7 @@ function Plan({ plan, label }: { plan: ApplyPlan; label: string }) {
 }
 
 export function Assignments() {
+  const crumbs = useCrumbs();
   const qc = useQueryClient();
   const toast = useToast();
   const chat = useAletheia();
@@ -52,7 +54,7 @@ export function Assignments() {
   const changes = plan ? plan.totals.add + plan.totals.change : 0;
   return (
     <>
-      <PageHeader title={t("Assignments")} context={t("Who owns and stewards each object")} actions={<>
+      <PageHeader crumbs={crumbs("people",t("Assignments"))} title={t("Assignments")} context={t("Who owns and stewards each object")} actions={<>
         <Button variant="secondary" disabled={preview.isPending} onClick={() => preview.mutate()}>{t("Preview the template")}</Button>
         <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
       </>} />

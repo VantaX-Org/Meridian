@@ -16,7 +16,9 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { describeField } from "@/lib/v2/sap-fields";
 import { BarList, Button, Card, EmptyState, FieldChip, PageHeader, Select, SeverityPill, StatTile, Tabs, TrendArea, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
 import { MonitorBoard } from "./MonitorBoard";
+import { BreakEvidenceSheet } from "./BreakEvidenceSheet";
 import { Gate, InsightsNav, Mod, Tbl, day, n0, n1, pc, sevLabel, sevOf, useQ } from "./shared";
+import { useCrumbs } from "@/ui/screens/flow";
 
 type View = "feed" | "objects" | "after-clean" | "learned" | "shifts" | "config" | "contracts" | "gate" | "schedule";
 const VIEWS: View[] = ["feed", "objects", "after-clean", "learned", "shifts", "config", "contracts", "gate", "schedule"];
@@ -153,6 +155,7 @@ function Learned() {
   const qc = useQueryClient();
   const toast = useToast();
   const [why, setWhy] = useState<Record<string, string>>({});
+  const [ev, setEv] = useState<LearnedBreak | null>(null);
   const d = q.data;
   const refresh = () => qc.invalidateQueries({ queryKey: ["b8", "learned"] });
   const run = (p: Promise<unknown>) => p.then(() => { toast(t("Saved.")); void refresh(); }).catch(() => toast(t("That could not be saved.")));
@@ -185,11 +188,13 @@ function Learned() {
                     <Button variant="ghost" onClick={() => void run(expectBreak(r.id, "accept"))}>{t("Expected")}</Button>
                     <Button variant="ghost" onClick={() => void run(snoozeBreak(r.id, 7))}>{t("Snooze 7 days")}</Button>
                     <Button variant="ghost" onClick={() => void explain(r)}>{t("Explain")}</Button>
+                    <Button variant="ghost" onClick={() => setEv(r)}>{t("Evidence")}</Button>
                   </span>
                 ) },
               ]} />
             )}
           </Card>
+          <BreakEvidenceSheet item={ev} onClose={() => setEv(null)} />
         </div>
       ) : null}
     </Gate>
@@ -326,9 +331,10 @@ export function Monitor({ set = "changes" }: { set?: MonitorSet }) {
     label: t("Asking about the monitor, {view}", { view: items.find((i) => i.id === view)?.label ?? "" }),
     suggestions: [t("What changed since the last run?"), t("Which break matters most?"), t("Is anything coming back after a clean?")],
   });
+  const crumbs = useCrumbs();
   return (
     <div className="b8-page">
-      <PageHeader title={set === "changes" ? t("Monitor") : t("Controls")}
+      <PageHeader crumbs={crumbs("monitor")} title={set === "changes" ? t("Monitor") : t("Controls")}
         context={set === "changes" ? t("What changed, what came back and what is drifting, after every run.") : t("The configuration, contracts, load gate and schedules that guard each run.")}
         actions={<><InsightsNav here={set === "changes" ? "monitor" : "controls"} /><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
       <Tabs idBase="b8-mon" label={t("Monitor views")} items={items} value={view} onChange={(id) => setView(id as View)} />

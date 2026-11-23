@@ -39,11 +39,13 @@ describe("Clean board in fixture mode", () => {
     expect(screen.getByText("Cycles so far")).toBeTruthy();
   });
 
-  it("checks an uploaded file and offers to apply it", async () => {
+  it("checks an uploaded file in the import sheet, then reviews before applying", async () => {
     mount();
-    const input = await screen.findByLabelText("Choose the cleaned file", {}, { timeout: 5000 });
-    fireEvent.change(input, { target: { files: [new File(["x"], "cleaned.xlsx")] } });
-    expect(await screen.findByText("Ready to apply", {}, { timeout: 5000 })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Replace file" })).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "Choose file" }, { timeout: 5000 }));
+    fireEvent.change(screen.getByLabelText("Choose the cleaned file"), { target: { files: [new File(["x"], "cleaned.xlsx")] } });
+    fireEvent.click(await screen.findByRole("button", { name: "Continue to review" }, { timeout: 5000 }));
+    expect(await screen.findByRole("button", { name: "Apply to PROD" }, { timeout: 5000 })).toBeTruthy();
+    expect(await screen.findByText("This will write to PROD.", {}, { timeout: 5000 })).toBeTruthy();
   });
+
 });

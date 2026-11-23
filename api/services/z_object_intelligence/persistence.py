@@ -541,7 +541,7 @@ class ZObjectPersistence:
         ]
 
     async def update_anomaly_feedback(
-        self, db: AsyncSession, tenant_id: str, anomaly_id: str, status: str, user_id: str
+        self, db: AsyncSession, tenant_id: str, anomaly_id: str, status: str, user_id: Optional[str]
     ) -> bool:
         """Update anomaly status to 'confirmed' or 'dismissed'."""
         await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
@@ -666,7 +666,7 @@ class ZObjectPersistence:
         ]
 
     async def create_custom_rule(
-        self, db: AsyncSession, tenant_id: str, rule_data: dict, user_id: str
+        self, db: AsyncSession, tenant_id: str, rule_data: dict, user_id: Optional[str]
     ) -> str:
         """Create a new custom Z rule. Returns rule ID."""
         await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))

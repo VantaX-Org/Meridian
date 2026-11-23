@@ -21,7 +21,7 @@ SAP data, findings, and reports **never leave the customer boundary**.
 - **Pluggable SAP connector** — abstraction layer via `sap/base.py` (SAPConnector + CloudSAPConnector)
 
 ### Config Impact Model
-- **52 feature impact rules** — maps DQ findings to blocked/degraded SAP features
+- **53 feature impact rules** — maps DQ findings to blocked/degraded SAP features
 - **Cross-system dependencies** — e.g., SF onboarding blocked → Concur employee sync fails
 - **Opportunity cost analysis** — quantifies business impact of data quality issues
 - **Deterministic** — no LLM calls, pure rule lookup and aggregation
@@ -106,7 +106,7 @@ Access: Dashboard at `http://localhost:3000`, API at `http://localhost:8000`
 
 Rule counts include both hand-authored packs and the derived rules in each module's `<module>.generated.yaml` sidecar. Derived rules ship with `enabled: false` and are seeded off.
 
-**Total: 45 modules, 9,846 validation rules, 52 config impact rules**
+**Total: 45 modules, 9,846 validation rules, 53 config impact rules**
 
 Every rule is proved against fixtures (fails at least one record, passes at least one) and
 every field it reads is resolved in the SAP dictionary, both enforced by

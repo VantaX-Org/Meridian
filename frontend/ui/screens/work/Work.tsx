@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import type { WorkRow } from "@/lib/api/v2/types";
 import { exportFixSheet, importFixSheet, postAcceptAll, postSetValue, type WorkGroup } from "@/lib/api/v2/work";
@@ -10,8 +11,7 @@ import { CHIPS, displayKey, exportQueryOf, filtersOf, readState, viewFilters, ty
 import { useWorkGroups, useWorkRows, useWorkSummary, useWorkViews } from "@/lib/v2/work-queries";
 import {
   Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, Field, Input, MasterList, Select, Sheet, Skeleton, Toggle,
-  useSheet, useStacked, type MasterRow,
-} from "@/ui/kit";
+  useSheet, useStacked, type MasterRow, ExportMenu, ImportDialog } from "@/ui/kit";
 import { CleanBoard } from "./CleanBoard";
 import { CleaningQueue } from "./CleaningQueue";
 import { ObjChip } from "./ObjChip";
@@ -43,7 +43,8 @@ export function Work() {
   const [naming, setNaming] = useState(false);
   const [viewName, setViewName] = useState("");
   const [askAll, setAskAll] = useState(false);
-  const file = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const qc = useQueryClient();
   const stacked = useStacked();
   const sheets = useSheet();
   const run = useDo();
@@ -59,8 +60,6 @@ export function Work() {
   const chip = (id: ChipId) => { setState({ ...state, chip: id }); setPick(null); if (id === "proposed") setTab("cleaning"); };
   /** One bulk write at a time: a second click while one runs does nothing. */
   const once = async (fn: () => Promise<unknown>) => { if (busy) return; setBusy(true); try { await fn(); } finally { setBusy(false); } };
-  const exp = () => void run(() => exportFixSheet(exportQueryOf(state)), (r) => t("Saved {file}.", { file: r.filename }));
-  const imp = (f: File) => once(() => run(() => importFixSheet(f), (r) => t("{n} rows updated, {s} skipped.", { n: r.updated, s: r.skipped.length })));
   const saveView = () => {
     const name = viewName.trim();
     if (!name) return;
@@ -71,9 +70,15 @@ export function Work() {
 
   const toolbar = (
     <div className="mx-links">
-      <Button onClick={exp}>{t("Export workbook")}</Button>
-      <Button disabled={busy} onClick={() => file.current?.click()}>{t("Import workbook")}</Button>
-      <input ref={file} type="file" accept=".xlsx" hidden aria-label={t("Import workbook")} onChange={(e) => { const f = e.target.files?.[0]; if (f) void imp(f); e.target.value = ""; }} />
+      <ExportMenu label={t("Export workbook")} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => exportFixSheet(exportQueryOf(state))} />
+      <Button disabled={busy} onClick={() => setImporting(true)}>{t("Import workbook")}</Button>
+      <ImportDialog open={importing} onClose={() => setImporting(false)} label={t("Import workbook")} closeLabel={t("Close")}
+        accept=".xlsx" fileLabel={t("Choose the fix sheet")} hint={t("Drop the fix sheet you filled in.")} target={t("PROD")}
+        apply={async (f) => {
+          const r = await importFixSheet(f);
+          await qc.invalidateQueries({ queryKey: ["v2"] });
+          return t("{n} rows updated, {s} skipped.", { n: r.updated, s: r.skipped.length });
+        }} />
       <Button variant="ghost" onClick={() => sheets.open("whatif", { module: state.module })}>{t("What if")}</Button>
       {list.length ? <Button variant="ghost" onClick={() => setSim(true)}>{t("Simulate fixing")}</Button> : null}
       <Button variant="ghost" onClick={() => setNaming(true)}>{t("Save this view")}</Button>
@@ -107,7 +112,7 @@ export function Work() {
         <Card title={t("Records")} sub={sel ? [sel.check_id, sel.message].filter(Boolean).join(" ") : t("All rules")}>
           {rows.isLoading ? <Skeleton lines={5} label={t("Loading the records")} /> : rows.isError ? <ErrorState heading={t("The records could not be loaded")} onRetry={() => void rows.refetch()} retryLabel={t("Try again")} /> : !list.length ? <EmptyState heading={t("No record matches")} body={sel ? t("This rule has no record in this status.") : t("Pick another status above.")} action={sel ? <Button onClick={() => setCheck(null)}>{t("Show all rules")}</Button> : undefined} /> : (
             <>
-              <DataTable label={t("Records")} rows={list} rowKey={rowId} selected={pick ? rowId(pick) : null} onSelect={open}
+              <DataTable id="work-records" label={t("Records")} rows={list} rowKey={rowId} selected={pick ? rowId(pick) : null} onSelect={open}
                 columns={[
                   { key: "k", label: t("Record"), render: (r) => <><strong>{r.name ?? displayKey(r.record_key)}</strong> <span className="mx-muted">{formatModuleName(r.module)}{r.name ? ` ${displayKey(r.record_key)}` : ""}</span></>, sort: (r) => r.record_key },
                   { key: "s", label: t("Severity"), render: (r) => sevLabel(r.severity), sort: (r) => r.severity },

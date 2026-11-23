@@ -194,7 +194,9 @@ def detect_module_and_match(
     if module_hint and module_hint in all_fields:
         detected_module = module_hint
     else:
-        detected_module = max(module_scores, key=lambda m: module_scores[m])
+        # Ties (e.g. KNA1 columns fit both accounts_receivable and sd_customer_master) go to the module with the
+        # most fields, then by name, so the answer never depends on yaml load order.
+        detected_module = max(module_scores, key=lambda m: (module_scores[m], len(all_fields[m]), m))
 
     best_score = module_scores.get(detected_module, 0)
     max_possible = len(headers) * 3

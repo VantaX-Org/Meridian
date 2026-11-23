@@ -45,7 +45,7 @@ export function Fixes({ o, system, module }: { o: ObjectRun; system: string; mod
         <StatTile label={t("With a proposed value")} value={compactCount(proposed)} bar={open ? (100 * proposed) / open : 0} barTone="pass" />
       </dl>
       <Card title={t("Fixes by rule")} action={<Button variant="secondary" href={withFixture(`/work?module=${encodeURIComponent(module)}`, fx)}>{t("Open in the work queue")}</Button>}>
-        {rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => r.check_id} label={t("Fixes by rule")} /> : <EmptyState heading={t("No fixes are waiting for this object.")} body={t("Every finding of this run is fixed or not an issue. Open the work queue to check other objects.")} action={<Button href={withFixture("/work", fx)}>{t("Open the work queue")}</Button>} />}
+        {rows.length ? <DataTable id="object-fixes" columns={cols} rows={rows} rowKey={(r) => r.check_id} label={t("Fixes by rule")} /> : <EmptyState heading={t("No fixes are waiting for this object.")} body={t("Every finding of this run is fixed or not an issue. Open the work queue to check other objects.")} action={<Button href={withFixture("/work", fx)}>{t("Open the work queue")}</Button>} />}
       </Card>
     </div>
   );

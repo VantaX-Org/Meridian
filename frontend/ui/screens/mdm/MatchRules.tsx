@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -13,6 +14,7 @@ const typeLabel = (m: MatchType) =>
   m === "exact" ? t("Exact") : m === "fuzzy" ? t("Fuzzy") : m === "phonetic" ? t("Phonetic") : m === "numeric_range" ? t("Numeric range") : t("Semantic");
 
 export function MatchRules() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const href = useHref();
   const fx = useFixture();
@@ -46,7 +48,7 @@ export function MatchRules() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader crumbs={crumbs("mdm",t("Match rules"))}
         title={t("Match rules")}
         context={t("{n} rules", { n: mine.length })}
         actions={<>

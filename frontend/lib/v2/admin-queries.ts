@@ -187,6 +187,18 @@ export const useRunSchedules = (enabled = true) => {
   const f = useFixture();
   return useRead(k(f, "runschedules"), api.listRunSchedules, enabled);
 };
+export const useRunSchedule = (id: string) => {
+  const f = useFixture();
+  return useRead(k(f, "runschedule", id), () => api.getRunSchedule(id), !!id);
+};
+export const useProfiles = (systemId: string) => {
+  const f = useFixture();
+  return useRead(k(f, "profiles", systemId), () => api.listProfiles(systemId), !!systemId);
+};
+export const useSyncRuns = (systemId: string) => {
+  const f = useFixture();
+  return useRead(k(f, "syncruns", systemId), () => api.listSyncRuns(systemId), !!systemId);
+};
 export const useSchedules = () => {
   const f = useFixture();
   return useRead(k(f, "reports", "schedules"), rep.getSchedules);

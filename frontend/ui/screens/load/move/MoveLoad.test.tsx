@@ -35,7 +35,7 @@ describe("MoveLoad", () => {
   it("offers the cleansing log in cleansed mode", async () => {
     route({ ...SYS, [`GET ${B}/plans/p1`]: PLAN, [`GET ${B}/runs/r1`]: RUN });
     renderScreen(<MoveLoad planId="p1" runId="r1" onRun={() => undefined} onBack={() => undefined} onNext={() => undefined} />);
-    expect(await screen.findByRole("button", { name: "Download cleansing log (CSV)" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Download cleansing log" })).toBeTruthy();
   });
 
   it("offers the real load only after a passed dry run, behind a confirm", async () => {

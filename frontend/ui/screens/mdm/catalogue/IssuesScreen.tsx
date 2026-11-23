@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { bulkIssues, commentIssue, exportIssues, getIssue, getIssues, ISSUE_STATUSES, type Issue, type IssueStatus } from "@/lib/api/v2/issues";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Chip, Code, DataTable, DetailPanel, Input, Search, Split, useToast } from "@/ui/kit";
+import { Button, Card, Chip, Code, DataTable, DetailPanel, Input, Search, Split, useToast, ExportMenu } from "@/ui/kit";
 import { Async, Empty, Head, num, Sev, useRead, useScreenScope, when } from "./shared";
 import { displayKey } from "@/lib/v2/work";
 
@@ -75,7 +75,7 @@ export function IssuesScreen() {
   return (
     <>
       <Head title={t("Record issues")} context={q.data ? `${num(q.data.total)} ${t("issues")}` : undefined}
-        actions={<Button variant="secondary" onClick={() => void exportIssues({ status: status || undefined, search: search || undefined })}>{t("Export")}</Button>} />
+        actions={<ExportMenu formats={[{ id: "csv", label: t("CSV"), hint: t("The issues that match the filters") }]} onExport={() => exportIssues({ status: status || undefined, search: search || undefined })} />} />
       <Split leftLabel={t("Issues")} rightLabel={t("Issue detail")}
         left={
           <>

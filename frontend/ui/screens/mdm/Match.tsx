@@ -1,5 +1,6 @@
 "use client";
 
+import { useCrumbs, Flow, MDM_STEPS } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -9,7 +10,7 @@ import { bulkMergePairs, clearPairConstraint, getPairConstraints, matchTuningDry
 import { describeField } from "@/lib/v2/sap-fields";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useAcrossSystems, useConsolidationPack, useMatchCalibration, useMatchPairs } from "@/lib/v2/mdm-queries";
-import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, SeverityPill, Skeleton, StatTile, Tabs, useAletheia, useAletheiaScope } from "@/ui/kit";
+import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, SeverityPill, Skeleton, StatTile, Tabs, useAletheia, useAletheiaScope, ExportMenu } from "@/ui/kit";
 import { DEFAULT_DOMAIN, DomainSelect, day, pct, useAct, useHref } from "./shared";
 
 type Tab = "review" | "clusters" | "constraints" | "tuning" | "pack";
@@ -17,6 +18,7 @@ type Pending = null | { kind: "merge" | "dismiss"; pair: ReviewPair } | { kind: 
 const BAND_SEV = { auto_merge: "low", review: "medium", low: "info" } as const;
 
 export function Match() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const href = useHref();
   const fx = useFixture();
@@ -67,7 +69,7 @@ export function Match() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader crumbs={crumbs("mdm",t("Match review"))} stepper={<Flow label={t("Master data journey")} at={0} steps={MDM_STEPS()} />}
         title={t("Match review")}
         context={t("{n} pairs waiting", { n: pairs.data?.total ?? 0 })}
         actions={<>
@@ -233,8 +235,7 @@ export function Match() {
             title={t("Consolidation pack")}
             sub={pack.data ? t("{m} merged records into {s} survivors.", { m: pack.data.merged, s: pack.data.survivors }) : undefined}
             action={<span className="mx-links">
-              <Button variant="secondary" disabled={busy} onClick={() => act(() => downloadConsolidationPack(domain, "csv"), t("CSV downloaded"))}>{t("Download CSV")}</Button>
-              <Button variant="secondary" disabled={busy} onClick={() => act(() => downloadConsolidationPack(domain, "xlsx"), t("Excel downloaded"))}>{t("Download Excel")}</Button>
+              <ExportMenu label={t("Download pack")} disabled={busy} formats={[{ id: "xlsx", label: t("Excel workbook") }, { id: "csv", label: t("CSV") }]} onExport={(f) => downloadConsolidationPack(domain, f as "csv" | "xlsx")} />
             </span>}
           >
             {pack.isError ? <ErrorState heading={t("The consolidation pack could not be loaded")} retryLabel={t("Try again")} onRetry={() => void pack.refetch()} /> : (pack.data?.rows ?? []).length === 0 ? <EmptyState heading={t("Nothing merged yet")} body={t("The pack lists the records that retire once pairs are merged.")} /> : (

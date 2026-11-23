@@ -4,7 +4,8 @@ import { useState } from "react";
 import { downloadSubjectExport, dryRunErasure, executeErasure, liftSuppression, searchSubject, subjectError, type SubjectErase, type SubjectSearch } from "@/lib/api/v2/subject-requests";
 import { useSubjectRequests, useSuppressions } from "@/lib/v2/admin-queries";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, Confirm, DataTable, Field, Input, StatTile, useToast, EmptyState } from "@/ui/kit";
+import { Button, Card, Code, Confirm, DataTable, Field, Input, StatTile, useToast, EmptyState, ExportMenu } from "@/ui/kit";
+import { Flow } from "@/ui/screens/flow";
 import { Row, Sec, useAct, when } from "./shared";
 
 export function SubjectRequests() {
@@ -26,14 +27,14 @@ export function SubjectRequests() {
   const fail = (e: unknown) => toast(subjectError(e, t("The request failed.")), "bad");
 
   return (
-    <Sec title={t("Data subject requests")} scope="subject-requests" q={[ledger, supp]}
+    <Sec title={t("Data subject requests")} stepper={<Flow label={t("Subject request")} at={dry ? 2 : found ? 1 : 0} steps={[t("Find a person"), t("Preview erasure"), t("Erase")]} />} scope="subject-requests" q={[ledger, supp]}
       context={t("{n} requests on record", { n: rows.length })}
       facts={[t("{n} requests on record.", { n: rows.length }), t("{n} erased keys are suppressed.", { n: supp.data?.active_keys ?? 0 })]}>
       <Card title={t("Find a person")} sub={t("The subject is sent in the request body and is never kept in a URL.")}>
         <Row>
           <Field label={t("Name, email or key")}><Input value={subject} onChange={(e) => { setSubject(e.target.value); setFound(null); setDry(null); }} /></Field>
           <Button variant="primary" disabled={busy || !subject.trim()} onClick={async () => { try { setFound(await searchSubject(subject.trim())); setDry(null); } catch (e) { fail(e); } }}>{t("Search")}</Button>
-          <Button variant="secondary" disabled={busy || !found} onClick={async () => { try { toast(t("Saved {name}.", { name: await downloadSubjectExport(subject.trim()) }), "good"); } catch (e) { fail(e); } }}>{t("Download export")}</Button>
+          <ExportMenu formats={[{ id: "json", label: t("Subject data"), hint: t("Everything held about this person") }]} personalData disabled={busy || !found} onExport={() => downloadSubjectExport(subject.trim())} />
           <Button variant="secondary" disabled={busy || !found} onClick={async () => { try { setDry(await dryRunErasure(subject.trim())); } catch (e) { fail(e); } }}>{t("Preview erasure")}</Button>
         </Row>
         {found && (

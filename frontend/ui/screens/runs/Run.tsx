@@ -8,23 +8,26 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { useUrlParam } from "@/lib/v2/hooks";
 import { formatDuration } from "@/lib/format";
-import { analyseRun, archiveRuns, getRuleTrend, pinBaseline, restoreRuns } from "@/lib/api/v2/runs";
+import { analyseRun, archiveRuns, cappedReads, getRuleTrend, pinBaseline, restoreRuns } from "@/lib/api/v2/runs";
 import { downloadReconciliation, getRunSteps, renameRun, rerunAgents, streamRunEvents, type RunEvent } from "@/lib/api/v2/run-ops";
 import { purgeVersion } from "@/lib/api/v2/admin";
 import { getConfigMatches } from "@/lib/api/v2/config";
+import { MatchSummary, RootCauseSheet } from "./ConfigDetail";
 import { exportVersionProfile, getProfile } from "@/lib/api/v2/profile";
+import { SplitCapped } from "./SplitCapped";
+import { MinedDependencies } from "./MinedDependencies";
 import { baselineRefusalOf, getSemanticTypes, putSemanticType, type SemanticColumn, type SemanticType } from "@/lib/api/v2/step9";
 import { getRunPrediction } from "@/lib/api/v2/step10";
 import { useObjectCycle, useRun, useRunsPage } from "@/lib/api/next/runs";
 import {
   Button, Card, Confirm, DataTable, EmptyState, ErrorState, FieldChip, Field, Input, PageHeader, Select, Skeleton, StatTile, CycleStepper, Tabs, TrendArea,
-  useAletheiaScope, useSheet, useToast, type Column,
-} from "@/ui/kit";
+  useAletheiaScope, useSheet, useToast, type Column, ExportMenu } from "@/ui/kit";
 import { answer } from "./answers";
 import { JobHairline } from "./JobHairline";
 import { Modules, StatusPill } from "./Runs";
 import { modulesOf, runPath, runScore, runTitle, scoreText, sourceLabel, when } from "./util";
 import "./runs.css";
+import { useCrumbs } from "@/ui/screens/flow";
 
 const TABS = ["overview", "profile", "config"] as const;
 type Tab = (typeof TABS)[number];
@@ -35,11 +38,7 @@ const secs = (s: number | null) => (s == null ? t("n/a") : formatDuration(s * 10
 
 function Cycle({ id, module }: { id: string; module: string }) {
   const { cycle } = useObjectCycle(id, module);
-  return (
-    <Card title={t("Where this object is in the cycle")} sub={cycle ? t("Cycle {n}, since {when}", { n: cycle.number, when: when(cycle.since) }) : t("This run is not part of a cycle yet.")}>
-      <CycleStepper label={t("Cycle steps")} step={cycle?.step ?? null} labels={{ pull: t("Pull"), clean: t("Clean"), upload: t("Upload"), score: t("Score"), compare: t("Compare") }} />
-    </Card>
-  );
+  return <CycleStepper label={t("Cycle steps")} step={cycle?.step ?? null} labels={{ pull: t("Pull"), clean: t("Clean"), upload: t("Upload"), score: t("Re-score"), compare: t("Compare") }} />;
 }
 
 function Steps({ id }: { id: string }) {
@@ -123,9 +122,7 @@ function ProfileTab({ id, systemId, modules }: { id: string; systemId: string; m
     try { await putSemanticType(id, c.column, v as SemanticType | "none"); qc.invalidateQueries({ queryKey: ["next", "run", id, "sem"] }); toast(t("Column type saved"), "good"); }
     catch (e) { toast(baselineRefusalOf(e)?.detail ?? t("That did not work. Nothing was changed."), "bad"); }
   };
-  const save = async (format: "csv" | "xlsx") => {
-    try { toast(t("Saved {name}", { name: await exportVersionProfile(systemId, id, obj, format) }), "good"); } catch { toast(t("The export could not be made."), "bad"); }
-  };
+  const save = (format: string) => exportVersionProfile(systemId, id, obj, format as "csv" | "xlsx");
   const tables = profile.data?.tables ?? [];
   const tcols: Column<(typeof tables)[number]>[] = [
     { key: "table", label: t("Table"), render: (x) => <FieldChip code={x.table} description={moduleText(obj)} /> },
@@ -143,12 +140,13 @@ function ProfileTab({ id, systemId, modules }: { id: string; systemId: string; m
   return (
     <div className="mx-col">
       <Card title={t("Profile")} sub={t("What each table of the object holds.")}
-        action={<span className="rn-row-actions"><Button variant="ghost" onClick={() => save("csv")}>{t("Export as CSV")}</Button><Button variant="ghost" onClick={() => save("xlsx")}>{t("Export as Excel")}</Button></span>}>
+        action={<span className="rn-row-actions"><ExportMenu label={t("Export profile")} formats={[{ id: "xlsx", label: t("Excel workbook") }, { id: "csv", label: t("CSV") }]} onExport={save} /></span>}>
         <Field label={t("Object")}><Select value={obj} onChange={(e) => setObj(e.target.value)} options={modules.map((m) => ({ value: m, label: moduleText(m) }))} /></Field>
         {profile.isLoading ? <Skeleton lines={4} label={t("Loading the profile")} /> : tables.length === 0 ? <EmptyState heading={t("No profile for this object")} body={t("The run did not profile it.")} /> : (
           <DataTable columns={tcols} rows={tables} rowKey={(x) => x.table} label={t("Profiled tables")} height={240} />
         )}
       </Card>
+      {profile.data ? <MinedDependencies object={obj} deps={profile.data.dependencies} onDone={() => void profile.refetch()} /> : null}
       <Card title={t("Column types")} sub={t("Confirm what each column holds so its values are checked.")}>
         {sem.isLoading ? <Skeleton lines={4} label={t("Loading the column types")} /> : !sem.data?.columns.length ? <EmptyState heading={t("No columns profiled")} body={t("Column types appear once the run is profiled.")} /> : (
           <DataTable columns={scols} rows={sem.data.columns} rowKey={(c) => c.column} label={t("Column types")} height={320} />
@@ -160,6 +158,7 @@ function ProfileTab({ id, systemId, modules }: { id: string; systemId: string; m
 
 function ConfigTab({ id }: { id: string }) {
   const q = useQuery({ queryKey: ["next", "run", id, "config", useFixture()], queryFn: () => getConfigMatches(id) });
+  const [cause, setCause] = useState<{ id: string; module: string } | null>(null);
   if (q.isLoading) return <Skeleton lines={5} label={t("Loading the configuration matches")} />;
   const items = q.data?.items ?? [];
   if (!items.length) return <EmptyState heading={t("No configuration matches")} body={t("No failing record of this run traces to configuration.")} />;
@@ -171,12 +170,21 @@ function ConfigTab({ id }: { id: string }) {
     { key: "evid", label: t("Configuration evidence"), render: (m) => m.config_evidence ?? "" },
     { key: "act", label: t("What to do"), render: (m) => m.recommended_action ?? "" },
   ];
-  return <Card title={t("Configuration matches")} sub={t("{n, plural, one {# record} other {# records}}", { n: q.data?.total ?? items.length })}><DataTable columns={cols} rows={items} rowKey={(m) => `${m.check_id}/${m.record_key}/${m.field}`} label={t("Configuration matches")} height={400} /></Card>;
+  return (
+    <div className="mx-col">
+      <Card title={t("What the run's failures trace to")}><MatchSummary id={id} /></Card>
+      <Card title={t("Configuration matches")} sub={t("{n, plural, one {# record} other {# records}}", { n: q.data?.total ?? items.length })}>
+        <DataTable columns={cols} rows={items} rowKey={(m) => `${m.check_id}/${m.record_key}/${m.field}`} label={t("Configuration matches")} height={400} onSelect={(m) => setCause({ id: m.check_id, module: m.module })} />
+      </Card>
+      <RootCauseSheet checkId={cause?.id ?? null} module={cause?.module} onClose={() => setCause(null)} />
+    </div>
+  );
 }
 
 export function Run({ id }: { id: string }) {
   useInterfaceLang();
   const fx = useFixture();
+  const crumbs = useCrumbs();
   const href = (p: string) => withFixture(p, fx);
   const router = useRouter();
   const params = useSearchParams();
@@ -227,7 +235,7 @@ export function Run({ id }: { id: string }) {
   return (
     <div className="mx-col">
       <JobHairline />
-      <PageHeader title={runTitle(h)} context={`${sourceLabel(h)}, ${when(h.run_at)}`}
+      <PageHeader crumbs={crumbs("runs", runTitle(h))} title={runTitle(h)} context={`${sourceLabel(h)}, ${when(h.run_at)}`} stepper={focus ? <Cycle id={id} module={focus} /> : undefined}
         actions={
           <span className="rn-row-actions">
             <Button variant="secondary" onClick={() => sheet.open("compare", { run: id })}>{t("Compare")}</Button>
@@ -248,14 +256,14 @@ export function Run({ id }: { id: string }) {
       <div role="tabpanel" id={`run-tab-panel-${tab}`} aria-labelledby={`run-tab-tab-${tab}`} className="mx-col">
         {tab === "overview" ? (
           <>
-            {focus ? <Cycle id={id} module={focus} /> : null}
+            <SplitCapped systemId={systemId} versionId={id} capped={cappedReads(h.metadata)} />
             <Card title={t("What you can do")} sub={t("Actions on this run.")}>
               <div className="mx-links">
                 <Button variant="secondary" onClick={() => act(() => analyseRun(id), t("Analysis started"))}>{t("Analyse again")}</Button>
                 <Button variant="secondary" onClick={() => act(() => pinBaseline(id, !h.metadata?.baseline), h.metadata?.baseline ? t("Baseline removed") : t("Set as baseline"))}>{h.metadata?.baseline ? t("Remove baseline") : t("Set as baseline")}</Button>
                 <Button variant="secondary" onClick={() => act(() => rerunAgents(id), t("Agents started"))}>{t("Run the agents")}</Button>
                 <Button variant="secondary" onClick={() => { setText(h.label ?? ""); setDlg("rename"); }}>{t("Rename")}</Button>
-                <Button variant="secondary" onClick={() => act(() => downloadReconciliation(id, { top: 10 }), t("Reconciliation saved"))}>{t("Download reconciliation")}</Button>
+                <ExportMenu label={t("Download reconciliation")} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => downloadReconciliation(id, { top: 10 })} />
                 <Button variant="secondary" onClick={() => sheet.open("extract-target", { run: id })}>{t("Extract target files")}</Button>
                 <Button variant="secondary" onClick={() => setDlg("archive")}>{t("Archive older runs")}</Button>
                 <Button variant="secondary" onClick={() => setDlg("restore")}>{t("Restore archived runs")}</Button>

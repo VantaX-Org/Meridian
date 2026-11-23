@@ -1,17 +1,19 @@
 "use client";
 
+import { useCrumbs } from "@/ui/screens/flow";
 import "./rules.css";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { formatModuleName } from "@/lib/format";
-import { exportRulesBulk, importRulesBulk, type BulkResult } from "@/lib/api/v2/roles";
+import { exportRulesBulk, importRulesBulk } from "@/lib/api/v2/roles";
 import type { Rule } from "@/lib/api/rules";
-import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, Search, Select, SeverityPill, Skeleton, StatTile, useAletheia, useAletheiaScope, useSheet, useToast, type Column } from "@/ui/kit";
+import { bytesToBase64 } from "@/lib/api/download";
+import { Button, Chip, DataTable, EmptyState, ErrorState, FieldChip, ImportDialog, PageHeader, Search, Select, SeverityPill, Skeleton, StatTile, useAletheia, useAletheiaScope, useSheet, type Column, ExportMenu } from "@/ui/kit";
 import type { Severity } from "@/ui/kit/SeverityStrip";
 import { compactCount, pct, ruleCheck, SEVERITIES, sevLabel } from "./format";
-import { useAct, useRuleLibrary } from "./queries";
+import { useRuleLibrary } from "./queries";
 import { CoverageView, DraftsView, FixDraftsView, LearnedView, PacksView } from "./RulesViews";
 
 const VIEWS = ["library", "drafts", "learned", "coverage", "packs", "fix-drafts"] as const;
@@ -20,11 +22,11 @@ const viewLabel = (v: View) => (v === "library" ? t("Library") : v === "drafts" 
 
 /** The rule library and everything around it: authoring, learned rules, coverage, packs, fix drafts. Journey J5 step one. */
 export function Rules() {
+  const crumbs = useCrumbs();
   useInterfaceLang();
   const fx = useFixture();
   const chat = useAletheia();
   const sheet = useSheet();
-  const toast = useToast();
   const router = useRouter();
   const path = usePathname();
   const params = useSearchParams();
@@ -37,8 +39,7 @@ export function Rules() {
   const [q, setQ] = useState("");
   const [sev, setSev] = useState<string | null>(null);
   const [module, setModule] = useState("");
-  const [bulk, setBulk] = useState<{ format: "yaml" | "xlsx"; content: string; result: BulkResult } | null>(null);
-  const file = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
 
   const go = (v: View) => { const p = new URLSearchParams(params.toString()); if (v === "library") p.delete("view"); else p.set("view", v); const s = p.toString(); router.replace(s ? `${path}?${s}` : path); };
 
@@ -66,21 +67,17 @@ export function Rules() {
     { key: "fail", label: t("Records failing"), render: (r) => (r.last_affected_count == null ? t("n/a") : compactCount(r.last_affected_count)), sort: (r) => r.last_affected_count ?? -1, align: "end" },
   ];
 
-  const doExport = useAct((f: "yaml" | "xlsx") => exportRulesBulk(f), () => t("Rules exported"));
-  const pick = async (f: File | undefined) => {
-    if (!f) return;
-    const format = f.name.toLowerCase().endsWith(".xlsx") ? "xlsx" : "yaml";
-    const content = format === "xlsx" ? btoa(String.fromCharCode(...new Uint8Array(await f.arrayBuffer()))) : await f.text();
-    try { setBulk({ format, content, result: await importRulesBulk(format, content, true) }); } catch (e) { toast(e instanceof Error ? e.message : t("The change did not go through"), "bad"); }
+  const read = async (f: File) => {
+    const format = f.name.toLowerCase().endsWith(".xlsx") ? "xlsx" as const : "yaml" as const;
+    return { format, content: format === "xlsx" ? bytesToBase64(new Uint8Array(await f.arrayBuffer())) : await f.text() };
   };
-  const doImport = useAct(async () => { if (bulk) { await importRulesBulk(bulk.format, bulk.content, false); setBulk(null); } }, () => t("Rules imported"));
 
   const enabled = rules.filter((r) => r.enabled).length;
   const failing = rules.reduce((n, r) => n + (r.last_affected_count ?? 0), 0);
 
   return (
     <div className="mx-col">
-      <PageHeader
+      <PageHeader crumbs={crumbs("rules")}
         title={t("Rules")}
         context={t("Every check Meridian runs, and the tools to write, tune and switch them on.")}
         actions={
@@ -88,22 +85,25 @@ export function Rules() {
             <Button variant="secondary" href={href("/rules/dry-run")}>{t("Write a rule")}</Button>
             <Button variant="secondary" href={href("/rules/promotion")}>{t("Rule promotion")}</Button>
             <Button variant="secondary" href={href("/admin/scoring")}>{t("Scoring weights and thresholds")}</Button>
-            <Button variant="secondary" disabled={doExport.isPending} onClick={() => doExport.mutate("yaml")}>{t("Export YAML")}</Button>
-            <Button variant="secondary" disabled={doExport.isPending} onClick={() => doExport.mutate("xlsx")}>{t("Export Excel")}</Button>
-            <Button variant="secondary" onClick={() => file.current?.click()}>{t("Import rules")}</Button>
+            <ExportMenu label={t("Export rules")} formats={[{ id: "yaml", label: t("YAML") }, { id: "xlsx", label: t("Excel workbook") }]} onExport={(f) => exportRulesBulk(f as "yaml" | "xlsx")} />
+            <Button variant="secondary" onClick={() => setImporting(true)}>{t("Import rules")}</Button>
             <Button variant="primary" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
           </>
         }
       />
-      <input ref={file} type="file" accept=".yaml,.yml,.xlsx" hidden aria-label={t("Rule file to import")} onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
-      {bulk ? (
-        <Card title={t("Import check")} sub={t("{valid} of {total} rules are valid", { valid: bulk.result.valid, total: bulk.result.total })} action={<Button variant="ghost" onClick={() => setBulk(null)}>{t("Cancel")}</Button>}>
-          <ul className="mx-rules-list" aria-label={t("Import rows")}>
-            {bulk.result.rows.filter((r) => !r.ok).map((r) => <li key={r.row} className="mx-rules-item"><span>{t("Row {n}", { n: r.row })}</span><span className="mx-muted">{r.errors.join(", ")}</span></li>)}
-          </ul>
-          <Button variant="primary" disabled={!bulk.result.valid || doImport.isPending} onClick={() => doImport.mutate(undefined)}>{t("Import {n} rules", { n: bulk.result.valid })}</Button>
-        </Card>
-      ) : null}
+      <ImportDialog open={importing} onClose={() => setImporting(false)} label={t("Import rules")} closeLabel={t("Close")}
+        accept=".yaml,.yml,.xlsx" fileLabel={t("Rule file to import")} hint={t("Drop a YAML file or an Excel workbook of rules.")} target={t("Rule library")}
+        validate={async (f) => {
+          const { format, content } = await read(f);
+          const r = await importRulesBulk(format, content, true);
+          return { ready: r.valid, warnings: 0, rejected: r.total - r.valid, problems: r.rows.filter((x) => !x.ok).map((x) => ({ row: String(x.row), column: t("Rule"), problem: x.errors.join(", ") })) };
+        }}
+        apply={async (f) => {
+          const { format, content } = await read(f);
+          const r = await importRulesBulk(format, content, false);
+          await lib.refetch();
+          return t("Rules imported") + ": " + r.valid;
+        }} />
 
       <div className="mx-rules-row" role="group" aria-label={t("Rule views")}>
         {VIEWS.map((v) => <Chip key={v} selected={v === view} onClick={() => go(v)}>{viewLabel(v)}</Chip>)}

@@ -11,6 +11,7 @@ import { Preflight } from "./Preflight";
 import { Reconcile } from "./Reconcile";
 import { Scope, type Scope as ScopeState } from "./Scope";
 import { Systems, type Pick } from "./Systems";
+import { useCrumbs } from "@/ui/screens/flow";
 
 /** Move to new instance: seven steps, one primary action each. */
 export function Move() {
@@ -22,13 +23,12 @@ export function Move() {
   const [planId, setPlanId] = useState<string | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const go = (n: number) => () => setStep(n);
-  const steps = [t("Systems"), t("Scope"), t("Plan"), t("Check"), t("Load"), t("Reconcile"), t("Delta")].map((label, i) => ({ id: String(i), label }));
+  const steps = [t("Systems"), t("Scope"), t("Plan"), t("Preflight"), t("Load"), t("Reconcile"), t("Delta")].map((label, i) => ({ id: String(i), label }));
 
+  const crumbs = useCrumbs();
   return (
     <div className="mx-col">
-      <PageHeader back={back} title={t("Move to new instance")} context={t("Move every object and its history from one system to a new one, then prove it arrived.")} />
-      <Stepper steps={steps} current={step} label={t("Steps")} />
-      <p className="mx-muted">{t("Step {n} of {total}: {name}", { n: step + 1, total: steps.length, name: steps[step].label })}</p>
+      <PageHeader crumbs={crumbs("load", t("Move to new instance"))} back={back} title={t("Move to new instance")} context={t("Move every object and its history from one system to a new one, then prove it arrived.")} stepper={<Stepper steps={steps} current={step} label={t("Steps")} />} />
       {step === 0 ? <Systems pick={pick} onPick={setPick} onNext={go(1)} /> : null}
       {step === 1 ? <Scope pick={pick} scope={scope} onScope={setScope} onBack={go(0)} onPlan={(id) => { setPlanId(id); setRunId(null); setStep(2); }} /> : null}
       {step === 2 && planId ? <PlanStep planId={planId} onBack={go(1)} onNext={go(3)} /> : null}

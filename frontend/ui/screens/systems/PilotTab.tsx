@@ -1,35 +1,24 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getRuleTuning, getScorecard, uploadKnownIssues } from "@/lib/api/v2/pilot";
 import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
-import { Button, Card, DataTable, FieldChip, SeverityPill, StatTile, useToast, EmptyState } from "@/ui/kit";
-import { errMsg, Gate } from "./shared";
+import { Button, Card, DataTable, FieldChip, SeverityPill, StatTile, EmptyState, ImportDialog } from "@/ui/kit";
+import { Gate } from "./shared";
 
 const pct = (n: number | null | undefined): string => (n === null || n === undefined ? "-" : `${Math.round(n * 100)}%`);
 
 export function PilotTab({ id }: { id: string }) {
   const fx = useFixture();
   const qc = useQueryClient();
-  const toast = useToast();
   const me = useV2Session();
-  const file = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
   const sc = useQuery({ queryKey: ["v2", "scorecard", fx, id] as const, queryFn: () => getScorecard(id), retry: false });
   const tune = useQuery({ queryKey: ["v2", "rule-tuning", fx] as const, queryFn: getRuleTuning, retry: false });
-  const upload = async (f: File | undefined) => {
-    if (!f) return;
-    setBusy(true);
-    try {
-      const r = await uploadKnownIssues(id, await f.text());
-      toast(t("{n} known issues loaded, {m} rejected.", { n: r.records, m: r.rejected }), "good");
-      await qc.invalidateQueries({ queryKey: ["v2"] });
-    } catch (e) { toast(errMsg(e), "bad"); } finally { setBusy(false); if (file.current) file.current.value = ""; }
-  };
   return (
     <div className="mx-col">
       <Card title={t("Pilot scorecard")} sub={t("How often the checks are right, and what they miss.")}>
@@ -61,8 +50,14 @@ export function PilotTab({ id }: { id: string }) {
         </Gate>
       </Card>
       <Card title={t("Known issues")} sub={t("Upload a CSV of problems you already know, to measure recall.")}>
-        <input ref={file} type="file" accept=".csv,text/csv" hidden aria-label={t("Known issues file")} onChange={(e) => void upload(e.target.files?.[0])} />
-        <Button variant="secondary" disabled={busy || !me.can("manage_systems")} onClick={() => file.current?.click()}>{t("Upload known issues")}</Button>
+        <Button variant="secondary" disabled={!me.can("manage_systems")} onClick={() => setImporting(true)}>{t("Upload known issues")}</Button>
+        <ImportDialog open={importing} onClose={() => setImporting(false)} label={t("Upload known issues")} closeLabel={t("Close")}
+          accept=".csv,text/csv" fileLabel={t("Known issues file")} hint={t("Drop a CSV of the problems you already know.")} target={t("PROD")}
+          apply={async (f) => {
+            const r = await uploadKnownIssues(id, await f.text());
+            await qc.invalidateQueries({ queryKey: ["v2"] });
+            return t("{n} known issues loaded, {m} rejected.", { n: r.records, m: r.rejected });
+          }} />
       </Card>
       <Card title={t("Tuning proposals")}>
         <Gate q={tune} empty={{ heading: t("No tuning proposals") }}>

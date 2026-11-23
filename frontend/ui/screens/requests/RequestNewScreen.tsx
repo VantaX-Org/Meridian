@@ -1,5 +1,6 @@
 "use client";
 
+import { Flow, REQUEST_STEPS } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -189,7 +190,7 @@ export function RequestNewScreen() {
   );
   return (
     <>
-      <Head title={t("New request")} context={t("Change or add master data")} />
+      <Head place="requests" stepper={<Flow label={t("Data request")} at={pre ? 1 : 0} steps={REQUEST_STEPS()} />} title={t("New request")} context={t("Change or add master data")} />
       <Split left={left} right={<EntryRules />} leftLabel={t("Request form")} rightLabel={t("Entry rules")} />
     </>
   );

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getSystemsExtended } from "@/lib/api/v2/runs";
 import { t } from "@/lib/v2/i18n";
+import { useCrumbs, type Place } from "@/ui/screens/flow";
 import { Button, EmptyState, ErrorState, Field, PageHeader, Select, Skeleton, useAletheia, useAletheiaScope, type AletheiaAnswer, type Severity, SeverityPill } from "@/ui/kit";
 
 /** One typed read, keyed by the fixture flag so fixture and live answers never mix. */
@@ -51,8 +52,9 @@ export function AskButton() {
   return <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>;
 }
 
-export function Head({ title, context, actions }: { title: string; context?: ReactNode; actions?: ReactNode }) {
-  return <PageHeader title={title} context={context} actions={<>{actions}<AskButton /></>} />;
+export function Head({ title, context, actions, place = "mdm", stepper }: { title: string; context?: ReactNode; actions?: ReactNode; place?: Place; stepper?: ReactNode }) {
+  const crumbs = useCrumbs();
+  return <PageHeader crumbs={crumbs(place, title)} stepper={stepper} title={title} context={context} actions={<>{actions}<AskButton /></>} />;
 }
 
 export const when = (iso: string | null | undefined): string => (iso ? iso.slice(0, 10) : t("n/a"));

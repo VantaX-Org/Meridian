@@ -625,6 +625,14 @@ export function profilesOf(systemId: string): SyncProfile[] {
   return [];
 }
 
+/** GET /systems/{id}/runs: the sync runs of the system's profiles, newest first. */
+export function syncRunsOf(systemId: string) {
+  return profilesOf(systemId).flatMap((p, i) => [
+    { id: `sr-${p.id}-b`, profile_id: p.id, started_at: "2026-10-16T04:00:00Z", completed_at: "2026-10-16T04:41:00Z", rows_extracted: 142310 - i * 70000, findings_delta: -214, golden_records_updated: 0, status: "completed", error_detail: null, ai_quality_score: 0.82 },
+    { id: `sr-${p.id}-a`, profile_id: p.id, started_at: "2026-10-09T04:00:00Z", completed_at: "2026-10-09T04:12:00Z", rows_extracted: 0, findings_delta: 0, golden_records_updated: 0, status: "failed", error_detail: "RFC connection timed out.", ai_quality_score: null },
+  ]).sort((a, b) => b.started_at.localeCompare(a.started_at));
+}
+
 function configLoadOf(systemId: string): ConfigLoad | { status: "never_loaded" } {
   if (systemId !== ECC.id) return { status: "never_loaded" };
   return {
@@ -731,9 +739,10 @@ export function runsFixtureResponse(path: string, params: Params): unknown {
     return found;
   }
   if (path === "/systems") return systemsExtended();
-  const sys = /^\/systems\/([^/]+)\/(objects|versions|profiles)$/.exec(path);
+  const sys = /^\/systems\/([^/]+)\/(objects|versions|profiles|runs)$/.exec(path);
   if (sys) {
     const id = decodeURIComponent(sys[1]);
+    if (sys[2] === "runs") return syncRunsOf(id).slice(0, Number(params.limit ?? 20));
     return sys[2] === "objects" ? objectsOf(id) : sys[2] === "versions" ? extractionsOf(id) : profilesOf(id);
   }
   const cfg = /^\/connectivity\/config-load\/([^/]+)$/.exec(path);

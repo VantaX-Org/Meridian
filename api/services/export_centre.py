@@ -381,6 +381,8 @@ def build(session: Session, tenant_id: str, dataset: str, params: dict,
         for r in rows[:ROW_CAP]:
             w.writerow([guard_formula_cell(r.get(c.key)) if c.kind in ("text", "mono") else _csv_cell(r.get(c.key))
                         for c in columns])
+        if len(rows) > ROW_CAP:  # same notice the xlsx carries: a cut file must say so, never look complete
+            w.writerow([f"Truncated to {ROW_CAP:,} rows; narrow the filter to export the rest.".replace(",", " ")])
         data = ("﻿" + buf.getvalue()).encode()  # BOM: Excel opens UTF-8 (umlauts, kana) correctly
         return rh.Generated(data, xlsx_filename(slug, ds.name, stamp)[:-5] + ".csv", MIME["csv"], version)
     sheets = [SheetSpec(title=title, columns=columns, rows=group) for title, group in _split(rows, p["split"], ds.name)]

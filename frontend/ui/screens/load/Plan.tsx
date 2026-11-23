@@ -6,6 +6,7 @@ import type { LoadObject } from "@/lib/api/v2/load-plan";
 import { Card, DataTable, DetailPanel, EmptyState, FieldChip, PageHeader, Sheet, StatTile, useAletheiaScope, useStacked } from "@/ui/kit";
 import { AskButton, Gate, Verdict, humanize, useBack } from "./common";
 import { useLoadPlan } from "./hooks";
+import { useCrumbs, Flow, LOAD_STEPS } from "@/ui/screens/flow";
 
 /** The order to load objects in, with the reason for each wait: the check tables the fields point at. */
 export function Plan() {
@@ -67,9 +68,10 @@ export function Plan() {
 
   const pick = (o: LoadObject) => { setSel(o.module); setTab("why"); };
 
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader back={back} title={t("Load order")} context={t("Load an object only after the objects its fields point at.")} actions={<AskButton />} />
+      <PageHeader crumbs={crumbs("load", t("Load order"))} stepper={<Flow label={t("Load journey")} at={1} steps={LOAD_STEPS()} />} back={back} title={t("Load order")} context={t("Load an object only after the objects its fields point at.")} actions={<AskButton />} />
       <div className="mx-col">
       <dl className="mx-tiles">
         <StatTile label={t("Objects")} value={String(objects.length)} />

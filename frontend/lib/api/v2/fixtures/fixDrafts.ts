@@ -54,5 +54,15 @@ export function fixDraftsWrite(method: string, path: string, body: unknown): unk
     d.note = (body as { note?: string } | undefined)?.note ?? null;
     return d;
   }
-  return refuse(409, "No extraction to draft against.");
+  const b = body as { module?: string; rule_id?: string } | undefined;
+  if (!b?.rule_id || !b.module) return refuse(409, "No extraction to draft against.");
+  if (state.some((x) => x.rule_id === b.rule_id && x.status !== "none")) return refuse(409, "This rule already has a fix.");
+  const d: FixDraft = {
+    rule_id: b.rule_id, module: b.module, field: "MARA.MTART", rule_text: "Material type is mandatory", field_text: "Material type",
+    status: "pending", source: "deterministic", steps: [{ op: "strip" }, { op: "upper" }], confidence: "low", errors: [], llm_tried: false, drafted_at: "2026-11-23T08:00:00+00:00",
+    shape: { total_failing: 44, blank: 0, masks: [{ mask: "aa", count: 44 }], other_masks: 0, lengths: [{ length: 2, count: 44 }], case: { upper: 0, lower: 44, mixed: 0 }, leading_ws: 0, trailing_ws: 0, inner_ws: 0, legend: LEGEND },
+    verification: { failing: 44, fixed: 44, rejected: 0, still_failing: 0, touched_passing: 0, broken: 0 },
+  };
+  state.unshift(d);
+  return d;
 }

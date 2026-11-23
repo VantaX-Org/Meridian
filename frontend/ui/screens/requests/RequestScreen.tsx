@@ -1,5 +1,6 @@
 "use client";
 
+import { Flow, REQUEST_STEPS, requestFlow } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,7 +8,7 @@ import {
   type RequestDetail,
 } from "@/lib/api/v2/requests";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, Confirm, DataTable, DetailPanel, Field, Input, useToast } from "@/ui/kit";
+import { Button, Card, Code, Confirm, DataTable, DetailPanel, Field, Input, useToast, ExportMenu } from "@/ui/kit";
 import { Async, Empty, Head, num, useRead, useScreenScope, when } from "../mdm/catalogue/shared";
 import { kindText, objectText, statusText } from "./RequestsScreen";
 import { PrecheckView } from "./RequestNewScreen";
@@ -178,7 +179,7 @@ export function RequestScreen({ id }: { id: string }) {
       {r.status === "draft" ? <Button variant="secondary" onClick={() => void run(() => validateRequest(id), t("The checks could not run"))}>{t("Validate")}</Button> : null}
       {r.status === "draft" ? <Button variant="primary" onClick={() => void run(() => submitRequest(id), t("The request could not be submitted"))}>{t("Submit")}</Button> : null}
       {r.status === "failed" ? <Button variant="secondary" onClick={() => void run(() => retryRequest(id, false), t("The retry could not start"))}>{t("Retry")}</Button> : null}
-      {r.has_export ? <Button variant="secondary" onClick={() => void run(() => exportRequest(id), t("The export could not be saved"))}>{t("Export")}</Button> : null}
+      {r.has_export ? <ExportMenu formats={[{ id: "file", label: t("Request file"), hint: t("The request with its history") }]} onExport={() => exportRequest(id)} /> : null}
       {["draft", "submitted", "in_approval"].includes(r.status) ? <Button variant="ghost" onClick={() => setAsk(true)}>{t("Cancel request")}</Button> : null}
     </>
   ) : null;
@@ -189,7 +190,7 @@ export function RequestScreen({ id }: { id: string }) {
   ];
   return (
     <>
-      <Head title={r?.title ?? `${t("Request")} ${id}`} context={<Code code={id} description={r ? statusText(r.status) : undefined} />} actions={actions} />
+      <Head place="requests" stepper={r ? <Flow label={t("Data request")} steps={REQUEST_STEPS()} {...requestFlow(r.status, statusText(r.status))} /> : undefined} title={r?.title ?? `${t("Request")} ${id}`} context={<Code code={id} description={r ? statusText(r.status) : undefined} />} actions={actions} />
       <Async q={q}>{(d) => (
         <DetailPanel idBase="cr" label={t("Request detail")} tabsLabel={t("Request views")} header={null} tabs={tabs} value={tab} onChange={setTab}>
           {tab === "overview" ? <Overview d={d} /> : null}

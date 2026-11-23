@@ -2,12 +2,13 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { createTeam, deleteAssignRule, deleteTeam, getAssignRules, getTeams, setAssignRuleEnabled, type Digest, type SlaPolicy } from "@/lib/api/v2/triage";
+import { createTeam, deleteAssignRule, deleteSlaPolicy, deleteTeam, getAssignRules, getTeams, reorderAssignRules, setAssignRuleEnabled, type Digest, type SlaPolicy, type Team } from "@/lib/api/v2/triage";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { useAssignable, useDigest, useSaveTriage, useSlaPolicies } from "@/lib/v2/approvals-queries";
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Code, DataTable, Field, Input, Select, Toggle, useToast, EmptyState } from "@/ui/kit";
 import { Row, Sec, errText } from "./shared";
+import { CalendarCard, EscalationCard, RemoveConfirm, RuleSheet, TeamSheet } from "./TriageConfig";
 
 export function Triage() {
   const fx = useFixture();
@@ -22,12 +23,16 @@ export function Triage() {
   const [edit, setEdit] = useState<Record<string, number>>({});
   const [dg, setDg] = useState<Digest | null>(null);
   const [team, setTeam] = useState("");
+  const [editTeam, setEditTeam] = useState<Team | null>(null);
+  const [addRule, setAddRule] = useState(false);
+  const [drop, setDrop] = useState<{ what: string; body: string; go: () => Promise<unknown>; done: string } | null>(null);
   const name = (id: string | null) => (id ? people.data?.find((p) => p.id === id)?.name ?? id : "");
   const policies = sla.data ?? [];
-  const refetch = () => { qc.invalidateQueries({ queryKey: ["v2", "triage-teams"] }); qc.invalidateQueries({ queryKey: ["v2", "triage-rules"] }); };
+  const refetch = () => { qc.invalidateQueries({ queryKey: ["v2", "triage-sla"] }); qc.invalidateQueries({ queryKey: ["v2", "triage-teams"] }); qc.invalidateQueries({ queryKey: ["v2", "triage-rules"] }); };
   const act = async (fn: () => Promise<unknown>, done: string) => { try { await fn(); toast(done, "good"); refetch(); } catch (e) { toast(errText(e), "bad"); } };
   const key = (p: SlaPolicy) => `${p.severity}/${p.module ?? ""}`;
   const changed = policies.filter((p) => edit[key(p)] !== undefined && edit[key(p)] !== p.resolve_minutes);
+  const move = (i: number, d: -1 | 1) => { const ids = (rules.data ?? []).map((r) => r.id); [ids[i], ids[i + d]] = [ids[i + d], ids[i]]; return act(() => reorderAssignRules(ids), t("Order saved.")); };
   const cur = dg ?? digest.data?.notifications?.digest ?? "off";
 
   return (
@@ -46,6 +51,7 @@ export function Triage() {
             ) },
             { key: "risk", label: t("At risk from"), align: "end", render: (p) => `${p.at_risk_pct}%` },
             { key: "bh", label: t("Hours"), render: (p) => (p.business_hours ? t("Business hours") : t("Around the clock")) },
+            { key: "reset", label: t("Reset"), render: (p) => (p.id ? <Button variant="ghost" onClick={() => setDrop({ what: t("the {sev} policy", { sev: p.severity }), body: t("{sev} items go back to the built-in time to resolve. Clocks already running keep their time.", { sev: p.severity }), go: () => deleteSlaPolicy(p.id!), done: t("Policy removed.") })}>{t("Use default")}</Button> : null) },
           ]} />
         <Field label={t("My digest")}>
           <Select value={cur} onChange={(e) => setDg(e.target.value as Digest)} options={[{ value: "daily", label: t("Daily") }, { value: "weekly", label: t("Weekly") }, { value: "off", label: t("Off") }]} />
@@ -60,7 +66,8 @@ export function Triage() {
             { key: "lead", label: t("Lead"), render: (r) => name(r.lead_user_id) },
             { key: "members", label: t("Members"), align: "end", render: (r) => String(r.member_ids.length) },
             { key: "open", label: t("Open items"), align: "end", render: (r) => String(r.open_items) },
-            { key: "act", label: t("Remove"), render: (r) => <Button variant="ghost" onClick={() => act(() => deleteTeam(r.id), t("Team removed."))}>{t("Remove")}</Button> },
+            { key: "edit", label: t("Edit"), render: (r) => <Button variant="ghost" onClick={() => setEditTeam(r)}>{t("Edit")}</Button> },
+            { key: "act", label: t("Remove"), render: (r) => <Button variant="ghost" onClick={() => setDrop({ what: t("team {name}", { name: r.name }), body: t("Rules that assign to this team are removed with it. {n} open items keep their owner.", { n: r.open_items }), go: () => deleteTeam(r.id), done: t("Team removed.") })}>{t("Remove")}</Button> },
           ]} />
         <Row>
           <Field label={t("New team")}><Input value={team} onChange={(e) => setTeam(e.target.value)} /></Field>
@@ -77,10 +84,17 @@ export function Triage() {
               { key: "match", label: t("Matches"), render: (r) => Object.entries(r.match).filter(([, v]) => v?.length).map(([k, v]) => <Code key={k} code={k} description={(v as string[]).join(", ")} />) },
               { key: "to", label: t("Assigns to"), render: (r) => name(r.assign_user_id) || teams.data?.find((x) => x.id === r.assign_team_id)?.name || "" },
               { key: "on", label: t("On"), render: (r) => <Toggle label={t("Rule {name} is on", { name: r.name })} checked={r.enabled} onChange={(v) => act(() => setAssignRuleEnabled(r, v), t("Rule updated."))} /> },
-              { key: "del", label: t("Remove"), render: (r) => <Button variant="ghost" onClick={() => act(() => deleteAssignRule(r.id), t("Rule removed."))}>{t("Remove")}</Button> },
+              { key: "mv", label: t("Move"), render: (r) => { const i = (rules.data ?? []).findIndex((x) => x.id === r.id); return <Row><Button variant="ghost" aria-label={t("Move {name} up", { name: r.name })} disabled={i <= 0} onClick={() => move(i, -1)}>{t("Up")}</Button><Button variant="ghost" aria-label={t("Move {name} down", { name: r.name })} disabled={i >= (rules.data ?? []).length - 1} onClick={() => move(i, 1)}>{t("Down")}</Button></Row>; } },
+              { key: "del", label: t("Remove"), render: (r) => <Button variant="ghost" onClick={() => setDrop({ what: t("rule {name}", { name: r.name }), body: t("Items it matched go to the next rule that matches."), go: () => deleteAssignRule(r.id), done: t("Rule removed.") })}>{t("Remove")}</Button> },
             ]} />
         )}
+        <Row><Button variant="secondary" onClick={() => setAddRule(true)}>{t("Add rule")}</Button></Row>
       </Card>
+      <EscalationCard people={people.data ?? []} />
+      <CalendarCard people={people.data ?? []} />
+      <TeamSheet team={editTeam} people={people.data ?? []} onClose={() => setEditTeam(null)} />
+      <RuleSheet open={addRule} people={people.data ?? []} teams={teams.data ?? []} onClose={() => setAddRule(false)} />
+      <RemoveConfirm what={drop?.what ?? null} body={drop?.body ?? ""} onCancel={() => setDrop(null)} onConfirm={() => { const d = drop; setDrop(null); if (d) void act(d.go, d.done); }} />
     </Sec>
   );
 }

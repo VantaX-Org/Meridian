@@ -5,17 +5,18 @@
  * usual band, new findings per run and the breaks held back under a raised minimum. Every figure is read from an
  * existing endpoint; what none supplies is left out (see the change report).
  */
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { groupByRun, useFeed } from "@/lib/api/next/monitor";
 import { getForesight } from "@/lib/api/v2/aletheia-engine";
 import { useHref } from "../load/common";
-import { acknowledgeBreak, getLearnedMonitors, type BreakMetric, type LearnedBreak } from "@/lib/api/v2/learned-monitors";
+import { acknowledgeBreak, getBreakEvidence, getLearnedMonitors, type BreakMetric, type LearnedBreak } from "@/lib/api/v2/learned-monitors";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { labelText, moduleText } from "@/lib/v2/labels";
 import { describeField } from "@/lib/v2/sap-fields";
-import { BandChart, BarList, Button, Card, Chip, EmptyState, FieldChip, ScoreRuler, SeverityPill, Skeleton, StatTile, useToast } from "@/ui/kit";
+import { BandChart, BarList, Badge, Button, Card, Chip, EmptyState, FieldChip, ScoreRuler, SeverityPill, Skeleton, StatTile, TrendArea, useToast } from "@/ui/kit";
 import { compactCount, score } from "../object/format";
+import { MdmSeriesCard, QueueCards } from "./MonitorSeries";
 import { day, sevLabel, sevOf, useQ } from "./shared";
 import "./monitorboard.css";
 
@@ -44,6 +45,20 @@ function Band({ b }: { b: LearnedBreak }) {
   );
 }
 
+const statusText = (s: LearnedBreak["status"]): string => ({
+  open: t("Open"), acknowledged: t("Acknowledged"), expected: t("Expected"), snoozed: t("Snoozed"), below_minimum: t("Under the minimum"),
+})[s];
+/** The time of the last breach with the zone it is shown in, so two readers in two places read the same moment. */
+const breachTime = (iso: string): string => new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "short" });
+
+/** The value of this monitor over the runs the break was judged against (GET /aletheia/monitors/{id}/evidence). */
+function RowSpark({ b }: { b: LearnedBreak }) {
+  const ev = useQuery({ queryKey: ["next", "monitor", "evidence", b.id], queryFn: () => getBreakEvidence(b.id), staleTime: 60_000 });
+  const pts = (ev.data?.runs ?? []).map((r) => ({ axis: r.run_id, title: r.run_at ? day(r.run_at) : t("Run {n}", { n: String(r.run_number ?? "") }), value: r.value }));
+  if (pts.length < 2) return null;
+  return <TrendArea points={pts} height={32} label={t("Value over the baseline runs")} emptyLabel="" />;
+}
+
 function Monitor1({ b, onAck }: { b: LearnedBreak; onAck: (id: string) => void }) {
   const href = useHref();
   const code = b.subject_code;
@@ -54,12 +69,15 @@ function Monitor1({ b, onAck }: { b: LearnedBreak; onAck: (id: string) => void }
     <li className="mb-row" data-testid="monitor-break">
       <div className="mb-line">
         <SeverityPill sev={sevOf(b.severity)} label={sevLabel(b.severity)} />
+        <Badge tone={done ? "good" : undefined}>{statusText(b.status)}</Badge>
         <span className="mb-kind">{kindText(b.kind)}</span>
         {code && code !== b.module ? <FieldChip code={code} description={desc ?? moduleText(b.module)} /> : <span className="mb-obj">{moduleText(b.module)}</span>}
       </div>
+      <p className="mb-note">{t("Last breach {when}", { when: breachTime(b.detected_at) })}</p>
       {banded(b) ? (
         <>
           <Band b={b} />
+          <RowSpark b={b} />
           <div className="mb-figs">
             <span>{t("Usual {a} to {b}", { a: fmt(b, b.expected_low ?? 0), b: fmt(b, b.expected_high ?? 0) })}</span>
             <span className="mb-obs">{fmt(b, b.observed)} {unitText(b.metric)}</span>
@@ -175,6 +193,8 @@ export function MonitorBoard() {
           </Card>
         </>
       )}
+      <QueueCards />
+      <MdmSeriesCard />
     </section>
   );
 }

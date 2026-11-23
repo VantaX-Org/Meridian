@@ -775,6 +775,17 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     u.status = statusOf(u);
     return userView(u);
   }
+  const mgr = /^\/users\/([^/]+)\/manager$/.exec(path)?.[1];
+  if (mgr && method === "PUT") {
+    const id = decodeURIComponent(mgr);
+    const u = s.users.find((x) => x.id === id);
+    if (!u) throw new AdminNotFound(path);
+    const to = (b.manager_id as string | null) ?? null;
+    if (to === id) throw new AdminRefused(422, "A user cannot be their own manager.");
+    if (to && !s.users.some((x) => x.id === to)) throw new AdminRefused(404, "Manager not found");
+    u.manager_id = to;
+    return { id, manager_id: to };
+  }
   if (userId && method === "DELETE") {
     const id = decodeURIComponent(userId);
     s.users = s.users.filter((u) => u.id !== id);
@@ -941,6 +952,13 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
     if (keyAct[2] === "revoke") {
       k.status = "revoked";
       k.revoked_at = NOW;
+      return clone(k);
+    }
+    if (method === "PATCH") {
+      if (k.status === "revoked") throw new AdminRefused(409, "A revoked key cannot be changed");
+      if (typeof b.name === "string") k.name = b.name;
+      if ("expires_at" in b) k.expires_at = (b.expires_at as string | null) ?? null;
+      if (Array.isArray(b.scopes)) k.grants = (b.scopes as { role_key: string; system_id?: string | null; module?: string | null }[]).map((g) => ({ id: nextId("kg"), role_key: g.role_key, role_name: s.roles.find((r) => r.key === g.role_key)?.name ?? g.role_key, system_id: g.system_id ?? null, system_name: g.system_id === SYS_ECC ? "ECC production" : null, module: g.module ?? null }));
       return clone(k);
     }
     if (method === "DELETE") {

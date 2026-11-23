@@ -48,7 +48,7 @@ export function Profile({ o, system, module }: { o: ObjectRun; system: string; m
       sub={(describeTable(cur.table) ? `${describeTable(cur.table)}, ` : "") + (cur.sampled ? t("Sampled: {n} of {m} rows", { n: compactCount(cur.rows), m: compactCount(cur.table_rows) }) : t("{n} rows", { n: compactCount(cur.rows) }))}
       action={<Select aria-label={t("Table")} value={cur.table} onChange={(e) => setTable(e.target.value)} options={tables.map((x) => ({ value: x.table, label: x.table }))} />}
     >
-      <DataTable columns={cols} rows={rows} rowKey={(r) => r.field} label={t("Fields")} height={480} />
+      <DataTable id="object-fields" columns={cols} rows={rows} rowKey={(r) => r.field} label={t("Fields")} height={480} />
     </Card>
     </div>
   );

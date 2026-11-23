@@ -11,7 +11,7 @@ import { useObjectRules, useReceipt } from "@/lib/v2/queries";
 import { RECORDS_PAGE, useFailingRecords, type FailingRecord } from "@/lib/api/next/failing";
 import { acceptAllInGroup, decide, downloadFixSheet } from "@/lib/api/work";
 import type { RuleRun, RuleScope } from "@/lib/api/v2/object";
-import { BarList, Button, Card, DataTable, EmptyState, ErrorState, FieldChip, Select, Skeleton, StatTile, YamlView, type Column } from "@/ui/kit";
+import { BarList, Button, Card, DataTable, EmptyState, ErrorState, FieldChip, Select, Skeleton, StatTile, YamlView, type Column, ExportMenu } from "@/ui/kit";
 import { compactCount, pct, sevLabel } from "./format";
 import { FailedReads } from "./FailedReads";
 import { useAct, useRuleReads } from "./queries";
@@ -237,7 +237,6 @@ function FailingRecordsTable({ id, run, module }: { id: string; run: string | nu
 
   const apply = useAct(() => decide(fixable.map((r) => ({ module, record_key: r.record_key, check_id: id, action: "accept" as const })), run ?? undefined), () => t("Fixes applied"));
   const applyAll = useAct(() => acceptAllInGroup(id, run ?? undefined), () => t("Every proposed fix applied"));
-  const sheet = useAct(() => downloadFixSheet({ version_id: run ?? undefined, module, check_id: id }), () => t("Workbook downloaded"));
   const assign = useAct(() => decide(chosen.map((r) => ({ module, record_key: r.record_key, check_id: id, action: "assign" as const, assignee: steward })), run ?? undefined), () => t("Records assigned"));
 
   const cols: Column<FailingRecord>[] = [
@@ -259,7 +258,7 @@ function FailingRecordsTable({ id, run, module }: { id: string; run: string | nu
               <span className="mx-muted">{t("{n} selected", { n: chosen.length })}</span>
               <Button variant="primary" disabled={!fixable.length || apply.isPending} onClick={() => apply.mutate(undefined)}>{t("Apply {n} fixes", { n: fixable.length })}</Button>
               <Button variant="secondary" disabled={applyAll.isPending} onClick={() => applyAll.mutate(undefined)}>{t("Apply all")}</Button>
-              <Button variant="secondary" disabled={sheet.isPending} onClick={() => sheet.mutate(undefined)}>{t("Add to workbook")}</Button>
+              <ExportMenu label={t("Add to workbook")} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => downloadFixSheet({ version_id: run ?? undefined, module, check_id: id })} />
               <Select aria-label={t("Assign to")} value={steward} onChange={(e) => setSteward(e.target.value)} options={[{ value: "", label: t("Choose a steward") }, ...stewards.map((s) => ({ value: s.id, label: s.name ?? s.email }))]} />
               <Button variant="secondary" disabled={!chosen.length || !steward || assign.isPending} onClick={() => assign.mutate(undefined)}>{t("Assign")}</Button>
             </div>

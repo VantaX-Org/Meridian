@@ -54,10 +54,10 @@ export function Trend({ o, system, module }: { o: ObjectRun; system: string; mod
           points={runs.map((r) => ({ axis: r.id, title: `${day(r.run_at)}: ${score(r.objects[module]?.score ?? 0)}`, value: r.objects[module]?.score ?? null }))}
           label={t("Score by run")} emptyLabel={t("Not enough runs to draw a trend yet")} height={160}
         />
-        {runRows.length ? <DataTable columns={runCols} rows={runRows} rowKey={(r) => r.id} label={t("Score by run")} height={240} /> : null}
+        {runRows.length ? <DataTable id="object-trend-runs" columns={runCols} rows={runRows} rowKey={(r) => r.id} label={t("Score by run")} height={240} /> : null}
       </Card>
       <Card title={t("What changed since the run before")} sub={o.previous ? undefined : t("This is the first run, so there is nothing to compare.")}>
-        {ch.isLoading ? <Skeleton lines={3} label={t("Loading changes")} /> : rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => `${r.kind}:${r.check_id}`} label={t("Changed rules")} height={280} /> : <EmptyState heading={t("No rule changed between these two runs.")} body={t("Pick two other runs to compare.")} />}
+        {ch.isLoading ? <Skeleton lines={3} label={t("Loading changes")} /> : rows.length ? <DataTable id="object-trend-changes" columns={cols} rows={rows} rowKey={(r) => `${r.kind}:${r.check_id}`} label={t("Changed rules")} height={280} /> : <EmptyState heading={t("No rule changed between these two runs.")} body={t("Pick two other runs to compare.")} />}
       </Card>
     </div>
   );

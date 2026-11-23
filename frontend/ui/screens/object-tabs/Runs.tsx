@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { withFixture, useFixture } from "@/lib/api/v2/fixture";
 import { t } from "@/lib/v2/i18n";
 import type { VersionHead } from "@/lib/api/v2/runs";
-import { Card, DataTable, EmptyState, ErrorState, Skeleton, Stepper, type Column } from "@/ui/kit";
+import { Card, DataTable, EmptyState, ErrorState, Skeleton, type Column } from "@/ui/kit";
 import { dqsOf, score } from "@/ui/screens/object/format";
 import type { ObjectRun } from "@/ui/screens/object/useObjectRun";
 import { objectPath, useTabChat } from "./TabFrame";
@@ -21,8 +21,6 @@ export function Runs({ o, system, module }: { o: ObjectRun; system: string; modu
   if (o.runsError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={o.refetchRuns} />;
   const rows = o.heads.filter((h) => h.dqs_summary?.[module]);
   if (!rows.length) return <EmptyState heading={t("This object has no runs yet.")} body={t("Pull the object from Home to start its first run.")} />;
-  // ponytail: the run list carries no cycle field, so the stepper shows the newest five runs oldest first.
-  const steps = rows.slice(0, 5).reverse().map((h) => ({ id: h.id, label: h.label ?? `#${h.run_number ?? ""}` }));
   const cols: Column<VersionHead>[] = [
     { key: "n", label: t("Run"), render: (h) => <>{h.run_number ? `#${h.run_number} ` : ""}{h.label ?? ""}</>, sort: (h) => h.run_at },
     { key: "at", label: t("Date"), render: (h) => h.run_at.slice(0, 16).replace("T", " "), sort: (h) => h.run_at },
@@ -33,9 +31,8 @@ export function Runs({ o, system, module }: { o: ObjectRun; system: string; modu
   ];
   return (
     <div className="mx-col">
-      <Card title={t("Latest runs")}><Stepper steps={steps} current={Math.max(0, steps.findIndex((x) => x.id === (o.runId ?? "")))} label={t("Latest runs")} /></Card>
       <Card title={t("All runs")} sub={t("Choose a run to see the other screens as of that run.")}>
-        <DataTable columns={cols} rows={rows} rowKey={(h) => h.id} label={t("Runs")} selected={o.runId ?? undefined} onSelect={(h) => router.push(withFixture(o.hrefWith(objectPath(system, module, "runs"), { run: h.id }), fx))} />
+        <DataTable id="object-runs" columns={cols} rows={rows} rowKey={(h) => h.id} label={t("Runs")} selected={o.runId ?? undefined} onSelect={(h) => router.push(withFixture(o.hrefWith(objectPath(system, module, "runs"), { run: h.id }), fx))} />
       </Card>
     </div>
   );

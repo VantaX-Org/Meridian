@@ -7,14 +7,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentUser } from "@/context/auth-context";
 import { getAttention } from "@/lib/api/v2/attention";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
-import { DIMENSIONS, type LandscapeCell } from "@/lib/api/v2/types";
 import { startObjects, usePortfolio, type PortfolioRow } from "@/lib/api/next/portfolio";
 import { useLandscape } from "@/lib/v2/queries";
-import { relTime } from "@/lib/v2/format";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
-import { DASH, dimensionShort, int, VERDICT_LABEL } from "@/lib/v2/score";
+import { DASH, int } from "@/lib/v2/score";
 import {
-  Button, Card, Confirm, EmptyState, ErrorState, MasterList, ScoreRuler, Skeleton, useAletheia, useAletheiaScope, useStacked, useToast,
+  Button, Card, Confirm, DataTable, EmptyState, ErrorState, FieldChip, KpiStrip, MasterList, PageHeader, ScoreRuler, Skeleton, useAletheia, useAletheiaScope, useStacked, useToast,
   type RulerMark, type Severity,
 } from "@/ui/kit";
 import { actionLabel, objectPath, stepLabel } from "./links";
@@ -23,62 +21,7 @@ const sevLabel = (s: string): string => (s === "critical" ? t("Critical") : s ==
 const toneOf = (n: number | null): "go" | "watch" | "stop" => (n === null ? "stop" : n >= 85 ? "go" : n >= 70 ? "watch" : "stop");
 const greeting = (): string => { const h = new Date().getHours(); return h < 12 ? t("Good morning") : h < 18 ? t("Good afternoon") : t("Good evening"); };
 
-/** A small trend line over the last runs of one object. Real points only; fewer than two draws nothing. */
 const RULER_ROWS = 12;
-const FIRST_OBJECTS = 6;
-
-function Trend({ points, label }: { points: number[]; label: string }) {
-  if (points.length < 2) return null;
-  const lo = Math.min(...points), hi = Math.max(...points), span = hi - lo || 1;
-  const d = points.map((p, i) => `${(i * 120) / (points.length - 1)},${28 - ((p - lo) * 24) / span}`).join(" ");
-  return <svg className="mx-home-trend" viewBox="0 0 120 32" role="img" aria-label={label}><polyline points={d} /></svg>;
-}
-
-function ObjectCard({ row, cell, system, href }: { row: PortfolioRow; cell: LandscapeCell | undefined; system: string; href: string }) {
-  const score = row.composite_score;
-  const tone = toneOf(score);
-  const held = cell?.breaches.length ?? 0;
-  const capped = row.capped && row.measured_score !== null && score !== null && row.measured_score > score;
-  return (
-    <li className="mx-home-obj" data-tone={tone}>
-      <div className="mx-home-obj-h">
-        <div>
-          <h3><Link className="mx-home-objlink" href={href}>{row.label}</Link></h3>
-          <p className="mx-home-sub">{system}</p>
-        </div>
-        {cell ? <span className="mx-home-pill" data-tone={tone}>{VERDICT_LABEL[cell.verdict]}</span> : null}
-      </div>
-      <div className="mx-home-score">
-        <span className="mx-home-n">{score === null ? DASH : int(score)}</span>
-        <Trend points={row.trend} label={t("Score over recent runs")} />
-      </div>
-      {capped ? <p className="mx-home-cap">{t("Measured {n}, held by {k} critical rules", { n: int(row.measured_score ?? 0), k: held })}</p> : null}
-      {cell ? (
-        <ul className="mx-home-dims" aria-label={t("Dimension scores")}>
-          {DIMENSIONS.map((d) => {
-            const v = cell.dimensions[d.key];
-            return (
-              <li key={d.key}>
-                <span>{dimensionShort(d.key)}</span>
-                <span className="mx-home-bar" data-tone={toneOf(v)}><i style={{ inlineSize: `${Math.max(0, Math.min(100, v ?? 0))}%` }} /></span>
-                <span className="mx-home-v">{v === null ? DASH : int(v)}</span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
-      <dl className="mx-home-stats">
-        <div><dt>{t("Records")}</dt><dd>{cell?.records_checked == null ? DASH : int(cell.records_checked)}</dd></div>
-        <div><dt>{t("Rules")}</dt><dd>{cell?.rules_measured == null ? DASH : int(cell.rules_measured)}</dd></div>
-        <div><dt>{t("Open work")}</dt><dd>{cell ? int(cell.open_work) : DASH}</dd></div>
-      </dl>
-      <div className="mx-home-obj-f">
-        <span className="mx-home-sub">{stepLabel(row.step ?? "pull")}</span>
-        <Button variant="secondary" href={href}>{actionLabel(row)}</Button>
-      </div>
-    </li>
-  );
-}
 
 /** The first screen: where every object stands against the gates, what moved, and what needs a person. */
 export function Home() {
@@ -96,7 +39,6 @@ export function Home() {
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [allMarks, setAllMarks] = useState(false);
-  const [allObjects, setAllObjects] = useState(false);
   const href = (p: string) => withFixture(p, fx);
 
   const rows = pf.data?.objects ?? [];
@@ -132,14 +74,9 @@ export function Home() {
 
   const strip = land.data?.status_strip;
   const s = land.data?.sentence;
-  const run = [
-    strip?.run_at ? t("Last run {when}", { when: relTime(strip.run_at) }) : "",
-    strip?.records_checked != null ? t("{n} records checked", { n: int(strip.records_checked) }) : "",
-    strip?.rules_measured != null ? t("{n} rules measured", { n: int(strip.rules_measured) }) : "",
-    strip?.scored_in_s != null ? t("scored in {n} s", { n: int(strip.scored_in_s) }) : "",
-  ].filter(Boolean).join(", ");
   const sentence = s ? t("{held} of {n} objects score under 85, and {crit} critical rules are over their limit.", { held: s.held_under_85, n: s.objects, crit: s.critical_over_tolerance }) : "";
 
+  const cellOf = (r: PortfolioRow) => cells.find((c) => c.system_id === r.system_id && c.module === r.module);
   const sysName = new Map((land.data?.systems ?? []).map((x) => [x.id, x.name]));
   const ranked = [...scored].sort((a, b) => (a.composite_score ?? 0) - (b.composite_score ?? 0));
   const marks: RulerMark[] = (allMarks ? ranked : ranked.slice(0, RULER_ROWS)).map((r) => ({
@@ -165,16 +102,30 @@ export function Home() {
 
   return (
     <div className="mx-home">
-      <header className="mx-home-head">
-        <div>
-          <h1>{me?.name ? t("{greeting}, {name}", { greeting: greeting(), name: me.name.split(" ")[0] }) : greeting()}</h1>
-          <p className="mx-home-sub">{[run, sentence].filter(Boolean).join(". ")}</p>
-        </div>
-        <div className="mx-home-actions">
+      <PageHeader
+        title={me?.name ? t("{greeting}, {name}", { greeting: greeting(), name: me.name.split(" ")[0] }) : greeting()}
+        crumbs={[{ label: t("Home") }]}
+        meta={[
+          strip?.run_at ? t("Last run {when}", { when: new Date(strip.run_at).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "short" }) }) : null,
+          strip?.records_checked != null ? t("{n} records checked", { n: int(strip.records_checked) }) : null,
+          strip?.rules_measured != null ? t("{n} rules measured", { n: int(strip.rules_measured) }) : null,
+          strip?.licence_valid_to ? t("Licence valid to {d}", { d: strip.licence_valid_to.slice(0, 10) }) : null,
+        ]}
+        actions={<>
           <Button variant="primary" onClick={() => setAsk(true)} disabled={!rows.length || busy}>{t("Pull every object")}</Button>
           <Button variant="secondary" href={href("/o")}>{t("All objects")}</Button>
-        </div>
-      </header>
+        </>}
+      />
+      {sentence ? <p className="mx-home-sub">{sentence}</p> : null}
+
+      <KpiStrip label={t("Portfolio at a glance")} cells={[
+        { label: t("Objects"), value: int(rows.length), href: href("/o") },
+        { label: t("Scored"), value: scored.length ? int(scored.length) : null },
+        { label: t("Ready"), value: scored.length ? int(scored.filter((r) => (r.composite_score ?? 0) >= 85).length) : null, note: t("Score 85 or more") },
+        { label: t("Held under 85"), value: s ? int(s.held_under_85) : null },
+        { label: t("Critical rules over limit"), value: s ? int(s.critical_over_tolerance) : null },
+        { label: t("Open work"), value: cells.length ? int(cells.reduce((n, c) => n + (c.open_work ?? 0), 0)) : null, href: href("/work") },
+      ]} />
 
       <Card title={t("Needs your attention")} sub={att.data ? t("{n} items, most urgent first", { n: items.length }) : undefined}>
         {att.isError ? <ErrorState heading={t("The list could not be loaded")} retryLabel={t("Try again")} onRetry={() => void att.refetch()} />
@@ -188,15 +139,22 @@ export function Home() {
       </Card>
 
       {rows.length ? (
-        <>
-          <ul className="mx-home-grid" aria-label={t("Next action per object")}>
-            {(allObjects ? rows : rows.slice(0, FIRST_OBJECTS)).map((r) => (
-              <ObjectCard key={r.module + r.system_id} row={r} cell={cells.find((c) => c.system_id === r.system_id && c.module === r.module)}
-                system={systems.find((x) => x.id === r.system_id)?.name ?? ""} href={href(objectPath(r, systems))} />
-            ))}
-          </ul>
-          {rows.length > FIRST_OBJECTS ? <Button variant="secondary" onClick={() => setAllObjects((v) => !v)}>{allObjects ? t("Show fewer") : t("Show all {n} objects", { n: rows.length })}</Button> : null}
-        </>
+        <DataTable<PortfolioRow>
+          id="home-objects"
+          label={t("Next action per object")}
+          rows={rows}
+          rowKey={(r) => r.module + r.system_id}
+          height={360}
+          columns={[
+            { key: "label", label: t("Object"), sort: (r) => r.label, render: (r) => <><Link href={href(objectPath(r, systems))}><strong>{r.label}</strong></Link> <FieldChip code={r.module} description={r.label} /></> },
+            { key: "system", label: t("System"), sort: (r) => (r.system_id && sysName.get(r.system_id)) || "", render: (r) => (r.system_id && sysName.get(r.system_id)) || DASH },
+            { key: "score", label: t("Score"), align: "end", sort: (r) => r.composite_score ?? -1, render: (r) => <span className="mx-num">{r.composite_score === null ? DASH : int(r.composite_score)}</span> },
+            { key: "measured", label: t("Measured"), align: "end", defaultHidden: true, sort: (r) => r.measured_score ?? -1, render: (r) => <span className="mx-num">{r.measured_score === null ? DASH : int(r.measured_score)}</span> },
+            { key: "step", label: t("Cycle step"), sort: (r) => r.step ?? "", render: (r) => stepLabel(r.step ?? "pull") },
+            { key: "open", label: t("Open work"), align: "end", sort: (r) => cellOf(r)?.open_work ?? -1, render: (r) => <span className="mx-num">{cellOf(r) ? int(cellOf(r)?.open_work ?? 0) : DASH}</span> },
+            { key: "next", label: t("Next action"), render: (r) => <Button variant="secondary" href={href(objectPath(r, systems))}>{actionLabel(r)}</Button> },
+          ]}
+        />
       ) : null}
 
       <div className="mx-home-panels">

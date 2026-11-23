@@ -13,8 +13,6 @@ import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { failureText } from "@/lib/v2/errors";
 import { installViewAsHeader, ROLE_NAMES, setShareMode, setViewAs, VIEW_AS_ROLES } from "@/lib/v2/view-as";
 import { formatDate } from "@/lib/format";
-import { useStatus } from "@/lib/v2/queries";
-import { useSandbox } from "@/lib/v2/step10-queries";
 import { useV2Session } from "@/lib/v2/hooks";
 import { useSystemsExtended, useV2Jobs } from "@/lib/v2/runs-queries";
 import { firstSentence, JOB_KIND_LABEL, jobObject, openFailures } from "@/lib/v2/jobs";
@@ -33,7 +31,7 @@ const onLine = (fire: () => void) => {
 };
 
 /**
- * One band under the top bar, one at a time: offline first, then sandbox, then viewing as a role or a shared link,
+ * One band under the top bar, one at a time: offline first, then viewing as a role or a shared link,
  * each with its way out. The demo notice is DemoBar. Also installs the X-View-As-Role request header once.
  */
 export function Banners() {
@@ -41,8 +39,6 @@ export function Banners() {
   const session = useV2Session();
   const qc = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-  const sandbox = useStatus().data?.sandbox === true;
-  const s = useSandbox(sandbox).data;
   useEffect(() => installViewAsHeader(), []);
   const stop = async () => {
     setError(null);
@@ -52,15 +48,6 @@ export function Banners() {
   };
   if (offline) {
     return <div className="mx-banner" data-tone="warn" role="status" data-testid="offline-banner"><p><strong>{t("You are offline.")}</strong> {t("Changes will not save until the connection is back.")}</p></div>;
-  }
-  if (sandbox) {
-    const since = s?.since ? (s.by ? t("Since {when}, by {who}.", { when: formatDate(s.since, "datetime"), who: s.by }) : t("Since {when}.", { when: formatDate(s.since, "datetime") })) : null;
-    return (
-      <div className="mx-banner" data-tone="warn" role="status" data-testid="sandbox-banner">
-        <p><strong>{t("Sandbox: nothing leaves this deployment.")}</strong> {since}</p>
-        <Link href="/admin/settings#sandbox">{t("Sandbox settings")}</Link>
-      </div>
-    );
   }
   if (session.viewAs) {
     return (
@@ -180,5 +167,5 @@ export function usePaletteSearch(q: string): Command[] {
   const nl = useNl(question ?? "", Boolean(question)).data;
   if (!debounced) return [];
   if (question) return nl ? [{ id: "__nl", label: nl.explanation, hint: t("Open"), run: () => router.push(withFixture(nlTarget(nl), fx)) }] : [];
-  return (groups ?? []).flatMap((g, i) => g.items.map((x) => ({ id: `found-${i}-${x.id}`, label: x.title, hint: tx(g.label), run: () => router.push(withFixture(x.href, fx)) })));
+  return (groups ?? []).flatMap((g, i) => g.items.map((x) => ({ id: `found-${i}-${x.id}`, label: x.title, hint: tx(g.label), group: tx(g.label), run: () => router.push(withFixture(x.href, fx)) })));
 }

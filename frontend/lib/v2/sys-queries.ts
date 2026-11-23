@@ -14,6 +14,7 @@ import {
   getZGhost,
   getZMapping,
   getZProfile,
+  getZEntry,
   getZRegistry,
   getZReport,
   getZRules,
@@ -72,6 +73,10 @@ export function useConfigCompare(system: string, object: string | null) {
 export function useZRegistry() {
   const f = useFixture();
   return useQuery({ queryKey: sysKeys.z(f, "registry"), queryFn: getZRegistry, retry: false });
+}
+export function useZEntry(id: string) {
+  const f = useFixture();
+  return useQuery({ queryKey: sysKeys.z(f, "entry", id), queryFn: () => getZEntry(id), enabled: Boolean(id), retry: false });
 }
 export function useZProfile(id: string, enabled = true) {
   const f = useFixture();

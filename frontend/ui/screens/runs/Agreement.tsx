@@ -11,6 +11,7 @@ import { runPath } from "./util";
 import { useRun } from "@/lib/api/next/runs";
 import { modulesOf } from "./util";
 import "./runs.css";
+import { useCrumbs, Cycle as CleanCycle } from "@/ui/screens/flow";
 
 const statusText = (s: AgreementRow["status"]) => ({ matched: t("Agrees"), different: t("Differs"), missing: t("Missing") })[s];
 
@@ -33,7 +34,8 @@ export function Agreement({ id }: { id: string }) {
     },
   });
   const upload = () => sheet.open("upload", { run: id, module: run.data ? modulesOf(run.data)[0] ?? "" : "" });
-  const header = <PageHeader title={t("Agreement with the cleaned file")} context={t("How far a later run holds what you uploaded.")}
+  const crumbs = useCrumbs();
+  const header = <PageHeader crumbs={crumbs("runs", t("Agreement with the cleaned file"))} stepper={<CleanCycle at="compare" />} title={t("Agreement with the cleaned file")} context={t("How far a later run holds what you uploaded.")}
     actions={<span className="rn-row-actions"><Button variant="secondary" href={href(runPath(id))}>{t("Back to the run")}</Button><Button onClick={upload}>{t("Upload cleaned file")}</Button></span>} />;
   if (q.isLoading) return <div className="mx-col"><JobHairline />{header}<Skeleton lines={6} label={t("Loading the agreement")} /></div>;
   if (q.isError || !d) {

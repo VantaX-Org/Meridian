@@ -6,6 +6,7 @@ import type { S4Area } from "@/lib/api/v2/s4";
 import { Card, DataTable, EmptyState, FieldChip, MasterList, PageHeader, Sheet, StatTile, useAletheiaScope, useStacked, type Severity, SeverityPill } from "@/ui/kit";
 import { AskButton, Gate, humanize, pct, useBack } from "./common";
 import { useS4 } from "./hooks";
+import { useCrumbs, Flow, LOAD_STEPS } from "@/ui/screens/flow";
 
 const sevOf = (s: string): Severity => (s === "red" ? "critical" : s === "amber" ? "medium" : s === "green" ? "low" : "info");
 const statusLabel = (s: string): string => (s === "red" ? t("Failing") : s === "amber" ? t("Warning") : s === "green" ? t("Passing") : t("Not evaluated"));
@@ -60,9 +61,10 @@ export function S4() {
     </Card>
   ) : <EmptyState heading={t("Choose an area")} body={t("Its checks appear here.")} />;
 
+  const crumbs = useCrumbs();
   return (
     <>
-      <PageHeader back={back} title={t("S/4 readiness")} context={t("Rules that must pass before the move to S/4HANA.")} actions={<AskButton />} />
+      <PageHeader crumbs={crumbs("load", t("S/4 readiness"))} stepper={<Flow label={t("Load journey")} at={3} steps={LOAD_STEPS()} />} back={back} title={t("S/4 readiness")} context={t("Rules that must pass before the move to S/4HANA.")} actions={<AskButton />} />
       <dl className="mx-tiles">
         <StatTile label={t("Rules")} value={String(d?.rules ?? 0)} />
         <StatTile label={t("Evaluated")} value={String(d?.evaluated ?? 0)} />
