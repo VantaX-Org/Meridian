@@ -331,8 +331,8 @@ export function Monitor({ set = "changes" }: { set?: MonitorSet }) {
       <PageHeader title={set === "changes" ? t("Monitor") : t("Controls")}
         context={set === "changes" ? t("What changed, what came back and what is drifting, after every run.") : t("The configuration, contracts, load gate and schedules that guard each run.")}
         actions={<><InsightsNav here={set === "changes" ? "monitor" : "controls"} /><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
-      {set === "changes" ? <MonitorBoard /> : null}
       <Tabs idBase="b8-mon" label={t("Monitor views")} items={items} value={view} onChange={(id) => setView(id as View)} />
+      {set === "changes" ? <MonitorBoard /> : null}
       <div id={`b8-mon-panel-${view}`} role="tabpanel" aria-labelledby={`b8-mon-tab-${view}`} className="b8-stack">
         {view === "feed" ? <Feed /> : null}
         {view === "objects" ? <Objects /> : null}

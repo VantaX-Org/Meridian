@@ -106,7 +106,7 @@ export function AdminBoard() {
           <dl className="ab-tiles"><StatTile label={t("People")} value={people.length} /><StatTile label={t("Roles in use")} value={byRole.length} /></dl>
           <ul className="ab-chips">{byRole.map(([r, n]) => <li key={r}>{roleText(r)}: {n}</li>)}</ul>
           <div className="ab-actions">
-            <Button variant="primary" href={href("/admin/users")}>{t("Invite a person")}</Button>
+            <Button variant="secondary" href={href("/admin/users")}>{t("Invite a person")}</Button>
             <Button variant="secondary" href={href("/admin/roles")}>{t("Edit roles")}</Button>
           </div>
         </Card>

@@ -7,8 +7,8 @@ import { gapText } from "@/lib/v2/labels";
 import { errorSentence } from "@/lib/api/v2/client";
 import { deleteWave, downloadWaveReport, draftBlockerFixBatch, runWave, signOffWave, updateWave } from "@/lib/api/v2/reports";
 import type { WaveBlocker, WaveObject } from "@/types/api";
-import { Button, Card, Confirm, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, StatTile, TrendArea, useAletheiaScope, useToast } from "@/ui/kit";
-import { AskButton, Gate, humanize, pct, useHref, Verdict, when } from "./common";
+import { ActionMenu, Button, Card, Confirm, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, StatTile, TrendArea, useAletheiaScope, useToast } from "@/ui/kit";
+import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, useCockpit } from "./hooks";
 
 const STATUS_FORECAST = (s: string): string => (s === "passing" ? t("Passing now") : s === "projected" ? t("On track") : s === "not_converging" ? t("Not converging") : t("Not enough runs"));
@@ -16,6 +16,7 @@ const STATUS_FORECAST = (s: string): string => (s === "passing" ? t("Passing now
 /** One wave: readiness verdict, per object source / projected / actual target DQS with reasons, trend, blockers and sign-off. */
 export function Wave({ id }: { id: string }) {
   useInterfaceLang();
+  const back = useBack("/load/waves", t("Back to waves"));
   const q = useCockpit(id);
   const href = useHref();
   const qc = useQueryClient();
@@ -49,15 +50,17 @@ export function Wave({ id }: { id: string }) {
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={back}
         title={c?.wave.name ?? t("Wave")}
         context={t("Readiness of every object in the wave against the target system.")}
         actions={<>
           <Button variant="primary" disabled={run.isPending} onClick={() => run.mutate()}>{t("Run wave analysis")}</Button>
           <Button variant="secondary" disabled={sign.isPending || c?.verdict !== "go"} onClick={() => sign.mutate()}>{t("Sign off")}</Button>
-          <Button variant="ghost" disabled={busy !== null} onClick={() => dl("xlsx")}>{t("Download Excel")}</Button>
-          <Button variant="ghost" disabled={busy !== null} onClick={() => dl("pdf")}>{t("Download PDF")}</Button>
-          <Button variant="ghost" onClick={() => setConfirm(true)}>{t("Delete wave")}</Button>
+          <ActionMenu label={t("More actions")} items={[
+            { id: "xlsx", label: t("Download Excel"), disabled: busy !== null, onClick: () => dl("xlsx") },
+            { id: "pdf", label: t("Download PDF"), disabled: busy !== null, onClick: () => dl("pdf") },
+            { id: "del", label: t("Delete wave"), onClick: () => setConfirm(true) },
+          ]} />
           <AskButton />
         </>}
       />

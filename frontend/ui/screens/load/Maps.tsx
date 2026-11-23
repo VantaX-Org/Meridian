@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { addFieldMapping, decideValueEntry, deleteFieldMapping, deleteValueEntry, seedFieldMap, updateFieldMapping, type FieldMapping, type ValueEntry } from "@/lib/api/v2/migration";
 import { Button, Card, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Select, Tabs, Toggle, useAletheiaScope, useToast } from "@/ui/kit";
-import { AskButton, Gate, humanize, when } from "./common";
+import { AskButton, Gate, humanize, when, useBack } from "./common";
 import { invalidateLoad, useFieldMap, useLoadPlan, useValueMap } from "./hooks";
 
 const DEST = [{ value: "s4hana", label: "S/4HANA" }, { value: "ecc", label: "ECC" }];
@@ -13,6 +13,7 @@ const DEST = [{ value: "s4hana", label: "S/4HANA" }, { value: "ecc", label: "ECC
 /** Field map and value map between source and target: confirm, add, seed, approve, delete. */
 export function Maps() {
   useInterfaceLang();
+  const back = useBack();
   const qc = useQueryClient();
   const toast = useToast();
   const plan = useLoadPlan();
@@ -46,7 +47,7 @@ export function Maps() {
 
   return (
     <>
-      <PageHeader title={t("Field and value maps")} context={t("How source fields and values become target fields and values")} actions={<><Button onClick={() => seed.mutate()} disabled={seed.isPending}>{t("Propose from the dictionary")}</Button><AskButton /></>} />
+      <PageHeader back={back} title={t("Field and value maps")} context={t("How source fields and values become target fields and values")} actions={<><Button onClick={() => seed.mutate()} disabled={seed.isPending}>{t("Propose from the dictionary")}</Button><AskButton /></>} />
       <div className="mx-col">
       <div className="mx-links">
         <Field label={t("Object")}><Select value={mod} onChange={(e) => setPick(e.target.value)} options={(mods.length ? mods : [mod]).map((m) => ({ value: m, label: `${m} ${humanize(m)}` }))} /></Field>

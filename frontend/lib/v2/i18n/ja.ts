@@ -15061,4 +15061,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "The delta is sent. The move is complete.": "差分を送信しました。移行は完了です。",
   "Back to Load": "ロードに戻る",
   "Step {n} of {total}: {name}": "ステップ {n}/{total}: {name}",
+  "Back to Administration": "管理に戻る",
+  "Review the load order": "ロード順序を確認",
+  "Back to migration runs": "移行実行に戻る",
+  "Back to paired systems": "ペアのシステムに戻る",
+  "Back to waves": "ウェーブに戻る",
 };

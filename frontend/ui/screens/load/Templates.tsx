@@ -9,7 +9,7 @@ import {
   type TargetTemplate, type WorkbookReport,
 } from "@/lib/api/v2/migration";
 import { Button, Card, DataTable, EmptyState, Field, FieldChip, PageHeader, Select, StatTile, useAletheiaScope, useToast } from "@/ui/kit";
-import { AskButton, Gate, humanize, when } from "./common";
+import { AskButton, Gate, humanize, when, useBack } from "./common";
 import { invalidateLoad, useLoadPlan, useTemplateList } from "./hooks";
 
 type Unmapped = { sheet: string; header: string; id: string; label: string; mandatory: boolean };
@@ -17,6 +17,7 @@ type Unmapped = { sheet: string; header: string; id: string; label: string; mand
 /** Target templates: upload a kept workbook, map the columns the dictionary missed, check it, hand it over. */
 export function Templates() {
   useInterfaceLang();
+  const back = useBack();
   const fx = useFixture();
   const qc = useQueryClient();
   const toast = useToast();
@@ -48,7 +49,7 @@ export function Templates() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={back}
         title={t("Target templates")}
         context={t("Kept workbooks that the load reads and fills")}
         actions={<>

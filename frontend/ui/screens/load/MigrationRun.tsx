@@ -12,7 +12,7 @@ import {
 import { useDecideLoad, useLoadApproval, useLoadSimulation } from "@/lib/api/next/load";
 import { Button, Card, Confirm, DataTable, EmptyState, FieldChip, Input, PageHeader, Select, SeverityPill, StatTile, Tabs, useAletheiaScope, useToast, type Severity } from "@/ui/kit";
 import { gapText, labelText } from "@/lib/v2/labels";
-import { AskButton, Gate, humanize, pct, useHref, Verdict, when } from "./common";
+import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, useRecon, useRecords, useRun } from "./hooks";
 import { modeLabel } from "./MigrationRuns";
 import { displayKey } from "@/lib/v2/work";
@@ -23,6 +23,7 @@ const Sev = ({ s }: { s: string }) => <SeverityPill sev={s as Severity} label={s
 /** One migration run: gaps, findings, load simulation, reconciliation, records, four-eyes approval and load files. */
 export function MigrationRun({ id }: { id: string }) {
   useInterfaceLang();
+  const back = useBack("/load/runs", t("Back to migration runs"));
   const q = useRun(id);
   const href = useHref();
   const router = useRouter();
@@ -50,11 +51,11 @@ export function MigrationRun({ id }: { id: string }) {
 
   return (
     <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the run")}>
-      <PageHeader
+      <PageHeader back={back}
         title={t("Run {run}", { run: id })}
         context={run ? `${modeLabel(run.mode)}, ${run.modules.map(humanize).join(", ")}` : ""}
         actions={<>
-          {run?.dest_system_id ? <Button onClick={() => extract.mutate()} disabled={extract.isPending}>{t("Extract the target")}</Button> : null}
+          {run?.dest_system_id ? <Button variant="primary" onClick={() => extract.mutate()} disabled={extract.isPending}>{t("Extract the target")}</Button> : null}
           <Button variant="secondary" onClick={() => setDel(true)}>{t("Delete run")}</Button>
           <AskButton />
         </>}

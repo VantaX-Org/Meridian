@@ -19,3 +19,6 @@
 .mx-root .b8-down { color: var(--mx-bad-ink); }
 .mx-root .b8-warn { color: var(--mx-warn-ink); }
 @media (max-width: 720px) { .mx-root .b8-grid { grid-template-columns: minmax(0, 1fr); } }
+.mx-root .mx-table .b8-tbl td { white-space: normal; overflow: visible; text-overflow: clip; }
+.mx-root .mx-table .b8-tbl td[data-end], .mx-root .mx-table .b8-tbl th[data-end] { white-space: nowrap; }
+.mx-root .mx-table .b8-tbl td .mx-fieldchip { max-inline-size: 20rem; }

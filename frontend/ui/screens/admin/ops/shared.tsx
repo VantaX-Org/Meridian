@@ -5,6 +5,7 @@ import { useCallback, useState, type ReactNode } from "react";
 import { formatDate } from "@/lib/format";
 import { refreshAdmin } from "@/lib/v2/admin-queries";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
+import { useAdminBack } from "../common";
 import { ErrorState, PageHeader, Skeleton, useAletheiaScope, useToast } from "@/ui/kit";
 
 /** The least a query result must show for a section: loading, failed, and a retry. */
@@ -24,6 +25,7 @@ export function Sec({ title, context, actions, q = [], scope, facts = [], childr
   title: string; context?: ReactNode; actions?: ReactNode; q?: Q[]; scope: string; facts?: string[]; children: ReactNode;
 }) {
   useInterfaceLang();
+  const back = useAdminBack();
   useAletheiaScope({
     key: `admin/${scope}`,
     label: t("Asking about {screen}", { screen: title }),
@@ -33,7 +35,7 @@ export function Sec({ title, context, actions, q = [], scope, facts = [], childr
   const failed = q.find((x) => x.isError);
   return (
     <>
-      <PageHeader title={title} context={context} actions={actions} />
+      <PageHeader back={back} title={title} context={context} actions={actions} />
       {failed ? <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => q.forEach((x) => x.refetch())} />
         : q.some((x) => x.isLoading) ? <Skeleton lines={8} label={t("Loading {screen}", { screen: title })} />
         : <Stack>{children}</Stack>}

@@ -7,7 +7,8 @@
 .mx-root .ab-facts dt { color: var(--mx-ink-3); }
 .mx-root .ab-facts dd { margin: 0; color: var(--mx-ink); }
 .mx-root .ab-actions { display: flex; align-items: flex-start; flex-wrap: wrap; gap: var(--mx-s2); margin-block-start: var(--mx-s2); }
-.mx-root .ab-tiles { display: grid; align-items: start; gap: var(--mx-s3); grid-template-columns: 1fr 1fr; }
+.mx-root .ab-tiles { display: grid; align-items: stretch; gap: var(--mx-s3); grid-template-columns: 1fr 1fr; }
 .mx-root .ab-sub { margin: var(--mx-s3) 0 var(--mx-s2); color: var(--mx-ink-2); }
 .mx-root .ab-chips { display: flex; flex-wrap: wrap; gap: var(--mx-s2); margin: var(--mx-s2) 0 0; padding: 0; list-style: none; }
 .mx-root .ab-chips li { padding: 0 var(--mx-s2); border: 1px solid var(--mx-border); border-radius: var(--mx-r-card); color: var(--mx-ink-2); background: var(--mx-accent-soft); }
+.mx-root .ab-tiles > * { min-inline-size: 0; block-size: 100%; }

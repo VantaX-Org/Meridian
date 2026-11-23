@@ -15060,6 +15060,11 @@ export const en = {
   "The delta is sent. The move is complete.": "The delta is sent. The move is complete.",
   "Back to Load": "Back to Load",
   "Step {n} of {total}: {name}": "Step {n} of {total}: {name}",
+  "Back to Administration": "Back to Administration",
+  "Review the load order": "Review the load order",
+  "Back to migration runs": "Back to migration runs",
+  "Back to paired systems": "Back to paired systems",
+  "Back to waves": "Back to waves",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -4,12 +4,13 @@ import { useState } from "react";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import type { LoadObject } from "@/lib/api/v2/load-plan";
 import { Card, DataTable, DetailPanel, EmptyState, FieldChip, PageHeader, Sheet, StatTile, useAletheiaScope, useStacked } from "@/ui/kit";
-import { AskButton, Gate, Verdict, humanize } from "./common";
+import { AskButton, Gate, Verdict, humanize, useBack } from "./common";
 import { useLoadPlan } from "./hooks";
 
 /** The order to load objects in, with the reason for each wait: the check tables the fields point at. */
 export function Plan() {
   useInterfaceLang();
+  const back = useBack();
   const q = useLoadPlan();
   const stacked = useStacked();
   const [sel, setSel] = useState<string | null>(null);
@@ -68,7 +69,7 @@ export function Plan() {
 
   return (
     <>
-      <PageHeader title={t("Load order")} context={t("Load an object only after the objects its fields point at.")} actions={<AskButton />} />
+      <PageHeader back={back} title={t("Load order")} context={t("Load an object only after the objects its fields point at.")} actions={<AskButton />} />
       <div className="mx-col">
       <dl className="mx-tiles">
         <StatTile label={t("Objects")} value={String(objects.length)} />

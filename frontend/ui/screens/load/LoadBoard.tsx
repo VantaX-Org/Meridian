@@ -176,6 +176,7 @@ export function LoadBoard() {
               rows={objects}
               rowKey={(o) => o.module}
               columns={[
+                { key: "n", label: t("Step"), align: "end", render: (o) => o.step },
                 { key: "o", label: t("Object"), render: (o) => <FieldChip code={o.anchor} description={o.label || humanize(o.module)} /> },
                 { key: "s", label: t("Status"), render: (o) => <Verdict v={o.status} /> },
                 { key: "b", label: t("Blocking findings"), align: "end", render: (o) => o.blocking },

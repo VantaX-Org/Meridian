@@ -7,6 +7,7 @@ export { Sheet } from "./Sheet";
 export { BarList, type BarItem } from "./BarList";
 export { Chip } from "./Chip";
 export { CommandPalette, type Command } from "./CommandPalette";
+export { ActionMenu, type ActionMenuItem } from "./ActionMenu";
 export { Confirm } from "./Confirm";
 export { DataTable, type Column } from "./DataTable";
 export { Field, Input, Select, Textarea, Toggle } from "./Field";

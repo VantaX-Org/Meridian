@@ -9,7 +9,7 @@ import { putWaveGate, type GateCheck, type WaveGate } from "@/lib/api/v2/roles";
 import { errorSentence } from "@/lib/api/v2/client";
 import { downloadCertificate, gateRefusalOf, issueCertificate, signCertificate, type GateRefusal } from "@/lib/api/v2/step9";
 import { Button, Card, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Toggle, useAletheiaScope, useToast } from "@/ui/kit";
-import { AskButton, Gate, humanize, pct, useHref, Verdict, when } from "./common";
+import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, useCerts } from "./hooks";
 
 const checkLabel = (k: GateCheck["key"]): string => (k === "min_score" ? t("Minimum score") : k === "zero_criticals" ? t("No failing critical rule") : t("Contracts met"));
@@ -88,6 +88,7 @@ function Certificates({ g }: { g: WaveGate }) {
 /** Go-live readiness: every wave gate with its evidence, the gate settings and the readiness certificates. */
 export function GoLive() {
   useInterfaceLang();
+  const back = useBack();
   const q = useWaveGates();
   const qc = useQueryClient();
   const href = useHref();
@@ -109,7 +110,7 @@ export function GoLive() {
 
   return (
     <>
-      <PageHeader title={t("Go-live readiness")} context={t("Each wave must pass its gate before it is signed off and certified.")} actions={<AskButton />} />
+      <PageHeader back={back} title={t("Go-live readiness")} context={t("Each wave must pass its gate before it is signed off and certified.")} actions={<AskButton />} />
       <div className="mx-col">
       <Card title={t("Wave gates")} sub={t("{n} waves", { n: gates.length })}>
         <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the wave gates")}>

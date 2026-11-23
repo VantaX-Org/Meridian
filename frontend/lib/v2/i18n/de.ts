@@ -15061,4 +15061,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "The delta is sent. The move is complete.": "Das Delta ist gesendet. Der Umzug ist abgeschlossen.",
   "Back to Load": "Zurück zu Laden",
   "Step {n} of {total}: {name}": "Schritt {n} von {total}: {name}",
+  "Back to Administration": "Zurück zur Verwaltung",
+  "Review the load order": "Ladereihenfolge prüfen",
+  "Back to migration runs": "Zurück zu Migrationsläufen",
+  "Back to paired systems": "Zurück zu gekoppelten Systemen",
+  "Back to waves": "Zurück zu Wellen",
 };

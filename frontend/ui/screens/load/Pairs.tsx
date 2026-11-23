@@ -6,12 +6,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { createPair, deletePair, runPair, type ComparePair } from "@/lib/api/v2/compare";
 import { Button, Card, Confirm, DataTable, EmptyState, Field, FieldChip, PageHeader, Select, Sheet, useAletheiaScope, useToast } from "@/ui/kit";
-import { AskButton, Gate, humanize, pct, useHref, when } from "./common";
+import { AskButton, Gate, humanize, pct, useHref, when, useBack } from "./common";
 import { invalidateLoad, usePairs } from "./hooks";
 
 /** Every source and target pair, with its last scores. A row opens the Pair card. */
 export function Pairs() {
   useInterfaceLang();
+  const back = useBack();
   const q = usePairs();
   const href = useHref();
   const qc = useQueryClient();
@@ -45,7 +46,7 @@ export function Pairs() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={back}
         title={t("Paired systems")}
         context={t("Compare a source system with its target, object by object.")}
         actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("New pair")}</Button><AskButton /></>}
