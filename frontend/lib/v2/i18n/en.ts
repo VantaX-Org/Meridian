@@ -15048,6 +15048,18 @@ export const en = {
   "Show all rules": "Show all rules",
   "Accept every proposed value?": "Accept every proposed value?",
   "Every record of {rule} with a proposed value gets that value. Each fix is logged and you can roll it back.": "Every record of {rule} with a proposed value gets that value. Each fix is logged and you can roll it back.",
+  "{area}: {added} added, {removed} removed, {changed} changed": "{area}: {added} added, {removed} removed, {changed} changed",
+  "A score from 0 to 100. Leave it empty for no minimum.": "A score from 0 to 100. Leave it empty for no minimum.",
+  "Issue one when every gate check passes.": "Issue one when every gate check passes.",
+  "A gate belongs to a wave. Plan a wave first.": "A gate belongs to a wave. Plan a wave first.",
+  "A run checks whether your objects are ready to load. Choose Start a run.": "A run checks whether your objects are ready to load. Choose Start a run.",
+  "A pair links a source system to its target. Choose New pair.": "A pair links a source system to its target. Choose New pair.",
+  "Upload the target workbook, or download a blank template to start from.": "Upload the target workbook, or download a blank template to start from.",
+  "Sign-off opens when the verdict is Go": "Sign-off opens when the verdict is Go",
+  "Group the objects that load together. Start with New wave.": "Group the objects that load together. Start with New wave.",
+  "The delta is sent. The move is complete.": "The delta is sent. The move is complete.",
+  "Back to Load": "Back to Load",
+  "Step {n} of {total}: {name}": "Step {n} of {total}: {name}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { applyTemplate, getStewardAssignments, getTemplate, getTemplateGaps, type ApplyPlan, type ApplyRow, type Gap, type StewardAssignment } from "@/lib/api/v2/roles";
 import { t } from "@/lib/v2/i18n";
+import { moduleText } from "@/lib/v2/labels";
 import { Button, Card, DataTable, EmptyState, FieldChip, PageHeader, StatTile, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
 import { Gate, refreshV2, useQ } from "./common";
 
@@ -15,7 +16,7 @@ function Plan({ plan, label }: { plan: ApplyPlan; label: string }) {
   if (!rows.length) return <EmptyState heading={t("Nothing to change")} body={t("Every assignment already matches the template.")} />;
   return (
     <DataTable label={label} rows={rows} rowKey={(r) => `${r.kind}-${r.module}-${r.slice_value ?? ""}`} height={240} columns={[
-      { key: "m", label: t("Object"), render: (r) => <FieldChip code={r.module} /> },
+      { key: "m", label: t("Object"), render: (r) => <FieldChip code={r.module} description={moduleText(r.module)} /> },
       { key: "k", label: t("Role"), render: (r) => r.kind },
       { key: "s", label: t("Slice"), render: (r) => slice(r.slice_kind, r.slice_value) },
       { key: "b", label: t("Now"), render: (r) => r.before ?? t("Nobody") },
@@ -83,7 +84,7 @@ export function Assignments() {
           <Gate q={asg} label={t("Loading assignments")}>
             {(a) => a.assignments.length === 0 ? <EmptyState heading={t("No steward assignments")} body={t("Preview the template to see what it would assign.")} /> : (
               <DataTable<StewardAssignment> label={t("Steward assignments")} rows={a.assignments} rowKey={(r) => `${r.module}-${r.slice_kind}-${r.slice_value}`} height={300} columns={[
-                { key: "m", label: t("Object"), sort: (r) => r.module, render: (r) => <FieldChip code={r.module} /> },
+                { key: "m", label: t("Object"), sort: (r) => r.module, render: (r) => <FieldChip code={r.module} description={moduleText(r.module)} /> },
                 { key: "s", label: t("Slice"), render: (r) => slice(r.slice_kind, r.slice_value, r.slice_text) },
                 { key: "n", label: t("Steward"), render: (r) => r.steward_name ?? t("Nobody") },
                 { key: "src", label: t("Source"), render: (r) => (r.source === "template" ? t("Template") : t("Set by hand")) },

@@ -69,7 +69,7 @@ export function MigrationRuns() {
                 { key: "at", label: t("Started"), sort: (r) => r.created_at ?? "", render: (r) => when(r.created_at) },
               ]}
             />
-          ) : <EmptyState heading={t("No run yet")} />}
+          ) : <EmptyState heading={t("No run yet")} body={t("A run checks whether your objects are ready to load. Choose Start a run.")} />}
         </Gate>
       </Card>
       <Sheet open={open} onClose={() => setOpen(false)} label={t("Start a run")} closeLabel={t("Close")}>

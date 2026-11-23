@@ -224,7 +224,7 @@ function Config() {
       <Tbl label={t("Configuration drift")} rows={rows} rowKey={(r) => r.id} cols={[
         { key: "d", label: t("Detected"), render: (r) => day(r.created_at) },
         { key: "s", label: t("System"), render: (r) => r.system_name ?? r.system_id },
-        { key: "a", label: t("Areas changed"), render: (r) => r.areas.map((a) => `${a.area} (+${a.added} -${a.removed} ~${a.changed})`).join(", ") },
+        { key: "a", label: t("Areas changed"), render: (r) => r.areas.map((a) => t("{area}: {added} added, {removed} removed, {changed} changed", { area: a.area, added: a.added, removed: a.removed, changed: a.changed })).join(", ") },
         { key: "r", label: t("Rules affected"), render: (r) => r.rules.map((x) => <FieldChip key={x.check_id} code={x.check_id} description={x.name ?? undefined} />) },
         { key: "q", label: t("Rescore"), render: (r) => (r.rescore_queued ? t("Queued") : t("No")) },
       ]} />

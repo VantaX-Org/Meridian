@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/v2/migration";
 import { useDecideLoad, useLoadApproval, useLoadSimulation } from "@/lib/api/next/load";
 import { Button, Card, Confirm, DataTable, EmptyState, FieldChip, Input, PageHeader, Select, SeverityPill, StatTile, Tabs, useAletheiaScope, useToast, type Severity } from "@/ui/kit";
+import { gapText, labelText } from "@/lib/v2/labels";
 import { AskButton, Gate, humanize, pct, useHref, Verdict, when } from "./common";
 import { invalidateLoad, useRecon, useRecords, useRun } from "./hooks";
 import { modeLabel } from "./MigrationRuns";
@@ -43,7 +44,7 @@ export function MigrationRun({ id }: { id: string }) {
     suggestions: [t("What blocks this run most?")],
     answer: () => {
       const g = [...gaps].sort((a, b) => b.records - a.records)[0];
-      return g ? { text: t("{n} records are affected by {gap} in {module}.", { n: g.records, gap: humanize(g.gap_type), module: g.module }), evidence: [`${g.module} ${humanize(g.gap_type)} ${g.records}`] } : { text: t("No gaps are recorded for this run."), evidence: [] };
+      return g ? { text: t("{n} records are affected by {gap} in {module}.", { n: g.records, gap: humanize(gapText(g.gap_type)), module: g.module }), evidence: [`${g.module} ${humanize(gapText(g.gap_type))} ${g.records}`] } : { text: t("No gaps are recorded for this run."), evidence: [] };
     },
   });
 
@@ -58,9 +59,10 @@ export function MigrationRun({ id }: { id: string }) {
           <AskButton />
         </>}
       />
+      <div className="mx-col">
       {run ? (
         <dl className="mx-tiles">
-          <StatTile label={t("Verdict")} value={<Verdict v={run.readiness_verdict} />} note={run.status} />
+          <StatTile label={t("Verdict")} value={<Verdict v={run.readiness_verdict} />} note={labelText(run.status)} />
           <StatTile label={t("Score")} value={pct(run.readiness_score)} bar={run.readiness_score ?? undefined} />
           <StatTile label={t("Records")} value={(run.records_total ?? 0).toLocaleString()} note={`${t("Records blocked")}: ${(run.records_blocked ?? 0).toLocaleString()}`} />
           <StatTile label={t("Critical findings")} value={String(run.critical_count ?? 0)} note={t("{n} structural", { n: q.data?.structural_critical ?? 0 })} />
@@ -86,6 +88,7 @@ export function MigrationRun({ id }: { id: string }) {
           {tab === "files" ? <Files id={id} dry={!!dry} /> : null}
         </div>
       </Card>
+      </div>
       <Confirm open={del} title={t("Delete run {run}?", { run: id })} confirmLabel={t("Delete run")} cancelLabel={t("Cancel")} danger onConfirm={() => remove.mutate()} onCancel={() => setDel(false)} />
      
     </Gate>
@@ -101,7 +104,7 @@ function Gaps({ gaps }: { gaps: GapGroup[] }) {
       rowKey={(g) => `${g.module}|${g.gap_type}|${g.severity}`}
       columns={[
         { key: "m", label: t("Object"), sort: (g) => g.module, render: (g) => <FieldChip code={g.module} description={humanize(g.module)} /> },
-        { key: "g", label: t("Gap"), sort: (g) => g.gap_type, render: (g) => humanize(g.gap_type) },
+        { key: "g", label: t("Gap"), sort: (g) => g.gap_type, render: (g) => humanize(gapText(g.gap_type)) },
         { key: "s", label: t("Severity"), sort: (g) => g.severity, render: (g) => <Sev s={g.severity} /> },
         { key: "gr", label: t("Basis"), render: (g) => (g.grounded ? t("Measured on the target") : t("Provisional")) },
         { key: "r", label: t("Records"), align: "end", sort: (g) => g.records, render: (g) => g.records.toLocaleString() },
@@ -139,7 +142,7 @@ function Findings({ id, modules }: { id: string; modules: string[] }) {
               { key: "sf", label: t("Source field"), render: (r) => (r.source_field ? <FieldChip code={r.source_field} description={r.source_table ?? undefined} /> : "") },
               { key: "sv", label: t("Source value"), render: (r) => r.source_value ?? "" },
               { key: "tf", label: t("Target field"), render: (r) => (r.target_field ? <FieldChip code={r.target_field} description={r.dest_table ?? undefined} /> : "") },
-              { key: "g", label: t("Gap"), sort: (r) => r.gap_type, render: (r) => humanize(r.gap_type) },
+              { key: "g", label: t("Gap"), sort: (r) => r.gap_type, render: (r) => humanize(gapText(r.gap_type)) },
               { key: "s", label: t("Severity"), sort: (r) => r.severity, render: (r) => <Sev s={r.severity} /> },
               { key: "d", label: t("Detail"), render: (r) => r.detail ?? "" },
             ]}

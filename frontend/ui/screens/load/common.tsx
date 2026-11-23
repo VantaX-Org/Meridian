@@ -3,10 +3,11 @@
 import type { ReactNode } from "react";
 import { withFixture, useFixture } from "@/lib/api/v2/fixture";
 import { t } from "@/lib/v2/i18n";
+import { labelText } from "@/lib/v2/labels";
 import { Button, ErrorState, SeverityPill, Skeleton, useAletheia } from "@/ui/kit";
 
-/** "material_master" reads "Material master" when no label is known. */
-export const humanize = (m: string): string => { const s = m.replace(/[_-]+/g, " "); return s.charAt(0).toUpperCase() + s.slice(1); };
+/** "fi_gl" reads "FI general ledger": machine ids go through the shared labels; text that is already a label stays as it is. */
+export const humanize = (m: string): string => (/^[a-z0-9]+([_-][a-z0-9]+)*$/.test(m) ? labelText(m) : m);
 export const pct = (n: number | null | undefined): string => (n === null || n === undefined ? t("n/a") : `${Math.round(n * 10) / 10}%`);
 export const when = (iso: string | null | undefined): string => (iso ? iso.slice(0, 10) : "");
 export const useHref = () => { const fx = useFixture(); return (p: string) => withFixture(p, fx); };
