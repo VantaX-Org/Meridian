@@ -15203,6 +15203,22 @@ export const en = {
   "Back to migration runs": "Back to migration runs",
   "Back to paired systems": "Back to paired systems",
   "Back to waves": "Back to waves",
+  "Production system": "Production system",
+  "Quality assurance system": "Quality assurance system",
+  "Development system": "Development system",
+  "Switch system": "Switch system",
+  "Notifications {count}, unread": "Notifications {count}, unread",
+  "Unread": "Unread",
+  "Nothing here.": "Nothing here.",
+  "Open inbox": "Open inbox",
+  "Format preview": "Format preview",
+  "Language, time zone and display": "Language, time zone and display",
+  "Hidden levels": "Hidden levels",
+  "Profile and preferences": "Profile and preferences",
+  "Recent": "Recent",
+  "Up and down to move": "Up and down to move",
+  "Enter to open": "Enter to open",
+  "Escape to close": "Escape to close",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
