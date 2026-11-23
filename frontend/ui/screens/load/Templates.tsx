@@ -8,7 +8,7 @@ import {
   checkTemplate, downloadBlankTemplate, downloadTemplateFile, exportTemplate, getTemplateFields, saveTemplateMapping, uploadTemplate,
   type TargetTemplate, type WorkbookReport,
 } from "@/lib/api/v2/migration";
-import { Button, Card, DataTable, EmptyState, FieldChip, PageHeader, Select, StatTile, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, Card, DataTable, EmptyState, Field, FieldChip, PageHeader, Select, StatTile, useAletheiaScope, useToast } from "@/ui/kit";
 import { AskButton, Gate, humanize, when } from "./common";
 import { invalidateLoad, useLoadPlan, useTemplateList } from "./hooks";
 
@@ -58,8 +58,9 @@ export function Templates() {
           <AskButton />
         </>}
       />
+      <div className="mx-col">
       <div className="mx-links">
-        <Select aria-label={t("Object")} value={mod} onChange={(e) => { setPick(e.target.value); setSel(null); setReport(null); }} options={(mods.length ? mods : [mod]).map((m) => ({ value: m, label: `${m} ${humanize(m)}` }))} />
+        <Field label={t("Object")}><Select value={mod} onChange={(e) => { setPick(e.target.value); setSel(null); setReport(null); }} options={(mods.length ? mods : [mod]).map((m) => ({ value: m, label: `${m} ${humanize(m)}` }))} /></Field>
       </div>
       <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the templates")}>
         {rows.length ? (
@@ -79,14 +80,14 @@ export function Templates() {
               ]}
             />
           </Card>
-        ) : <EmptyState heading={t("No template kept for this object yet")} />}
+        ) : <EmptyState heading={t("No template kept for this object yet")} body={t("Upload the target workbook, or download a blank template to start from.")} />}
       </Gate>
       {cur ? (
         <Card title={cur.name} sub={cur.filename}>
           <div className="mx-links">
-            <Button onClick={() => check.mutate(cur)} disabled={check.isPending}>{t("Check this template")}</Button>
-            <Button onClick={() => downloadTemplateFile(mod, cur).catch(bad)}>{t("Download the kept file")}</Button>
-            <Button onClick={() => exportTemplate(mod, cur, "xlsx").catch(bad)}>{t("Fill and download")}</Button>
+            <Button variant="secondary" onClick={() => check.mutate(cur)} disabled={check.isPending}>{t("Check this template")}</Button>
+            <Button variant="ghost" onClick={() => downloadTemplateFile(mod, cur).catch(bad)}>{t("Download the kept file")}</Button>
+            <Button variant="ghost" onClick={() => exportTemplate(mod, cur, "xlsx").catch(bad)}>{t("Fill and download")}</Button>
           </div>
           {unmapped.length ? (
             <DataTable<Unmapped>
@@ -103,7 +104,7 @@ export function Templates() {
               ]}
             />
           ) : <EmptyState heading={t("Every column has a target field")} />}
-          {Object.keys(draft).length ? <Button variant="primary" onClick={() => save.mutate(cur)} disabled={save.isPending}>{t("Save the mapping")}</Button> : null}
+          {Object.keys(draft).length ? <div className="mx-actions"><Button variant="primary" onClick={() => save.mutate(cur)} disabled={save.isPending}>{t("Save the mapping")}</Button></div> : null}
         </Card>
       ) : null}
       {report ? (
@@ -126,6 +127,7 @@ export function Templates() {
           />
         </Card>
       ) : null}
+      </div>
     </>
   );
 }

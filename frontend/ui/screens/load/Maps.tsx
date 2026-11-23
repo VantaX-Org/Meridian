@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { addFieldMapping, decideValueEntry, deleteFieldMapping, deleteValueEntry, seedFieldMap, updateFieldMapping, type FieldMapping, type ValueEntry } from "@/lib/api/v2/migration";
-import { Button, Card, DataTable, EmptyState, FieldChip, Input, PageHeader, Select, Tabs, Toggle, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, Card, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Select, Tabs, Toggle, useAletheiaScope, useToast } from "@/ui/kit";
 import { AskButton, Gate, humanize, when } from "./common";
 import { invalidateLoad, useFieldMap, useLoadPlan, useValueMap } from "./hooks";
 
@@ -47,9 +47,10 @@ export function Maps() {
   return (
     <>
       <PageHeader title={t("Field and value maps")} context={t("How source fields and values become target fields and values")} actions={<><Button onClick={() => seed.mutate()} disabled={seed.isPending}>{t("Propose from the dictionary")}</Button><AskButton /></>} />
+      <div className="mx-col">
       <div className="mx-links">
-        <Select aria-label={t("Object")} value={mod} onChange={(e) => setPick(e.target.value)} options={(mods.length ? mods : [mod]).map((m) => ({ value: m, label: `${m} ${humanize(m)}` }))} />
-        <Select aria-label={t("Target system")} value={dest} onChange={(e) => setDest(e.target.value)} options={DEST} />
+        <Field label={t("Object")}><Select value={mod} onChange={(e) => setPick(e.target.value)} options={(mods.length ? mods : [mod]).map((m) => ({ value: m, label: `${m} ${humanize(m)}` }))} /></Field>
+        <Field label={t("Target system")}><Select value={dest} onChange={(e) => setDest(e.target.value)} options={DEST} /></Field>
       </div>
       <Card title={t("Maps")}>
         <Tabs idBase="mx-maps" label={t("Map type")} value={tab} onChange={setTab} items={[{ id: "fields", label: t("Field map"), badge: String(maps.length) }, { id: "values", label: t("Value map"), badge: String(values.length) }]} />
@@ -106,6 +107,7 @@ export function Maps() {
           )}
         </div>
       </Card>
+      </div>
     </>
   );
 }

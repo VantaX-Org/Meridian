@@ -26,6 +26,7 @@ export function Move() {
     <div className="mx-col">
       <PageHeader title={t("Move to new instance")} context={t("Move every object and its history from one system to a new one, then prove it arrived.")} />
       <Stepper steps={steps} current={step} label={t("Steps")} />
+      <p className="mx-muted">{t("Step {n} of {total}: {name}", { n: step + 1, total: steps.length, name: steps[step].label })}</p>
       {step === 0 ? <Systems pick={pick} onPick={setPick} onNext={go(1)} /> : null}
       {step === 1 ? <Scope pick={pick} scope={scope} onScope={setScope} onBack={go(0)} onPlan={(id) => { setPlanId(id); setRunId(null); setStep(2); }} /> : null}
       {step === 2 && planId ? <PlanStep planId={planId} onBack={go(1)} onNext={go(3)} /> : null}

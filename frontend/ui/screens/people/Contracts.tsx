@@ -6,12 +6,13 @@ import { activateContract, createContract, getContractDetail, listContracts, rev
 import { getContractBreaches, getContractCompliance } from "@/lib/api/v2/step9";
 import { relTime } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
+import { labelText } from "@/lib/v2/labels";
 import { Button, Card, Chip, DataTable, EmptyState, Field, Input, PageHeader, Split, StatTile, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
 import { CommentsPanel } from "./Comments";
 import { Gate, day, refreshV2, useQ } from "./common";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
-const status = (s: string) => s.replace(/_/g, " ");
+const status = labelText;
 
 function NewContract({ onDone }: { onDone: () => void }) {
   const qc = useQueryClient();

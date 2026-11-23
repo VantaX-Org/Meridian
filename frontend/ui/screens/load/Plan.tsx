@@ -69,6 +69,7 @@ export function Plan() {
   return (
     <>
       <PageHeader title={t("Load order")} context={t("Load an object only after the objects its fields point at.")} actions={<AskButton />} />
+      <div className="mx-col">
       <dl className="mx-tiles">
         <StatTile label={t("Objects")} value={String(objects.length)} />
         <StatTile label={t("Steps")} value={String(plan?.steps ?? 0)} />
@@ -89,9 +90,9 @@ export function Plan() {
                   columns={[
                     { key: "step", label: t("Step"), align: "end", sort: (o) => o.step, render: (o) => o.step },
                     { key: "m", label: t("Object"), sort: (o) => o.module, render: (o) => <FieldChip code={o.module} description={o.label || humanize(o.module)} /> },
-                    { key: "g", label: t("Loads with"), render: (o) => (o.group.length > 1 ? o.group.filter((g) => g !== o.module).join(", ") : t("Alone")) },
+                    { key: "g", label: t("Loads with"), render: (o) => (o.group.length > 1 ? o.group.filter((g) => g !== o.module).map(humanize).join(", ") : t("Alone")) },
                     { key: "s", label: t("Status"), render: (o) => <Verdict v={o.status} /> },
-                    { key: "b", label: t("Waits for"), render: (o) => o.blocked_by.join(", ") },
+                    { key: "b", label: t("Waits for"), render: (o) => o.blocked_by.map(humanize).join(", ") },
                   ]}
                 />
               ) : <EmptyState heading={t("No load order yet")} />}
@@ -99,6 +100,7 @@ export function Plan() {
           </Card>
         </div>
         {stacked ? <Sheet open={cur !== null} onClose={() => setSel(null)} label={t("Object detail")} closeLabel={t("Close")}>{detail}</Sheet> : <div className="mx-col">{detail}</div>}
+      </div>
       </div>
     </>
   );

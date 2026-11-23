@@ -2,11 +2,12 @@
 
 import { getStewardMetrics } from "@/lib/api/v2/stewardship";
 import { t } from "@/lib/v2/i18n";
+import { labelText } from "@/lib/v2/labels";
 import { BarList, Button, Card, DataTable, EmptyState, PageHeader, StatTile, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { Gate, useQ } from "./common";
 
 const pct = (v: number | null | undefined) => (v === null || v === undefined ? t("n/a") : `${Math.round(v * (v <= 1 ? 100 : 1))}%`);
-const word = (s: string) => s.replace(/_/g, " ");
+const word = labelText;
 
 export function Stewardship() {
   const q = useQ(["stewardship-metrics"], () => getStewardMetrics());

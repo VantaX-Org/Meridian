@@ -73,7 +73,7 @@ export function Pairs() {
                 ) },
               ]}
             />
-          ) : <EmptyState heading={t("No pair yet")} />}
+          ) : <EmptyState heading={t("No pair yet")} body={t("A pair links a source system to its target. Choose New pair.")} />}
         </Gate>
       </Card>
       <Sheet open={open} onClose={() => setOpen(false)} label={t("New pair")} closeLabel={t("Close")}>
