@@ -15,6 +15,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { money } from "@/lib/v2/format";
 import { Button, Card, Chip, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Sheet, Skeleton, StatTile, Tabs, useAletheia, useAletheiaScope, useStacked } from "@/ui/kit";
 import { useAssignable } from "@/lib/v2/approvals-queries";
+import { useV2Session } from "@/lib/v2/hooks";
 import { day, sevLabel, useDo } from "./shared";
 
 const STATUS_TEXT = (s: string) => ({ open: t("Open"), investigating: t("Investigating"), pending_approval: t("Pending approval"), resolved: t("Resolved"), verified: t("Verified"), closed: t("Closed") })[s] ?? s;
@@ -23,6 +24,9 @@ const SEVS = ["", "critical", "high", "medium", "low"];
 function Detail({ id }: { id: string }) {
   const fx = useFixture();
   const run = useDo();
+  const me = useV2Session();
+  /** The stable name of the signed-in person. The route takes it in the body and does not read it from the token. */
+  const author = (me.fixture ? me.id : me.name || me.email || me.id) ?? "system";
   const [note, setNote] = useState("");
   const [why, setWhy] = useState("");
   const [cmt, setCmt] = useState("");
@@ -61,7 +65,7 @@ function Detail({ id }: { id: string }) {
       <Card title={t("Comments")}>
         {e.comments.length ? <ul className="mx-list">{e.comments.map((c) => <li key={c.id}>{c.user_name ?? t("Someone")} {day(c.created_at ?? "")}: {c.text}</li>)}</ul> : <p className="mx-muted">{t("No comments yet.")}</p>}
         <Field label={t("Add a comment")}><Input value={cmt} onChange={(x) => setCmt(x.target.value)} /></Field>
-        <Button variant="ghost" disabled={!cmt.trim()} onClick={() => void run(() => commentException(id, cmt.trim(), t("Me")), () => t("Comment added.")).then((r) => { if (r) setCmt(""); })}>{t("Add comment")}</Button>
+        <Button variant="ghost" disabled={!cmt.trim()} onClick={() => void run(() => commentException(id, cmt.trim(), author), () => t("Comment added.")).then((r) => { if (r) setCmt(""); })}>{t("Add comment")}</Button>
       </Card>
     </>
   );
@@ -113,9 +117,11 @@ function Rules() {
 
 function Billing() {
   const fx = useFixture();
+  const allowed = useV2Session().can("manage_settings");
   const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
-  const q = useQuery({ queryKey: ["v2", "billing", fx, period], queryFn: () => getBilling(period), retry: false });
+  const q = useQuery({ queryKey: ["v2", "billing", fx, period], queryFn: () => getBilling(period), retry: false, enabled: allowed });
   const b = q.data;
+  if (!allowed) return <Card title={t("Exception billing")}><EmptyState heading={t("Admins only")} body={t("Billing is open to people who manage settings.")} /></Card>;
   const tiers = b ? [[1, b.tier1_count, b.tier1_amount], [2, b.tier2_count, b.tier2_amount], [3, b.tier3_count, b.tier3_amount], [4, b.tier4_count, b.tier4_amount]] as const : [];
   return (
     <Card title={t("Exception billing")} sub={t("What this period costs, by tier.")}>

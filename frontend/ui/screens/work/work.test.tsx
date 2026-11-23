@@ -13,6 +13,7 @@ import { DataRequests } from "./DataRequests";
 import { Approvals } from "./Approvals";
 
 vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: null, logout: () => undefined }) }));
 
 let undo: () => void = () => undefined;
 beforeEach(() => { undo = stubLayout(); window.sessionStorage.clear(); });

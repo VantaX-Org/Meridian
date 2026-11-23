@@ -15015,4 +15015,10 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Loading approvals": "Freigaben werden geladen",
   "Approvals could not be loaded": "Die Freigaben konnten nicht geladen werden",
   "The SAP monitor could not be loaded": "Der SAP-Monitor konnte nicht geladen werden",
+  "{f} rules failed. Try again.": "{f} Regeln sind fehlgeschlagen. Versuchen Sie es erneut.",
+  "The clean cycle could not be loaded": "Der Bereinigungszyklus konnte nicht geladen werden",
+  "Admins only": "Nur für Administratoren",
+  "Billing is open to people who manage settings.": "Die Abrechnung ist für Personen mit Einstellungsrechten offen.",
+  "View name": "Name der Ansicht",
+  "A name is required.": "Ein Name ist erforderlich.",
 };

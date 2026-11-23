@@ -15015,4 +15015,10 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Loading approvals": "承認を読み込み中",
   "Approvals could not be loaded": "承認を読み込めませんでした",
   "The SAP monitor could not be loaded": "SAPモニターを読み込めませんでした",
+  "{f} rules failed. Try again.": "{f} 件のルールが失敗しました。もう一度お試しください。",
+  "The clean cycle could not be loaded": "クリーンサイクルを読み込めませんでした",
+  "Admins only": "管理者のみ",
+  "Billing is open to people who manage settings.": "請求は設定を管理する人が利用できます。",
+  "View name": "ビュー名",
+  "A name is required.": "名前が必要です。",
 };

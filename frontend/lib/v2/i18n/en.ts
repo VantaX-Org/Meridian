@@ -15014,6 +15014,12 @@ export const en = {
   "Loading approvals": "Loading approvals",
   "Approvals could not be loaded": "Approvals could not be loaded",
   "The SAP monitor could not be loaded": "The SAP monitor could not be loaded",
+  "{f} rules failed. Try again.": "{f} rules failed. Try again.",
+  "The clean cycle could not be loaded": "The clean cycle could not be loaded",
+  "Admins only": "Admins only",
+  "Billing is open to people who manage settings.": "Billing is open to people who manage settings.",
+  "View name": "View name",
+  "A name is required.": "A name is required.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

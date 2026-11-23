@@ -18,7 +18,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { systemForModule } from "@/lib/v2/score";
 import { useWorkGroups } from "@/lib/v2/work-queries";
-import { Button, Card, Chip, EmptyState, FieldChip, PageHeader, ScoreRuler, Skeleton, Stepper, useAletheia, useAletheiaScope } from "@/ui/kit";
+import { Button, Card, Chip, EmptyState, ErrorState, FieldChip, PageHeader, ScoreRuler, Skeleton, Stepper, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
 import { compactCount, score } from "../object/format";
 import { day, fieldText, useDo } from "./shared";
 
@@ -54,6 +54,8 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
   const fx = useFixture();
   const chat = useAletheia();
   const run = useDo();
+  const toast = useToast();
+  const [approving, setApproving] = useState(false);
   const pick = useRef<HTMLInputElement>(null);
   const [chosen, setChosen] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -113,11 +115,19 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
     void run(() => uploadCleaned(file, head.id, mod ?? undefined, true, rejected > 0), (r) => t("{n} rows applied. Rescoring.", { n: r.applied })).then((r) => { if (r) setApplied(true); });
   };
   const download = () => { if (head && mod) void run(() => downloadCleaningWorkbook(head.id, mod), () => t("Workbook saved.")); };
-  const approveAll = () => void run(async () => {
-    let n = 0;
-    for (const g of proposed) { const r = await postAcceptAll(g.check_id); n += r.accepted ?? r.updated ?? 0; }
-    return n;
-  }, (n) => t("{n} fixes accepted.", { n }));
+  /** Accepts every proposed rule, one at a time. A failed rule is counted, not hidden, and the rest still run. */
+  const approveAll = () => {
+    if (approving) return;
+    setApproving(true);
+    let failed = 0;
+    void run(async () => {
+      let n = 0;
+      for (const g of proposed) {
+        try { const r = await postAcceptAll(g.check_id); n += r.accepted ?? r.updated ?? 0; } catch { failed += 1; }
+      }
+      return n;
+    }, (n) => t("{n} fixes accepted.", { n })).then(() => { if (failed) toast(t("{f} rules failed. Try again.", { f: failed }), "bad"); }).finally(() => setApproving(false));
+  };
 
   // Weekly chart: the cleaning metrics of this object, oldest week first.
   const weeks: Week[] = (metrics.data?.metrics ?? []).filter((m) => m.object_type === mod)
@@ -149,6 +159,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
   const applyLabel = ready > 0 ? t("Apply {n} and rescore", { n: compactCount(ready) }) : t("Apply and rescore");
 
   if (landscape.isLoading) return <Skeleton lines={6} label={t("Loading the clean cycle")} />;
+  if (landscape.isError) return <ErrorState heading={t("The clean cycle could not be loaded")} retryLabel={t("Try again")} onRetry={() => void landscape.refetch()} />;
   if (!mod || !object) return <EmptyState heading={t("No object is licensed to clean")} />;
 
   return (
@@ -260,7 +271,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
                 ))}
               </ul>
               <div className="mx-links">
-                <Button variant="primary" onClick={approveAll}>{t("Approve all {n}", { n: compactCount(proposedTotal) })}</Button>
+                <Button variant="primary" disabled={approving} onClick={approveAll}>{t("Approve all {n}", { n: compactCount(proposedTotal) })}</Button>
                 <span className="mx-clean-sub">{t("Every fix is logged and can be rolled back.")}</span>
               </div>
             </>

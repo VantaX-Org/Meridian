@@ -9,7 +9,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { CHIPS, chipDef, displayKey, exportQueryOf, filtersOf, readState, viewFilters, type ChipId } from "@/lib/v2/work";
 import { useWorkGroups, useWorkRows, useWorkSummary, useWorkViews } from "@/lib/v2/work-queries";
 import {
-  Button, Card, Chip, DataTable, EmptyState, ErrorState, Field, Input, MasterList, Select, Sheet, Skeleton, Toggle,
+  Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, Field, Input, MasterList, Select, Sheet, Skeleton, Toggle,
   useSheet, useStacked, type MasterRow,
 } from "@/ui/kit";
 import { CleanBoard } from "./CleanBoard";
@@ -39,6 +39,9 @@ export function Work() {
   const [setTo, setSetTo] = useState("");
   const [onlyBlank, setOnlyBlank] = useState(true);
   const [sim, setSim] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [naming, setNaming] = useState(false);
+  const [viewName, setViewName] = useState("");
   const file = useRef<HTMLInputElement>(null);
   const stacked = useStacked();
   const sheets = useSheet();
@@ -53,19 +56,26 @@ export function Work() {
 
   const open = (r: WorkRow) => { setPick(r); if (stacked) setSheet(true); };
   const chip = (id: ChipId) => { setState({ ...state, chip: id }); setPick(null); if (id === "proposed") setTab("cleaning"); };
+  /** One bulk write at a time: a second click while one runs does nothing. */
+  const once = async (fn: () => Promise<unknown>) => { if (busy) return; setBusy(true); try { await fn(); } finally { setBusy(false); } };
   const exp = () => void run(() => exportFixSheet(exportQueryOf(state)), (r) => t("Saved {file}.", { file: r.filename }));
-  const imp = async (f: File) => void (await run(() => importFixSheet(f), (r) => t("{n} rows updated, {s} skipped.", { n: r.updated, s: r.skipped.length })));
-  const saveView = () => { const name = window.prompt(t("Name this view")); if (name) void run(() => views.save({ route: "work", name, filters: viewFilters(state), columns: [], density: state.density }), () => t("View saved.")); };
+  const imp = (f: File) => once(() => run(() => importFixSheet(f), (r) => t("{n} rows updated, {s} skipped.", { n: r.updated, s: r.skipped.length })));
+  const saveView = () => {
+    const name = viewName.trim();
+    if (!name) return;
+    setNaming(false); setViewName("");
+    void run(() => views.save({ route: "work", name, filters: viewFilters(state), columns: [], density: state.density }), () => t("View saved."));
+  };
   const vs = views.data?.views ?? [];
 
   const toolbar = (
     <div className="mx-links">
       <Button onClick={exp}>{t("Export workbook")}</Button>
-      <Button onClick={() => file.current?.click()}>{t("Import workbook")}</Button>
+      <Button disabled={busy} onClick={() => file.current?.click()}>{t("Import workbook")}</Button>
       <input ref={file} type="file" accept=".xlsx" hidden aria-label={t("Import workbook")} onChange={(e) => { const f = e.target.files?.[0]; if (f) void imp(f); e.target.value = ""; }} />
       <Button variant="ghost" onClick={() => sheets.open("whatif", { module: state.module })}>{t("What if")}</Button>
       {list.length ? <Button variant="ghost" onClick={() => setSim(true)}>{t("Simulate fixing")}</Button> : null}
-      <Button variant="ghost" onClick={saveView}>{t("Save this view")}</Button>
+      <Button variant="ghost" onClick={() => setNaming(true)}>{t("Save this view")}</Button>
       {vs.length ? (
         <Select aria-label={t("Saved views")} value="" options={[{ value: "", label: t("Saved views") }, ...vs.map((v) => ({ value: v.id, label: v.name }))]}
           onChange={(e) => { const v = vs.find((x) => x.id === e.target.value); if (v) setState(readState(new URLSearchParams(), v)); }} />
@@ -84,11 +94,11 @@ export function Work() {
         {sel ? (
           <Card title={t("Fix every record of this rule")} sub={sel.message ?? undefined}>
             <div className="mx-links">
-              <Button variant="primary" onClick={() => void run(() => postAcceptAll(sel.check_id), (r) => t("{n} fixes accepted.", { n: r.accepted ?? r.updated ?? 0 }))}>{t("Accept every proposed value")}</Button>
+              <Button variant="primary" disabled={busy} onClick={() => void once(() => run(() => postAcceptAll(sel.check_id), (r) => t("{n} fixes accepted.", { n: r.accepted ?? r.updated ?? 0 })))}>{t("Accept every proposed value")}</Button>
             </div>
             <Field label={t("Or set one value for all")}><Input value={setTo} onChange={(e) => setSetTo(e.target.value)} /></Field>
             <Toggle label={t("Only where the field is empty")} checked={onlyBlank} onChange={setOnlyBlank} />
-            <Button disabled={!setTo.trim()} onClick={() => void run(() => postSetValue(sel.check_id, setTo, onlyBlank), (r) => t("{n} values set.", { n: r.updated ?? 0 }))}>{t("Set the value")}</Button>
+            <Button disabled={!setTo.trim() || busy} onClick={() => void once(() => run(() => postSetValue(sel.check_id, setTo, onlyBlank), (r) => t("{n} values set.", { n: r.updated ?? 0 })))}>{t("Set the value")}</Button>
           </Card>
         ) : null}
       </div>
@@ -129,6 +139,10 @@ export function Work() {
         <Chip selected={tab === "cleaning"} onClick={() => setTab("cleaning")}>{t("Cleaning queue")}</Chip>
       </div>
       {tab === "cleaning" ? <CleaningQueue /> : records}
+      <Confirm open={naming} title={t("Name this view")} confirmLabel={t("Save this view")} cancelLabel={t("Cancel")} onConfirm={saveView} onCancel={() => { setNaming(false); setViewName(""); }}>
+        <Field label={t("View name")}><Input value={viewName} onChange={(e) => setViewName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveView(); }} /></Field>
+        {viewName.trim() ? null : <p role="status" className="mx-muted">{t("A name is required.")}</p>}
+      </Confirm>
       <SimulateSheet rows={list} open={sim} onClose={() => setSim(false)} />
       <p className="mx-muted">{state.chip ? chipDef(state.chip).label : ""}</p>
     </>
