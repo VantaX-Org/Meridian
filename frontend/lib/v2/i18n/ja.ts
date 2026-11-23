@@ -15012,4 +15012,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Pair constraints could not be loaded": "ペアの制約を読み込めませんでした",
   "Calibration could not be loaded": "キャリブレーションを読み込めませんでした",
   "The consolidation pack could not be loaded": "統合パックを読み込めませんでした",
+  "Loading approvals": "承認を読み込み中",
+  "Approvals could not be loaded": "承認を読み込めませんでした",
+  "The SAP monitor could not be loaded": "SAPモニターを読み込めませんでした",
 };

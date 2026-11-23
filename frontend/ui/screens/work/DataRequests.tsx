@@ -18,6 +18,7 @@ function Answer({ id }: { id: string }) {
   const fx = useFixture();
   const run = useDo();
   const [vals, setVals] = useState<Record<string, string>>({});
+  const [errs, setErrs] = useState<Record<string, string>>({});
   const q = useQuery({ queryKey: ["v2", "data-request", fx, id], queryFn: () => getDataRequest(id), retry: false });
   if (q.isLoading) return <Skeleton lines={5} label={t("Loading the request")} />;
   if (q.isError || !q.data) return <ErrorState heading={t("The request could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
@@ -25,7 +26,10 @@ function Answer({ id }: { id: string }) {
   const send = async () => {
     const values = Object.entries(vals).filter(([, v]) => v.trim()).map(([item_id, value]) => ({ item_id, value }));
     const r = await run(() => submitDataRequest(id, values), (x) => t("{n} answers sent.", { n: x.submitted }));
-    if (r?.errors.length) setVals({});
+    if (!r) return;
+    const bad = Object.fromEntries(r.errors.map((e) => [e.item_id, e.error]));
+    setErrs(bad);
+    setVals(Object.fromEntries(Object.entries(vals).filter(([k]) => k in bad)));
   };
   return (
     <>
@@ -39,7 +43,12 @@ function Answer({ id }: { id: string }) {
           {
             key: "n", label: t("Your answer"),
             render: (i) => (i.state === "open" || i.state === "rejected"
-              ? <Input aria-label={t("Answer for {r}", { r: i.record_key })} maxLength={i.max_length ?? undefined} value={vals[i.id] ?? ""} onChange={(e) => setVals({ ...vals, [i.id]: e.target.value })} />
+              ? <>
+                {i.allowed_values?.length
+                  ? <Select aria-label={t("Answer for {r}", { r: i.record_key })} value={vals[i.id] ?? ""} onChange={(e) => setVals({ ...vals, [i.id]: e.target.value })} options={[{ value: "", label: "" }, ...i.allowed_values.map((a) => ({ value: a.value, label: a.label ? `${a.value} ${a.label}` : a.value }))]} />
+                  : <Input aria-label={t("Answer for {r}", { r: i.record_key })} maxLength={i.max_length ?? undefined} value={vals[i.id] ?? ""} onChange={(e) => setVals({ ...vals, [i.id]: e.target.value })} />}
+                {errs[i.id] ? <span className="mx-muted" role="alert">{errs[i.id]}</span> : null}
+              </>
               : i.new_value ?? ""),
           },
         ]} />

@@ -62,7 +62,7 @@ export function Work() {
     <div className="mx-links">
       <Button onClick={exp}>{t("Export workbook")}</Button>
       <Button onClick={() => file.current?.click()}>{t("Import workbook")}</Button>
-      <input ref={file} type="file" accept=".xlsx,.csv" hidden aria-label={t("Import workbook")} onChange={(e) => { const f = e.target.files?.[0]; if (f) void imp(f); e.target.value = ""; }} />
+      <input ref={file} type="file" accept=".xlsx" hidden aria-label={t("Import workbook")} onChange={(e) => { const f = e.target.files?.[0]; if (f) void imp(f); e.target.value = ""; }} />
       <Button variant="ghost" onClick={() => sheets.open("whatif", { module: state.module })}>{t("What if")}</Button>
       {list.length ? <Button variant="ghost" onClick={() => setSim(true)}>{t("Simulate fixing")}</Button> : null}
       <Button variant="ghost" onClick={saveView}>{t("Save this view")}</Button>
@@ -94,7 +94,7 @@ export function Work() {
       </div>
       <div className="mx-col">
         <Card title={t("Records")} sub={sel ? sel.check_id : t("All rules")}>
-          {rows.isLoading ? <Skeleton lines={5} label={t("Loading the records")} /> : !list.length ? <EmptyState heading={t("No record matches")} /> : (
+          {rows.isLoading ? <Skeleton lines={5} label={t("Loading the records")} /> : rows.isError ? <ErrorState heading={t("The records could not be loaded")} onRetry={() => void rows.refetch()} retryLabel={t("Try again")} /> : !list.length ? <EmptyState heading={t("No record matches")} /> : (
             <>
               <DataTable label={t("Records")} rows={list} rowKey={rowId} selected={pick ? rowId(pick) : null} onSelect={open}
                 columns={[

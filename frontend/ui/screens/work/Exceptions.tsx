@@ -14,6 +14,7 @@ import { exportExceptions } from "@/lib/api/v2/work";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { money } from "@/lib/v2/format";
 import { Button, Card, Chip, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Sheet, Skeleton, StatTile, Tabs, useAletheia, useAletheiaScope, useStacked } from "@/ui/kit";
+import { useAssignable } from "@/lib/v2/approvals-queries";
 import { day, sevLabel, useDo } from "./shared";
 
 const STATUS_TEXT = (s: string) => ({ open: t("Open"), investigating: t("Investigating"), pending_approval: t("Pending approval"), resolved: t("Resolved"), verified: t("Verified"), closed: t("Closed") })[s] ?? s;
@@ -28,6 +29,7 @@ function Detail({ id }: { id: string }) {
   const [kind, setKind] = useState<string>(RESOLUTION_TYPES[0]);
   const [cause, setCause] = useState("");
   const [owner, setOwner] = useState("");
+  const people = useAssignable(true);
   const q = useQuery({ queryKey: ["v2", "exception", fx, id], queryFn: () => getException(id), retry: false });
   const e = q.data;
   if (q.isLoading) return <Skeleton lines={5} label={t("Loading the exception")} />;
@@ -43,8 +45,8 @@ function Detail({ id }: { id: string }) {
       {e.description ? <p className="mx-muted">{e.description}</p> : null}
       {e.linked_finding ? <p><FieldChip code={e.linked_finding.check_id} description={e.linked_finding.module} /></p> : null}
       <Card title={t("Assign")}>
-        <Field label={t("Owner")}><Input value={owner} onChange={(x) => setOwner(x.target.value)} /></Field>
-        <Button variant="secondary" disabled={!owner.trim()} onClick={() => void run(() => assignException(id, owner.trim(), owner.trim()), () => t("Assigned."))}>{t("Assign")}</Button>
+        <Field label={t("Owner")}><Select value={owner} onChange={(x) => setOwner(x.target.value)} options={[{ value: "", label: t("Pick a person") }, ...(people.data ?? []).map((p) => ({ value: p.id, label: p.name }))]} /></Field>
+        <Button variant="secondary" disabled={!owner} onClick={() => void run(() => assignException(id, owner, people.data?.find((p) => p.id === owner)?.name ?? owner), () => t("Assigned."))}>{t("Assign")}</Button>
       </Card>
       <Card title={t("Escalate")}>
         <Field label={t("Reason")}><Input value={why} onChange={(x) => setWhy(x.target.value)} /></Field>
@@ -59,7 +61,7 @@ function Detail({ id }: { id: string }) {
       <Card title={t("Comments")}>
         {e.comments.length ? <ul className="mx-list">{e.comments.map((c) => <li key={c.id}>{c.user_name ?? t("Someone")} {day(c.created_at ?? "")}: {c.text}</li>)}</ul> : <p className="mx-muted">{t("No comments yet.")}</p>}
         <Field label={t("Add a comment")}><Input value={cmt} onChange={(x) => setCmt(x.target.value)} /></Field>
-        <Button variant="ghost" disabled={!cmt.trim()} onClick={() => void run(() => commentException(id, cmt.trim(), t("Me")), () => t("Comment added.")).then(() => setCmt(""))}>{t("Add comment")}</Button>
+        <Button variant="ghost" disabled={!cmt.trim()} onClick={() => void run(() => commentException(id, cmt.trim(), t("Me")), () => t("Comment added.")).then((r) => { if (r) setCmt(""); })}>{t("Add comment")}</Button>
       </Card>
     </>
   );
@@ -73,7 +75,7 @@ function Raise() {
       <Field label={t("Title")}><Input value={f.title} onChange={(x) => setF({ ...f, title: x.target.value })} /></Field>
       <Field label={t("What happened")}><Input value={f.description} onChange={(x) => setF({ ...f, description: x.target.value })} /></Field>
       <Field label={t("Severity")}><Select value={f.severity} onChange={(x) => setF({ ...f, severity: x.target.value })} options={SEVS.slice(1).map((s) => ({ value: s, label: sevLabel(s) }))} /></Field>
-      <Button variant="primary" disabled={!f.title.trim() || !f.description.trim()} onClick={() => void run(() => raiseException(f), () => t("Exception raised.")).then(() => setF({ ...f, title: "", description: "" }))}>{t("Raise exception")}</Button>
+      <Button variant="primary" disabled={!f.title.trim() || !f.description.trim()} onClick={() => void run(() => raiseException(f), () => t("Exception raised.")).then((r) => { if (r) setF({ ...f, title: "", description: "" }); })}>{t("Raise exception")}</Button>
     </Card>
   );
 }
@@ -87,7 +89,7 @@ function Rules() {
   return (
     <>
       <Card title={t("Exception rules")} sub={t("When these match, an exception is raised for you.")}>
-        {q.isLoading ? <Skeleton lines={4} label={t("Loading the rules")} /> : !rows.length ? <EmptyState heading={t("No exception rules yet")} /> : (
+        {q.isLoading ? <Skeleton lines={4} label={t("Loading the rules")} /> : q.isError ? <ErrorState heading={t("The rules could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : !rows.length ? <EmptyState heading={t("No exception rules yet")} /> : (
           <DataTable label={t("Exception rules")} rows={rows} rowKey={(r: ExceptionRule) => r.id}
             columns={[
               { key: "n", label: t("Rule"), render: (r) => <FieldChip code={r.id} description={r.name} />, sort: (r) => r.name },
@@ -103,7 +105,7 @@ function Rules() {
         <Field label={t("Object")}><Input value={f.object_type} onChange={(x) => setF({ ...f, object_type: x.target.value })} /></Field>
         <Field label={t("Condition")}><Input value={f.condition} onChange={(x) => setF({ ...f, condition: x.target.value })} /></Field>
         <Field label={t("Severity")}><Select value={f.severity} onChange={(x) => setF({ ...f, severity: x.target.value })} options={SEVS.slice(1).map((s) => ({ value: s, label: sevLabel(s) }))} /></Field>
-        <Button variant="primary" disabled={!f.name.trim() || !f.condition.trim()} onClick={() => void run(() => createExceptionRule(f), () => t("Rule added.")).then(() => setF({ ...f, name: "", description: "", condition: "" }))}>{t("Add rule")}</Button>
+        <Button variant="primary" disabled={!f.name.trim() || !f.condition.trim()} onClick={() => void run(() => createExceptionRule(f), () => t("Rule added.")).then((r) => { if (r) setF({ ...f, name: "", description: "", condition: "" }); })}>{t("Add rule")}</Button>
       </Card>
     </>
   );
@@ -135,7 +137,7 @@ function Monitor() {
   const rows = q.data?.exceptions ?? [];
   return (
     <Card title={t("SAP monitor")} sub={t("Exceptions raised from the connected SAP system.")}>
-      {q.isLoading ? <Skeleton lines={4} label={t("Loading the SAP monitor")} /> : !rows.length ? <EmptyState heading={t("Nothing from SAP right now")} /> : (
+      {q.isLoading ? <Skeleton lines={4} label={t("Loading the SAP monitor")} /> : q.isError ? <ErrorState heading={t("The SAP monitor could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : !rows.length ? <EmptyState heading={t("Nothing from SAP right now")} /> : (
         <DataTable label={t("SAP monitor")} rows={rows} rowKey={(r: ExceptionRow) => r.id}
           columns={[{ key: "t", label: t("Title"), render: (r) => r.title }, { key: "c", label: t("Category"), render: (r) => r.category ?? "" }, { key: "s", label: t("Severity"), render: (r) => sevLabel(r.severity) }]} />
       )}

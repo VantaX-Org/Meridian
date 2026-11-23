@@ -15011,6 +15011,9 @@ export const en = {
   "Pair constraints could not be loaded": "Pair constraints could not be loaded",
   "Calibration could not be loaded": "Calibration could not be loaded",
   "The consolidation pack could not be loaded": "The consolidation pack could not be loaded",
+  "Loading approvals": "Loading approvals",
+  "Approvals could not be loaded": "Approvals could not be loaded",
+  "The SAP monitor could not be loaded": "The SAP monitor could not be loaded",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

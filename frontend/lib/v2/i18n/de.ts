@@ -15012,4 +15012,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Pair constraints could not be loaded": "Paarbeschränkungen konnten nicht geladen werden",
   "Calibration could not be loaded": "Die Kalibrierung konnte nicht geladen werden",
   "The consolidation pack could not be loaded": "Das Konsolidierungspaket konnte nicht geladen werden",
+  "Loading approvals": "Freigaben werden geladen",
+  "Approvals could not be loaded": "Die Freigaben konnten nicht geladen werden",
+  "The SAP monitor could not be loaded": "Der SAP-Monitor konnte nicht geladen werden",
 };
