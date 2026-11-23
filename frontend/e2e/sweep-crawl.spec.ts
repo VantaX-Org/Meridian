@@ -112,7 +112,7 @@ for (const route of ROUTES) {
         const r = e.getBoundingClientRect();
         const visible = r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== "hidden";
         const role = e.getAttribute("role");
-        const kind = e.tagName === "A" ? "link" : role === "tab" ? "tab" : role === "menuitem" ? "menuitem" : "button";
+        const kind: Row["kind"] = e.tagName === "A" ? "link" : role === "tab" ? "tab" : role === "menuitem" ? "menuitem" : "button";
         const label = (e.getAttribute("aria-label") || e.textContent || e.getAttribute("title") || "").replace(/\s+/g, " ").trim().slice(0, 80);
         const disabled = (e as HTMLButtonElement).disabled === true || e.getAttribute("aria-disabled") === "true";
         return { i, kind, label, href: e.getAttribute("href"), visible, disabled, download: e.hasAttribute("download") };
