@@ -43,8 +43,9 @@ Statuses:
 | Settings writes: theme (name, accents), logo upload and remove, compliance and retention days, automation, chat alerts and test | PUT `/settings/theme`, POST `/settings/theme/logo`, PUT `/settings/compliance`, PUT `/settings/retention`, PUT `/settings/automation`, PUT `/settings/chat-alerts`, POST `/settings/chat-alerts/test` | `ui/screens/admin/ops/{ThemeEditor,ComplianceEditor,AlertSettings}.tsx`, in Admin Enterprise, Data and Notify | Admin |
 | Triage configuration: SLA policy reset, team edit and members, assignment rule add (three steps) and reorder, escalation chain, working calendar and fallback owner | DELETE `/triage/sla-policies/{id}`, PATCH `/triage/teams/{id}`, PUT `/triage/teams/{id}/members`, POST `/triage/rules`, POST `/triage/rules/reorder`, PUT `/triage/escalation-chain`, GET and PUT `/triage/settings` | `ui/screens/admin/ops/TriageConfig.tsx`, mounted in `Triage.tsx` | Admin, Triage settings |
 | Data contracts: edit a draft or pending contract, set limits and enforcement behind a confirm, create a contract for one object in three steps (object picked from the landscape) | PUT `/contracts/{id}`, PUT `/contracts/{id}/enforcement`, POST `/contracts` | `ui/screens/people/ContractTerms.tsx`, in Contracts | People, Contracts |
+| Admin: manager picker on a person, API key edit (name, role, expiry), field mapping create, schedule edit, extraction history (profiles and sync runs per system) | PUT `/users/{id}/manager`, PATCH `/admin/api-keys/{id}`, POST `/field-mappings`, GET and PATCH `/schedules/{id}`, GET `/systems/{id}/profiles`, GET `/systems/{id}/runs` | `ui/screens/admin/access/{Users,ApiKeys}.tsx`, `ui/screens/admin/ops/{Mappings,Schedules}.tsx` | Admin |
 
-Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `SettingsWrites.test.tsx`, `TriageConfig.test.tsx`, `ContractTerms.test.tsx`.
+Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `SettingsWrites.test.tsx`, `TriageConfig.test.tsx`, `ContractTerms.test.tsx`, `AdminWrites.test.tsx`.
 
 ## ORPHAN capabilities (client exists, no screen)
 
@@ -77,7 +78,7 @@ Suggested home is the journey where the user would expect it.
 | Fix drafts and cleaning plan | `draftFix`, `getCleaningPlan` | `/aletheia/fix-drafts`, `/aletheia/cleaning-plan` | Clean |
 | Split scope | `splitScope` | `/systems/{id}/versions/{v}/split-scope` | Run |
 | Report schedule update | `updateSchedule` | `/reports/schedules/{id}` | Reports |
-| Admin: user manager, API key update, field mapping create, sync runs and profiles, run schedule get and patch | `setUserManager`, `updateApiKey`, `createFieldMapping`, `listSyncRuns`, `listProfiles`, `getRunSchedule`, `patchRunSchedule` | `/users/{id}/manager`, `/licence`, `/field-mappings`, `/systems/{id}/runs`, `/schedules/{id}` | Admin |
+| Admin (left): `GET /systems/{id}/runs` is declared twice, in sync runs and in process discovery; sync runs is registered first so the process discovery list route is shadowed. The sync runs view uses it. | | `api/routes/process_discovery.py` L619 | Backend |
 | Record findings, glossary batch lookup, DQ firewall validate, AI feedback | `getRecordFindings`, `glossaryBatchLookup`, `validateRecords`, `sendAiFeedback` | various | Objects, Clean |
 
 ## Left to feat/claims (export, import, download)

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, Code, Confirm, DataTable, EmptyState, Field, Input, Select, SeverityPill, type Column } from "@/ui/kit";
+import { Button, Card, Code, Confirm, DataTable, EmptyState, Field, Input, Select, SeverityPill, Sheet, type Column } from "@/ui/kit";
 import { Frame, day, useAct, useSectionChat } from "../common";
 import { useApiKeys, useRoles } from "@/lib/v2/admin-queries";
-import { createApiKey, deleteApiKey, revokeApiKey, type ApiKey } from "@/lib/api/v2/admin";
+import { createApiKey, deleteApiKey, revokeApiKey, updateApiKey, type ApiKey } from "@/lib/api/v2/admin";
 import { roleText } from "@/lib/v2/labels";
 import { t, tx } from "@/lib/v2/i18n";
 
@@ -18,6 +18,7 @@ export function ApiKeys() {
   const [role, setRole] = useState("");
   const [expires, setExpires] = useState("");
   const [shown, setShown] = useState<string | null>(null);
+  const [edit, setEdit] = useState<ApiKey | null>(null);
   const [ask, setAsk] = useState<{ key: ApiKey; kind: "revoke" | "delete" } | null>(null);
   const keys = q.data ?? [];
   const active = keys.filter((k) => k.status === "active").length;
@@ -32,6 +33,7 @@ export function ApiKeys() {
     { key: "exp", label: t("Expires"), render: (k) => day(k.expires_at) },
     { key: "act", label: "", render: (k) => (
       <span className="mx-links">
+        {k.status === "active" && <Button variant="ghost" type="button" onClick={() => setEdit(k)}>{t("Edit")}</Button>}
         {k.status === "active" && <Button variant="ghost" type="button" onClick={() => setAsk({ key: k, kind: "revoke" })}>{t("Revoke")}</Button>}
         <Button variant="ghost" type="button" onClick={() => setAsk({ key: k, kind: "delete" })}>{t("Delete")}</Button>
       </span>
@@ -64,6 +66,9 @@ export function ApiKeys() {
       <Card title={t("Keys")} sub={t("{n} keys", { n: keys.length })}>
         {keys.length === 0 ? <EmptyState heading={t("No API keys yet")} body={t("Create one above to let a script call the API.")} /> : <DataTable columns={cols} rows={keys} rowKey={(k) => k.id} label={t("API keys")} />}
       </Card>
+      <Sheet open={!!edit} onClose={() => setEdit(null)} label={t("Edit API key")} closeLabel={t("Close")}>
+        {edit && <EditKey key={edit.id} apiKey={edit} roles={(roles.data ?? []).map((r) => ({ value: r.key, label: tx(r.name) }))} busy={busy} onSave={async (body) => { if (await run(() => updateApiKey(edit.id, body), t("API key saved."), ["apikeys"])) setEdit(null); }} />}
+      </Sheet>
       <Confirm
         open={!!ask}
         danger
@@ -76,5 +81,29 @@ export function ApiKeys() {
         <p>{t("Anything using {name} stops working at once.", { name: ask?.key.name ?? "" })}</p>
       </Confirm>
     </Frame>
+  );
+}
+
+/** Name, role and expiry of one active key. Saving a role replaces every role the key holds, so the form says so. */
+function EditKey({ apiKey, roles, busy, onSave }: { apiKey: ApiKey; roles: { value: string; label: string }[]; busy: boolean; onSave: (body: { name?: string; scopes?: { role_key: string }[]; expires_at?: string | null }) => void }) {
+  const first = apiKey.grants[0]?.role_key ?? "";
+  const [name, setName] = useState(apiKey.name);
+  const [role, setRole] = useState(first);
+  const [expires, setExpires] = useState(apiKey.expires_at?.slice(0, 10) ?? "");
+  const save = () => onSave({
+    ...(name.trim() !== apiKey.name ? { name: name.trim() } : {}),
+    ...(role !== first ? { scopes: [{ role_key: role }] } : {}),
+    ...(expires !== (apiKey.expires_at?.slice(0, 10) ?? "") ? { expires_at: expires ? new Date(expires).toISOString() : null } : {}),
+  });
+  const changed = name.trim() !== apiKey.name || role !== first || expires !== (apiKey.expires_at?.slice(0, 10) ?? "");
+  return (
+    <form className="mx-col" onSubmit={(e) => { e.preventDefault(); save(); }}>
+      <Field label={t("Name")}><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
+      <Field label={t("Role")} hint={t("A new role replaces every role this key holds now.")}>
+        <Select value={role} onChange={(e) => setRole(e.target.value)} options={[{ value: "", label: t("Choose a role") }, ...roles]} />
+      </Field>
+      <Field label={t("Expires on")} hint={t("Empty removes the expiry.")}><Input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} /></Field>
+      <div><Button variant="primary" type="submit" disabled={busy || !changed || !name.trim() || !role}>{t("Save key")}</Button></div>
+    </form>
   );
 }

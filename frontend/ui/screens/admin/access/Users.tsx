@@ -6,7 +6,7 @@ import { Facts, Frame, day, removeBlock, useAct, useCan, useSectionChat } from "
 import { useAccessRequests, useEffective, useGrantPreview, useGrants, useLicence, useRoles, useUsers } from "@/lib/v2/admin-queries";
 import {
   addGrant, bulkUsers, createInviteLink, decideAccessRequest, importUsers, inviteUser, previewUserImport, removeGrant, removeUser,
-  resendInvite, resetUserPassword, setUserActive, setUserPassword, type BulkAction, type User, type UserStatus,
+  resendInvite, resetUserPassword, setUserActive, setUserManager, setUserPassword, type BulkAction, type User, type UserStatus,
 } from "@/lib/api/v2/admin";
 import type { ImportPreview } from "@/lib/api/users";
 import { STATUS_LABEL, USER_STATUSES, inviteAttention, seatsFull, seatsNearlyFull, userStatus } from "@/lib/users";
@@ -234,12 +234,13 @@ function Person({ user, editable, all, onClose, onAsk }: { user: User | null; ed
   const [system, setSystem] = useState("");
   const [module, setModule] = useState("");
   const [shown, setShown] = useState<string | null>(null);
+  const [boss, setBoss] = useState<string | undefined>(undefined);
   const preview = useGrantPreview(id, role, system, module);
   const s = user ? userStatus(user) : "active";
   const pending = s === "invited" || s === "invite_expired";
   const added = preview.data?.diff.added_actions ?? [];
   if (!user) return <Sheet open={false} onClose={onClose} label="" closeLabel="">{null}</Sheet>;
-  void all;
+  const current = all.find((u) => u.id === id)?.manager_id ?? "";
 
   const cols: Column<NonNullable<typeof grants.data>[number]>[] = [
     { key: "role", label: t("Role"), render: (g) => <Code code={g.role_key} description={roleText(g.role_key)} /> },
@@ -270,6 +271,14 @@ function Person({ user, editable, all, onClose, onAsk }: { user: User | null; ed
             <Button variant="ghost" type="button" onClick={() => onAsk({ kind: "remove", user })}>{t("Remove")}</Button>
           </div>
         )}
+        <Card title={t("Reports to")} sub={t("The person who approves this person's requests.")}>
+          <form className="mx-col" onSubmit={(e) => { e.preventDefault(); void run(() => setUserManager(id, (boss ?? current) || null), t("Manager saved."), ["users"]).then((r) => { if (r) setBoss(undefined); }); }}>
+            <Field label={t("Manager")}>
+              <Select disabled={!editable} value={boss ?? current} onChange={(e) => setBoss(e.target.value)} options={[{ value: "", label: t("No manager") }, ...all.filter((u) => u.id !== id).map((u) => ({ value: u.id, label: u.name }))]} />
+            </Field>
+            {editable && <div><Button variant="secondary" type="submit" disabled={busy || boss === undefined}>{t("Save manager")}</Button></div>}
+          </form>
+        </Card>
         <Card title={t("Grants")} sub={t("{n} grants", { n: grants.data?.length ?? 0 })}>
           {(grants.data ?? []).length === 0 ? <EmptyState heading={t("No grants")} body={t("This person holds no role yet.")} /> : <DataTable columns={cols} rows={grants.data ?? []} rowKey={(g) => g.id} label={t("Grants")} height={200} />}
         </Card>
