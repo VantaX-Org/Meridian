@@ -161,7 +161,7 @@ def test_scores_history_per_module_series(app_engine):
     summary1 = {"material_master": {"composite_score": 80.0, "total_checks": 10,
                                     "dimension_scores": {"completeness": 80.0},
                                     "dimension_coverage": {"completeness": 10}}}
-    summary2 = {"material_master": {"composite_score": 90.0, "total_checks": 10,
+    summary2 = {"material_master": {"composite_score": 85.0, "raw_score": 90.0, "capped": True, "total_checks": 10,
                                     "dimension_scores": {"completeness": 90.0},
                                     "dimension_coverage": {"completeness": 10}},
                 "business_partner": {"composite_score": 70.0, "total_checks": 5,
@@ -189,11 +189,15 @@ def test_scores_history_per_module_series(app_engine):
             by_vid = {h["version_id"]: h for h in body["history"]}
             assert set(body["modules"]) == {"material_master", "business_partner"}
             mm_series = {row["version_id"]: row["composite"] for row in body["modules"]["material_master"]}
-            assert mm_series[v1] == 80.0 and mm_series[v2] == 90.0
+            assert mm_series[v1] == 80.0
+            mm = {row["version_id"]: row for row in body["modules"]["material_master"]}
+            # raw_score and cap_level are the stored values: absent in v1 (null), 90 held at the 85 cap in v2
+            assert (mm[v1]["raw_score"], mm[v1]["cap_level"]) == (None, None)
+            assert (mm[v2]["raw_score"], mm[v2]["cap_level"]) == (90.0, 85)
             bp_series = {row["version_id"]: row["composite"] for row in body["modules"]["business_partner"]}
             assert bp_series == {v2: 70.0}  # absent from v1, not padded with a null
             # each point also carries the module score as stored when the run was scored
-            assert {row["version_id"]: row["at_the_time"] for row in body["modules"]["material_master"]} == {v1: 80.0, v2: 90.0}
+            assert {row["version_id"]: row["at_the_time"] for row in body["modules"]["material_master"]} == {v1: 80.0, v2: 85.0}
             # the module series' composite equals what the composite history already reports per-module
             assert by_vid[v2]["under_current"]["modules"]["material_master"] == mm_series[v2]
 

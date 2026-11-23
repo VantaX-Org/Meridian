@@ -109,3 +109,15 @@ async def test_delete_and_isolation(owner, monkeypatch):
         assert (await client.delete(f"/api/v1/views/{v['id']}", headers=headers())).status_code == 404
         assert [x for x in (await client.get("/api/v1/views", params={"route": "rules"}, headers=headers())).json()["views"]
                 if not x["builtin"]] == []
+
+
+@pytest.mark.anyio
+async def test_any_screen_key_saves_and_lists(owner, monkeypatch):
+    s = seed_m2(owner)
+    client = await start(monkeypatch, s["tid"])
+    async with client:
+        for key in ("clean", "load", "monitor", "home", "objects.detail"):
+            body = {"route": key, "name": "Mine", "filters": {"q": "x"}, "columns": None, "density": "compact"}
+            assert (await client.put("/api/v1/views", json=body, headers=headers())).status_code == 200
+            r = await client.get("/api/v1/views", params={"route": key}, headers=headers())
+            assert [v["name"] for v in r.json()["views"] if not v["builtin"]] == ["Mine"]

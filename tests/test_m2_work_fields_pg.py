@@ -261,3 +261,14 @@ async def test_suggestion_filters_and_groups(monkeypatch, owner):
     assert all(set(x) == {"key", "label", "count"} for x in g)
     r = await client.get("/api/v1/work/groups", params={"scope": "current"}, headers=headers())
     assert all("with_proposal" in x for x in r.json()["groups"])
+
+
+async def test_findings_group_by(monkeypatch, owner):
+    s = seed_m2(owner)
+    client = await start(monkeypatch, s["tid"])
+    r = await client.get("/api/v1/findings", params={"version_id": s["run"], "group_by": "check_id"}, headers=headers())
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["group_by"] == "check_id" and sum(g["count"] for g in body["groups"]) == body["total"]
+    assert all(set(g) == {"key", "label", "count"} for g in body["groups"])
+    assert "groups" not in (await client.get("/api/v1/findings", headers=headers())).json()

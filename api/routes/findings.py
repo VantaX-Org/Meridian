@@ -415,6 +415,7 @@ async def score_history(
     """Composite DQS per complete run, newest first, twice: under the scoring config in
     force when the run was scored (``metadata.scoring``; runs before it was recorded
     count as the defaults) and re-weighted under the tenant's current config."""
+    from api.routes.objects import cap_level_of
     from api.services.scoring import rescore
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant.id)})
     current = await _scoring_raw(db, tenant)
@@ -426,8 +427,11 @@ async def score_history(
     out = []
     # Each module's score as stored when the run was scored (no re-weighting), keyed by run.
     then_modules: dict[str, dict[str, float]] = {}
+    then_cap: dict[str, dict[str, dict]] = {}  # the stored raw (pre-cap) score and the cap level held, per run and module
     for r in rows:
         summary = r["dqs_summary"] or {}
+        then_cap[str(r["id"])] = {m: {"raw_score": v.get("raw_score"), "cap_level": cap_level_of(v)}
+                                  for m, v in summary.items() if isinstance(v, dict)}
         then_modules[str(r["id"])] = {m: v["composite_score"] for m, v in summary.items()
                                       if isinstance(v, dict) and v.get("composite_score") is not None}
         then = composite_dqs([summary], scoring=r["scoring"])
@@ -443,7 +447,8 @@ async def score_history(
     for r in out:
         for m, c in r["under_current"]["modules"].items():
             modules.setdefault(m, []).append({"version_id": r["version_id"], "composite": c,
-                                              "at_the_time": then_modules[r["version_id"]].get(m)})
+                                              "at_the_time": then_modules[r["version_id"]].get(m),
+                                              **then_cap[r["version_id"]].get(m, {"raw_score": None, "cap_level": None})})
     return {"history": out, "modules": modules}
 
 
@@ -458,6 +463,8 @@ async def list_findings(
     sort: Literal["severity", "impact"] = Query("severity", description="impact = $ at risk × blocked SAP features × severity"),
     finding_type: Optional[str] = Query(None, alias="type", description="rule | anomaly"),
     failing: bool = Query(False, description="Only rules with at least one failing record (affected_count > 0)"),
+    group_by: Optional[Literal["dimension", "module", "severity", "check_id"]] = Query(
+        None, description="also return groups: [{key, label, count}] of the filtered findings"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -506,6 +513,14 @@ async def list_findings(
     # Get total count
     count_stmt = select(func.count()).select_from(base.subquery())
     total = (await db.execute(count_stmt)).scalar() or 0
+
+    groups = None
+    if group_by:
+        sub = base.subquery()
+        gcol = sub.c[group_by]
+        counted = (await db.execute(select(gcol, func.count()).where(gcol.is_not(None)).group_by(gcol)
+                                    .order_by(func.count().desc(), gcol).limit(200))).all()
+        groups = [{"key": k, "label": _object_label(k) if group_by == "module" else k, "count": n} for k, n in counted]
 
     # Get paginated results — worst findings first
     severity_order = case(
@@ -584,6 +599,7 @@ async def list_findings(
         ],
         "total": total,
         "filters_applied": filters_applied,
+        **({"group_by": group_by, "groups": groups} if group_by else {}),
     }
 
 
