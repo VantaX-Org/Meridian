@@ -12,7 +12,7 @@ export const PROJECTION_CAP = 5000;
 
 export const rowId = (r: Pick<WorkRow, "module" | "record_key">): string => `${r.module}|${r.record_key}`;
 
-/** The value the engine proposes for a row: the PR #791 suggestion when the API sends it, else the older field. */
+/** The value the engine proposes for a row: the PR 791 suggestion when the API sends it, else the older field. */
 export const machineValue = (r: WorkRow): string | null => r.suggestion?.value ?? r.suggested_value ?? null;
 /** A row whose value waits in a draft fix batch: a decision was made and nothing is sent yet. */
 export const isDraft = (r: WorkRow): boolean => r.status === "proposed";

@@ -36,7 +36,7 @@ export interface WorkFilters {
   wave?: string;
   /** With a wave: only its objects with this verdict (go, no-go). */
   verdict?: string;
-  /** Backend PR #791, optional: narrow by rule dimension, field, proposal source or lowest confidence. */
+  /** Backend PR 791, optional: narrow by rule dimension, field, proposal source or lowest confidence. */
   dimension?: string;
   field?: string;
   source?: "rule" | "value_map" | "cleaning";
@@ -44,7 +44,7 @@ export interface WorkFilters {
 }
 
 export interface WorkQuery extends WorkFilters {
-  /** Backend PR #791, optional: the page also returns `groups` counted by this column. */
+  /** Backend PR 791, optional: the page also returns `groups` counted by this column. */
   group_by?: "rule" | "field" | "source" | "severity";
   sort?: string;
   after?: string;

@@ -56,7 +56,7 @@ export interface WorkGroup {
   population: number | null;
   /** Records with a machine-proposed value. */
   proposed: number;
-  /** Backend PR #791: failing records of this rule that have a proposal. Absent until it is deployed; the column is then hidden. */
+  /** Backend PR 791: failing records of this rule that have a proposal. Absent until it is deployed; the column is then hidden. */
   with_proposal?: number;
   /** The run kept only the first 100k failing keys of this check. */
   truncated: boolean;

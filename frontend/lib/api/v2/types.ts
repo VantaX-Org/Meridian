@@ -260,7 +260,7 @@ export interface WorkRow {
   possible_values_total?: number | null;
   field_description?: string | null;
   /**
-   * Backend PR #791, absent until it is deployed: the proposal the engine made for this record. A row without it
+   * Backend PR 791, absent until it is deployed: the proposal the engine made for this record. A row without it
    * degrades to `suggested_value` and shows no source or confidence.
    */
   suggestion?: RowSuggestion | null;
@@ -279,7 +279,7 @@ export interface WorkRow {
 }
 
 export interface WorkPage {
-  /** Backend PR #791, with `group_by`: the counts per group. */
+  /** Backend PR 791, with `group_by`: the counts per group. */
   groups?: { key: string; label: string; count: number }[];
   version_id: string | null;
   total: number;

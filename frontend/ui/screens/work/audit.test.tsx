@@ -100,7 +100,7 @@ describe("Work saved view and bulk guard", () => {
     m.postAcceptAll.mockImplementation(() => new Promise((r) => { done = r; }));
     m.getGroups.mockResolvedValue(groupsOf(1));
     mount("/work?fixture=1", <Work />);
-    const list = await screen.findByRole("list", { name: "Rules with work" }, { timeout: 5000 });
+    const list = await screen.findByRole("navigation", { name: "Rules with work" }, { timeout: 5000 });
     fireEvent.click(await within(list).findByRole("button", { name: /Blank base unit/ }));
     const btn = await screen.findByRole("button", { name: "Accept every proposed value" }, { timeout: 5000 });
     fireEvent.click(btn);
