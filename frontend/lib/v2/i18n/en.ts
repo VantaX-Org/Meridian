@@ -15318,6 +15318,18 @@ export const en = {
   "Queued on run {id}. The lists refresh when it finishes.": "Queued on run {id}. The lists refresh when it finishes.",
   "Queue the rerun": "Queue the rerun",
   "Rediscover": "Rediscover",
+  "Schedule steps": "Schedule steps",
+  "Five fields, for example 0 2 * * 1 for Mondays at 02:00.": "Five fields, for example 0 2 * * 1 for Mondays at 02:00.",
+  "The schedule is saved.": "The schedule is saved.",
+  "Discovery health and schedules": "Discovery health and schedules",
+  "Freshness of the latest run per process and the schedule behind it.": "Freshness of the latest run per process and the schedule behind it.",
+  "Fitness of the latest run": "Fitness of the latest run",
+  "Discovery health": "Discovery health",
+  "Fitness drift": "Fitness drift",
+  "No processes to watch": "No processes to watch",
+  "This run has no mined model": "This run has no mined model",
+  "Cases by step": "Cases by step",
+  "Mined model": "Mined model",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
