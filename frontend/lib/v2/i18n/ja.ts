@@ -15227,4 +15227,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Score 70 to 85": "スコア70から85",
   "Score 85 or more": "スコア85以上",
   "Score under 70": "スコア70未満",
+  "Re-score": "再採点",
+  "Preflight": "事前チェック",
 };

@@ -176,12 +176,13 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
             : <Button variant="primary" onClick={download}>{t("Download workbook")}</Button>}
           <Button href={withFixture("/approvals", fx)}>{t("Approvals")}</Button>
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
-        </>} />
+        </>}
+        stepper={<Stepper label={t("Clean cycle steps")} current={step} steps={[
+          { id: "pull", label: t("Pull") }, { id: "excel", label: t("Clean in Excel") },
+          { id: "upload", label: t("Upload"), state: chk?.verdict === "fail" ? "error" : undefined }, { id: "dqs", label: t("New DQS") },
+        ]} />} />
 
       {switcher}
-      <Stepper label={t("Clean cycle steps")} current={step} steps={[
-        { id: "pull", label: t("Pull") }, { id: "excel", label: t("Clean in Excel") }, { id: "upload", label: t("Upload") }, { id: "dqs", label: t("New DQS") },
-      ]} />
       <ul className="mx-clean-steps" aria-label={t("State of each step")}>
         <li className="mx-clean-step" data-state={step === 0 ? "current" : "done"}>
           <span className="mx-clean-step-name">{t("Pull")}</span>

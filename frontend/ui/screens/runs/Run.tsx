@@ -35,11 +35,7 @@ const secs = (s: number | null) => (s == null ? t("n/a") : formatDuration(s * 10
 
 function Cycle({ id, module }: { id: string; module: string }) {
   const { cycle } = useObjectCycle(id, module);
-  return (
-    <Card title={t("Where this object is in the cycle")} sub={cycle ? t("Cycle {n}, since {when}", { n: cycle.number, when: when(cycle.since) }) : t("This run is not part of a cycle yet.")}>
-      <CycleStepper label={t("Cycle steps")} step={cycle?.step ?? null} labels={{ pull: t("Pull"), clean: t("Clean"), upload: t("Upload"), score: t("Score"), compare: t("Compare") }} />
-    </Card>
-  );
+  return <CycleStepper label={t("Cycle steps")} step={cycle?.step ?? null} labels={{ pull: t("Pull"), clean: t("Clean"), upload: t("Upload"), score: t("Re-score"), compare: t("Compare") }} />;
 }
 
 function Steps({ id }: { id: string }) {
@@ -227,7 +223,7 @@ export function Run({ id }: { id: string }) {
   return (
     <div className="mx-col">
       <JobHairline />
-      <PageHeader title={runTitle(h)} context={`${sourceLabel(h)}, ${when(h.run_at)}`}
+      <PageHeader title={runTitle(h)} context={`${sourceLabel(h)}, ${when(h.run_at)}`} stepper={focus ? <Cycle id={id} module={focus} /> : undefined}
         actions={
           <span className="rn-row-actions">
             <Button variant="secondary" onClick={() => sheet.open("compare", { run: id })}>{t("Compare")}</Button>
@@ -248,7 +244,6 @@ export function Run({ id }: { id: string }) {
       <div role="tabpanel" id={`run-tab-panel-${tab}`} aria-labelledby={`run-tab-tab-${tab}`} className="mx-col">
         {tab === "overview" ? (
           <>
-            {focus ? <Cycle id={id} module={focus} /> : null}
             <Card title={t("What you can do")} sub={t("Actions on this run.")}>
               <div className="mx-links">
                 <Button variant="secondary" onClick={() => act(() => analyseRun(id), t("Analysis started"))}>{t("Analyse again")}</Button>

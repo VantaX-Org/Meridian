@@ -15227,4 +15227,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Score 70 to 85": "Wert 70 bis 85",
   "Score 85 or more": "Wert 85 oder mehr",
   "Score under 70": "Wert unter 70",
+  "Re-score": "Neu bewerten",
+  "Preflight": "Vorabprüfung",
 };

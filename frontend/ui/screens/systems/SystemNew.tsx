@@ -101,8 +101,7 @@ export function SystemNew() {
 
   return (
     <div className="mx-col">
-      <PageHeader title={t("Connect a system")} actions={<Button variant="secondary" href="/s">{t("All systems")}</Button>} />
-      <Stepper steps={labelSteps} current={STEPS.indexOf(step)} label={t("Connection steps")} />
+      <PageHeader title={t("Connect a system")} actions={<Button variant="secondary" href="/s">{t("All systems")}</Button>} stepper={<Stepper steps={labelSteps} current={STEPS.indexOf(step)} label={t("Connection steps")} />} />
       {error ? <ErrorState heading={t("That did not work")} body={error} /> : null}
 
       {step === "connect" ? (
