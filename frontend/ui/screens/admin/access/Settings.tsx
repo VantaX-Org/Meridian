@@ -7,6 +7,7 @@ import { useCostModel, useTenantSettings } from "@/lib/v2/admin-queries";
 import { patchTenant, putCostModel, saveAlertThresholds, savePlanner } from "@/lib/api/v2/admin";
 import type { AlertThresholds, CostModel, PlannerConfig } from "@/types/api";
 import { t } from "@/lib/v2/i18n";
+import { SandboxPanel } from "./SandboxPanel";
 
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 const sevLabel = (s: string) => (s === "critical" ? t("Critical") : s === "high" ? t("High") : s === "medium" ? t("Medium") : t("Low"));
@@ -85,6 +86,7 @@ export function Settings() {
               </form>
             )}
           </Card>
+          <SandboxPanel />
         </>
       )}
     </Frame>

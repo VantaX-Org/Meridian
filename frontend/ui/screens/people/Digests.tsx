@@ -6,7 +6,7 @@ import { createDigest, deleteDigest, getDigest, getDigestNumbers, listDigestDeli
 import { CUSTOM, PRESETS, cronError, describeCron, isPreset } from "@/lib/v2/cron";
 import { relTime } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Confirm, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Select, Split, StatTile, Toggle, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Split, StatTile, Toggle, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
 import { Gate, day, refreshV2, useQ } from "./common";
 
 const BLANK: DigestBody = { name: "", audience: "role", role: "", wave_id: null, cron: PRESETS[1].value, timezone: "UTC", channel: "email", recipients: [], recipient_user_ids: [], alert_channel_id: null, attach_pdf: false, enabled: true };
@@ -57,8 +57,11 @@ function Form({ initial, id, onDone }: { initial: DigestBody; id?: string; onDon
   );
 }
 
-function Detail({ d, onEdit, onGone }: { d: Digest; onEdit: () => void; onGone: () => void }) {
+function Detail({ d: listed, onEdit, onGone }: { d: Digest; onEdit: () => void; onGone: () => void }) {
   const qc = useQueryClient();
+  // A fresh single read: last sent and next run change after a toggle or a send, and the list may be older.
+  const one = useQ(["digest", listed.id], () => getDigest(listed.id));
+  const d = one.data ?? listed;
   const toast = useToast();
   const [confirm, setConfirm] = useState(false);
   const deliveries = useQ(["digest-deliveries", d.id], () => listDigestDeliveries(d.id));
@@ -71,7 +74,8 @@ function Detail({ d, onEdit, onGone }: { d: Digest; onEdit: () => void; onGone: 
       <h2 className="mx-card-t">{d.name}</h2>
       <p className="mx-muted">{describeCron(d.cron)}, {d.channel.replace(/_/g, " ")}, {d.audience === "role" ? (d.role ?? "") : (d.wave_id ?? "")}</p>
       <Toggle label={t("Enabled")} checked={d.enabled} onChange={(v) => flip.mutate(v)} />
-      <dl className="mx-tiles">
+      {one.isError ? <ErrorState heading={t("The latest times could not be read")} body={t("The times below come from the list and may be out of date.")} retryLabel={t("Try again")} onRetry={() => void one.refetch()} /> : null}
+      <dl className="mx-tiles" aria-busy={one.isFetching}>
         <StatTile label={t("Last sent")} value={d.last_sent_at ? relTime(d.last_sent_at) : t("Never")} />
         <StatTile label={t("Next run")} value={d.next_run_at ? day(d.next_run_at) : t("Not scheduled")} />
       </dl>

@@ -33,3 +33,12 @@ describe("Digests edit", () => {
     await waitFor(async () => expect((await getDigest(first.id)).name).toBe("Monday steering digest"));
   });
 });
+
+describe("Digests detail", () => {
+  it("reads the digest again for last sent and next run", async () => {
+    renderWithQuery(<AletheiaProvider><Digests /></AletheiaProvider>);
+    fireEvent.click((await screen.findAllByRole("row"))[1]);
+    expect((await screen.findAllByText("Last sent")).length).toBeGreaterThan(0);
+    expect(screen.queryByText("The latest times could not be read")).toBeNull();
+  });
+});

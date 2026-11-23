@@ -8,11 +8,13 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { useUrlParam } from "@/lib/v2/hooks";
 import { formatDuration } from "@/lib/format";
-import { analyseRun, archiveRuns, getRuleTrend, pinBaseline, restoreRuns } from "@/lib/api/v2/runs";
+import { analyseRun, archiveRuns, cappedReads, getRuleTrend, pinBaseline, restoreRuns } from "@/lib/api/v2/runs";
 import { downloadReconciliation, getRunSteps, renameRun, rerunAgents, streamRunEvents, type RunEvent } from "@/lib/api/v2/run-ops";
 import { purgeVersion } from "@/lib/api/v2/admin";
 import { getConfigMatches } from "@/lib/api/v2/config";
 import { exportVersionProfile, getProfile } from "@/lib/api/v2/profile";
+import { SplitCapped } from "./SplitCapped";
+import { MinedDependencies } from "./MinedDependencies";
 import { baselineRefusalOf, getSemanticTypes, putSemanticType, type SemanticColumn, type SemanticType } from "@/lib/api/v2/step9";
 import { getRunPrediction } from "@/lib/api/v2/step10";
 import { useObjectCycle, useRun, useRunsPage } from "@/lib/api/next/runs";
@@ -149,6 +151,7 @@ function ProfileTab({ id, systemId, modules }: { id: string; systemId: string; m
           <DataTable columns={tcols} rows={tables} rowKey={(x) => x.table} label={t("Profiled tables")} height={240} />
         )}
       </Card>
+      {profile.data ? <MinedDependencies object={obj} deps={profile.data.dependencies} onDone={() => void profile.refetch()} /> : null}
       <Card title={t("Column types")} sub={t("Confirm what each column holds so its values are checked.")}>
         {sem.isLoading ? <Skeleton lines={4} label={t("Loading the column types")} /> : !sem.data?.columns.length ? <EmptyState heading={t("No columns profiled")} body={t("Column types appear once the run is profiled.")} /> : (
           <DataTable columns={scols} rows={sem.data.columns} rowKey={(c) => c.column} label={t("Column types")} height={320} />
@@ -248,6 +251,7 @@ export function Run({ id }: { id: string }) {
       <div role="tabpanel" id={`run-tab-panel-${tab}`} aria-labelledby={`run-tab-tab-${tab}`} className="mx-col">
         {tab === "overview" ? (
           <>
+            <SplitCapped systemId={systemId} versionId={id} capped={cappedReads(h.metadata)} />
             {focus ? <Cycle id={id} module={focus} /> : null}
             <Card title={t("What you can do")} sub={t("Actions on this run.")}>
               <div className="mx-links">

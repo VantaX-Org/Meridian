@@ -11,6 +11,8 @@ import {
 } from "@/lib/api/v2/cleaning";
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, Input, Select, Skeleton, StatTile, Tabs } from "@/ui/kit";
+import { CleaningPlan } from "./CleaningPlan";
+import { Dedup } from "./Dedup";
 import { ObjChip } from "./ObjChip";
 import { day, useDo } from "./shared";
 
@@ -95,6 +97,8 @@ export function CleaningQueue() {
           ]} />
       );
     }
+    if (tab === "plan") return <CleaningPlan />;
+    if (tab === "dups") return <Dedup />;
     if (tab === "safety") {
       const s = safety.data;
       if (!s) return <Skeleton lines={3} label={t("Checking the values")} />;
@@ -158,7 +162,7 @@ export function CleaningQueue() {
 
   const items = [
     { id: "waiting", label: t("Waiting"), badge: groups.data ? String(groups.data.records) : undefined }, { id: "approved", label: t("Approved") }, { id: "applied", label: t("Applied") },
-    { id: "safety", label: t("Safety") }, { id: "metrics", label: t("Numbers") }, { id: "audit", label: t("Audit") }, { id: "export", label: t("Export") },
+    { id: "plan", label: t("Plan") }, { id: "dups", label: t("Duplicates") }, { id: "safety", label: t("Safety") }, { id: "metrics", label: t("Numbers") }, { id: "audit", label: t("Audit") }, { id: "export", label: t("Export") },
   ];
   return (
     <Card title={t("Cleaning queue")} sub={t("Proposed fixes wait for a second person to approve them.")}>
