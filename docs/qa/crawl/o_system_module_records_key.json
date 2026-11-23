@@ -1,6 +1,6 @@
 {
  "route": "/o/[system]/[module]/records/[key]",
- "url": "/o/ecc-production/material-master/records/MATNR-100",
+ "url": "/o/ecc-production/material-master/records/000000000010004711",
  "errors": [],
  "rows": [
   {
@@ -41,7 +41,7 @@
   {
    "kind": "link",
    "label": "Open in the work queue",
-   "target": "/work?module=material_master&q=MATNR-100&fixture=1",
+   "target": "/work?module=material_master&q=000000000010004711&fixture=1",
    "effect": "GET 200",
    "ok": true
   },
@@ -53,21 +53,21 @@
   },
   {
    "kind": "button",
-   "label": "Try again",
-   "effect": "NO OBSERVABLE EFFECT",
-   "ok": false
+   "label": "Score",
+   "effect": "DOM changes (1)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "Show as table",
-   "effect": "DOM changes (27)",
+   "effect": "DOM changes (9)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "View",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -84,13 +84,13 @@
   {
    "kind": "button",
    "label": "Fixed",
-   "effect": "DOM changes (14)",
+   "effect": "DOM changes (15)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Came back",
-   "effect": "DOM changes (2)",
+   "effect": "DOM changes (15)",
    "ok": true
   }
  ]

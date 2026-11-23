@@ -54,8 +54,8 @@
   {
    "kind": "button",
    "label": "View",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -72,7 +72,7 @@
   {
    "kind": "button",
    "label": "Status",
-   "effect": "DOM changes (1)",
+   "effect": "DOM changes (2)",
    "ok": true
   },
   {

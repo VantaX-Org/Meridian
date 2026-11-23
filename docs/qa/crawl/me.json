@@ -50,7 +50,7 @@
   {
    "kind": "button",
    "label": "Notification settings",
-   "effect": "opens dialog or menu; DOM changes (4); requests: GET /, GET /o, GET /work",
+   "effect": "opens dialog or menu; DOM changes (4)",
    "ok": true
   }
  ]

@@ -1,12 +1,19 @@
 {
  "route": "/requests/workflows",
- "url": "/requests/CR-1001",
+ "url": "/requests/workflows",
  "errors": [],
  "rows": [
   {
+   "kind": "link",
+   "label": "Back to requests",
+   "target": "/requests",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
    "kind": "button",
-   "label": "Cancel request",
-   "effect": "opens dialog or menu; DOM changes (1)",
+   "label": "New workflow",
+   "effect": "opens dialog or menu; DOM changes (3)",
    "ok": true
   },
   {
@@ -17,38 +24,44 @@
   },
   {
    "kind": "tab",
-   "label": "Overview",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "label": "Definitions",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
    "kind": "tab",
-   "label": "Approval",
-   "effect": "DOM changes (12)",
+   "label": "My tasks",
+   "effect": "DOM changes (8)",
    "ok": true
   },
   {
    "kind": "tab",
-   "label": "Comments1",
-   "effect": "DOM changes (11)",
-   "ok": true
-  },
-  {
-   "kind": "tab",
-   "label": "Attachments1",
-   "effect": "DOM changes (11)",
-   "ok": true
-  },
-  {
-   "kind": "tab",
-   "label": "Field history",
-   "effect": "DOM changes (13)",
+   "label": "Instances",
+   "effect": "DOM changes (7)",
    "ok": true
   },
   {
    "kind": "button",
-   "label": "Match score",
-   "effect": "DOM changes (1)",
+   "label": "Workflow",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "New version",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Steps",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Facts and rules",
+   "effect": "DOM changes (10)",
    "ok": true
   }
  ]

@@ -13,7 +13,7 @@
   {
    "kind": "button",
    "label": "Import CSV",
-   "effect": "opens dialog or menu; DOM changes (27); requests: GET /status, GET /runs, GET /",
+   "effect": "opens dialog or menu; DOM changes (27)",
    "ok": true
   },
   {
@@ -31,19 +31,19 @@
   {
    "kind": "button",
    "label": "Decline",
-   "effect": "DOM changes (85); requests: GET /status, GET /runs, GET /load",
+   "effect": "DOM changes (85)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Name",
-   "effect": "DOM changes (46); requests: GET /status, GET /runs, GET /load",
+   "effect": "DOM changes (46)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Email",
-   "effect": "DOM changes (46); requests: GET /load, GET /monitor, GET /admin",
+   "effect": "DOM changes (46)",
    "ok": true
   },
   {
@@ -97,7 +97,7 @@
   {
    "kind": "button",
    "label": "Marco Rossi",
-   "effect": "opens dialog or menu; DOM changes (37); requests: GET /admin, GET /status, GET /runs",
+   "effect": "opens dialog or menu; DOM changes (37)",
    "ok": true
   },
   {

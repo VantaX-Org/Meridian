@@ -121,7 +121,7 @@
   {
    "kind": "button",
    "label": "Edit",
-   "effect": "opens dialog or menu; DOM changes (8); requests: GET /work, GET /load, GET /monitor",
+   "effect": "opens dialog or menu; DOM changes (8)",
    "ok": true
   },
   {
@@ -133,7 +133,7 @@
   {
    "kind": "button",
    "label": "Run now",
-   "effect": "DOM changes (40); requests: GET /status, GET /runs, GET /load",
+   "effect": "DOM changes (40)",
    "ok": true
   },
   {

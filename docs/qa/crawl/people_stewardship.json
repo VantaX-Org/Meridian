@@ -30,8 +30,8 @@
   {
    "kind": "button",
    "label": "Open",
-   "effect": "NO OBSERVABLE EFFECT",
-   "ok": false
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
   },
   {
    "kind": "button",

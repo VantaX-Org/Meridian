@@ -66,7 +66,7 @@
   {
    "kind": "button",
    "label": "Decisions",
-   "effect": "DOM changes (9); requests: GET /load, GET /monitor, GET /status",
+   "effect": "DOM changes (9)",
    "ok": true
   },
   {

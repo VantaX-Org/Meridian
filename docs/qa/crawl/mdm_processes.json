@@ -18,7 +18,7 @@
   {
    "kind": "tab",
    "label": "Systems catalogue",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -30,13 +30,13 @@
   {
    "kind": "tab",
    "label": "Health",
-   "effect": "DOM changes (9); requests: GET /status, GET /runs, GET /",
+   "effect": "DOM changes (9)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Process",
-   "effect": "DOM changes (39); requests: GET /load, GET /monitor, GET /status",
+   "effect": "DOM changes (39)",
    "ok": true
   },
   {
@@ -54,7 +54,7 @@
   {
    "kind": "tab",
    "label": "Process map",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -90,38 +90,38 @@
   {
    "kind": "button",
    "label": "PTP.1 Requisition: 41,870 cases, 640 data quality defects. Open the level below.",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (8)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "PTP.2 Purchase order: 48,212 cases, 1,210 data quality defects. Open the level b",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (8)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "PTP.3 Goods receipt: 45,118 cases, 402 data quality defects. Open the level belo",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (8)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "PTP.4 Invoice verification: 44,902 cases, 866 data quality defects. Open the lev",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (8)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "PTP.5 Payment: 43,560 cases, No data quality defects. Open the level below.",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (8)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "PTP.6 Contract release: 0 cases, Data quality not measured. Open the level below",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (8)",
+   "ok": true
   },
   {
    "kind": "button",

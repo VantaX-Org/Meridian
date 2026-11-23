@@ -30,19 +30,19 @@
   {
    "kind": "tab",
    "label": "Fields",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
    "kind": "tab",
    "label": "Rules",
-   "effect": "DOM changes (8); requests: GET /load, GET /monitor, GET /status",
+   "effect": "DOM changes (8)",
    "ok": true
   },
   {
    "kind": "tab",
    "label": "About",
-   "effect": "DOM changes (8); requests: GET /load, GET /monitor, GET /status",
+   "effect": "DOM changes (8)",
    "ok": true
   },
   {

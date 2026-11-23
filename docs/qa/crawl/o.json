@@ -144,8 +144,8 @@
   {
    "kind": "button",
    "label": "All steps100",
-   "effect": "NO OBSERVABLE EFFECT",
-   "ok": false
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -174,14 +174,14 @@
   {
    "kind": "button",
    "label": "Compare20",
-   "effect": "DOM changes (233); requests: GET /monitor, GET /status, GET /runs",
+   "effect": "DOM changes (233)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "View",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -198,49 +198,49 @@
   {
    "kind": "button",
    "label": "Object",
-   "effect": "DOM changes (49)",
+   "effect": "DOM changes (59)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "System",
-   "effect": "DOM changes (44)",
-   "ok": true
-  },
-  {
-   "kind": "button",
-   "label": "Score",
-   "effect": "DOM changes (47)",
-   "ok": true
-  },
-  {
-   "kind": "button",
-   "label": "Readiness",
    "effect": "DOM changes (52)",
    "ok": true
   },
   {
    "kind": "button",
+   "label": "Score",
+   "effect": "DOM changes (51)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Readiness",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
    "label": "Next step",
-   "effect": "DOM changes (39)",
+   "effect": "DOM changes (50)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Run",
-   "effect": "DOM changes (42)",
+   "effect": "DOM changes (59)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Owner",
-   "effect": "DOM changes (47); requests: GET /work, GET /load, GET /monitor",
+   "effect": "DOM changes (53)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Last run",
-   "effect": "DOM changes (48)",
+   "effect": "DOM changes (60)",
    "ok": true
   }
  ]

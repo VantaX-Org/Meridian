@@ -55,7 +55,7 @@
   {
    "kind": "button",
    "label": "Invite a person",
-   "effect": "opens dialog or menu; DOM changes (17); requests: GET /people/digests, GET /people/assignments, GET /load",
+   "effect": "opens dialog or menu; DOM changes (17)",
    "ok": true
   },
   {
@@ -67,7 +67,7 @@
   {
    "kind": "button",
    "label": "Delegations",
-   "effect": "opens dialog or menu; DOM changes (22); requests: GET /people/digests, GET /people/assignments, GET /load",
+   "effect": "opens dialog or menu; DOM changes (22)",
    "ok": true
   },
   {
@@ -79,7 +79,7 @@
   {
    "kind": "button",
    "label": "Person",
-   "effect": "DOM changes (16); requests: GET /load, GET /monitor, GET /status",
+   "effect": "DOM changes (16)",
    "ok": true
   },
   {

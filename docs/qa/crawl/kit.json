@@ -1,0 +1,97 @@
+{
+ "route": "/kit",
+ "url": "/kit",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Rule",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Severity",
+   "effect": "DOM changes (28)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records",
+   "effect": "DOM changes (31)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Failing12",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Passing",
+   "effect": "DOM changes (19)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show toast",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Open sheet",
+   "effect": "opens dialog or menu; DOM changes (16)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Confirm",
+   "effect": "opens dialog or menu; DOM changes (16)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Open Aletheia",
+   "effect": "opens dialog or menu; DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Undo",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete",
+   "effect": "DOM changes (17)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Add note",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Rule",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Severity",
+   "effect": "DOM changes (17)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records",
+   "effect": "DOM changes (1)",
+   "ok": true
+  }
+ ]
+}

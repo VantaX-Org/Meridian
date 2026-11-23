@@ -25,8 +25,8 @@
   {
    "kind": "button",
    "label": "Material master",
-   "effect": "NO OBSERVABLE EFFECT",
-   "ok": false
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -163,8 +163,8 @@
   {
    "kind": "button",
    "label": "To fix25712",
-   "effect": "NO OBSERVABLE EFFECT",
-   "ok": false
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -175,7 +175,7 @@
   {
    "kind": "button",
    "label": "Waiting for approval612",
-   "effect": "DOM changes (11); requests: GET /monitor, GET /status, GET /",
+   "effect": "DOM changes (11)",
    "ok": true
   },
   {
@@ -235,8 +235,8 @@
   {
    "kind": "button",
    "label": "Records",
-   "effect": "NO OBSERVABLE EFFECT",
-   "ok": false
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -295,8 +295,8 @@
   {
    "kind": "button",
    "label": "View",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -313,13 +313,13 @@
   {
    "kind": "button",
    "label": "Record",
-   "effect": "DOM changes (24)",
+   "effect": "DOM changes (31)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Severity",
-   "effect": "DOM changes (25)",
+   "effect": "DOM changes (2)",
    "ok": true
   },
   {

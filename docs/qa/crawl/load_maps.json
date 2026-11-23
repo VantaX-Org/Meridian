@@ -19,19 +19,19 @@
   {
    "kind": "button",
    "label": "Ask Aletheia",
-   "effect": "opens dialog or menu; DOM changes (21); requests: GET /status, GET /runs, GET /load",
+   "effect": "opens dialog or menu; DOM changes (21)",
    "ok": true
   },
   {
    "kind": "tab",
    "label": "Field map4",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
    "kind": "tab",
    "label": "Value map2",
-   "effect": "DOM changes (9); requests: GET /load, GET /monitor, GET /status",
+   "effect": "DOM changes (9)",
    "ok": true
   },
   {
@@ -49,26 +49,26 @@
   {
    "kind": "button",
    "label": "Delete mapping MARA.MTART",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (24)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "Delete mapping MAKT.MAKTX",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (38)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "Delete mapping MARA.ZZOLD",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (37)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "Delete mapping MARC.PLIFZ",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (36)",
+   "ok": true
   },
   {
    "kind": "button",

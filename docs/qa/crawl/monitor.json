@@ -62,7 +62,7 @@
   {
    "kind": "button",
    "label": "Monitor",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -74,7 +74,7 @@
   {
    "kind": "tab",
    "label": "Feed",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -104,8 +104,8 @@
   {
    "kind": "button",
    "label": "All objects",
-   "effect": "NO OBSERVABLE EFFECT",
-   "ok": false
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -140,7 +140,7 @@
   {
    "kind": "button",
    "label": "Acknowledge",
-   "effect": "DOM changes (1); requests: GET /status, GET /work, GET /",
+   "effect": "DOM changes (1)",
    "ok": true
   },
   {
@@ -182,7 +182,7 @@
   {
    "kind": "button",
    "label": "Show as table",
-   "effect": "DOM changes (9); requests: GET /load, GET /status, GET /",
+   "effect": "DOM changes (9)",
    "ok": true
   }
  ]

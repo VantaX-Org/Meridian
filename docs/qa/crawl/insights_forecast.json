@@ -48,7 +48,7 @@
   {
    "kind": "button",
    "label": "Forecast",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -72,20 +72,20 @@
   {
    "kind": "button",
    "label": "Show cost of Planned delivery time missing on purchased parts",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (5)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "Show cost of Purchasing group missing",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (5)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "Show cost of Duplicate vendor bank details",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (5)",
+   "ok": true
   },
   {
    "kind": "button",

@@ -19,7 +19,7 @@
   {
    "kind": "tab",
    "label": "Rules5",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -79,7 +79,7 @@
   {
    "kind": "button",
    "label": "Move up",
-   "effect": "DOM changes (41); requests: GET /runs, GET /, GET /o",
+   "effect": "DOM changes (41)",
    "ok": true
   },
   {
@@ -103,7 +103,7 @@
   {
    "kind": "button",
    "label": "Move down",
-   "effect": "DOM changes (43); requests: GET /status, GET /load, GET /monitor",
+   "effect": "DOM changes (43)",
    "ok": true
   },
   {
@@ -115,7 +115,7 @@
   {
    "kind": "button",
    "label": "Move up",
-   "effect": "DOM changes (43); requests: GET /mdm/golden, GET /status, GET /",
+   "effect": "DOM changes (43)",
    "ok": true
   },
   {

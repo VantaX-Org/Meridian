@@ -48,13 +48,13 @@
   {
    "kind": "button",
    "label": "Cost and owners",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
    "kind": "tab",
    "label": "Impact",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -72,7 +72,7 @@
   {
    "kind": "tab",
    "label": "Owners",
-   "effect": "DOM changes (15); requests: GET /insights/forecast, GET /insights/value, GET /monitor",
+   "effect": "DOM changes (15)",
    "ok": true
   },
   {
@@ -90,7 +90,7 @@
   {
    "kind": "button",
    "label": "No",
-   "effect": "DOM changes (1); requests: GET /insights/forecast, GET /insights/value, GET /monitor",
+   "effect": "DOM changes (1)",
    "ok": true
   }
  ]

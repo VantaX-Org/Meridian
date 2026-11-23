@@ -1,54 +1,60 @@
 {
  "route": "/requests/new",
- "url": "/requests/CR-1001",
+ "url": "/requests/new",
  "errors": [],
  "rows": [
   {
    "kind": "button",
-   "label": "Cancel request",
-   "effect": "opens dialog or menu; DOM changes (1)",
-   "ok": true
-  },
-  {
-   "kind": "button",
    "label": "Ask Aletheia",
-   "effect": "opens dialog or menu; DOM changes (3)",
-   "ok": true
-  },
-  {
-   "kind": "tab",
-   "label": "Overview",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
-   "ok": true
-  },
-  {
-   "kind": "tab",
-   "label": "Approval",
-   "effect": "DOM changes (12)",
-   "ok": true
-  },
-  {
-   "kind": "tab",
-   "label": "Comments1",
-   "effect": "DOM changes (11)",
-   "ok": true
-  },
-  {
-   "kind": "tab",
-   "label": "Attachments1",
-   "effect": "DOM changes (11)",
-   "ok": true
-  },
-  {
-   "kind": "tab",
-   "label": "Field history",
-   "effect": "DOM changes (13)",
+   "effect": "opens dialog or menu; DOM changes (21)",
    "ok": true
   },
   {
    "kind": "button",
-   "label": "Match score",
-   "effect": "DOM changes (1)",
+   "label": "Save draft",
+   "effect": "DOM changes (43)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Validate",
+   "effect": "DOM changes (43)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Submit",
+   "effect": "DOM changes (43)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Defaults",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Derivations",
+   "effect": "DOM changes (25)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Critical fields",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Save default",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (6)",
    "ok": true
   }
  ]

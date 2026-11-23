@@ -47,14 +47,14 @@
   {
    "kind": "button",
    "label": "Open Group process model",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "DOM changes (7)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "Delete Group process model",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
   },
   {
    "kind": "button",

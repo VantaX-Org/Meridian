@@ -54,8 +54,8 @@
   {
    "kind": "button",
    "label": "View",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -72,19 +72,19 @@
   {
    "kind": "button",
    "label": "Records",
-   "effect": "DOM changes (24)",
-   "ok": true
-  },
-  {
-   "kind": "button",
-   "label": "With a proposed value",
    "effect": "DOM changes (25)",
    "ok": true
   },
   {
    "kind": "button",
+   "label": "With a proposed value",
+   "effect": "DOM changes (21)",
+   "ok": true
+  },
+  {
+   "kind": "button",
    "label": "Open",
-   "effect": "DOM changes (23); requests: GET /o/ecc-production/material-master/records, GET /o/ecc-production/material-master/rules, GET /o/ecc-production/material-master/trend",
+   "effect": "DOM changes (25)",
    "ok": true
   }
  ]

@@ -28,7 +28,7 @@ What the crawl proves: the page draws, raises no uncaught error, every internal 
 button, tab and menu item in the page body does something observable when clicked. What it does not prove: that the
 outcome is correct. Outcome assertions (request payloads, downloaded files, uploads, error and empty states) are in the
 flow specs listed in \`docs/qa/flows.md\`. Shell controls (menus, navigation, Aletheia dock) are exercised on \`/\`.
-Nothing here touches a real backend, SAP or production sign-in; see the end of that file for what stays unproven.
+Nothing here touches a real backend, SAP or production sign-in; docs/qa/flows.md lists what stays unproven.
 `;
 fs.writeFileSync(path.join(dir, "coverage-matrix.md"), head + out.join("\n") + "\n");
 console.log(`${files.length} routes, ${total} elements, ${ok} pass`);

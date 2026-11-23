@@ -69,7 +69,7 @@
   {
    "kind": "button",
    "label": "Insights",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -81,7 +81,7 @@
   {
    "kind": "tab",
    "label": "Overview",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -105,7 +105,7 @@
   {
    "kind": "tab",
    "label": "Trends",
-   "effect": "DOM changes (53); requests: GET /mdm/match, GET /o/_/material-master",
+   "effect": "DOM changes (53)",
    "ok": true
   },
   {

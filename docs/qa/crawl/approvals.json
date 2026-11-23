@@ -12,7 +12,7 @@
   {
    "kind": "tab",
    "label": "Batches",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -48,7 +48,7 @@
   {
    "kind": "button",
    "label": "Due",
-   "effect": "DOM changes (11); requests: GET /load, GET /monitor, GET /status",
+   "effect": "DOM changes (11)",
    "ok": true
   }
  ]

@@ -34,7 +34,7 @@
   {
    "kind": "button",
    "label": "New wave",
-   "effect": "opens dialog or menu; DOM changes (5); requests: GET /load, GET /monitor, GET /status",
+   "effect": "opens dialog or menu; DOM changes (5)",
    "ok": true
   },
   {

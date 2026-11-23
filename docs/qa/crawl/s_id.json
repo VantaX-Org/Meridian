@@ -25,7 +25,7 @@
   {
    "kind": "tab",
    "label": "Extractions",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -157,19 +157,19 @@
   {
    "kind": "button",
    "label": "Delete",
-   "effect": "DOM changes (106); requests: GET /status, GET /runs, GET /s",
+   "effect": "DOM changes (106)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Full extraction",
-   "effect": "requests: GET /load, GET /monitor, GET /status",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Changes only",
-   "effect": "DOM changes (59)",
+   "effect": "DOM changes (53)",
    "ok": true
   },
   {

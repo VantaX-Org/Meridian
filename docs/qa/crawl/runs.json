@@ -103,7 +103,7 @@
   {
    "kind": "tab",
    "label": "Runs",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -127,8 +127,8 @@
   {
    "kind": "button",
    "label": "Material master",
-   "effect": "NO OBSERVABLE EFFECT",
-   "ok": false
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -235,19 +235,31 @@
   {
    "kind": "button",
    "label": "B",
-   "effect": "NO OBSERVABLE EFFECT",
-   "ok": false
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "A",
-   "effect": "NO OBSERVABLE EFFECT",
-   "ok": false
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
   },
   {
    "kind": "button",
    "label": "B",
-   "effect": "DOM changes (5); requests: GET /load, GET /monitor, GET /status",
+   "effect": "DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "DOM changes (6)",
    "ok": true
   },
   {
@@ -265,61 +277,49 @@
   {
    "kind": "button",
    "label": "A",
-   "effect": "DOM changes (6)",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000496/vs/f0000000-0000-4000-8000-000000000500",
    "ok": true
   },
   {
    "kind": "button",
    "label": "B",
-   "effect": "DOM changes (6); requests: GET /status, GET /run/f0000000-0000-4000-8000-000000000500, GET /",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000496/vs/f0000000-0000-4000-8000-000000000499",
    "ok": true
   },
   {
    "kind": "button",
    "label": "A",
-   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000496/vs/f0000000-0000-4000-8000-000000000500",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000495/vs/f0000000-0000-4000-8000-000000000500",
    "ok": true
   },
   {
    "kind": "button",
    "label": "B",
-   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000496/vs/f0000000-0000-4000-8000-000000000499",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000495/vs/f0000000-0000-4000-8000-000000000499",
    "ok": true
   },
   {
    "kind": "button",
    "label": "A",
-   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000495/vs/f0000000-0000-4000-8000-000000000500",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000494/vs/f0000000-0000-4000-8000-000000000500",
    "ok": true
   },
   {
    "kind": "button",
    "label": "B",
-   "effect": "DOM changes (6); requests: GET /status, GET /run/f0000000-0000-4000-8000-000000000500, GET /load",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000494/vs/f0000000-0000-4000-8000-000000000499",
    "ok": true
   },
   {
    "kind": "button",
    "label": "A",
-   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000494/vs/f0000000-0000-4000-8000-000000000500",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000493/vs/f0000000-0000-4000-8000-000000000500",
    "ok": true
   },
   {
    "kind": "button",
    "label": "B",
-   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000494/vs/f0000000-0000-4000-8000-000000000499",
-   "ok": true
-  },
-  {
-   "kind": "button",
-   "label": "A",
-   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000493/vs/f0000000-0000-4000-8000-000000000500",
-   "ok": true
-  },
-  {
-   "kind": "button",
-   "label": "B",
-   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000493/vs/f0000000-0000-4000-8000-000000000499",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000493/vs/f0000000-0000-4000-8000-000000000499",
    "ok": true
   },
   {
@@ -331,37 +331,37 @@
   {
    "kind": "button",
    "label": "B",
-   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000492/vs/f0000000-0000-4000-8000-000000000499",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000492/vs/f0000000-0000-4000-8000-000000000499",
    "ok": true
   },
   {
    "kind": "button",
    "label": "A",
-   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000491/vs/f0000000-0000-4000-8000-000000000500",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000491/vs/f0000000-0000-4000-8000-000000000500",
    "ok": true
   },
   {
    "kind": "button",
    "label": "B",
-   "effect": "DOM changes (6); requests: GET /, GET /o, GET /work",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000491/vs/f0000000-0000-4000-8000-000000000499",
    "ok": true
   },
   {
    "kind": "button",
    "label": "A",
-   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000490/vs/f0000000-0000-4000-8000-000000000500",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000490/vs/f0000000-0000-4000-8000-000000000500",
    "ok": true
   },
   {
    "kind": "button",
    "label": "B",
-   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000490/vs/f0000000-0000-4000-8000-000000000499",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000490/vs/f0000000-0000-4000-8000-000000000499",
    "ok": true
   },
   {
    "kind": "button",
    "label": "A",
-   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000489/vs/f0000000-0000-4000-8000-000000000500",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000489/vs/f0000000-0000-4000-8000-000000000500",
    "ok": true
   },
   {
@@ -373,19 +373,19 @@
   {
    "kind": "button",
    "label": "All runs",
-   "effect": "DOM changes (4); requests: GET /runs, GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Complete",
-   "effect": "navigates; DOM changes (32); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /runs",
+   "effect": "navigates; DOM changes (32); requests: GET /runs, GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Failed",
-   "effect": "navigates; DOM changes (38); requests: GET /, GET /o, GET /work",
+   "effect": "navigates; DOM changes (38); requests: GET /runs, GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500",
    "ok": true
   },
   {

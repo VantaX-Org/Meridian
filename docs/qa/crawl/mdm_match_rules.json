@@ -37,7 +37,7 @@
   {
    "kind": "button",
    "label": "Delete",
-   "effect": "opens dialog or menu; DOM changes (19); requests: GET /runs, GET /, GET /o",
+   "effect": "opens dialog or menu; DOM changes (19)",
    "ok": true
   },
   {
@@ -55,7 +55,7 @@
   {
    "kind": "button",
    "label": "Approve",
-   "effect": "DOM changes (50); requests: GET /mdm/match, GET /status, GET /load",
+   "effect": "DOM changes (50)",
    "ok": true
   },
   {
@@ -73,7 +73,7 @@
   {
    "kind": "button",
    "label": "Reject",
-   "effect": "opens dialog or menu; DOM changes (19); requests: GET /status, GET /load, GET /monitor",
+   "effect": "opens dialog or menu; DOM changes (19)",
    "ok": true
   }
  ]

@@ -48,7 +48,7 @@
   {
    "kind": "button",
    "label": "Score lens",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {

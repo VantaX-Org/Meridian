@@ -47,8 +47,8 @@
   {
    "kind": "button",
    "label": "View",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -65,19 +65,19 @@
   {
    "kind": "button",
    "label": "Run",
-   "effect": "DOM changes (28); requests: GET /status, GET /runs, GET /load",
+   "effect": "DOM changes (35)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Date",
-   "effect": "DOM changes (2)",
+   "effect": "DOM changes (35)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Score",
-   "effect": "DOM changes (30)",
+   "effect": "DOM changes (34)",
    "ok": true
   }
  ]

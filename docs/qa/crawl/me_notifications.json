@@ -103,7 +103,7 @@
   {
    "kind": "button",
    "label": "Mark read",
-   "effect": "DOM changes (6); requests: GET /runs, GET /o/ecc-production/material-master, GET /r/MM142",
+   "effect": "DOM changes (6)",
    "ok": true
   },
   {

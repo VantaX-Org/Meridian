@@ -18,7 +18,7 @@
   {
    "kind": "button",
    "label": "Object",
-   "effect": "DOM changes (1); requests: GET /load, GET /monitor, GET /status",
+   "effect": "DOM changes (1)",
    "ok": true
   }
  ]

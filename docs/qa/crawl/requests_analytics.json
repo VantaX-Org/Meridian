@@ -1,14 +1,8 @@
 {
  "route": "/requests/analytics",
- "url": "/requests/CR-1001",
+ "url": "/requests/analytics",
  "errors": [],
  "rows": [
-  {
-   "kind": "button",
-   "label": "Cancel request",
-   "effect": "opens dialog or menu; DOM changes (1)",
-   "ok": true
-  },
   {
    "kind": "button",
    "label": "Ask Aletheia",
@@ -16,39 +10,27 @@
    "ok": true
   },
   {
-   "kind": "tab",
-   "label": "Overview",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
-   "ok": true
-  },
-  {
-   "kind": "tab",
-   "label": "Approval",
-   "effect": "DOM changes (12)",
-   "ok": true
-  },
-  {
-   "kind": "tab",
-   "label": "Comments1",
-   "effect": "DOM changes (11)",
-   "ok": true
-  },
-  {
-   "kind": "tab",
-   "label": "Attachments1",
-   "effect": "DOM changes (11)",
-   "ok": true
-  },
-  {
-   "kind": "tab",
-   "label": "Field history",
-   "effect": "DOM changes (13)",
+   "kind": "button",
+   "label": "Total",
+   "effect": "DOM changes (14)",
    "ok": true
   },
   {
    "kind": "button",
-   "label": "Match score",
-   "effect": "DOM changes (1)",
+   "label": "SLA breaches",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Likely decided",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Chance of missing SLA",
+   "effect": "DOM changes (10)",
    "ok": true
   }
  ]

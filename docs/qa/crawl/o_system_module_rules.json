@@ -47,8 +47,8 @@
   {
    "kind": "button",
    "label": "View",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -65,19 +65,19 @@
   {
    "kind": "button",
    "label": "Rule",
-   "effect": "DOM changes (18)",
+   "effect": "DOM changes (19)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Failing",
-   "effect": "DOM changes (23); requests: GET /load, GET /monitor, GET /o/ecc-production/material-master",
+   "effect": "DOM changes (25)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Pass rate",
-   "effect": "DOM changes (27)",
+   "effect": "DOM changes (10)",
    "ok": true
   }
  ]

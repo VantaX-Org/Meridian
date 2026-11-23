@@ -25,7 +25,7 @@ const SAMPLE: Record<string, string> = {
   system: "ecc-production",
   module: "material-master",
   section: "users",
-  key: "MATNR-100",
+  key: "000000000010004711",
   id: "f0000000-0000-4000-8000-000000000500",
   b: "f0000000-0000-4000-8000-000000000499",
   pair: "mig-0002",
@@ -37,6 +37,7 @@ const SAMPLE: Record<string, string> = {
 const ID_FOR: [RegExp, string][] = [
   [/^\/load\/waves\//, "w-1"],
   [/^\/load\/runs\//, "mig-0002"],
+  [/^\/load\/compare\//, "pair-0001"],
   [/^\/mdm\/(golden|match)\//, "gr-0"],
   [/^\/requests\//, "CR-1001"],
   [/^\/r\//, "MM142"],
@@ -45,7 +46,11 @@ const ID_FOR: [RegExp, string][] = [
 ];
 
 /** Controls that legitimately do nothing visible in fixture mode, with the reason. Keyed `route|label`. */
-const NO_EFFECT_OK: Record<string, string> = {};
+const NO_EFFECT_OK: Record<string, string> = {
+  "/mdm/issues|Start work": "bulk action with no issue ticked is a no-op by design (acts on the ticked rows); the flow spec ticks rows",
+  "/mdm/issues|Resolve": "bulk action with no issue ticked is a no-op by design; the flow spec ticks rows",
+  "/mdm/issues|Comment": "an empty comment is not sent; the flow spec types one",
+};
 
 function routesOnDisk(dir = APP, rel = ""): string[] {
   const out: string[] = [];
@@ -84,9 +89,10 @@ const INTERACTIVE = "main a[href], main button, main [role=tab], main [role=menu
 async function open(page: Page, url: string) {
   const res = await page.goto(`${url}${url.includes("?") ? "&" : "?"}fixture=1`, { waitUntil: "load", ...NAV });
   expect(res?.status(), `${url} answered`).toBeLessThan(400);
-  await expect(page.locator("main h1, h1").first()).toBeVisible(NAV);
+  await expect(page.locator("main h1, h1, main h2, main [role=heading]").first()).toBeVisible(NAV);
   await expect(page.getByText("This page could not be found")).toHaveCount(0);
   await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);
+  await page.waitForTimeout(1_500); // let late fixture reads settle so the control order matches the inventory
 }
 
 test.describe.configure({ mode: "parallel" });
@@ -112,7 +118,7 @@ for (const route of ROUTES) {
         const r = e.getBoundingClientRect();
         const visible = r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== "hidden";
         const role = e.getAttribute("role");
-        const kind: Row["kind"] = e.tagName === "A" ? "link" : role === "tab" ? "tab" : role === "menuitem" ? "menuitem" : "button";
+        const kind: Row["kind"] = e.tagName.toLowerCase() === "a" ? "link" : role === "tab" ? "tab" : role === "menuitem" ? "menuitem" : "button";
         const label = (e.getAttribute("aria-label") || e.textContent || e.getAttribute("title") || "").replace(/\s+/g, " ").trim().slice(0, 80);
         const disabled = (e as HTMLButtonElement).disabled === true || e.getAttribute("aria-disabled") === "true";
         const selected = e.getAttribute("aria-selected") === "true" || e.getAttribute("aria-pressed") === "true" || e.getAttribute("aria-checked") === "true" || e.getAttribute("aria-current") === "page";
@@ -151,6 +157,8 @@ for (const route of ROUTES) {
         rows.push({ kind: it.kind, label: it.label, effect: "already the selected tab, chip or page link (a click re-selects it, nothing to show)", ok: true });
         continue;
       }
+      // an earlier click can persist a view setting (row density, show all); start every control from the first-visit state
+      await page.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch { /* storage blocked */ } }).catch(() => undefined);
       await open(page, url);
       const el = page.locator(INTERACTIVE).nth(it.i);
       if (!(await el.isVisible()) || (await el.evaluate((e) => (e.getAttribute("aria-label") || e.textContent || e.getAttribute("title") || "").replace(/\s+/g, " ").trim().slice(0, 80)).catch(() => "")) !== it.label && it.label !== "") {

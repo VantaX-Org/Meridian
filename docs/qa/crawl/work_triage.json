@@ -18,7 +18,7 @@
   {
    "kind": "button",
    "label": "Overdue2",
-   "effect": "DOM changes (9)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {

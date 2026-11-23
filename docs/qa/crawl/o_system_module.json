@@ -228,13 +228,13 @@
   {
    "kind": "tab",
    "label": "All8",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
    "kind": "tab",
    "label": "Failing8",
-   "effect": "DOM changes (6); requests: GET /status, GET /load, GET /monitor",
+   "effect": "DOM changes (6)",
    "ok": true
   },
   {
@@ -252,8 +252,8 @@
   {
    "kind": "button",
    "label": "Critical2,904 recordsMM003 Material type is mandatory - determines procurement a",
-   "effect": "NO OBSERVABLE EFFECT",
-   "ok": false
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -264,7 +264,7 @@
   {
    "kind": "button",
    "label": "High3,640 recordsMM142 Base unit of measure MEINS must reference a valid entry i",
-   "effect": "DOM changes (13); requests: GET /status, GET /load, GET /monitor",
+   "effect": "DOM changes (13)",
    "ok": true
   },
   {
@@ -282,7 +282,7 @@
   {
    "kind": "button",
    "label": "Medium3,118 recordsMM007 Material group is required for reporting and procuremen",
-   "effect": "DOM changes (12); requests: GET /o/ecc-production/material-master/trend, GET /status, GET /runs",
+   "effect": "DOM changes (12)",
    "ok": true
   },
   {
@@ -294,19 +294,19 @@
   {
    "kind": "button",
    "label": "Medium2,266 recordsMM015 Gross weight is recommended for shipping and transporta",
-   "effect": "DOM changes (13); requests: GET /load, GET /monitor, GET /status",
+   "effect": "DOM changes (13)",
    "ok": true
   },
   {
    "kind": "tab",
    "label": "Overview",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
    "kind": "tab",
    "label": "Fix2,904",
-   "effect": "DOM changes (9); requests: GET /o/ecc-production/material-master/trend, GET /status, GET /",
+   "effect": "DOM changes (9); requests: GET /work",
    "ok": true
   },
   {

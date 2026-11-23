@@ -45,7 +45,7 @@
   {
    "kind": "button",
    "label": "Library",
-   "effect": "DOM changes (7); requests: GET /rules",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -81,8 +81,8 @@
   {
    "kind": "button",
    "label": "All severities",
-   "effect": "NO OBSERVABLE EFFECT",
-   "ok": false
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
   },
   {
    "kind": "button",

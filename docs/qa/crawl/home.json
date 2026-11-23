@@ -12,15 +12,92 @@
   },
   {
    "kind": "link",
-   "label": "Open work25,712",
+   "label": "Open work",
    "target": "/work?fixture=1",
    "effect": "GET 200",
    "ok": true
   },
   {
    "kind": "link",
-   "label": "Accounts payable",
+   "label": "Source list in SuccessFactors",
+   "target": "/o/successfactors/source-list?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Material master in ECC production",
+   "target": "/o/ecc-production/material-master?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Position in ECC production",
+   "target": "/o/ecc-production/position?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Sales order in SuccessFactors",
+   "target": "/o/successfactors/sales-order?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Task list in S/4HANA sandbox",
+   "target": "/o/s-4hana-sandbox/task-list?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Accounts payable in ECC production",
    "target": "/o/ecc-production/accounts-payable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Bill of materials in S/4HANA sandbox",
+   "target": "/o/s-4hana-sandbox/bill-of-materials?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Batch in SuccessFactors",
+   "target": "/o/successfactors/batch?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Class in S/4HANA sandbox",
+   "target": "/o/s-4hana-sandbox/class?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cost element in ECC production",
+   "target": "/o/ecc-production/cost-element?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Fi gl in ECC production",
+   "target": "/o/ecc-production/fi-gl?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Work center in S/4HANA sandbox",
+   "target": "/o/s-4hana-sandbox/work-center?fixture=1",
    "effect": "GET 200",
    "ok": true
   },
@@ -117,13 +194,6 @@
   },
   {
    "kind": "link",
-   "label": "Batch",
-   "target": "/o/successfactors/batch?fixture=1",
-   "effect": "GET 200",
-   "ok": true
-  },
-  {
-   "kind": "link",
    "label": "Bill of materials",
    "target": "/o/ecc-production/bill-of-materials?fixture=1",
    "effect": "GET 200",
@@ -144,13 +214,13 @@
   {
    "kind": "button",
    "label": "HighOpen systemSuccessFactors cannot be reached. The last health check failed: t",
-   "effect": "navigates; DOM changes (13); requests: GET /s/sys-sf",
+   "effect": "navigates; DOM changes (13); requests: GET /s/sys-sf, GET /s",
    "ok": true
   },
   {
    "kind": "button",
    "label": "CriticalReview records412 material records fail again. They passed at the previo",
-   "effect": "navigates; DOM changes (88); requests: GET /work, GET /load, GET /monitor",
+   "effect": "navigates; DOM changes (88); requests: GET /work, GET /approvals",
    "ok": true
   },
   {
@@ -191,81 +261,9 @@
   },
   {
    "kind": "button",
-   "label": "Source list in SuccessFactors",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
-  },
-  {
-   "kind": "button",
-   "label": "Material master in ECC production",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
-  },
-  {
-   "kind": "button",
-   "label": "Position in ECC production",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
-  },
-  {
-   "kind": "button",
-   "label": "Sales order in SuccessFactors",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
-  },
-  {
-   "kind": "button",
-   "label": "Task list in S/4HANA sandbox",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
-  },
-  {
-   "kind": "button",
-   "label": "Accounts payable in ECC production",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
-  },
-  {
-   "kind": "button",
-   "label": "Bill of materials in S/4HANA sandbox",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
-  },
-  {
-   "kind": "button",
-   "label": "Batch in SuccessFactors",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
-  },
-  {
-   "kind": "button",
-   "label": "Class in S/4HANA sandbox",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
-  },
-  {
-   "kind": "button",
-   "label": "Cost element in ECC production",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
-  },
-  {
-   "kind": "button",
-   "label": "Fi gl in ECC production",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
-  },
-  {
-   "kind": "button",
-   "label": "Work center in S/4HANA sandbox",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
-  },
-  {
-   "kind": "button",
    "label": "View",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "opens dialog or menu; DOM changes (2); requests: GET /o/ecc-production/accounts-payable, GET /o/s-4hana-sandbox/accounts-payable, GET /o/successfactors/accounts-payable",
+   "ok": true
   },
   {
    "kind": "button",
@@ -282,38 +280,38 @@
   {
    "kind": "button",
    "label": "Object",
-   "effect": "DOM changes (1); requests: GET /work, GET /load, GET /monitor",
+   "effect": "DOM changes (2); requests: GET /o/ecc-production/accounts-payable, GET /o/s-4hana-sandbox/accounts-payable, GET /o/successfactors/accounts-payable",
    "ok": true
   },
   {
    "kind": "button",
    "label": "System",
-   "effect": "DOM changes (22); requests: GET /work, GET /load, GET /monitor",
+   "effect": "DOM changes (27); requests: GET /o/ecc-production/accounts-payable, GET /o/ecc-production/accounts-receivable, GET /o/ecc-production/asset-accounting",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Score",
-   "effect": "DOM changes (28); requests: GET /o/ecc-production/accounts-payable, GET /o/successfactors/source-list, GET /o/ecc-production/material-master",
+   "effect": "DOM changes (34); requests: GET /o/ecc-production/accounts-payable, GET /o/successfactors/batch, GET /o/successfactors/source-list",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Cycle step",
-   "effect": "DOM changes (28); requests: GET /o/ecc-production/accounts-payable, GET /o/successfactors/batch, GET /o/successfactors/source-list",
+   "effect": "DOM changes (29); requests: GET /o/ecc-production/accounts-payable, GET /o/successfactors/accounts-receivable, GET /o/s-4hana-sandbox/asset-accounting",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Open work",
-   "effect": "DOM changes (24); requests: GET /load, GET /monitor, GET /o/ecc-production/accounts-payable",
+   "effect": "DOM changes (2); requests: GET /o/ecc-production/accounts-payable, GET /o/s-4hana-sandbox/accounts-payable, GET /o/successfactors/accounts-payable",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Ask Aletheia",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
   }
  ]
 }

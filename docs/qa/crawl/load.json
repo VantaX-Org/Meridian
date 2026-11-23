@@ -114,7 +114,7 @@
   {
    "kind": "button",
    "label": "Export reconciliation",
-   "effect": "opens dialog or menu; DOM changes (2); requests: GET /load/runs, GET /load/templates, GET /load/maps",
+   "effect": "opens dialog or menu; DOM changes (2); requests: GET /load/compare/pair-0001",
    "ok": true
   },
   {

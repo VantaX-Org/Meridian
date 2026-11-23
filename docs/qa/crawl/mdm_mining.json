@@ -18,7 +18,7 @@
   {
    "kind": "tab",
    "label": "Duplicates9",
-   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
    "ok": true
   },
   {
@@ -36,13 +36,13 @@
   {
    "kind": "tab",
    "label": "Patterns8",
-   "effect": "DOM changes (6); requests: GET /o, GET /work, GET /load",
+   "effect": "DOM changes (6)",
    "ok": true
   },
   {
    "kind": "tab",
    "label": "By object",
-   "effect": "DOM changes (10); requests: GET /load, GET /monitor, GET /status",
+   "effect": "DOM changes (10)",
    "ok": true
   },
   {
@@ -54,7 +54,7 @@
   {
    "kind": "button",
    "label": "Record A",
-   "effect": "DOM changes (23); requests: GET /status, GET /runs, GET /load",
+   "effect": "DOM changes (23)",
    "ok": true
   },
   {

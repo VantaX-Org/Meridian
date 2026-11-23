@@ -60,8 +60,8 @@
   {
    "kind": "button",
    "label": "View",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -78,20 +78,20 @@
   {
    "kind": "button",
    "label": "Fixed",
-   "effect": "DOM changes (14)",
+   "effect": "DOM changes (15)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Came back",
-   "effect": "DOM changes (2)",
+   "effect": "DOM changes (15)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "View",
-   "effect": "SKIPPED: page rearranged between loads, not clicked",
-   "ok": false
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
   },
   {
    "kind": "button",
@@ -108,13 +108,13 @@
   {
    "kind": "button",
    "label": "Material number",
-   "effect": "DOM changes (28)",
+   "effect": "DOM changes (35)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Severity",
-   "effect": "DOM changes (29); requests: GET /runs, GET /work, GET /o/ecc-production/material-master",
+   "effect": "DOM changes (2)",
    "ok": true
   },
   {
@@ -126,19 +126,19 @@
   {
    "kind": "button",
    "label": "Status",
-   "effect": "DOM changes (2); requests: GET /work, GET /o/ecc-production/material-master, GET /o/ecc-production/material-master/rules",
+   "effect": "DOM changes (2)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Value at risk",
-   "effect": "DOM changes (33)",
+   "effect": "DOM changes (39)",
    "ok": true
   },
   {
    "kind": "button",
    "label": "Load more records",
-   "effect": "DOM changes (27); requests: GET /runs, GET /, GET /o",
+   "effect": "DOM changes (9)",
    "ok": true
   }
  ]

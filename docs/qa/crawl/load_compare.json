@@ -20,7 +20,7 @@
   {
    "kind": "button",
    "label": "New pair",
-   "effect": "opens dialog or menu; DOM changes (1); requests: GET /monitor, GET /status, GET /runs",
+   "effect": "opens dialog or menu; DOM changes (1)",
    "ok": true
   },
   {
@@ -50,7 +50,7 @@
   {
    "kind": "button",
    "label": "Source DQS",
-   "effect": "DOM changes (1); requests: GET /work, GET /load, GET /monitor",
+   "effect": "DOM changes (1)",
    "ok": true
   },
   {
