@@ -16,7 +16,7 @@ export interface Column<T> {
  * A table that renders only the rows in view (fixed `rowHeight`, scroll box `height`), with a sticky header, sortable
  * columns, one selected row and arrow-key navigation (Up, Down, Home, End; Enter or Space selects).
  */
-export function DataTable<T>({ columns, rows, rowKey, label, selected, onSelect, height = 360, rowHeight = 40, expand }: {
+export function DataTable<T>({ columns, rows, rowKey, label, selected, onSelect, height = 360, rowHeight = 32, expand }: {
   columns: Column<T>[]; rows: T[]; rowKey: (row: T) => string; label: string;
   selected?: string | null; onSelect?: (row: T) => void; height?: number; rowHeight?: number;
   /** Opens one row in place: the row with key `id` gets a full-width panel of fixed `height` under it. */

@@ -16,8 +16,7 @@ import { useCompareSets, useRunsPage, type RunStatusFilter } from "@/lib/api/nex
 import type { Job } from "@/types/jobs";
 import {
   Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, FieldChip, Field, PageHeader, Select, Skeleton, Tabs,
-  useAletheiaScope, useSheet, useToast, type Column,
-} from "@/ui/kit";
+  useAletheiaScope, useSheet, useToast, type Column, ExportMenu } from "@/ui/kit";
 import type { VersionHead } from "@/lib/api/v2/runs";
 import { answer } from "./answers";
 import { JobHairline } from "./JobHairline";
@@ -63,10 +62,7 @@ function RunsView({ onAsk }: { onAsk: (rows: VersionHead[], total: number) => vo
       qc.invalidateQueries({ queryKey: ["next"] });
     } catch { toast(t("That did not work. Nothing was changed."), "bad"); }
   };
-  const doExport = async (format: "csv" | "xlsx") => {
-    try { toast(t("Saved {name}", { name: await exportRuns(format, { system_id: system || undefined, status: status === "all" ? undefined : status }) }), "good"); }
-    catch { toast(t("The export could not be made."), "bad"); }
-  };
+  const doExport = (format: string) => exportRuns(format as "csv" | "xlsx", { system_id: system || undefined, status: status === "all" ? undefined : status });
 
   const columns: Column<VersionHead>[] = [
     { key: "run", label: t("Run"), sort: (h) => h.run_number ?? 0, render: (h) => (h.label?.trim() || h.run_number != null ? <span className="rn-num">{runTitle(h)}</span> : <FieldChip code={runTitle(h)} description={sourceLabel(h)} />) },
@@ -99,8 +95,7 @@ function RunsView({ onAsk }: { onAsk: (rows: VersionHead[], total: number) => vo
       )}
       <Card title={t("Keep the list tidy")} sub={t("Export what you see, or move older runs out of the way.")}>
         <div className="mx-links">
-          <Button variant="secondary" onClick={() => doExport("xlsx")}>{t("Export as Excel")}</Button>
-          <Button variant="secondary" onClick={() => doExport("csv")}>{t("Export as CSV")}</Button>
+          <ExportMenu label={t("Export runs")} formats={[{ id: "xlsx", label: t("Excel workbook") }, { id: "csv", label: t("CSV") }]} onExport={doExport} />
           <Button variant="secondary" onClick={() => setConfirm("archive")}>{t("Archive older runs")}</Button>
           <Button variant="secondary" onClick={() => setConfirm("restore")}>{t("Restore archived runs")}</Button>
         </div>

@@ -14,7 +14,7 @@ import { exportExceptions } from "@/lib/api/v2/work";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { money } from "@/lib/v2/format";
 import { labelText, moduleText } from "@/lib/v2/labels";
-import { Button, Card, Chip, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Sheet, Skeleton, StatTile, Tabs, useAletheia, useAletheiaScope, useStacked } from "@/ui/kit";
+import { Button, Card, Chip, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Sheet, Skeleton, StatTile, Tabs, useAletheia, useAletheiaScope, useStacked, ExportMenu } from "@/ui/kit";
 import { useAssignable } from "@/lib/v2/approvals-queries";
 import { useV2Session } from "@/lib/v2/hooks";
 import { day, sevLabel, useDo } from "./shared";
@@ -159,7 +159,6 @@ export function Exceptions() {
   const chat = useAletheia();
   const stacked = useStacked();
   const qc = useQueryClient();
-  const run = useDo();
   const params = useSearchParams();
   const v = params.get("view");
   const [tab, setTab] = useState(v === "rules" || v === "billing" || v === "sap" ? v : "list");
@@ -182,7 +181,7 @@ export function Exceptions() {
     <>
       <PageHeader title={t("Exceptions")} context={t("Things that need a person to decide")}
         actions={<>
-          <Button variant="secondary" onClick={() => void run(() => exportExceptions({}), (r) => t("Saved {name}.", { name: r.filename }))}>{t("Export sign-offs")}</Button>
+          <ExportMenu label={t("Export sign-offs")} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => exportExceptions({})} />
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>} />
       {m ? (

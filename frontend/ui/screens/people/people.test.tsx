@@ -56,9 +56,9 @@ describe("people and governance screens in fixture mode", () => {
   it("Stewardship queue shows the lifecycle for a selected item and escalates it", async () => {
     renderWithQuery(wrap(<Stewardship />));
     fireEvent.click(await screen.findByText("Payment terms are blank"));
-    expect(await screen.findByRole("list", { name: "Where the item stands" })).toBeTruthy();
+    expect((await screen.findAllByRole("list", { name: "Where the item stands" })).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Escalate" }));
-    await waitFor(() => expect(screen.queryByRole("list", { name: "Where the item stands" })).toBeNull());
+    await waitFor(() => expect(screen.queryAllByRole("list", { name: "Where the item stands" })).toHaveLength(0));
   });
   it("Stewardship queue assigns an item to a chosen person and releases it", async () => {
     renderWithQuery(wrap(<Stewardship />));

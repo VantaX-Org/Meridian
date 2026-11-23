@@ -1,13 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { deleteReference, getReferenceLists, uploadReference } from "@/lib/api/v2/admin";
 import { useV2Session } from "@/lib/v2/hooks";
 import { t } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
-import { Button, Card, Confirm, FieldChip, useToast } from "@/ui/kit";
+import { Button, Card, Confirm, FieldChip, ImportDialog, useToast } from "@/ui/kit";
 import { errMsg, Gate } from "./shared";
 
 type Kind = "postal-codes" | "bic";
@@ -21,16 +21,11 @@ export function ReferenceTab({ id }: { id: string }) {
   const qc = useQueryClient();
   const toast = useToast();
   const me = useV2Session();
-  const pick = useRef<Kind>("postal-codes");
-  const file = useRef<HTMLInputElement>(null);
+  const [imp, setImp] = useState<Kind | null>(null);
   const [del, setDel] = useState<Kind | null>(null);
   const q = useQuery({ queryKey: ["v2", "reference-lists", fx, id] as const, queryFn: () => getReferenceLists(id), retry: false });
   const can = me.can("manage_systems");
   const refresh = () => qc.invalidateQueries({ queryKey: ["v2"] });
-  const upload = async (f: File | undefined) => {
-    if (!f) return;
-    try { await uploadReference(id, pick.current, await f.text()); toast(t("Reference list loaded."), "good"); await refresh(); } catch (e) { toast(errMsg(e), "bad"); } finally { if (file.current) file.current.value = ""; }
-  };
   const remove = async () => {
     const k = del; setDel(null);
     if (!k) return;
@@ -38,7 +33,9 @@ export function ReferenceTab({ id }: { id: string }) {
   };
   return (
     <div className="mx-col">
-      <input ref={file} type="file" accept=".csv,text/csv" hidden aria-label={t("Reference file")} onChange={(e) => void upload(e.target.files?.[0])} />
+      <ImportDialog open={imp !== null} onClose={() => setImp(null)} label={t("Upload a reference list")} closeLabel={t("Close")}
+        accept=".csv,text/csv" fileLabel={t("Reference file")} hint={t("Drop a CSV reference list.")} target={t("PROD")}
+        apply={async (f) => { if (imp) await uploadReference(id, imp, await f.text()); await refresh(); return t("Reference list loaded."); }} />
       <Gate q={q} empty={{ heading: t("No reference files yet") }}>
         {(lists) => (
           <>
@@ -46,7 +43,7 @@ export function ReferenceTab({ id }: { id: string }) {
               const have = lists.find((l) => l.kind === k.kind);
               return (
                 <Card key={k.kind} title={k.title()} sub={k.hint()} action={can ? <span className="mx-links">
-                  <Button variant="secondary" onClick={() => { pick.current = k.kind; file.current?.click(); }}>{have ? t("Replace") : t("Upload")}</Button>
+                  <Button variant="secondary" onClick={() => setImp(k.kind)}>{have ? t("Replace") : t("Upload")}</Button>
                   {have ? <Button variant="ghost" onClick={() => setDel(k.kind)}>{t("Remove")}</Button> : null}
                 </span> : undefined}>
                   {have ? (

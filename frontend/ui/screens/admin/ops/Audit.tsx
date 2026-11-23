@@ -4,14 +4,12 @@ import { useState } from "react";
 import { exportAudit } from "@/lib/api/v2/admin";
 import { useAudit, useAuditActors } from "@/lib/v2/admin-queries";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, Field, Input, Select, EmptyState } from "@/ui/kit";
-import { errText, Row, Sec, when } from "./shared";
-import { useToast } from "@/ui/kit";
+import { Button, ExportMenu, Card, Code, DataTable, Field, Input, Select, EmptyState } from "@/ui/kit";
+import { Row, Sec, when } from "./shared";
 
 const PAGE = 50;
 
 export function Audit() {
-  const toast = useToast();
   const [actor, setActor] = useState("");
   const [action, setAction] = useState("");
   const [entity, setEntity] = useState("");
@@ -21,11 +19,10 @@ export function Audit() {
   const actors = useAuditActors();
   const rows = q.data?.entries ?? [];
   const total = q.data?.total ?? 0;
-  const exp = (f: "csv" | "xlsx") => exportAudit(f, params).catch((e) => toast(errText(e), "bad"));
   return (
     <Sec title={t("Audit log")} scope="audit" q={[q]} context={t("{n} entries", { n: total })}
       facts={[t("{n} audit entries match the filter.", { n: total })]}
-      actions={<><Button variant="secondary" onClick={() => exp("csv")}>{t("Export CSV")}</Button><Button variant="secondary" onClick={() => exp("xlsx")}>{t("Export Excel")}</Button></>}>
+      actions={<ExportMenu personalData formats={[{ id: "csv", label: t("CSV") }, { id: "xlsx", label: t("Excel workbook") }]} onExport={async (f) => { await exportAudit(f as "csv" | "xlsx", params); }} />}>
       <Row>
         <Field label={t("Actor")}>
           <Select value={actor} onChange={(e) => { setActor(e.target.value); setOffset(0); }}

@@ -42,8 +42,9 @@
   --mx-heat-8: #C4281F;
   --mx-scrim: rgb(15 17 21 / 40%);
   --mx-glass: rgb(255 255 255 / 96%);
-  --mx-elev-1: 0 1px 2px rgb(15 17 21 / 6%), 0 1px 1px rgb(15 17 21 / 4%);
-  --mx-elev-2: 0 8px 24px rgb(15 17 21 / 14%);
+  --mx-elev-1: 0 1px 0 rgb(15 17 21 / 4%);
+  --mx-elev-2: 0 4px 12px rgb(15 17 21 / 10%), 0 0 0 1px rgb(15 17 21 / 6%);
+  --mx-elev-3: 0 16px 48px rgb(15 17 21 / 18%), 0 0 0 1px rgb(15 17 21 / 8%);
   --mx-elev-dock: 0 10px 30px rgb(58 40 144 / 18%);
   --mx-good-ink: #11603A;
   --mx-warn-ink: #7A4500;
@@ -67,8 +68,21 @@
   --mx-focus: var(--mx-cobalt);
   --mx-data: var(--mx-cobalt);
   --mx-chart-1: var(--mx-cobalt);
-  --mx-chart-2: var(--mx-sev-high);
-  --mx-chart-3: var(--mx-go);
+  --mx-chart-2: #0B7285;
+  --mx-chart-3: #A8327A;
+  --mx-chart-4: #7A4B2A;
+  --mx-chart-5: #5E6572;
+  --mx-chart-6: #6B7A1F;
+  --mx-chart-grid: var(--mx-line);
+  --mx-chart-axis: var(--mx-ink-3);
+  --mx-env-prod: var(--mx-bad-ink);
+  --mx-env-prod-soft: var(--mx-stop-soft);
+  --mx-env-qa: var(--mx-warn-ink);
+  --mx-env-qa-soft: var(--mx-watch-soft);
+  --mx-env-dev: var(--mx-ink-2);
+  --mx-env-dev-soft: var(--mx-well);
+  --mx-row-hover: var(--mx-well);
+  --mx-row-selected: var(--mx-cobalt-soft);
 
   --mx-s1: 4px;
   --mx-s2: 8px;
@@ -77,25 +91,31 @@
   --mx-s5: 24px;
   --mx-s6: 32px;
   --mx-gutter: var(--mx-s4);
-  --mx-h-control: 36px;
-  --mx-r-chip: 6px;
-  --mx-r-control: 10px;
-  --mx-r-card: 16px;
+  --mx-h-control: 32px;
+  --mx-h-row: 32px;
+  --mx-h-bar: 48px;
+  --mx-h-subbar: 40px;
+  --mx-page-gutter: var(--mx-s5);
+  --mx-page-max: 105rem;
+  --mx-prose-max: 72ch;
+  --mx-r-chip: 4px;
+  --mx-r-control: 6px;
+  --mx-r-card: 8px;
   --mx-r-pill: 999px;
 
-  --mx-font-sans: var(--font-geist-sans), "Geist", system-ui, sans-serif;
-  --mx-font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
+  --mx-font-sans: var(--font-geist-sans), "Geist", "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  --mx-font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", monospace;
   --mx-fs-micro: 0.6875rem;
   --mx-fs-small: 0.75rem;
-  --mx-fs-body: 0.875rem;
-  --mx-fs-title: 1.0625rem;
-  --mx-fs-h1: 1.75rem;
-  --mx-fs-display: 2.25rem;
-  --mx-fs-score: 4.5rem;
-  --mx-lh-small: 1.25rem;
-  --mx-lh-body: 1.375rem;
-  --mx-lh-title: 1.5rem;
-  --mx-lh-h1: 2.25rem;
+  --mx-fs-body: 0.8125rem;
+  --mx-fs-title: 0.9375rem;
+  --mx-fs-h1: 1.375rem;
+  --mx-fs-display: 1.75rem;
+  --mx-fs-score: 3.5rem;
+  --mx-lh-small: 1rem;
+  --mx-lh-body: 1.25rem;
+  --mx-lh-title: 1.375rem;
+  --mx-lh-h1: 1.75rem;
   --mx-w-label: 500;
   --mx-w-heading: 600;
 
@@ -147,8 +167,14 @@ html[data-theme="dark"] .mx-root {
   --mx-heat-8: #F0685E;
   --mx-scrim: rgb(0 0 0 / 60%);
   --mx-glass: rgb(21 22 29 / 96%);
-  --mx-elev-1: 0 1px 2px rgb(0 0 0 / 40%);
-  --mx-elev-2: 0 8px 24px rgb(0 0 0 / 55%);
+  --mx-elev-1: 0 1px 0 rgb(0 0 0 / 40%);
+  --mx-elev-2: 0 4px 12px rgb(0 0 0 / 50%), 0 0 0 1px rgb(255 255 255 / 8%);
+  --mx-elev-3: 0 16px 48px rgb(0 0 0 / 60%), 0 0 0 1px rgb(255 255 255 / 8%);
+  --mx-chart-2: #3FC1D0;
+  --mx-chart-3: #E07AB8;
+  --mx-chart-4: #C9966B;
+  --mx-chart-5: #A3ABBA;
+  --mx-chart-6: #B5C45A;
   --mx-elev-dock: 0 10px 30px rgb(0 0 0 / 55%);
   --mx-good-ink: #7BDDAA;
   --mx-warn-ink: #F6C478;
@@ -192,14 +218,27 @@ html[data-theme="dark"] .mx-root {
     --mx-heat-8: #F0685E;
     --mx-scrim: rgb(0 0 0 / 60%);
     --mx-glass: rgb(21 22 29 / 96%);
-    --mx-elev-1: 0 1px 2px rgb(0 0 0 / 40%);
-    --mx-elev-2: 0 8px 24px rgb(0 0 0 / 55%);
+    --mx-elev-1: 0 1px 0 rgb(0 0 0 / 40%);
+    --mx-elev-2: 0 4px 12px rgb(0 0 0 / 50%), 0 0 0 1px rgb(255 255 255 / 8%);
+    --mx-elev-3: 0 16px 48px rgb(0 0 0 / 60%), 0 0 0 1px rgb(255 255 255 / 8%);
+    --mx-chart-2: #3FC1D0;
+    --mx-chart-3: #E07AB8;
+    --mx-chart-4: #C9966B;
+    --mx-chart-5: #A3ABBA;
+    --mx-chart-6: #B5C45A;
     --mx-elev-dock: 0 10px 30px rgb(0 0 0 / 55%);
     --mx-good-ink: #7BDDAA;
     --mx-warn-ink: #F6C478;
     --mx-bad-ink: #FF9A9A;
   }
 }
+
+/* Density: compact by default; comfortable and touch pointers get 40px rows and 36px controls. */
+.mx-root[data-density="comfortable"] { --mx-h-row: 40px; --mx-h-control: 36px; }
+@media (pointer: coarse) { .mx-root { --mx-h-row: 40px; --mx-h-control: 40px; } }
+@media (max-width: 48rem) { .mx-root { --mx-page-gutter: var(--mx-s4); } }
+/* Kanji at 13px with 20px leading is too tight. Row heights do not change. */
+.mx-root:lang(ja) { --mx-fs-body: 0.875rem; --mx-lh-body: 1.5rem; --mx-lh-small: 1.25rem; }
 
 /* Motion lives here only (lint:tokens). One class per moving thing; reduced motion turns them all off. */
 .mx-root .mx-btn,

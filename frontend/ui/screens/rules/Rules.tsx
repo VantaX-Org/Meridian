@@ -9,7 +9,7 @@ import { formatModuleName } from "@/lib/format";
 import { exportRulesBulk, importRulesBulk, type BulkResult } from "@/lib/api/v2/roles";
 import type { Rule } from "@/lib/api/rules";
 import { bytesToBase64 } from "@/lib/api/download";
-import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, Search, Select, SeverityPill, Skeleton, StatTile, useAletheia, useAletheiaScope, useSheet, useToast, type Column } from "@/ui/kit";
+import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, PageHeader, Search, Select, SeverityPill, Skeleton, StatTile, useAletheia, useAletheiaScope, useSheet, useToast, type Column, ExportMenu } from "@/ui/kit";
 import type { Severity } from "@/ui/kit/SeverityStrip";
 import { compactCount, pct, ruleCheck, SEVERITIES, sevLabel } from "./format";
 import { useAct, useRuleLibrary } from "./queries";
@@ -67,7 +67,6 @@ export function Rules() {
     { key: "fail", label: t("Records failing"), render: (r) => (r.last_affected_count == null ? t("n/a") : compactCount(r.last_affected_count)), sort: (r) => r.last_affected_count ?? -1, align: "end" },
   ];
 
-  const doExport = useAct((f: "yaml" | "xlsx") => exportRulesBulk(f), () => t("Rules exported"));
   const pick = async (f: File | undefined) => {
     if (!f) return;
     const format = f.name.toLowerCase().endsWith(".xlsx") ? "xlsx" : "yaml";
@@ -91,8 +90,7 @@ export function Rules() {
             <Button variant="secondary" href={href("/rules/dry-run")}>{t("Write a rule")}</Button>
             <Button variant="secondary" href={href("/rules/promotion")}>{t("Rule promotion")}</Button>
             <Button variant="secondary" href={href("/admin/scoring")}>{t("Scoring weights and thresholds")}</Button>
-            <Button variant="secondary" disabled={doExport.isPending} onClick={() => doExport.mutate("yaml")}>{t("Export YAML")}</Button>
-            <Button variant="secondary" disabled={doExport.isPending} onClick={() => doExport.mutate("xlsx")}>{t("Export Excel")}</Button>
+            <ExportMenu label={t("Export rules")} formats={[{ id: "yaml", label: t("YAML") }, { id: "xlsx", label: t("Excel workbook") }]} onExport={(f) => exportRulesBulk(f as "yaml" | "xlsx")} />
             <Button variant="secondary" onClick={() => file.current?.click()}>{t("Import rules")}</Button>
             <Button variant="primary" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
           </>

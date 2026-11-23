@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { exportComparison, runPair, type CompareKind, type DiffRow } from "@/lib/api/v2/compare";
-import { Button, Card, DataTable, DqsPair, EmptyState, FieldChip, PageHeader, Select, StatTile, Tabs, TrendArea, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, Card, DataTable, DqsPair, EmptyState, FieldChip, PageHeader, Select, StatTile, Tabs, TrendArea, useAletheiaScope, useToast, ExportMenu } from "@/ui/kit";
 import { AskButton, Gate, humanize, pct, useHref, when, useBack } from "./common";
 import { invalidateLoad, useDiffs, usePairLatest, usePairTrend } from "./hooks";
 
@@ -42,7 +42,7 @@ export function Pair({ id }: { id: string }) {
     },
   });
 
-  const exp = (f: "xlsx" | "csv") => cmp && exportComparison(cmp.id, f, filter).catch(() => toast(t("The export failed"), "bad"));
+  const exp = async (f: string) => { if (cmp) await exportComparison(cmp.id, f as "xlsx" | "csv", filter); };
   const s = cmp?.summary;
 
   return (
@@ -52,7 +52,7 @@ export function Pair({ id }: { id: string }) {
         context={pair ? <>{<FieldChip code={pair.module} description={humanize(pair.module)} />}{cmp ? `, ${t("compared {when}", { when: when(cmp.completed_at ?? cmp.created_at) })}` : ""}</> : null}
         actions={<>
           <Button variant="primary" onClick={() => run.mutate()} disabled={run.isPending}>{t("Run comparison")}</Button>
-          <Button variant="secondary" onClick={() => exp("xlsx")} disabled={!cmp}>{t("Export differences")}</Button>
+          <ExportMenu label={t("Export differences")} disabled={!cmp} formats={[{ id: "xlsx", label: t("Excel workbook") }, { id: "csv", label: t("CSV") }]} onExport={exp} />
           <Button variant="secondary" href={href("/load/compare")}>{t("All pairs")}</Button>
           <AskButton />
         </>}
@@ -148,9 +148,6 @@ export function Pair({ id }: { id: string }) {
                 ) : <EmptyState heading={t("No configuration comparison")} body={cmp?.config?.reason} />}
               </div>
             ) : null}
-            <div className="mx-links">
-              <Button variant="ghost" onClick={() => exp("csv")} disabled={!cmp}>{t("Export as CSV")}</Button>
-            </div>
           </Card>
         </div>
       </div>

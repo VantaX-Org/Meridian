@@ -159,14 +159,15 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
 
   return (
     <>
-      <nav className="mx-crumb" aria-label={t("Breadcrumb")}>
-        <span>{o.systemName}</span><span aria-hidden="true">/</span><span aria-current="page">{o.label}</span>
-      </nav>
       <PageHeader
         title={o.label}
-        context={<>
-          {[t("{system}, run {n}", { system: o.systemName, n: o.run?.run_number ?? "" }), d.cell ? t("{n} records checked against {m} rules", { n: compactCount(d.cell.records_checked ?? 0), m: d.measured }) : ""].filter(Boolean).join(", ")}
-        </>}
+        crumbs={[{ label: t("Objects"), href: href("/o") }, { label: o.systemName }, { label: o.label }]}
+        meta={[
+          o.systemName,
+          o.run ? t("Run {n}", { n: o.run.run_number ?? "" }) : null,
+          o.run?.run_at ? t("As of {date}", { date: formatDate(o.run.run_at, "datetime") }) : null,
+          d.cell ? t("{n} records checked against {m} rules", { n: compactCount(d.cell.records_checked ?? 0), m: d.measured }) : null,
+        ]}
         actions={<>
           {runLabel ? <span className="mx-runlabel" data-testid="run-label">{runLabel}</span> : null}
           <Button variant="secondary" onClick={d.download ?? undefined} disabled={!d.download || d.busy} title={d.download ? undefined : t("No run yet")}>{t("Download workbook")}</Button>

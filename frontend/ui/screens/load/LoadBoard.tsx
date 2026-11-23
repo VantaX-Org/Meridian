@@ -11,7 +11,7 @@ import type { LoadObject } from "@/lib/api/v2/load-plan";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
 import { describeTable } from "@/lib/v2/sap-fields";
-import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, ScoreRuler, Skeleton, StatTile, Stepper, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, Card, Chip, DataTable, EmptyState, ErrorState, FieldChip, ScoreRuler, Skeleton, StatTile, Stepper, useAletheiaScope, ExportMenu } from "@/ui/kit";
 import { compactCount, score, signed } from "../object/format";
 import { Verdict, humanize, useHref, when } from "./common";
 import { useLoadPlan, usePairLatest, usePairs, useRecords } from "./hooks";
@@ -58,7 +58,6 @@ export const reasonText = (r: string | null) => (r && REASONS[r] ? REASONS[r]() 
 export function LoadBoard() {
   useInterfaceLang();
   const href = useHref();
-  const toast = useToast();
   const pairs = usePairs();
   const plan = useLoadPlan();
   const [chosen, setChosen] = useState<string | null>(null);
@@ -93,7 +92,7 @@ export function LoadBoard() {
 
   if (pairs.isLoading) return <Skeleton lines={5} label={t("Loading the load board")} />;
   if (pairs.isError) return <ErrorState heading={t("The load board could not be loaded")} retryLabel={t("Try again")} onRetry={() => void pairs.refetch()} />;
-  const exportRecon = () => { if (cmp) exportComparison(cmp.id, "xlsx", {}).catch(() => toast(t("The export failed"), "bad")); };
+  const exportRecon = async () => { if (cmp) await exportComparison(cmp.id, "xlsx", {}); };
   const marks: { id: string; label: string; shown: number }[] = [];
   if (sc) for (const [id, label, v] of [["source", t("Source"), sc.source], ["projected", t("Projected target"), sc.projected], ["actual", t("Actual target"), sc.actual]] as const) if (v !== null) marks.push({ id, label, shown: v });
 
@@ -136,7 +135,7 @@ export function LoadBoard() {
           )}
           {sc?.migration_run_id ? <Failures runId={sc.migration_run_id} tables={tables} /> : null}
           <Card title={t("Reconciliation")} sub={cmp?.summary ? t("{n, plural, one {# record} other {# records}} in the target", { n: cmp.summary.in_target }) : undefined}
-            action={<span className="lb-actions"><Button variant="secondary" href={href(`/load/compare/${pair.id}`)}>{t("Open missing records")}</Button><Button variant="secondary" onClick={exportRecon} disabled={!cmp}>{t("Export reconciliation")}</Button></span>}>
+            action={<span className="lb-actions"><Button variant="secondary" href={href(`/load/compare/${pair.id}`)}>{t("Open missing records")}</Button><ExportMenu label={t("Export reconciliation")} disabled={!cmp} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={exportRecon} /></span>}>
             {tables.length ? (
               <DataTable
                 label={t("Records missing in the target")}

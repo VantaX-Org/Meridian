@@ -7,7 +7,7 @@ import { formatInt } from "@/lib/format";
 import { useCatalogue, useExportOptions, useReportHistory, useScheduleOptions, useSchedules } from "@/lib/v2/admin-queries";
 import { exportRequest } from "@/lib/v2/export-centre";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, EmptyState, Field, Input, Select, Sheet, Toggle, useSheet } from "@/ui/kit";
+import { Button, Card, Code, DataTable, EmptyState, Field, Input, Select, Sheet, Toggle, useSheet, ExportMenu } from "@/ui/kit";
 import { Row, Sec, useAct, when } from "./ops/shared";
 
 const kb = (n: number) => `${formatInt(Math.max(1, Math.round(n / 1024)))} KB`;
@@ -63,7 +63,7 @@ export function Reports() {
               { key: "at", label: t("Built"), render: (r) => when(r.created_at) },
               { key: "act", label: t("Actions"), render: (r) => (
                 <Row>
-                  <Button variant="secondary" disabled={busy} onClick={() => run(() => downloadReportFile(r.id, r.file_name), t("File downloaded."))}>{t("Download")}</Button>
+                  <ExportMenu label={t("Download")} disabled={busy} formats={[{ id: "file", label: r.file_name }]} onExport={() => downloadReportFile(r.id, r.file_name)} />
                   <Button variant="ghost" disabled={busy} onClick={() => run(() => deleteReportFile(r.id), t("File removed."))}>{t("Remove")}</Button>
                 </Row>
               ) },
