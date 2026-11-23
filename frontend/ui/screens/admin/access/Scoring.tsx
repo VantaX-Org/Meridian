@@ -61,7 +61,7 @@ export function Scoring() {
   const modules = ["*", ...Object.keys(qt.data?.modules ?? {})];
   return (
     <Frame slug="scoring" title={t("Scoring")} lead={t("How dimension scores combine, where the bands sit, and per-module overrides.")} loading={sc.isLoading || qt.isLoading} error={sc.isError || qt.isError}>
-      {!cfg ? <EmptyState heading={t("No scoring configuration is available")} /> : (
+      {!cfg ? <EmptyState heading={t("No scoring configuration is available")} body={t("Reload the page. If this stays empty, ask an administrator to check the tenant.")} /> : (
         <>
           <Card title={t("Dimension weights")} sub={t("Weights add up to {n}. The score divides by the sum.", { n: sum(cfg.dimension_weights).toFixed(2) })}>
             <form className="mx-col" onSubmit={(e) => { e.preventDefault(); void run(() => putScoring(cfg), t("Scoring saved."), ["settings"]); }}>

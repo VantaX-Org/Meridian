@@ -28,7 +28,7 @@ export function ContactVerify() {
         <Toggle label={t("Check the mail server of each email domain")} checked={mx} onChange={save} />
       </Card>
       <Card title={t("Contact rules")}>
-        {rules.length === 0 ? <EmptyState heading={t("No contact rules apply.")} /> : (
+        {rules.length === 0 ? <EmptyState heading={t("No contact rules apply.")} body={t("Choose another object, or add a contact rule.")} /> : (
           <DataTable label={t("Contact rules")} rows={rules} rowKey={(r) => r.check_id} height={380}
             columns={[
               { key: "rule", label: t("Rule"), render: (r) => <Code code={r.check_id} description={r.message} /> },

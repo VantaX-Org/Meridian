@@ -102,7 +102,7 @@ export function Material360({ matnr }: { matnr: string }) {
             { key: "field", label: t("Field"), render: (r) => r.field ? <FieldChip code={r.field} description={m.labels[r.field] ?? describeField(r.field, null) ?? undefined} /> : null },
             { key: "now", label: t("Current value"), render: (r) => r.actual_value ?? t("empty") },
           ]} />
-        ) : <EmptyState heading={t("No rule fails on this material.")} />}
+        ) : <EmptyState heading={t("No rule fails on this material.")} body={t("This material passes every rule in this run. Open another material to continue.")} />}
       </Card>
 
       <Card title={t("Follow-up chain")} sub={t("The successor of this material in each plant where it is discontinued")}>
@@ -116,7 +116,7 @@ export function Material360({ matnr }: { matnr: string }) {
               { key: "f", label: t("Flags"), render: (c) => c.flags.map((f) => <FieldChip key={f} code={f} description={flagText(f)} />) },
             ]} />
           </section>
-        )) : <EmptyState heading={t("This material is not discontinued in any plant.")} />}
+        )) : <EmptyState heading={t("This material is not discontinued in any plant.")} body={t("Nothing to review here. Open another material to continue.")} />}
         {boms.length ? (
           <DataTable label={t("Bills of material that use it")} rows={boms} rowKey={(b) => `${b.stlnr}${b.posnr}${b.werks}`} height={Math.min(280, 60 + 40 * boms.length)} columns={[
             { key: "s", label: t("BOM"), render: (b) => b.stlnr ?? "" },
@@ -137,7 +137,7 @@ export function Material360({ matnr }: { matnr: string }) {
             { key: "on", label: t("Matches on"), render: (d) => d.matches_on.join(", ") },
             { key: "s", label: t("Score"), render: (d) => String(d.score), sort: (d) => d.score, align: "end" },
           ]} />
-        ) : <EmptyState heading={t("No other material looks like this one.")} />}
+        ) : <EmptyState heading={t("No other material looks like this one.")} body={t("Similar materials appear here when matching finds a close description.")} />}
       </Card>
     </div>
   );

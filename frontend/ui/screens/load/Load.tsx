@@ -89,7 +89,7 @@ export function Load() {
                     { key: "at", label: t("Date"), sort: (e) => e.exported_at ?? "", render: (e) => when(e.exported_at) },
                   ]}
                 />
-              ) : <EmptyState heading={t("No file handed over yet")} />}
+              ) : <EmptyState heading={t("No file handed over yet")} body={t("Hand over the cleaned file to see it here.")} />}
             </Gate>
           </Card>
         <Card title={t("Everything in Load")}>

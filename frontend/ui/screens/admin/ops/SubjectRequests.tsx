@@ -59,7 +59,7 @@ export function SubjectRequests() {
       </Card>
 
       <Card title={t("Request ledger")}>
-        {rows.length === 0 ? <EmptyState heading={t("No requests yet.")} /> : (
+        {rows.length === 0 ? <EmptyState heading={t("No requests yet.")} body={t("A request appears here once a person submits one.")} /> : (
           <DataTable label={t("Request ledger")} rows={rows} rowKey={(r) => r.request_id} height={300}
             columns={[
               { key: "created_at", label: t("When"), render: (r) => when(r.created_at), sort: (r) => r.created_at },
@@ -73,7 +73,7 @@ export function SubjectRequests() {
       </Card>
 
       <Card title={t("Suppressed keys")} sub={t("Erased keys that extraction drops. Only field names and counts are kept.")}>
-        {items.length === 0 ? <EmptyState heading={t("No keys are suppressed.")} /> : (
+        {items.length === 0 ? <EmptyState heading={t("No keys are suppressed.")} body={t("Suppress a key to keep it out of every run.")} /> : (
           <DataTable label={t("Suppressed keys")} rows={items} rowKey={(r) => r.request_id ?? r.created_at} height={260}
             columns={[
               { key: "fields", label: t("Key fields"), render: (r) => r.key_fields.map((f) => <Code key={f} code={f} description={texts[f]} />) },

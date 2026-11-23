@@ -30,7 +30,7 @@ export function Fixes({ o, system, module }: { o: ObjectRun; system: string; mod
   if (q.isLoading || o.runsLoading) return <Skeleton lines={5} label={t("Loading fixes")} />;
   if (q.isError) return <ErrorState heading={t("The fixes could not be loaded.")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
   const cols: Column<WorkGroupRow>[] = [
-    { key: "c", label: t("Rule"), render: (r) => <FieldChip code={r.check_id} /> },
+    { key: "c", label: t("Rule"), render: (r) => <FieldChip code={r.check_id} description={r.message ?? undefined} /> },
     { key: "s", label: t("Severity"), render: (r) => <span className="mx-sev" data-sev={r.severity}>{sevLabel(r.severity)}</span> },
     { key: "r", label: t("Records"), align: "end", sort: (r) => r.records, render: (r) => <span className="mx-num">{r.records}</span> },
     { key: "p", label: t("With a proposed value"), align: "end", sort: (r) => r.proposed, render: (r) => <span className="mx-num">{r.proposed}</span> },
@@ -45,7 +45,7 @@ export function Fixes({ o, system, module }: { o: ObjectRun; system: string; mod
         <StatTile label={t("With a proposed value")} value={compactCount(proposed)} bar={open ? (100 * proposed) / open : 0} barTone="pass" />
       </dl>
       <Card title={t("Fixes by rule")} action={<Button variant="secondary" href={withFixture(`/work?module=${encodeURIComponent(module)}`, fx)}>{t("Open in the work queue")}</Button>}>
-        {rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => r.check_id} label={t("Fixes by rule")} /> : <EmptyState heading={t("No fixes are waiting for this object.")} />}
+        {rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => r.check_id} label={t("Fixes by rule")} /> : <EmptyState heading={t("No fixes are waiting for this object.")} body={t("Every finding of this run is fixed or not an issue. Open the work queue to check other objects.")} action={<Button href={withFixture("/work", fx)}>{t("Open the work queue")}</Button>} />}
       </Card>
     </div>
   );

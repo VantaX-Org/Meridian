@@ -14,7 +14,7 @@ export function Access() {
     <Sec title={t("Access requests")} scope="access" q={[q]} context={t("{n} open", { n: rows.length })}
       facts={[t("{n} access requests are open.", { n: rows.length })]}>
       <Card title={t("Open requests")}>
-        {rows.length === 0 ? <EmptyState heading={t("No open access requests.")} /> : (
+        {rows.length === 0 ? <EmptyState heading={t("No open access requests.")} body={t("A request appears here when a person asks for access.")} /> : (
           <DataTable label={t("Open access requests")} rows={rows} rowKey={(r) => r.id} height={360}
             columns={[
               { key: "created_at", label: t("Asked"), render: (r) => when(r.created_at), sort: (r) => r.created_at },

@@ -20,7 +20,7 @@ export function Share({ token }: { token: string }) {
           </Card>
         )}
       </Gate>
-      {!token ? <EmptyState heading={t("This link is not valid")} /> : null}
+      {!token ? <EmptyState heading={t("This link is not valid")} body={t("Ask the sender for a new link.")} /> : null}
     </section>
   );
 }

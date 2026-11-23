@@ -146,7 +146,7 @@ export function ExtractionsTab({ id, source }: { id: string; source: boolean }) 
       </Card>
 
       <Card title={t("Re-check objects")} sub={t("Scores the latest stored extraction again. Nothing is read from SAP.")}>
-        {(trig.data ?? []).length === 0 ? <EmptyState heading={t("Nothing to re-check")} /> : (
+        {(trig.data ?? []).length === 0 ? <EmptyState heading={t("Nothing to re-check")} body={t("Run an extraction first, then re-check it.")} /> : (
           <>
             <DataTable columns={[
               { key: "m", label: t("Object"), render: (m) => <FieldChip code={m.module_id} description={m.label} /> },

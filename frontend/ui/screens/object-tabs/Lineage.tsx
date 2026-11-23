@@ -24,7 +24,7 @@ export function Lineage({ o, system, module }: { o: ObjectRun; system: string; m
   }));
   if (rules.isLoading || o.runsLoading) return <Skeleton lines={6} label={t("Loading lineage")} />;
   if (rules.isError) return <ErrorState heading={t("Lineage could not be loaded.")} retryLabel={t("Try again")} onRetry={() => void rules.refetch()} />;
-  if (!g.nodes.length) return <EmptyState heading={t("No rule with a table field exists for this object, so there is no lineage to show.")} />;
+  if (!g.nodes.length) return <EmptyState heading={t("No rule with a table field exists for this object, so there is no lineage to show.")} body={t("Add a rule on a table field to this object to see its lineage.")} />;
   const next = (n: LineageNode) => g.edges.filter((e) => e.from === n.id).map((e) => g.nodes.find((m) => m.id === e.to)?.label).filter(Boolean).join(", ");
   return (
     <div className="mx-col">

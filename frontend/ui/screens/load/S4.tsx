@@ -55,7 +55,7 @@ export function S4() {
             { key: "p", label: t("Pass rate"), align: "end", sort: (c) => c.pass_rate ?? -1, render: (c) => pct(c.pass_rate) },
           ]}
         />
-      ) : <EmptyState heading={t("No check in this area")} />}
+      ) : <EmptyState heading={t("No check in this area")} body={t("Choose another area to see its checks.")} />}
     </Card>
   ) : <EmptyState heading={t("Choose an area")} body={t("Its checks appear here.")} />;
 

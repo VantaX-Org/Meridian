@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { bulkTriage, getAssignable, getTriageMetrics, getTriageQueue, type BulkAction, type QueueItem } from "@/lib/api/v2/triage";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
+import { useWorkGroups } from "@/lib/v2/work-queries";
 import { Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Skeleton, StatTile, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { ObjChip } from "./ObjChip";
 import { day, sevLabel, useDo } from "./shared";
@@ -39,6 +40,8 @@ export function Triage() {
   const people = useQuery({ queryKey: ["v2", "triage-people", fx], queryFn: getAssignable, retry: false });
   const met = useQuery({ queryKey: ["v2", "triage-metrics", fx], queryFn: () => getTriageMetrics(8), retry: false });
   const items = q.data?.[bucket].items ?? [];
+  const groups = useWorkGroups({});
+  const ruleText = new Map((groups.data?.groups ?? []).map((g) => [g.check_id, g.message ?? undefined]));
   const m = met.data;
 
   useAletheiaScope({
@@ -51,7 +54,14 @@ export function Triage() {
 
   const flip = (id: string) => setPicked((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const chosen = items.filter((i) => picked.has(i.id));
+  const allPicked = items.length > 0 && chosen.length === items.length;
+  const flipAll = () => setPicked(allPicked ? new Set() : new Set(items.map((i) => i.id)));
   const need = (action === "assign" && !user) || (action === "snooze" && (!reason.trim() || !until || !(new Date(until).getTime() > now))) || (action === "priority" && !(Number(prio) >= 1 && Number(prio) <= 5));
+  const why = !chosen.length ? t("Pick at least one item.")
+    : action === "assign" && !user ? t("Pick a person.")
+    : action === "snooze" && !reason.trim() ? t("Say why to snooze.")
+    : action === "snooze" && (!until || !(new Date(until).getTime() > now)) ? t("Pick a time in the future.")
+    : action === "priority" && need ? t("Pick a priority from 1 to 5.") : "";
   const apply = async () => {
     setAsk(false);
     for (const kind of ["issue", "queue"] as const) {
@@ -89,15 +99,18 @@ export function Triage() {
       </div>
       <Card title={t("Queue")} sub={t("{n} selected", { n: chosen.length })}>
         {q.isLoading ? <Skeleton lines={5} label={t("Loading the queue")} /> : q.isError ? <ErrorState heading={t("The queue could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : !items.length ? <EmptyState heading={t("Nothing is waiting here")} body={t("Pick another filter, or open the work queue.")} action={<Button href="/work">{t("Open the work queue")}</Button>} /> : (
+          <>
+          <label className="mx-muted"><input type="checkbox" checked={allPicked} onChange={flipAll} /> {t("Select all {n} shown", { n: items.length })}</label>
           <DataTable label={t("Queue")} rows={items} rowKey={(i: QueueItem) => i.id}
             columns={[
               { key: "p", label: t("Pick"), render: (i) => <input type="checkbox" aria-label={t("Pick {id}", { id: i.id })} checked={picked.has(i.id)} onChange={() => flip(i.id)} /> },
               { key: "o", label: t("Object"), render: (i) => (i.module ? <ObjChip code={i.module} /> : "") },
-              { key: "r", label: t("Rule"), render: (i) => (i.check_id ? <FieldChip code={i.check_id} description={i.ref ?? undefined} /> : "") },
+              { key: "r", label: t("Rule"), render: (i) => (i.check_id ? <FieldChip code={i.check_id} description={ruleText.get(i.check_id) ?? undefined} /> : "") },
               { key: "s", label: t("Severity"), render: (i) => (i.severity ? sevLabel(i.severity) : ""), sort: (i) => i.severity ?? "" },
               { key: "d", label: t("Due"), render: (i) => day(i.due_at ?? ""), sort: (i) => i.due_at ?? "" },
               { key: "k", label: t("Rank"), render: (i) => Math.round(i.rank_score), sort: (i) => i.rank_score, align: "end" },
             ]} />
+          </>
         )}
       </Card>
       <Card title={t("Bulk action")} sub={t("Applies to the picked items.")}>
@@ -111,6 +124,7 @@ export function Triage() {
         ) : null}
         {action === "priority" ? <Field label={t("Priority (1 is highest)")}><Input type="number" min={1} max={5} value={prio} onChange={(e) => setPrio(e.target.value)} /></Field> : null}
         <Button variant="primary" disabled={!chosen.length || need} onClick={() => setAsk(true)}>{t("Apply to {n} items", { n: chosen.length })}</Button>
+        {why ? <span role="status" className="mx-muted"> {why}</span> : null}
       </Card>
       <Confirm open={ask} title={t("Apply this action?")} confirmLabel={t("Apply")} cancelLabel={t("Cancel")} onConfirm={() => void apply()} onCancel={() => setAsk(false)}>
         {t("{n} items change.", { n: chosen.length })}

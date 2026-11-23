@@ -183,7 +183,7 @@ describe("Clean board failures", () => {
 describe("Triage validation", () => {
   it("blocks priority outside 1 to 5 and a snooze in the past", async () => {
     mount("/work/triage?fixture=1", <Triage />);
-    fireEvent.click((await screen.findAllByRole("checkbox", {}, { timeout: 5000 }))[0]);
+    fireEvent.click((await screen.findAllByRole("checkbox", { name: /^Pick / }, { timeout: 5000 }))[0]);
     const apply = screen.getByRole("button", { name: /^Apply to 1/ }) as HTMLButtonElement;
     fireEvent.change(screen.getByRole("combobox", { name: "Action" }), { target: { value: "priority" } });
     fireEvent.change(screen.getByRole("spinbutton", { name: "Priority (1 is highest)" }), { target: { value: "9" } });
@@ -196,6 +196,17 @@ describe("Triage validation", () => {
     expect(apply.disabled).toBe(true);
     fireEvent.change(screen.getByLabelText("Until"), { target: { value: "2999-01-01T10:00" } });
     expect(apply.disabled).toBe(false);
+  });
+});
+
+describe("Triage select all and reason", () => {
+  it("selects every shown row and says why Apply is off", async () => {
+    mount("/work/triage?fixture=1", <Triage />);
+    const rows = await screen.findAllByRole("checkbox", { name: /^Pick / }, { timeout: 5000 });
+    expect(screen.getByText("Pick at least one item.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("checkbox", { name: /^Select all \d+ shown$/ }));
+    for (const r of rows) expect((r as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByText("Pick at least one item.")).toBeNull();
   });
 });
 

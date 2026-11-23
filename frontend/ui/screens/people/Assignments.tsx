@@ -96,7 +96,7 @@ export function Assignments() {
           <Gate q={tpl} label={t("Loading the template")}>
             {(o) => {
               const rows = Object.entries(o.template.objects).map(([module, v]) => ({ module, ...v }));
-              return rows.length === 0 ? <EmptyState heading={t("No template saved")} /> : (
+              return rows.length === 0 ? <EmptyState heading={t("No template saved")} body={t("Save an assignment as a template to reuse it.")} /> : (
                 <DataTable label={t("The template")} rows={rows} rowKey={(r) => r.module} height={300} columns={[
                   { key: "m", label: t("Object"), render: (r) => <FieldChip code={r.module} description={o.labels[r.module]} /> },
                   { key: "o", label: t("Owner role"), render: (r) => r.owner_role },

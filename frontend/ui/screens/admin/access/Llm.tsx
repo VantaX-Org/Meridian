@@ -47,7 +47,7 @@ export function Llm() {
 
   return (
     <Frame slug="llm" title={t("Language model")} lead={t("Which model answers Aletheia, and whether it sees only aggregates.")} loading={config.isLoading || providers.isLoading} error={config.isError}>
-      {!c || !form ? <EmptyState heading={t("No language model is configured")} /> : (
+      {!c || !form ? <EmptyState heading={t("No language model is configured")} body={t("Add a language model to turn on Aletheia answers.")} /> : (
         <>
           <Card title={t("Privacy")} sub={t("When on, only counts and aggregates go to the model, never a row, a mask or a key shape.")}>
             <Toggle label={t("Send aggregates only")} checked={c.aggregates_only} onChange={(v: boolean) => run(() => putLlmAggregatesOnly(v), t("Privacy setting saved."), ["llm-config"])} />

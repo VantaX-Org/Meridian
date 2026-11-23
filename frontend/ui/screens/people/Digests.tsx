@@ -101,7 +101,7 @@ function Detail({ d, onEdit, onGone }: { d: Digest; onEdit: () => void; onGone: 
       </Card>
       <Card title={t("Deliveries")}>
         <Gate q={deliveries} label={t("Loading deliveries")}>
-          {(r) => r.deliveries.length === 0 ? <EmptyState heading={t("Nothing sent yet")} /> : (
+          {(r) => r.deliveries.length === 0 ? <EmptyState heading={t("Nothing sent yet")} body={t("A message appears here after the first notification is sent.")} /> : (
             <DataTable label={t("Deliveries")} rows={r.deliveries} rowKey={(x) => x.id} height={220} columns={[
               { key: "at", label: t("When"), render: (x) => relTime(x.created_at) },
               { key: "how", label: t("How"), render: (x) => (x.manual ? t("Sent by hand") : t("Scheduled")) },

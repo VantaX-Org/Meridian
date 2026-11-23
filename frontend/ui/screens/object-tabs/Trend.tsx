@@ -57,7 +57,7 @@ export function Trend({ o, system, module }: { o: ObjectRun; system: string; mod
         {runRows.length ? <DataTable columns={runCols} rows={runRows} rowKey={(r) => r.id} label={t("Score by run")} height={240} /> : null}
       </Card>
       <Card title={t("What changed since the run before")} sub={o.previous ? undefined : t("This is the first run, so there is nothing to compare.")}>
-        {ch.isLoading ? <Skeleton lines={3} label={t("Loading changes")} /> : rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => `${r.kind}:${r.check_id}`} label={t("Changed rules")} height={280} /> : <EmptyState heading={t("No rule changed between these two runs.")} />}
+        {ch.isLoading ? <Skeleton lines={3} label={t("Loading changes")} /> : rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => `${r.kind}:${r.check_id}`} label={t("Changed rules")} height={280} /> : <EmptyState heading={t("No rule changed between these two runs.")} body={t("Pick two other runs to compare.")} />}
       </Card>
     </div>
   );

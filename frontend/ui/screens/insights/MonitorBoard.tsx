@@ -145,10 +145,10 @@ export function MonitorBoard() {
                   {latest !== null ? <ScoreRuler ariaLabel={t("Latest score on the ruler, gates at 70 and 85")} marks={[{ id: "now", label: t("Score now"), shown: latest }]} showName={false}
                     labels={{ atRisk: t("At risk"), go: t("Go"), cap70: t("Gate 70, critical cap"), cap85: t("Gate 85, go"), measured: (n) => t("Measured {n}", { n }) }} /> : null}
                 </div>
-              ) : <EmptyState heading={t("Not enough runs yet")} />}
+              ) : <EmptyState heading={t("Not enough runs yet")} body={t("Run the object at least twice to see how it changes.")} />}
             </Card>
             <Card title={t("New findings per run")} sub={t("Rule findings that appeared or got worse")}>
-              {perRun.length === 0 ? <EmptyState heading={t("Nothing new since the last run")} /> : (
+              {perRun.length === 0 ? <EmptyState heading={t("Nothing new since the last run")} body={t("New findings appear here after the next run.")} /> : (
                 <BarList label={t("New findings per run")} items={perRun.map((g) => {
                   const n = g.newCount + g.regressedCount;
                   const worst = SEV.find((s) => g.findings.some((x) => x.severity === s));
@@ -159,7 +159,7 @@ export function MonitorBoard() {
           </div>
 
           <Card title={t("Quiet breaks")} sub={t("Stored, not alerted")}>
-            {quiet.length === 0 ? <EmptyState heading={t("No quiet breaks")} /> : (
+            {quiet.length === 0 ? <EmptyState heading={t("No quiet breaks")} body={t("A break that scores well but fails in the target appears here when found.")} /> : (
               <ul className="mb-list" aria-label={t("Quiet breaks")}>
                 {quiet.map((b) => (
                   <li key={b.id} className="mb-row">

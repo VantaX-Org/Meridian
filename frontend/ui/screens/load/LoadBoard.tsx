@@ -27,7 +27,7 @@ function Failures({ runId, tables }: { runId: string; tables: TableCompare[] }) 
   return (
     <Card title={t("Load failures to clear")} sub={t("{n, plural, one {# record} other {# records}}", { n: q.data?.total ?? 0 })}
       action={<Button variant="secondary" href={href("/load/maps")}>{t("Open value mapping")}</Button>}>
-      {q.isLoading ? <Skeleton lines={3} label={t("Loading the load failures")} /> : q.isError ? <ErrorState heading={t("The load failures could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : rows.length === 0 ? <EmptyState heading={t("No load failures")} /> : (
+      {q.isLoading ? <Skeleton lines={3} label={t("Loading the load failures")} /> : q.isError ? <ErrorState heading={t("The load failures could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : rows.length === 0 ? <EmptyState heading={t("No load failures")} body={t("A failure appears here when a load is rejected by SAP.")} /> : (
         <DataTable
           label={t("Load failures to clear")}
           rows={rows}
@@ -108,7 +108,7 @@ export function LoadBoard() {
       {!pair ? <EmptyState heading={t("No pair to load yet")} body={t("Pair a source system with its target to compare them.")} action={<Button variant="secondary" href={href("/load/compare")}>{t("Paired systems")}</Button>} /> : (
         <>
           <Card title={t("Three scores on one ruler")} sub={`${labelText(pair.module)}, ${pair.source.name} ${t("to")} ${pair.target.name}${cmp ? `, ${t("compared {when}", { when: when(cmp.completed_at ?? cmp.created_at) })}` : ""}`}>
-            {marks.length ? <ScoreRuler marks={marks} labels={labels()} ariaLabel={t("Source, projected target and actual target against the gates")} zones={{ noGo: t("No-go"), atRisk: t("At risk"), go: t("Go") }} /> : <EmptyState heading={t("Not compared yet")} />}
+            {marks.length ? <ScoreRuler marks={marks} labels={labels()} ariaLabel={t("Source, projected target and actual target against the gates")} zones={{ noGo: t("No-go"), atRisk: t("At risk"), go: t("Go") }} /> : <EmptyState heading={t("Not compared yet")} body={t("Run a comparison to see the differences.")} />}
             {sc && (
               <dl className="mx-tiles">
                 <StatTile label={t("Source")} value={sc.source !== null ? score(sc.source) : t("n/a")} />
@@ -148,7 +148,7 @@ export function LoadBoard() {
                   { key: "m", label: t("Missing"), align: "end", sort: (r) => r.missing_in_target, render: (r) => (r.comparable ? compactCount(r.missing_in_target) : t("Not comparable")) },
                 ]}
               />
-            ) : <EmptyState heading={t("No tables compared yet")} />}
+            ) : <EmptyState heading={t("No tables compared yet")} body={t("Run a comparison to see each table.")} />}
           </Card>
           {fieldRows.length > 0 && (
             <Card title={t("Field by field")}>

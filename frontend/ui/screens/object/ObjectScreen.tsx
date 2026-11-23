@@ -285,7 +285,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
         </div>
         <div className="mx-col">
           <Card title={t("Failing rules")} sub={t("{n} of {m} measured rules fail", { n: d.failing.length, m: d.measured })}>
-            {rows.length ? <MasterList rows={rows} selectedId={!stacked || sheet ? r?.check_id ?? null : null} onSelect={(id) => { setPick(id); setSheet(true); }} label={t("Failing rules")} /> : <EmptyState heading={t("No rule fails in this run")} />}
+            {rows.length ? <MasterList rows={rows} selectedId={!stacked || sheet ? r?.check_id ?? null : null} onSelect={(id) => { setPick(id); setSheet(true); }} label={t("Failing rules")} /> : <EmptyState heading={t("No rule fails in this run")} body={t("Every rule passes in this run. Open another run to compare.")} />}
           </Card>
           {!stacked ? detail : null}
           <FindingsCard system={system} module={o.module} latest={onLatest} />

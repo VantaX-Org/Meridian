@@ -26,7 +26,7 @@ export function ExternalDb() {
     <Sec title={t("External databases")} scope="external-db" q={[q]} context={t("{n} connections", { n: rows.length })}
       facts={[t("{n} database connections are set up.", { n: rows.length })]}>
       <Card title={t("Connections")} sub={t("Up to {rows} rows per load, {s} seconds per query.", { rows: q.data?.max_rows ?? 0, s: q.data?.timeout_s ?? 0 })}>
-        {rows.length === 0 ? <EmptyState heading={t("No database connections yet.")} /> : (
+        {rows.length === 0 ? <EmptyState heading={t("No database connections yet.")} body={t("Add a connection to read tables from an external database.")} /> : (
           <DataTable label={t("Database connections")} rows={rows} rowKey={(r) => r.id} height={260} selected={open} onSelect={(r) => setOpen(r.id)}
             columns={[
               { key: "name", label: t("Name"), render: (r) => <Code code={r.name} description={r.engine} /> },
@@ -44,7 +44,7 @@ export function ExternalDb() {
       {open && (
         <Card title={t("Tables")}>
           {tables.isLoading ? <p className="mx-muted">{t("Loading tables")}</p> : tables.isError ? <p className="mx-muted">{t("Tables could not be read.")}</p>
-            : (tables.data?.tables ?? []).length === 0 ? <EmptyState heading={t("No tables found.")} /> : (
+            : (tables.data?.tables ?? []).length === 0 ? <EmptyState heading={t("No tables found.")} body={t("Check the connection and its schema, then try again.")} /> : (
               <DataTable label={t("Tables")} rows={tables.data?.tables ?? []} rowKey={(r) => `${r.schema}.${r.name}`} height={260}
                 columns={[
                   { key: "name", label: t("Table"), render: (r) => <Code code={`${r.schema}.${r.name}`} /> },

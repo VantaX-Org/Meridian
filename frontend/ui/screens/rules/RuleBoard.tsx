@@ -157,7 +157,7 @@ export function RuleBoard({ id, scope }: { id: string; scope: RuleScope }) {
           </div>
         </Card>
         <Card title={t("Failing records by run")} sub={pace ?? undefined}>
-          {hist.length ? <RunColumns runs={hist} /> : <EmptyState heading={t("This rule has not run yet")} />}
+          {hist.length ? <RunColumns runs={hist} /> : <EmptyState heading={t("This rule has not run yet")} body={t("Run an object that uses this rule to see its results.")} />}
         </Card>
       </div>
 
@@ -187,7 +187,7 @@ export function RuleBoard({ id, scope }: { id: string; scope: RuleScope }) {
               <BarList key={g.field} label={t("By {field}", { field: fieldName(g.field) })} items={g.values.slice(0, 6).map((v) => ({ id: v.value, label: v.value, value: v.records, display: compactCount(v.records) }))} />
             ))}
           </div>
-        ) : <EmptyState heading={t("No split of the failures is available.")} />}
+        ) : <EmptyState heading={t("No split of the failures is available.")} body={t("Run the object again to split the failures.")} />}
       </Card>
 
       {blocks.length ? (
@@ -251,7 +251,7 @@ function FailingRecordsTable({ id, run, module }: { id: string; run: string | nu
   return (
     <Card title={t("Failing records")} sub={run ? undefined : t("This rule has not run yet")}>
       <div id="mx-rule-records" className="mx-rules-form">
-        {!run ? <EmptyState heading={t("This rule has not run yet")} /> : q.isLoading ? <Skeleton lines={5} label={t("Loading the records")} /> : q.isError ? <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : (
+        {!run ? <EmptyState heading={t("This rule has not run yet")} body={t("Run an object that uses this rule to see its results.")} /> : q.isLoading ? <Skeleton lines={5} label={t("Loading the records")} /> : q.isError ? <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : (
           <>
             <FailedReads qs={[stewardsQ]} />
             <div className="mx-rules-row" role="toolbar" aria-label={t("Bulk actions")}>

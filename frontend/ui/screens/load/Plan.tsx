@@ -60,7 +60,7 @@ export function Plan() {
         <ul aria-label={t("Prerequisites")}>
           {cur.prerequisites.map((p) => <li key={p.table}><FieldChip code={p.table} description={p.text} /> <span className="mx-muted">{p.kind === "configuration" ? t("Configuration") : p.kind === "master_data" ? t("Master data") : t("Unclassified")}</span> {p.fields.map((f) => <FieldChip key={f} code={f} description={f} />)}</li>)}
         </ul>
-      ) : <EmptyState heading={t("No prerequisite")} />}
+      ) : <EmptyState heading={t("No prerequisite")} body={t("Nothing must load before this object.")} />}
     </DetailPanel>
   ) : <EmptyState heading={t("Choose an object")} body={t("Its reasons and prerequisites appear here.")} />;
 
@@ -95,7 +95,7 @@ export function Plan() {
                     { key: "b", label: t("Waits for"), render: (o) => o.blocked_by.map(humanize).join(", ") },
                   ]}
                 />
-              ) : <EmptyState heading={t("No load order yet")} />}
+              ) : <EmptyState heading={t("No load order yet")} body={t("Plan the waves to see the order of the load.")} />}
             </Gate>
           </Card>
         </div>
