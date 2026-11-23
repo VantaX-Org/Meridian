@@ -1,0 +1,97 @@
+{
+ "route": "/mdm/reference",
+ "url": "/mdm/reference",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (7)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Table",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Codes",
+   "effect": "DOM changes (12)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Open",
+   "effect": "DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Mappings",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Source codes",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Target codes",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Usage",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Suggest with Aletheia",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Propose",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Source",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Target",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Status",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Approve",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Reject",
+   "effect": "DOM changes (10)",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,26 @@
+{
+ "route": "/s/new",
+ "url": "/s/new",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "All systems",
+   "target": "/s",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Test connection",
+   "effect": "DOM changes (24)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Connect system",
+   "effect": "DOM changes (24)",
+   "ok": true
+  }
+ ]
+}

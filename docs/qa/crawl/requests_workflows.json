@@ -1,0 +1,68 @@
+{
+ "route": "/requests/workflows",
+ "url": "/requests/workflows",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to requests",
+   "target": "/requests",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "New workflow",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Definitions",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "My tasks",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Instances",
+   "effect": "DOM changes (7)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Workflow",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "New version",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Steps",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Facts and rules",
+   "effect": "DOM changes (10)",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,116 @@
+{
+ "route": "/load/runs/[id]",
+ "url": "/load/runs/mig-0002",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to migration runs",
+   "target": "/load/runs?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Extract the target",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete run",
+   "effect": "opens dialog or menu; DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Gaps6",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Findings",
+   "effect": "DOM changes (12)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Load simulation",
+   "effect": "DOM changes (12)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Value mapping",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Reconciliation",
+   "effect": "DOM changes (19)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Records",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Approval",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Load files",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Target workbook",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Object",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Gap",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Severity",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Fields",
+   "effect": "DOM changes (13)",
+   "ok": true
+  }
+ ]
+}

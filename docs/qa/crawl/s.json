@@ -1,0 +1,101 @@
+{
+ "route": "/s",
+ "url": "/s",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Connect a system",
+   "target": "/s/new?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "ECC production",
+   "target": "/s/a1b2c3d4-0001-4000-8000-000000000001?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "S/4HANA sandbox",
+   "target": "/s/a1b2c3d4-0002-4000-8000-000000000002?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "SuccessFactors",
+   "target": "/s/a1b2c3d4-0003-4000-8000-000000000003?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "System",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Type",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Health",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Last sync",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Test connection",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete",
+   "effect": "opens dialog or menu; DOM changes (4)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Test connection",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete",
+   "effect": "opens dialog or menu; DOM changes (7)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Test connection",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete",
+   "effect": "opens dialog or menu; DOM changes (7)",
+   "ok": true
+  }
+ ]
+}

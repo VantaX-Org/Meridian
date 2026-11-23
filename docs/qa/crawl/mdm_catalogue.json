@@ -1,0 +1,61 @@
+{
+ "route": "/mdm/catalogue",
+ "url": "/mdm/catalogue",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Table",
+   "effect": "DOM changes (21)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Fields",
+   "effect": "DOM changes (23)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Rules",
+   "effect": "DOM changes (28)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Fields",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Rules",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "About",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Field",
+   "effect": "DOM changes (26)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Rules",
+   "effect": "DOM changes (29)",
+   "ok": true
+  }
+ ]
+}

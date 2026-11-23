@@ -1,0 +1,61 @@
+{
+ "route": "/requests/new",
+ "url": "/requests/new",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (21)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Save draft",
+   "effect": "DOM changes (43)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Validate",
+   "effect": "DOM changes (43)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Submit",
+   "effect": "DOM changes (43)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Defaults",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Derivations",
+   "effect": "DOM changes (25)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Critical fields",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Save default",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (6)",
+   "ok": true
+  }
+ ]
+}

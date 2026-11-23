@@ -1,0 +1,80 @@
+{
+ "route": "/load/maps",
+ "url": "/load/maps",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to Load",
+   "target": "/load?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Propose from the dictionary",
+   "effect": "DOM changes (19)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (21)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Field map4",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Value map2",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Source field",
+   "effect": "DOM changes (20)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Target field",
+   "effect": "DOM changes (22)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete mapping MARA.MTART",
+   "effect": "DOM changes (24)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete mapping MAKT.MAKTX",
+   "effect": "DOM changes (38)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete mapping MARA.ZZOLD",
+   "effect": "DOM changes (37)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete mapping MARC.PLIFZ",
+   "effect": "DOM changes (36)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Add mapping",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  }
+ ]
+}

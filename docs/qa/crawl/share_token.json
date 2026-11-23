@@ -1,0 +1,14 @@
+{
+ "route": "/share/[token]",
+ "url": "/share/demo-token",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Open the shared page",
+   "target": "/o/ecc-production/material-master",
+   "effect": "GET 200",
+   "ok": true
+  }
+ ]
+}

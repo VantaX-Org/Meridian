@@ -1,0 +1,164 @@
+{
+ "route": "/reports",
+ "url": "/reports",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to Administration",
+   "target": "/admin?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Report guide",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Build",
+   "effect": "DOM changes (54); download",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Download",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (47)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Download",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (49)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Download",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (48)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Download",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (47)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Download",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (45)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Download",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (45)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Run now",
+   "effect": "DOM changes (37)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Edit",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (41)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Run now",
+   "effect": "DOM changes (40)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Edit",
+   "effect": "opens dialog or menu; DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (43)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Run now",
+   "effect": "DOM changes (40)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Edit",
+   "effect": "opens dialog or menu; DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (42)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Add schedule",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Start export",
+   "effect": "DOM changes (37)",
+   "ok": true
+  }
+ ]
+}

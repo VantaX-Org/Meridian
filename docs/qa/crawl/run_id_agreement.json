@@ -1,0 +1,20 @@
+{
+ "route": "/run/[id]/agreement",
+ "url": "/run/f0000000-0000-4000-8000-000000000500/agreement",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/run/f0000000-0000-4000-8000-000000000500?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Upload cleaned file",
+   "effect": "opens dialog or menu; DOM changes (1)",
+   "ok": true
+  }
+ ]
+}

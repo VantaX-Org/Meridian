@@ -1,0 +1,372 @@
+{
+ "route": "/mdm/match",
+ "url": "/mdm/match",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Match rules",
+   "target": "/mdm/match-rules?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-0?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-1?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-2?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-3?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-4?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-5?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-6?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-7?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-8?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-9?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-10?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-11?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-12?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-13?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-14?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cluster",
+   "target": "/mdm/match/gr-a-15?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Review queue148",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Clusters4",
+   "effect": "DOM changes (6); requests: GET /mdm/match/gr-3",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Constraints3",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Tuning",
+   "effect": "DOM changes (7)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Consolidation pack",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Bulk merge",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Propose merges",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Score",
+   "effect": "DOM changes (34); requests: GET /mdm/match/gr-a-24, GET /mdm/match/gr-a-49, GET /mdm/match/gr-a-23",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (8); requests: GET /mdm/match/gr-a-9",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (18); requests: GET /mdm/match/gr-a-9, GET /mdm/match/gr-a-10, GET /mdm/match/gr-a-11",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (18); requests: GET /mdm/match/gr-a-9, GET /mdm/match/gr-a-10, GET /mdm/match/gr-a-11",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (20); requests: GET /mdm/match/gr-a-9, GET /mdm/match/gr-a-10, GET /mdm/match/gr-a-11",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (20); requests: GET /mdm/match/gr-a-9, GET /mdm/match/gr-a-10, GET /mdm/match/gr-a-11",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (22); requests: GET /mdm/match/gr-a-9, GET /mdm/match/gr-a-10, GET /mdm/match/gr-a-11",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (22); requests: GET /mdm/match/gr-a-9, GET /mdm/match/gr-a-10, GET /mdm/match/gr-a-11",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (24); requests: GET /mdm/match/gr-a-9, GET /mdm/match/gr-a-10, GET /mdm/match/gr-a-11",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (24); requests: GET /mdm/match/gr-a-9, GET /mdm/match/gr-a-10, GET /mdm/match/gr-a-11",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (26); requests: GET /mdm/match/gr-a-9, GET /mdm/match/gr-a-10, GET /mdm/match/gr-a-11",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (26); requests: GET /mdm/match/gr-a-9, GET /mdm/match/gr-a-10, GET /mdm/match/gr-a-11",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Merge",
+   "effect": "opens dialog or menu; DOM changes (28); requests: GET /mdm/match/gr-a-10, GET /mdm/match/gr-a-11, GET /mdm/match/gr-a-12",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Not a duplicate",
+   "effect": "opens dialog or menu; DOM changes (28); requests: GET /mdm/match/gr-a-10, GET /mdm/match/gr-a-11, GET /mdm/match/gr-a-12",
+   "ok": true
+  }
+ ]
+}
