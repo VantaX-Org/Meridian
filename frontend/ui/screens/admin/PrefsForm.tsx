@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { patchMyPreferences } from "@/lib/api/v2/admin";
-import type { DensityTier, DigestFrequency, Theme } from "@/lib/preferences";
+import { setPreferences, type DensityTier, type DigestFrequency, type Theme } from "@/lib/preferences";
 import { useMyPreferences } from "@/lib/v2/admin-queries";
 import { t } from "@/lib/v2/i18n";
-import { Button, Field, Select, Toggle } from "@/ui/kit";
+import { Button, ErrorState, Field, Select, Skeleton, Toggle } from "@/ui/kit";
 import { Row, useAct } from "./ops/shared";
 
 /** The person's own settings: look, density, and when to be told. Saved as one patch. */
@@ -22,7 +22,13 @@ export function PrefsForm() {
   const setDensity = (density: DensityTier) => setD((o) => ({ ...o, density }));
   const setDigest = (digest: DigestFrequency) => setD((o) => ({ ...o, digest }));
   const setCrit = (crit: boolean) => setD((o) => ({ ...o, crit }));
-  const save = () => run(() => patchMyPreferences({ theme, density, notifications: { digest, immediate_critical: crit } }), t("Preferences saved."));
+  const save = async () => {
+    const r = await run(() => patchMyPreferences({ theme, density, notifications: { digest, immediate_critical: crit } }), t("Preferences saved."));
+    // Apply the saved look at once: the shell reads the local copy, not this query.
+    if (r !== undefined) setPreferences({ theme, density });
+  };
+  if (q.isError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => q.refetch()} />;
+  if (q.isLoading) return <Skeleton lines={3} label={t("Loading {screen}", { screen: t("Preferences") })} />;
   return (
     <Row>
       <Field label={t("Theme")}><Select value={theme} onChange={(e) => setTheme(e.target.value as Theme)} options={[{ value: "system", label: t("Follow the device") }, { value: "light", label: t("Light") }, { value: "dark", label: t("Dark") }]} /></Field>
