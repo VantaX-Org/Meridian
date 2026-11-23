@@ -9,6 +9,7 @@ import { t } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
 import { Button, Card, Chip, DataTable, FieldChip, Search, StatTile, useToast, type Column, EmptyState } from "@/ui/kit";
 import { errMsg, Gate, when } from "./shared";
+import { ConfigList, DiffCard, TableSheet } from "./DesignDetail";
 
 export function DesignTab({ id }: { id: string }) {
   const fx = useFixture();
@@ -18,6 +19,7 @@ export function DesignTab({ id }: { id: string }) {
   const [search, setSearch] = useState("");
   const [custom, setCustom] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
   const summary = useQuery({ queryKey: ["v2", "design", fx, id] as const, queryFn: () => getDesign(id), retry: false });
   const tables = useQuery({ queryKey: ["v2", "design-tables", fx, id, search, custom] as const, queryFn: () => getDesignTables(id, search, custom), retry: false });
   const cover = useQuery({ queryKey: ["v2", "design-coverage", fx, id] as const, queryFn: () => getDesignCoverage(id), retry: false });
@@ -52,9 +54,11 @@ export function DesignTab({ id }: { id: string }) {
       <Card title={t("Tables")} action={<Chip selected={custom} onClick={() => setCustom(!custom)}>{t("Customer tables only")}</Chip>}>
         <Search value={search} onChange={setSearch} label={t("Search tables")} clearLabel={t("Clear search")} />
         <Gate q={tables} empty={{ heading: t("No tables read yet") }}>
-          {(d) => d.items.length === 0 ? <EmptyState heading={t("No tables match.")} body={t("Clear the search to see every table.")} /> : <DataTable columns={cols} rows={d.items} rowKey={(r) => r.table} label={t("Source tables")} />}
+          {(d) => d.items.length === 0 ? <EmptyState heading={t("No tables match.")} body={t("Clear the search to see every table.")} /> : <DataTable columns={cols} rows={d.items} rowKey={(r) => r.table} label={t("Source tables")} onSelect={(r) => setOpen(r.table)} />}
         </Gate>
       </Card>
+      <TableSheet id={id} table={open} onClose={() => setOpen(null)} />
+      <Gate q={summary} empty={null}>{(d) => <ConfigList id={id} rows={d.configuration ?? []} />}</Gate>
       <Card title={t("Configuration against the standard")}>
         <Gate q={dev} empty={{ heading: t("Nothing to compare yet") }}>
           {(d) => d.tables.length === 0 ? <p className="mx-muted">{t("Nothing to compare yet.")}</p> : (
@@ -95,6 +99,7 @@ export function DesignTab({ id }: { id: string }) {
           )}
         </Gate>
       </Card>
+      <Gate q={snaps} empty={null}>{(d) => <DiffCard id={id} snaps={d} />}</Gate>
     </div>
   );
 }
