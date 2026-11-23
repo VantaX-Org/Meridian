@@ -1,0 +1,226 @@
+{
+ "route": "/admin",
+ "url": "/admin",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Users",
+   "target": "/admin/users?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Roles and permissions",
+   "target": "/admin/roles?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "API keys",
+   "target": "/admin/apikeys?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Sign-in and SCIM",
+   "target": "/admin/signin?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Settings",
+   "target": "/admin/settings?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Scoring",
+   "target": "/admin/scoring?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Licence",
+   "target": "/admin/licence?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Notifications",
+   "target": "/admin/notify?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Webhooks",
+   "target": "/admin/webhooks?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Language model",
+   "target": "/admin/llm?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Data retention",
+   "target": "/admin/data?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Field mappings",
+   "target": "/admin/mappings?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Extraction schedules",
+   "target": "/admin/schedules?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "External databases",
+   "target": "/admin/external-db?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Triage settings",
+   "target": "/admin/triage?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Aletheia engine",
+   "target": "/admin/engine?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "System",
+   "target": "/admin/system?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Billing",
+   "target": "/admin/billing?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Access requests",
+   "target": "/admin/access?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Audit log",
+   "target": "/admin/audit?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Data subject requests",
+   "target": "/admin/subject-requests?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Contact verification",
+   "target": "/admin/contact-verify?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Enterprise",
+   "target": "/admin/enterprise?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Add a system",
+   "target": "/s/new?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Edit",
+   "target": "/s/a1b2c3d4-0001-4000-8000-000000000001?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Edit",
+   "target": "/s/a1b2c3d4-0002-4000-8000-000000000002?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Edit",
+   "target": "/s/a1b2c3d4-0003-4000-8000-000000000003?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Test connection",
+   "effect": "DOM changes (5); requests: GET /s/new, GET /admin/schedules, GET /admin/users",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Test connection",
+   "effect": "DOM changes (5); requests: GET /s/new, GET /admin/schedules, GET /admin/users",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Test connection",
+   "effect": "DOM changes (5); requests: GET /s/new, GET /admin/schedules, GET /admin/users",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Upload licence file",
+   "effect": "opens dialog or menu; DOM changes (1); requests: GET /s/new, GET /admin/schedules, GET /admin/users",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Update now",
+   "effect": "opens dialog or menu; DOM changes (1); requests: GET /s/new, GET /admin/schedules, GET /admin/users",
+   "ok": true
+  }
+ ]
+}

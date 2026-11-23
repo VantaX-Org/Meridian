@@ -1,0 +1,45 @@
+{
+ "route": "/rules/promotion",
+ "url": "/rules/promotion",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to drafts",
+   "target": "/rules?view=drafts&fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Scoring weights and thresholds",
+   "target": "/admin/scoring?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Switch on the ready rules",
+   "effect": "DOM changes (9); requests: GET /api/v1/licence",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Switch them back off",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Switch on 1 rules anyway",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,81 @@
+{
+ "route": "/run/[id]/vs/[b]",
+ "url": "/run/f0000000-0000-4000-8000-000000000500/vs/f0000000-0000-4000-8000-000000000499",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/run/f0000000-0000-4000-8000-000000000500?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open second run",
+   "target": "/run/f0000000-0000-4000-8000-000000000499?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "All changes",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Newly failing10",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Fixed28",
+   "effect": "DOM changes (38)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Got worse1",
+   "effect": "DOM changes (27)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Still failing47",
+   "effect": "DOM changes (44)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "All rules",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "MM_BASE_UNIT_MISSING",
+   "effect": "DOM changes (4)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "MM_GROSS_WEIGHT_ZERO",
+   "effect": "DOM changes (4)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "MM_DESC_DUPLICATE",
+   "effect": "DOM changes (4)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "MM_MATKL_INVALID",
+   "effect": "DOM changes (4)",
+   "ok": true
+  }
+ ]
+}

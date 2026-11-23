@@ -1,0 +1,97 @@
+{
+ "route": "/insights/money",
+ "url": "/insights/money",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Insights",
+   "target": "/insights",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Score lens",
+   "target": "/insights/score",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Forecast",
+   "target": "/insights/forecast",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Value",
+   "target": "/insights/value",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Monitor",
+   "target": "/monitor",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Controls",
+   "target": "/monitor/controls",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Cost and owners",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Impact",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Proven cost",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Cleansing",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Owners",
+   "effect": "DOM changes (15); requests: GET /insights/forecast, GET /insights/value, GET /monitor",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Executive",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Yes",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "No",
+   "effect": "DOM changes (1); requests: GET /insights/forecast, GET /insights/value, GET /monitor",
+   "ok": true
+  }
+ ]
+}

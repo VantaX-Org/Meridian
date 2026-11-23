@@ -1,0 +1,189 @@
+{
+ "route": "/monitor",
+ "url": "/monitor",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Insights",
+   "target": "/insights",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cost and owners",
+   "target": "/insights/money",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Score lens",
+   "target": "/insights/score",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Forecast",
+   "target": "/insights/forecast",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Value",
+   "target": "/insights/value",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Controls",
+   "target": "/monitor/controls",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Clean what broke",
+   "target": "/work?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/work?module=material_master&fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Monitor",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (25)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Feed",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Objects",
+   "effect": "DOM changes (57)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "After a clean",
+   "effect": "DOM changes (82)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Learned",
+   "effect": "DOM changes (55)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Field shifts",
+   "effect": "DOM changes (57)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "All objects",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Material master",
+   "effect": "DOM changes (27)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "SD customer master",
+   "effect": "DOM changes (45); requests: GET /work",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Acknowledge all low",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Acknowledge",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Acknowledge",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Acknowledge",
+   "effect": "DOM changes (1); requests: GET /status, GET /work, GET /",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Acknowledge",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Acknowledge",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Acknowledge",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Acknowledge",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (9); requests: GET /load, GET /status, GET /",
+   "ok": true
+  }
+ ]
+}

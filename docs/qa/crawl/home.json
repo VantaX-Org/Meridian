@@ -1,0 +1,319 @@
+{
+ "route": "/",
+ "url": "/",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "All objects",
+   "target": "/o?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open work25,712",
+   "target": "/work?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Accounts payable",
+   "target": "/o/ecc-production/accounts-payable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Accounts payable",
+   "target": "/o/s-4hana-sandbox/accounts-payable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Accounts payable",
+   "target": "/o/successfactors/accounts-payable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Accounts receivable",
+   "target": "/o/ecc-production/accounts-receivable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Accounts receivable",
+   "target": "/o/s-4hana-sandbox/accounts-receivable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Accounts receivable",
+   "target": "/o/successfactors/accounts-receivable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Asset accounting",
+   "target": "/o/ecc-production/asset-accounting?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Asset accounting",
+   "target": "/o/s-4hana-sandbox/asset-accounting?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Asset accounting",
+   "target": "/o/successfactors/asset-accounting?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Bank master",
+   "target": "/o/ecc-production/bank-master?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Bank master",
+   "target": "/o/s-4hana-sandbox/bank-master?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Bank master",
+   "target": "/o/successfactors/bank-master?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Batch",
+   "target": "/o/ecc-production/batch?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Batch",
+   "target": "/o/s-4hana-sandbox/batch?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Batch",
+   "target": "/o/successfactors/batch?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Bill of materials",
+   "target": "/o/ecc-production/bill-of-materials?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Pull every object",
+   "effect": "opens dialog or menu; DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "CriticalReview approvals14 fixes wait for your approval. The oldest has waited 3",
+   "effect": "navigates; DOM changes (87); requests: GET /work, GET /approvals",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "HighOpen systemSuccessFactors cannot be reached. The last health check failed: t",
+   "effect": "navigates; DOM changes (13); requests: GET /s/sys-sf",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "CriticalReview records412 material records fail again. They passed at the previo",
+   "effect": "navigates; DOM changes (88); requests: GET /work, GET /load, GET /monitor",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "HighOpen processProcure to pay fitness fell 6 points. Purchase orders now skip t",
+   "effect": "DOM changes (2); requests: GET /process, GET /",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "MediumRe-check nowBusiness partner was last checked 9 days ago. Its schedule run",
+   "effect": "navigates; DOM changes (16); requests: GET /o/sys-ecc-prd/business_partner/runs, GET /o/sys-ecc-prd/business-partner, GET /o/sys-ecc-prd/business-partner/records",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "MediumOpen job2 jobs failed today. The latest failed 40 minutes ago.",
+   "effect": "navigates; DOM changes (16); requests: GET /runs, GET /run/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "HighOpen overdue items6 stewardship items are overdue. They passed their due dat",
+   "effect": "navigates; DOM changes (87); requests: GET /work, GET /approvals",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "LowReview rules5 rules wait for review. Drafts and learned rules need a decision",
+   "effect": "navigates; DOM changes (15); requests: GET /rules, GET /rules/dry-run, GET /rules/promotion",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show all 100",
+   "effect": "DOM changes (91)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Source list in SuccessFactors",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Material master in ECC production",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Position in ECC production",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Sales order in SuccessFactors",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Task list in S/4HANA sandbox",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Accounts payable in ECC production",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Bill of materials in S/4HANA sandbox",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Batch in SuccessFactors",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Class in S/4HANA sandbox",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Cost element in ECC production",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Fi gl in ECC production",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Work center in S/4HANA sandbox",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "View",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Columns",
+   "effect": "opens dialog or menu; DOM changes (2); requests: GET /o/ecc-production/accounts-payable, GET /o/s-4hana-sandbox/accounts-payable, GET /o/successfactors/accounts-payable",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Comfortable rows",
+   "effect": "DOM changes (21); requests: GET /o/ecc-production/accounts-payable, GET /o/s-4hana-sandbox/accounts-payable, GET /o/successfactors/accounts-payable",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Object",
+   "effect": "DOM changes (1); requests: GET /work, GET /load, GET /monitor",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "System",
+   "effect": "DOM changes (22); requests: GET /work, GET /load, GET /monitor",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Score",
+   "effect": "DOM changes (28); requests: GET /o/ecc-production/accounts-payable, GET /o/successfactors/source-list, GET /o/ecc-production/material-master",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Cycle step",
+   "effect": "DOM changes (28); requests: GET /o/ecc-production/accounts-payable, GET /o/successfactors/batch, GET /o/successfactors/source-list",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Open work",
+   "effect": "DOM changes (24); requests: GET /load, GET /monitor, GET /o/ecc-production/accounts-payable",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  }
+ ]
+}

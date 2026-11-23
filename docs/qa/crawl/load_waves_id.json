@@ -1,0 +1,98 @@
+{
+ "route": "/load/waves/[id]",
+ "url": "/load/waves/w-1",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to waves",
+   "target": "/load/waves?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Run wave analysis",
+   "effect": "DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Sign off",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Export report",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "More actions",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (7)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Source DQS",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Projected target DQS",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Actual target DQS",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records blocked",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Draft fix batch",
+   "effect": "DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Draft fix batch",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Save threshold",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  }
+ ]
+}

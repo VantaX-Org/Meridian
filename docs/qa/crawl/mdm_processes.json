@@ -1,0 +1,133 @@
+{
+ "route": "/mdm/processes",
+ "url": "/mdm/processes",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Discover this process",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Systems catalogue",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Runs",
+   "effect": "DOM changes (28)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Health",
+   "effect": "DOM changes (9); requests: GET /status, GET /runs, GET /",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Process",
+   "effect": "DOM changes (39); requests: GET /load, GET /monitor, GET /status",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Fitness",
+   "effect": "DOM changes (23)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Export",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Process map",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Variants",
+   "effect": "DOM changes (12)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Conformance",
+   "effect": "DOM changes (13)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Cases",
+   "effect": "DOM changes (12)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Step",
+   "effect": "DOM changes (20)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Cases",
+   "effect": "DOM changes (19)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "PTP.1 Requisition: 41,870 cases, 640 data quality defects. Open the level below.",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "PTP.2 Purchase order: 48,212 cases, 1,210 data quality defects. Open the level b",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "PTP.3 Goods receipt: 45,118 cases, 402 data quality defects. Open the level belo",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "PTP.4 Invoice verification: 44,902 cases, 866 data quality defects. Open the lev",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "PTP.5 Payment: 43,560 cases, No data quality defects. Open the level below.",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "PTP.6 Contract release: 0 cases, Data quality not measured. Open the level below",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Cases",
+   "effect": "DOM changes (17)",
+   "ok": true
+  }
+ ]
+}

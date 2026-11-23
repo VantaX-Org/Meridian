@@ -1,0 +1,66 @@
+{
+ "route": "/o/[system]/[module]/processes/design",
+ "url": "/o/ecc-production/material-master/processes/design",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Overview",
+   "target": "/o/ecc-production/material-master?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Records",
+   "target": "/o/ecc-production/material-master/records?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Rules",
+   "target": "/o/ecc-production/material-master/rules?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Fixes",
+   "target": "/o/ecc-production/material-master/fixes?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Trend",
+   "target": "/o/ecc-production/material-master/trend?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Open Group process model",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Delete Group process model",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Create model",
+   "effect": "DOM changes (3)",
+   "ok": true
+  }
+ ]
+}

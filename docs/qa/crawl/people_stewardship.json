@@ -1,0 +1,85 @@
+{
+ "route": "/people/stewardship",
+ "url": "/people/stewardship",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Open",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Resolved",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Overdue",
+   "effect": "DOM changes (12)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Open",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "In progress",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Escalated",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Resolved",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Rejected",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Approve 3 confident items",
+   "effect": "DOM changes (30)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Item",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Type",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Due",
+   "effect": "DOM changes (14)",
+   "ok": true
+  }
+ ]
+}

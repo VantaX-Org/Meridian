@@ -1,0 +1,97 @@
+{
+ "route": "/o/[system]/[module]/records/[key]",
+ "url": "/o/ecc-production/material-master/records/MATNR-100",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to records",
+   "target": "/o/ecc-production/material-master/records?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Overview",
+   "target": "/o/ecc-production/material-master?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Rules",
+   "target": "/o/ecc-production/material-master/rules?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Fixes",
+   "target": "/o/ecc-production/material-master/fixes?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Trend",
+   "target": "/o/ecc-production/material-master/trend?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open in the work queue",
+   "target": "/work?module=material_master&q=MATNR-100&fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Try again",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (27)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "View",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Columns",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Comfortable rows",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Fixed",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Came back",
+   "effect": "DOM changes (2)",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,83 @@
+{
+ "route": "/load/runs",
+ "url": "/load/runs",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to Load",
+   "target": "/load?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "mig-0002",
+   "target": "/load/runs/mig-0002?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "mig-0001",
+   "target": "/load/runs/mig-0001?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "mig-0003",
+   "target": "/load/runs/mig-0003?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Start a run",
+   "effect": "opens dialog or menu; DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Run",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Mode",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Score",
+   "effect": "DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records blocked",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Started",
+   "effect": "DOM changes (10)",
+   "ok": true
+  }
+ ]
+}

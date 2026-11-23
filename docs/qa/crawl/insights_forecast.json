@@ -1,0 +1,97 @@
+{
+ "route": "/insights/forecast",
+ "url": "/insights/forecast",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Insights",
+   "target": "/insights",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cost and owners",
+   "target": "/insights/money",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Score lens",
+   "target": "/insights/score",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Value",
+   "target": "/insights/value",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Monitor",
+   "target": "/monitor",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Controls",
+   "target": "/monitor/controls",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Forecast",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (13)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show cost of Planned delivery time missing on purchased parts",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Show cost of Purchasing group missing",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Show cost of Duplicate vendor bank details",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (9)",
+   "ok": true
+  }
+ ]
+}

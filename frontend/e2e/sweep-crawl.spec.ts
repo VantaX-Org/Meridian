@@ -61,7 +61,7 @@ function routesOnDisk(dir = APP, rel = ""): string[] {
 
 function fill(route: string): string {
   let url = route.replace(/\/\[{1,2}(?:\.\.\.)?([a-z-]+)\]{1,2}/g, (_, k: string) => (SAMPLE[k] ? "/" + SAMPLE[k] : ""));
-  for (const [re, id] of ID_FOR) if (re.test(route)) url = url.replace(/\/[^/]+$/, "/" + id);
+  for (const [re, id] of ID_FOR) if (re.test(route) && /\]$/.test(route)) url = url.replace(/\/[^/]+$/, "/" + id);
   if (route === "/run/[id]/vs/[b]") url = `/run/${SAMPLE.id}/vs/${SAMPLE.b}`;
   if (route === "/o/[system]/[module]/records/[key]") url = `/o/${SAMPLE.system}/${SAMPLE.module}/records/${SAMPLE.key}`;
   return url === "" ? "/" : url;
@@ -115,7 +115,8 @@ for (const route of ROUTES) {
         const kind: Row["kind"] = e.tagName === "A" ? "link" : role === "tab" ? "tab" : role === "menuitem" ? "menuitem" : "button";
         const label = (e.getAttribute("aria-label") || e.textContent || e.getAttribute("title") || "").replace(/\s+/g, " ").trim().slice(0, 80);
         const disabled = (e as HTMLButtonElement).disabled === true || e.getAttribute("aria-disabled") === "true";
-        return { i, kind, label, href: e.getAttribute("href"), visible, disabled, download: e.hasAttribute("download") };
+        const selected = e.getAttribute("aria-selected") === "true" || e.getAttribute("aria-pressed") === "true" || e.getAttribute("aria-checked") === "true" || e.getAttribute("aria-current") === "page";
+        return { i, kind, label, href: e.getAttribute("href"), visible, disabled, selected, download: e.hasAttribute("download") };
       }),
     );
     const rows: Row[] = [];
@@ -146,9 +147,13 @@ for (const route of ROUTES) {
         rows.push({ kind: it.kind, label: it.label, effect: "disabled in fixture state (not clicked)", ok: true });
         continue;
       }
+      if (it.selected) {
+        rows.push({ kind: it.kind, label: it.label, effect: "already the selected tab, chip or page link (a click re-selects it, nothing to show)", ok: true });
+        continue;
+      }
       await open(page, url);
       const el = page.locator(INTERACTIVE).nth(it.i);
-      if (!(await el.isVisible()) || (await el.textContent().then((s) => (s ?? "").replace(/\s+/g, " ").trim().slice(0, 80)).catch(() => "")) !== it.label && it.label !== "") {
+      if (!(await el.isVisible()) || (await el.evaluate((e) => (e.getAttribute("aria-label") || e.textContent || e.getAttribute("title") || "").replace(/\s+/g, " ").trim().slice(0, 80)).catch(() => "")) !== it.label && it.label !== "") {
         // The body re-rendered into a different arrangement between loads (async data): do not guess which control it was.
         rows.push({ kind: it.kind, label: it.label, effect: "SKIPPED: page rearranged between loads, not clicked", ok: false });
         continue;

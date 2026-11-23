@@ -1,0 +1,67 @@
+{
+ "route": "/insights/score",
+ "url": "/insights/score",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Insights",
+   "target": "/insights",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Cost and owners",
+   "target": "/insights/money",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Forecast",
+   "target": "/insights/forecast",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Value",
+   "target": "/insights/value",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Monitor",
+   "target": "/monitor",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Controls",
+   "target": "/monitor/controls",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Score lens",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (9)",
+   "ok": true
+  }
+ ]
+}

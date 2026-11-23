@@ -1,0 +1,79 @@
+{
+ "route": "/work/analytics",
+ "url": "/work/analytics",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Object",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "New",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Fixed",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Still failing",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Fixed",
+   "effect": "DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Median days",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Slowest tenth",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Person",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Decisions",
+   "effect": "DOM changes (9); requests: GET /load, GET /monitor, GET /status",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Reopened",
+   "effect": "DOM changes (10)",
+   "ok": true
+  }
+ ]
+}

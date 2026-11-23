@@ -1,0 +1,117 @@
+{
+ "route": "/run/[id]",
+ "url": "/run/f0000000-0000-4000-8000-000000000500",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/run/f0000000-0000-4000-8000-000000000500?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Compare with the last 5 runs",
+   "target": "/run/f0000000-0000-4000-8000-000000000495/vs/f0000000-0000-4000-8000-000000000500?runs=f0000000-0000-4000-8000-000000000495,f0000000-0000-4000-8000-000000000496,f0000000-0000-4000-8000-000000000497,f0000000-0000-4000-8000-000000000498,f0000000-0000-4000-8000-000000000499,f0000000-0000-4000-8000-000000000500&fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Compare",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Agreement",
+   "effect": "navigates; DOM changes (18); requests: GET /run/f0000000-0000-4000-8000-000000000500/agreement",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Upload cleaned file",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Overview",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Profile",
+   "effect": "navigates; DOM changes (25); requests: GET /run/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Configuration",
+   "effect": "navigates; DOM changes (24); requests: GET /run/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Analyse again",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Set as baseline",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Run the agents",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Rename",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Download reconciliation",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Extract target files",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Archive older runs",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Restore archived runs",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete this run",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (9)",
+   "ok": true
+  }
+ ]
+}

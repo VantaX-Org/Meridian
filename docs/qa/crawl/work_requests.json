@@ -1,0 +1,55 @@
+{
+ "route": "/work/requests",
+ "url": "/work/requests",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Asked of me",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "All requests",
+   "effect": "DOM changes (12)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "New request",
+   "effect": "DOM changes (20)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Object",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Due",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Open",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Status",
+   "effect": "DOM changes (1)",
+   "ok": true
+  }
+ ]
+}

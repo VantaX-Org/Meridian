@@ -1,0 +1,331 @@
+{
+ "route": "/o/[system]/[module]",
+ "url": "/o/ecc-production/material-master",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Fix records",
+   "target": "/work?module=material_master&seg=proposed&fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Overview",
+   "target": "/o/ecc-production/material-master?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Records",
+   "target": "/o/ecc-production/material-master/records?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Rules",
+   "target": "/o/ecc-production/material-master/rules?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Fixes",
+   "target": "/o/ecc-production/material-master/fixes?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Trend",
+   "target": "/o/ecc-production/material-master/trend?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MM142",
+   "target": "/r/MM142?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MM007",
+   "target": "/r/MM007?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MM003",
+   "target": "/r/MM003?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MM302",
+   "target": "/r/MM302?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MM015",
+   "target": "/r/MM015?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MM023",
+   "target": "/r/MM023?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MM035",
+   "target": "/r/MM035?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MM028",
+   "target": "/r/MM028?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Review duplicates",
+   "target": "/o/ecc-production/material-master/golden?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Mdg master data",
+   "target": "/o/ecc-production/mdg-master-data?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Plant maintenance",
+   "target": "/o/ecc-production/plant-maintenance?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Batch management",
+   "target": "/o/ecc-production/batch-management?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Ewms stock",
+   "target": "/o/ecc-production/ewms-stock?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Fleet management",
+   "target": "/o/ecc-production/fleet-management?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MM purchasing",
+   "target": "/o/ecc-production/mm-purchasing?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Production planning",
+   "target": "/o/ecc-production/production-planning?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Quality management",
+   "target": "/o/ecc-production/quality-management?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "SD sales orders",
+   "target": "/o/ecc-production/sd-sales-orders?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Download workbook",
+   "effect": "DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Critical2",
+   "effect": "DOM changes (13)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "High3",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Medium3",
+   "effect": "DOM changes (13)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Low0",
+   "effect": "DOM changes (12)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records affected of 61,816",
+   "effect": "DOM changes (26)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Pass",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "ZAR at risk",
+   "effect": "DOM changes (24)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "All8",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Failing8",
+   "effect": "DOM changes (6); requests: GET /status, GET /load, GET /monitor",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Passing0",
+   "effect": "DOM changes (16)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Pass",
+   "effect": "DOM changes (20)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Critical2,904 recordsMM003 Material type is mandatory - determines procurement a",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Critical1,420 recordsMM035 Valuation class is mandatory for FI account determina",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "High3,640 recordsMM142 Base unit of measure MEINS must reference a valid entry i",
+   "effect": "DOM changes (13); requests: GET /status, GET /load, GET /monitor",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "High1,894 recordsMM023 MRP type (plant level) must exist in T438AMARC.DISMMMRP t",
+   "effect": "DOM changes (13)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "High1,260 recordsMM028 Procurement type must be E (in-house), F (external), or X",
+   "effect": "DOM changes (13)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Medium3,118 recordsMM007 Material group is required for reporting and procuremen",
+   "effect": "DOM changes (12); requests: GET /o/ecc-production/material-master/trend, GET /status, GET /runs",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Medium2,712 recordsMM302 Externally procured, MRP-planned material has no purcha",
+   "effect": "DOM changes (13)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Medium2,266 recordsMM015 Gross weight is recommended for shipping and transporta",
+   "effect": "DOM changes (13); requests: GET /load, GET /monitor, GET /status",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Overview",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Fix2,904",
+   "effect": "DOM changes (9); requests: GET /o/ecc-production/material-master/trend, GET /status, GET /",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Why",
+   "effect": "DOM changes (9); requests: GET /r/MM003",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Draft cleansing batch",
+   "effect": "DOM changes (2); requests: GET /r/MM035, GET /r/MM142, GET /o/ecc-production/material-master/golden",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Draft tuned version",
+   "effect": "DOM changes (6); requests: GET /r/MM035, GET /r/MM142, GET /o/ecc-production/material-master/golden",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,116 @@
+{
+ "route": "/admin/[section]",
+ "url": "/admin/users",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to Administration",
+   "target": "/admin?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Import CSV",
+   "effect": "opens dialog or menu; DOM changes (27); requests: GET /status, GET /runs, GET /",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Invite someone",
+   "effect": "opens dialog or menu; DOM changes (27)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Grant",
+   "effect": "DOM changes (85)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Decline",
+   "effect": "DOM changes (85); requests: GET /status, GET /runs, GET /load",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Name",
+   "effect": "DOM changes (46); requests: GET /status, GET /runs, GET /load",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Email",
+   "effect": "DOM changes (46); requests: GET /load, GET /monitor, GET /admin",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Role",
+   "effect": "DOM changes (45)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Status",
+   "effect": "DOM changes (25)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Last sign-in",
+   "effect": "DOM changes (48)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Nomsa Dlamini",
+   "effect": "opens dialog or menu; DOM changes (35)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Pieter van der Merwe",
+   "effect": "opens dialog or menu; DOM changes (38)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Aisha Khan",
+   "effect": "opens dialog or menu; DOM changes (38)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Thabo Molefe",
+   "effect": "opens dialog or menu; DOM changes (38)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Lerato Naidoo",
+   "effect": "opens dialog or menu; DOM changes (38)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Marco Rossi",
+   "effect": "opens dialog or menu; DOM changes (37); requests: GET /admin, GET /status, GET /runs",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ines Fernandes",
+   "effect": "opens dialog or menu; DOM changes (38)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Jonas Weber",
+   "effect": "opens dialog or menu; DOM changes (37)",
+   "ok": true
+  }
+ ]
+}

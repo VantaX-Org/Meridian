@@ -1,0 +1,452 @@
+{
+ "route": "/runs",
+ "url": "/runs",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Open",
+   "target": "/run/f0000000-0000-4000-8000-000000000500?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Run 499",
+   "target": "/run/f0000000-0000-4000-8000-000000000499?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Run 498",
+   "target": "/run/f0000000-0000-4000-8000-000000000498?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Run 497",
+   "target": "/run/f0000000-0000-4000-8000-000000000497?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Run 496",
+   "target": "/run/f0000000-0000-4000-8000-000000000496?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Run 495",
+   "target": "/run/f0000000-0000-4000-8000-000000000495?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Run 494",
+   "target": "/run/f0000000-0000-4000-8000-000000000494?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Run 493",
+   "target": "/run/f0000000-0000-4000-8000-000000000493?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Run 492",
+   "target": "/run/f0000000-0000-4000-8000-000000000492?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Run 491",
+   "target": "/run/f0000000-0000-4000-8000-000000000491?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Run 490",
+   "target": "/run/f0000000-0000-4000-8000-000000000490?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Run 489",
+   "target": "/run/f0000000-0000-4000-8000-000000000489?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Compare Run 499 to Run 500",
+   "target": "/run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Start a run",
+   "effect": "opens dialog or menu; DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Runs",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Jobs",
+   "effect": "navigates; DOM changes (20); requests: GET /runs",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Compare sets",
+   "effect": "navigates; DOM changes (83); requests: GET /runs",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Timeline",
+   "effect": "navigates; DOM changes (20); requests: GET /runs",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Material master",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Business partner",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Accounts payable",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Accounts receivable",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "FI general ledger",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Asset accounting",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Controlling",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "MM purchasing",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "SD sales orders",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Plant maintenance",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Production planning",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Project system",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Quality management",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "HCM personnel administration",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "SD customer master",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Run now",
+   "effect": "opens dialog or menu; DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Export run 499",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "DOM changes (5); requests: GET /load, GET /monitor, GET /status",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "DOM changes (6); requests: GET /status, GET /run/f0000000-0000-4000-8000-000000000500, GET /",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000496/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000496/vs/f0000000-0000-4000-8000-000000000499",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000495/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "DOM changes (6); requests: GET /status, GET /run/f0000000-0000-4000-8000-000000000500, GET /load",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000494/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000494/vs/f0000000-0000-4000-8000-000000000499",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000493/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000493/vs/f0000000-0000-4000-8000-000000000499",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000492/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000492/vs/f0000000-0000-4000-8000-000000000499",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000491/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "DOM changes (6); requests: GET /, GET /o, GET /work",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000490/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000490/vs/f0000000-0000-4000-8000-000000000499",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "A",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /run/f0000000-0000-4000-8000-000000000489/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "B",
+   "effect": "DOM changes (6); requests: GET /run/f0000000-0000-4000-8000-000000000489/vs/f0000000-0000-4000-8000-000000000499",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "All runs",
+   "effect": "DOM changes (4); requests: GET /runs, GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Complete",
+   "effect": "navigates; DOM changes (32); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500, GET /runs",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Failed",
+   "effect": "navigates; DOM changes (38); requests: GET /, GET /o, GET /work",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Running",
+   "effect": "navigates; DOM changes (31); requests: GET /runs, GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Run",
+   "effect": "DOM changes (38); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Score",
+   "effect": "DOM changes (42); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Status",
+   "effect": "DOM changes (23); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Started",
+   "effect": "DOM changes (38); requests: GET /run/f0000000-0000-4000-8000-000000000499/vs/f0000000-0000-4000-8000-000000000500",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Newer",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Older",
+   "effect": "DOM changes (38)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Export runs",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Archive older runs",
+   "effect": "opens dialog or menu; DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Restore archived runs",
+   "effect": "opens dialog or menu; DOM changes (1)",
+   "ok": true
+  }
+ ]
+}

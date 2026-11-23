@@ -1,0 +1,32 @@
+{
+ "route": "/load/plan",
+ "url": "/load/plan",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to Load",
+   "target": "/load?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Step",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Object",
+   "effect": "DOM changes (15)",
+   "ok": true
+  }
+ ]
+}

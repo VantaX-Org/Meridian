@@ -1,0 +1,80 @@
+{
+ "route": "/mdm/match-rules",
+ "url": "/mdm/match-rules",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Match review",
+   "target": "/mdm/match?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Weight",
+   "effect": "DOM changes (19)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete",
+   "effect": "opens dialog or menu; DOM changes (16)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete",
+   "effect": "opens dialog or menu; DOM changes (19)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete",
+   "effect": "opens dialog or menu; DOM changes (19); requests: GET /runs, GET /, GET /o",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Add rule",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Run simulation",
+   "effect": "DOM changes (64)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Approve",
+   "effect": "DOM changes (50); requests: GET /mdm/match, GET /status, GET /load",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Reject",
+   "effect": "opens dialog or menu; DOM changes (16)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Approve",
+   "effect": "DOM changes (55)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Reject",
+   "effect": "opens dialog or menu; DOM changes (19); requests: GET /status, GET /load, GET /monitor",
+   "ok": true
+  }
+ ]
+}

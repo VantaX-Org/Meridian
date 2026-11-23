@@ -1,0 +1,182 @@
+{
+ "route": "/s/new",
+ "url": "/s/a1b2c3d4-0001-4000-8000-000000000001",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "All systems",
+   "target": "/s?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Test connection",
+   "effect": "DOM changes (103)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (52)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Extractions",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Connection",
+   "effect": "navigates; DOM changes (17); requests: GET /s/a1b2c3d4-0001-4000-8000-000000000001",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Design",
+   "effect": "navigates; DOM changes (36); requests: GET /s/a1b2c3d4-0001-4000-8000-000000000001",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Configuration",
+   "effect": "navigates; DOM changes (28); requests: GET /s/a1b2c3d4-0001-4000-8000-000000000001",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Pilot",
+   "effect": "navigates; DOM changes (24); requests: GET /s/a1b2c3d4-0001-4000-8000-000000000001",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Reference files",
+   "effect": "navigates; DOM changes (20); requests: GET /s/a1b2c3d4-0001-4000-8000-000000000001",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Custom objects",
+   "effect": "navigates; DOM changes (27); requests: GET /load, GET /monitor, GET /status",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Test connection",
+   "effect": "DOM changes (101)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Check health",
+   "effect": "DOM changes (101)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Load configuration",
+   "effect": "DOM changes (101)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Run",
+   "effect": "DOM changes (26)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records",
+   "effect": "DOM changes (26)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Quality score",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Object",
+   "effect": "DOM changes (56)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Read 0 objects",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Sync configuration",
+   "effect": "DOM changes (101); requests: GET /s, GET /, GET /o",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Extract enabled modules",
+   "effect": "DOM changes (101)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Re-check all",
+   "effect": "DOM changes (105)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Pause",
+   "effect": "DOM changes (101)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete",
+   "effect": "DOM changes (104)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Pause",
+   "effect": "DOM changes (104)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delete",
+   "effect": "DOM changes (106)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Full extraction",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Changes only",
+   "effect": "DOM changes (59); requests: GET /load, GET /monitor, GET /status",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Add schedule",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,148 @@
+{
+ "route": "/rules",
+ "url": "/rules",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Write a rule",
+   "target": "/rules/dry-run?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Rule promotion",
+   "target": "/rules/promotion?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Scoring weights and thresholds",
+   "target": "/admin/scoring?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Export rules",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Import rules",
+   "effect": "opens dialog or menu; DOM changes (4)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Library",
+   "effect": "DOM changes (7); requests: GET /rules",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Drafts",
+   "effect": "navigates; DOM changes (15); requests: GET /rules",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Learned",
+   "effect": "navigates; DOM changes (19); requests: GET /rules",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Coverage",
+   "effect": "navigates; DOM changes (22); requests: GET /rules",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Policy packs",
+   "effect": "navigates; DOM changes (15); requests: GET /rules",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Fix drafts",
+   "effect": "navigates; DOM changes (20); requests: GET /rules, GET /r/MM_FIX_DEMO_1, GET /r/SD_FIX_DEMO_2",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "All severities",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Critical108",
+   "effect": "DOM changes (43)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "High295",
+   "effect": "DOM changes (45)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Medium280",
+   "effect": "DOM changes (47)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Low108",
+   "effect": "DOM changes (52)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Rule",
+   "effect": "DOM changes (44)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Object",
+   "effect": "DOM changes (44)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Severity",
+   "effect": "DOM changes (39)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "State",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Pass rate",
+   "effect": "DOM changes (47)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records failing",
+   "effect": "DOM changes (28)",
+   "ok": true
+  }
+ ]
+}

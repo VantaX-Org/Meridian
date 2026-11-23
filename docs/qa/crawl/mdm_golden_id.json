@@ -1,0 +1,56 @@
+{
+ "route": "/mdm/golden/[id]",
+ "url": "/mdm/golden/gr-0",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "All golden records",
+   "target": "/mdm/golden?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (7)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Fields",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Sources2",
+   "effect": "DOM changes (6); requests: GET /mdm/match/gr-0",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "History",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Write-back",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Merge events2",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Save override",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  }
+ ]
+}

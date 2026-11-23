@@ -1,0 +1,338 @@
+{
+ "route": "/work",
+ "url": "/work",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Approvals",
+   "target": "/approvals?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Download workbook",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Material master",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Business partner",
+   "effect": "DOM changes (62)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Accounts payable",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Accounts receivable",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "FI general ledger",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Asset accounting",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Controlling",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "MM purchasing",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "SD sales orders",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Plant maintenance",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Production planning",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Project system",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Quality management",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "HCM personnel administration",
+   "effect": "DOM changes (54)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "SD customer master",
+   "effect": "DOM changes (62)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Choose file",
+   "effect": "opens dialog or menu; DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Review",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Review",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Review",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Review",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Review",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Approve all 3,418",
+   "effect": "opens dialog or menu; DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Download workbook again",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "To fix25712",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Fix proposed3418",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Waiting for approval612",
+   "effect": "DOM changes (11); requests: GET /monitor, GET /status, GET /",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Approved180",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Sent to SAP96",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Fixed0",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Exceptions48",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Export workbook",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Import workbook",
+   "effect": "opens dialog or menu; DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "What if",
+   "effect": "opens dialog or menu; DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Simulate fixing",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Save this view",
+   "effect": "opens dialog or menu; DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Cleaning queue",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "High3640 recordsMM142 Base unit of measure MEINS must reference a valid entry in",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Critical2904 recordsMM003 Material type is mandatory - determines procurement an",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Medium3118 recordsMM007 Material group is required for reporting and procurement",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Medium2266 recordsMM015 Gross weight is recommended for shipping and transportat",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Medium2712 recordsMM302 Externally procured, MRP-planned material has no purchas",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "High1894 recordsMM023 MRP type (plant level) must exist in T438AMARC.DISMMMRP ty",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Critical1420 recordsMM035 Valuation class is mandatory for FI account determinat",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "High1260 recordsMM028 Procurement type must be E (in-house), F (external), or X ",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "View",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Columns",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Comfortable rows",
+   "effect": "DOM changes (21)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Record",
+   "effect": "DOM changes (24)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Severity",
+   "effect": "DOM changes (25)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Issues",
+   "effect": "DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Load more",
+   "effect": "DOM changes (3)",
+   "ok": true
+  }
+ ]
+}

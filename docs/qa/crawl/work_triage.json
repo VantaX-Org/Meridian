@@ -1,0 +1,61 @@
+{
+ "route": "/work/triage",
+ "url": "/work/triage",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (12)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show snoozed",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Overdue2",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Due today1",
+   "effect": "DOM changes (13)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Later1",
+   "effect": "DOM changes (13)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Severity",
+   "effect": "DOM changes (7)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Due",
+   "effect": "DOM changes (7)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Rank",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Apply to 0 items",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  }
+ ]
+}

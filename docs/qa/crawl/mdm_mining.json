@@ -1,0 +1,73 @@
+{
+ "route": "/mdm/mining",
+ "url": "/mdm/mining",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Mine the latest run",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Duplicates9",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Anomalies8",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Relationships6",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Patterns8",
+   "effect": "DOM changes (6); requests: GET /o, GET /work, GET /load",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "By object",
+   "effect": "DOM changes (10); requests: GET /load, GET /monitor, GET /status",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Process steps",
+   "effect": "DOM changes (12)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Record A",
+   "effect": "DOM changes (23); requests: GET /status, GET /runs, GET /load",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Record B",
+   "effect": "DOM changes (23)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Match",
+   "effect": "DOM changes (27)",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,140 @@
+{
+ "route": "/people",
+ "url": "/people",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Stewardship",
+   "target": "/people/stewardship?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Contracts",
+   "target": "/people/contracts?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Digests",
+   "target": "/people/digests?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Assignments",
+   "target": "/people/assignments?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Unit of measure and material type",
+   "target": "/?open=batch:B-241&fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Purchasing and MRP data",
+   "target": "/?open=batch:B-238&fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Overdue",
+   "target": "/work?assigned=me&due=overdue&fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Invite a person",
+   "effect": "opens dialog or menu; DOM changes (17); requests: GET /people/digests, GET /people/assignments, GET /load",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Balance the work",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Delegations",
+   "effect": "opens dialog or menu; DOM changes (22); requests: GET /people/digests, GET /people/assignments, GET /load",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Person",
+   "effect": "DOM changes (16); requests: GET /load, GET /monitor, GET /status",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Open",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Approvals",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Overdue",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "SLA met",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Breaches",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Last action",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remind 31",
+   "effect": "DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Make a link",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Revoke",
+   "effect": "DOM changes (4)",
+   "ok": true
+  }
+ ]
+}

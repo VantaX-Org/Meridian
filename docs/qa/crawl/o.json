@@ -1,0 +1,247 @@
+{
+ "route": "/o",
+ "url": "/o",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Accounts payable",
+   "target": "/o/ecc-production/accounts-payable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Accounts payable",
+   "target": "/o/s-4hana-sandbox/accounts-payable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Accounts payable",
+   "target": "/o/successfactors/accounts-payable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Accounts receivable",
+   "target": "/o/ecc-production/accounts-receivable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Accounts receivable",
+   "target": "/o/s-4hana-sandbox/accounts-receivable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Accounts receivable",
+   "target": "/o/successfactors/accounts-receivable?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Asset accounting",
+   "target": "/o/ecc-production/asset-accounting?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Asset accounting",
+   "target": "/o/s-4hana-sandbox/asset-accounting?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Asset accounting",
+   "target": "/o/successfactors/asset-accounting?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Bank master",
+   "target": "/o/ecc-production/bank-master?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Bank master",
+   "target": "/o/s-4hana-sandbox/bank-master?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Bank master",
+   "target": "/o/successfactors/bank-master?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Batch",
+   "target": "/o/ecc-production/batch?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Batch",
+   "target": "/o/s-4hana-sandbox/batch?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Batch",
+   "target": "/o/successfactors/batch?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Bill of materials",
+   "target": "/o/ecc-production/bill-of-materials?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Bill of materials",
+   "target": "/o/s-4hana-sandbox/bill-of-materials?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Bill of materials",
+   "target": "/o/successfactors/bill-of-materials?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Export",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (120)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "All steps100",
+   "effect": "NO OBSERVABLE EFFECT",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Pull20",
+   "effect": "DOM changes (235)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Clean20",
+   "effect": "DOM changes (232)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Upload20",
+   "effect": "DOM changes (229)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Score20",
+   "effect": "DOM changes (229)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Compare20",
+   "effect": "DOM changes (233); requests: GET /monitor, GET /status, GET /runs",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "View",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Columns",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Comfortable rows",
+   "effect": "DOM changes (71)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Object",
+   "effect": "DOM changes (49)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "System",
+   "effect": "DOM changes (44)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Score",
+   "effect": "DOM changes (47)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Readiness",
+   "effect": "DOM changes (52)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Next step",
+   "effect": "DOM changes (39)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Run",
+   "effect": "DOM changes (42)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Owner",
+   "effect": "DOM changes (47); requests: GET /work, GET /load, GET /monitor",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Last run",
+   "effect": "DOM changes (48)",
+   "ok": true
+  }
+ ]
+}

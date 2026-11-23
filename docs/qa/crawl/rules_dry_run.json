@@ -1,0 +1,57 @@
+{
+ "route": "/rules/dry-run",
+ "url": "/rules/dry-run",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to drafts",
+   "target": "/rules?view=drafts&fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Go to promotion",
+   "target": "/rules/promotion?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Check the impact",
+   "effect": "DOM changes (7)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Draft the rule",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Try it on the data",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Save as draft",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Publish",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,84 @@
+{
+ "route": "/o/[system]/[module]/readiness",
+ "url": "/o/ecc-production/material-master/readiness",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Overview",
+   "target": "/o/ecc-production/material-master?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Records",
+   "target": "/o/ecc-production/material-master/records?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Rules",
+   "target": "/o/ecc-production/material-master/rules?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Fixes",
+   "target": "/o/ecc-production/material-master/fixes?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Trend",
+   "target": "/o/ecc-production/material-master/trend?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "View",
+   "effect": "SKIPPED: page rearranged between loads, not clicked",
+   "ok": false
+  },
+  {
+   "kind": "button",
+   "label": "Columns",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Comfortable rows",
+   "effect": "DOM changes (6); requests: GET /load, GET /monitor, GET /o/ecc-production/material-master",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Score",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Blockers",
+   "effect": "DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records blocked",
+   "effect": "DOM changes (2)",
+   "ok": true
+  }
+ ]
+}

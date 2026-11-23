@@ -1,0 +1,124 @@
+{
+ "route": "/insights",
+ "url": "/insights",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Cost and owners",
+   "target": "/insights/money",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Score lens",
+   "target": "/insights/score",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Forecast",
+   "target": "/insights/forecast",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Value",
+   "target": "/insights/value",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Monitor",
+   "target": "/monitor",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Controls",
+   "target": "/monitor/controls",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Review matches",
+   "target": "/mdm/match",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open the object",
+   "target": "/o/_/material-master",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open the object",
+   "target": "/o/_/sd-customer-master",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Insights",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Overview",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Rules",
+   "effect": "DOM changes (25); requests: GET /mdm/match, GET /o/_/material-master, GET /o/_/sd-customer-master",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Root causes",
+   "effect": "DOM changes (27)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Duplicates",
+   "effect": "DOM changes (25); requests: GET /mdm/match",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Trends",
+   "effect": "DOM changes (53); requests: GET /mdm/match, GET /o/_/material-master",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Yes",
+   "effect": "DOM changes (1); requests: GET /mdm/match, GET /o/_/material-master, GET /o/_/sd-customer-master",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "No",
+   "effect": "DOM changes (1); requests: GET /mdm/match, GET /o/_/material-master, GET /o/_/sd-customer-master",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,31 @@
+{
+ "route": "/mdm/lineage",
+ "url": "/mdm/lineage",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Rule graph",
+   "effect": "already the selected tab (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Guards",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Fields",
+   "effect": "DOM changes (9)",
+   "ok": true
+  }
+ ]
+}
