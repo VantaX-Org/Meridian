@@ -42,7 +42,19 @@ from api.services.z_object_intelligence.serializers import (
     finding_to_response,
     profile_to_response,
 )
-from api.services.rbac import scope_from_path
+from api.services.rbac import current_user_id, scope_from_path
+
+
+def _acting_user_uuid() -> Optional[str]:
+    """Signed-in user's id for feedback_by / created_by (FK to users.id).
+
+    API keys and background callers have no user row, so they record None.
+    """
+    uid = current_user_id()
+    try:
+        return str(uuid.UUID(uid)) if uid else None
+    except ValueError:
+        return None
 
 router = APIRouter(prefix="/api/v1/z-objects", tags=["z-object-intelligence"])
 logger = logging.getLogger("meridian.z_object_intelligence")
@@ -236,7 +248,7 @@ async def submit_anomaly_feedback(
         raise HTTPException(status_code=400, detail="Status must be 'confirmed' or 'dismissed'")
 
     tid = str(tenant.id)
-    user_id = str(tenant.id)  # In production this would be the actual user ID
+    user_id = _acting_user_uuid()
     updated = await persistence.update_anomaly_feedback(db, tid, anomaly_id, request.status, user_id)
     await db.commit()
     if not updated:
@@ -368,7 +380,7 @@ async def create_custom_rule(
 ):
     """Create a custom Z rule."""
     tid = str(tenant.id)
-    user_id = str(tenant.id)  # In production this would be the actual user ID
+    user_id = _acting_user_uuid()
     rule_data = request.model_dump()
     rule_id = await persistence.create_custom_rule(db, tid, rule_data, user_id)
     await db.commit()

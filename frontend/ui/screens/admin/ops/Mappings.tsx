@@ -1,20 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { updateFieldMapping } from "@/lib/api/v2/admin";
+import { createFieldMapping, updateFieldMapping } from "@/lib/api/v2/admin";
 import { useMappings } from "@/lib/v2/admin-queries";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, Field, Input, Toggle, EmptyState } from "@/ui/kit";
+import { Button, Card, Code, DataTable, EmptyState, Field, Input, Select, Toggle } from "@/ui/kit";
 import { Row, Sec, useAct } from "./shared";
 
 export function Mappings() {
   const [module, setModule] = useState("");
   const [search, setSearch] = useState("");
   const q = useMappings({ module: module || undefined, search: search || undefined });
-  const { run } = useAct("mappings");
+  const { run, busy } = useAct("mappings");
   const rows = q.data?.mappings ?? [];
   const self = q.data?.self_service_enabled ?? false;
   const [draft, setDraft] = useState<Record<string, string>>({});
+  const [add, setAdd] = useState({ module: "", standard_field: "", standard_label: "", customer_field: "", data_type: "string", is_mapped: true });
+  const create = async () => {
+    const b = add;
+    const r = await run(() => createFieldMapping({ module: b.module.trim(), standard_field: b.standard_field.trim(), standard_label: b.standard_label.trim() || undefined, customer_field: b.customer_field.trim() || undefined, data_type: b.data_type, is_mapped: b.is_mapped }), t("Mapping added."));
+    if (r) setAdd({ ...add, standard_field: "", standard_label: "", customer_field: "" });
+  };
   return (
     <Sec title={t("Field mappings")} scope="mappings" q={[q]} context={t("Your field names against the standard fields.")}
       facts={[t("{n} mappings, {m} mapped.", { n: rows.length, m: rows.filter((r) => r.is_mapped).length })]}>
@@ -39,6 +45,23 @@ export function Mappings() {
             ]} />
         )}
       </Card>
+      {self && (
+        <Card title={t("Add a mapping")} sub={t("Map one standard field to the name your system uses.")}>
+          <form onSubmit={(e) => { e.preventDefault(); void create(); }}>
+            <Row>
+              <Field label={t("Object")}><Input value={add.module} onChange={(e) => setAdd({ ...add, module: e.target.value })} /></Field>
+              <Field label={t("Standard field")}><Input value={add.standard_field} onChange={(e) => setAdd({ ...add, standard_field: e.target.value })} /></Field>
+              <Field label={t("Standard label")} hint={t("Optional.")}><Input value={add.standard_label} onChange={(e) => setAdd({ ...add, standard_label: e.target.value })} /></Field>
+              <Field label={t("Your field")} hint={t("Empty uses the standard field.")}><Input value={add.customer_field} onChange={(e) => setAdd({ ...add, customer_field: e.target.value })} /></Field>
+              <Field label={t("Data type")}>
+                <Select value={add.data_type} onChange={(e) => setAdd({ ...add, data_type: e.target.value })} options={[{ value: "string", label: t("Text") }, { value: "number", label: t("Number") }, { value: "date", label: t("Date") }, { value: "boolean", label: t("Yes or no") }]} />
+              </Field>
+              <Toggle label={t("Mapped")} checked={add.is_mapped} onChange={(v) => setAdd({ ...add, is_mapped: v })} />
+              <Button variant="primary" type="submit" disabled={busy || !add.module.trim() || !add.standard_field.trim()}>{t("Add mapping")}</Button>
+            </Row>
+          </form>
+        </Card>
+      )}
     </Sec>
   );
 }

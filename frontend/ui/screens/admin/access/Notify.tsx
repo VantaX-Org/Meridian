@@ -8,6 +8,7 @@ import { useChannels, useMyPreferences, useTenantSettings } from "@/lib/v2/admin
 import { useFixture } from "@/lib/api/v2/fixture";
 import { createChannel, deleteChannel, getMyDeliveries, patchMyPreferences, saveDefaultDigest, sendTestNotification, testChannel, updateChannel, type AlertChannel } from "@/lib/api/v2/admin";
 import { t, tx } from "@/lib/v2/i18n";
+import { AlertSettings } from "../ops/AlertSettings";
 
 const KINDS = ["webhook", "slack", "teams", "email"] as const;
 const DIGESTS = ["off", "daily", "weekly"] as const;
@@ -92,6 +93,7 @@ export function Notify() {
               <div><Button variant="primary" type="submit" disabled={busy}>{t("Save")}</Button></div>
             </form>
           </Card>
+          <AlertSettings />
         </>
       )}
       <Confirm open={!!ask} danger title={t("Delete this channel?")} confirmLabel={t("Delete")} cancelLabel={t("Cancel")} onCancel={() => setAsk(null)}

@@ -10,6 +10,8 @@ import { Contracts } from "./Contracts";
 import { Digests } from "./Digests";
 import { Assignments } from "./Assignments";
 import { Share } from "./Share";
+import { listStewardQueue } from "@/lib/api/v2/stewardship";
+import { resetStewardFixture } from "@/lib/api/v2/fixtures/stewardship";
 
 vi.mock("next/navigation", async () => (await import("@/ui/testing/nav-store")).navigationMock);
 
@@ -17,6 +19,7 @@ let undo: () => void = () => undefined;
 beforeEach(() => {
   undo = stubLayout();
   window.sessionStorage.clear();
+  resetStewardFixture();
   window.history.replaceState(null, "", "/people?fixture=1");
 });
 afterEach(() => undo());
@@ -56,5 +59,17 @@ describe("people and governance screens in fixture mode", () => {
     expect(await screen.findByRole("list", { name: "Where the item stands" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Escalate" }));
     await waitFor(() => expect(screen.queryByRole("list", { name: "Where the item stands" })).toBeNull());
+  });
+  it("Stewardship queue assigns an item to a chosen person and releases it", async () => {
+    renderWithQuery(wrap(<Stewardship />));
+    fireEvent.click(await screen.findByText("Payment terms are blank"));
+    const pick = (await screen.findByLabelText(/^Owner/)) as HTMLSelectElement;
+    await waitFor(() => expect(pick.options.length).toBeGreaterThan(2));
+    fireEvent.change(pick, { target: { value: "u-rg" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save owner" }));
+    await waitFor(async () => {
+      const q = await listStewardQueue({ status: "in_progress" });
+      expect(q.items.find((x) => x.id === "sq-04")?.assigned_to).toBe("u-rg");
+    });
   });
 });

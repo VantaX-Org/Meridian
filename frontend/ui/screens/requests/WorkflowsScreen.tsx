@@ -4,11 +4,12 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { activateDefinition, decideTask, dryRun, getFacts, getWorkflowInstance, listDefinitions, listTasks, type TaskRow, type WorkflowDefinition } from "@/lib/api/v2/requests";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, DetailPanel, Field, Input, Split, Tabs, useToast } from "@/ui/kit";
+import { Button, Card, Code, DataTable, DetailPanel, Field, Input, Sheet, Split, Tabs, useToast } from "@/ui/kit";
 import { Async, Empty, Head, num, useRead, useScreenScope, when } from "../mdm/catalogue/shared";
 import { objectText } from "./RequestsScreen";
+import { WorkflowEditor } from "./WorkflowEditor";
 
-function DefinitionDetail({ def }: { def: WorkflowDefinition }) {
+function DefinitionDetail({ def, onVersion }: { def: WorkflowDefinition; onVersion: () => void }) {
   const toast = useToast();
   const qc = useQueryClient();
   const [tab, setTab] = useState("steps");
@@ -17,7 +18,7 @@ function DefinitionDetail({ def }: { def: WorkflowDefinition }) {
   const activate = async () => { try { await activateDefinition(def.id); toast(t("Version activated"), "good"); await qc.invalidateQueries({ queryKey: ["b7b"] }); } catch { toast(t("The version could not be activated"), "bad"); } };
   return (
     <DetailPanel idBase="wfd" label={t("Workflow detail")} tabsLabel={t("Workflow views")}
-      header={<><Code code={def.key} description={def.name} />{def.active ? null : <Button variant="primary" onClick={() => void activate()}>{t("Activate this version")}</Button>}</>}
+      header={<><Code code={def.key} description={def.name} /><Button variant="secondary" onClick={onVersion}>{t("New version")}</Button>{def.active ? null : <Button variant="primary" onClick={() => void activate()}>{t("Activate this version")}</Button>}</>}
       tabs={[{ id: "steps", label: t("Steps") }, { id: "facts", label: t("Facts and rules") }]} value={tab} onChange={setTab}>
       {tab === "steps" ? (
         <Async q={sim}>
@@ -87,6 +88,7 @@ export function WorkflowsScreen() {
   const qc = useQueryClient();
   const [tab, setTab] = useState("definitions");
   const [pick, setPick] = useState("");
+  const [edit, setEdit] = useState<"" | "new" | "version">("");
   const defs = useRead(["wf", "defs"], listDefinitions);
   const tasks = useRead(["wf", "tasks"], () => listTasks(""), tab === "tasks");
   const list = defs.data?.items ?? [];
@@ -99,7 +101,10 @@ export function WorkflowsScreen() {
   };
   return (
     <>
-      <Head title={t("Workflows")} actions={<Button variant="secondary" href="/requests">{t("Back to requests")}</Button>} />
+      <Head title={t("Workflows")} actions={<><Button variant="primary" onClick={() => setEdit("new")}>{t("New workflow")}</Button><Button variant="secondary" href="/requests">{t("Back to requests")}</Button></>} />
+      <Sheet open={!!edit} onClose={() => setEdit("")} label={edit === "new" ? t("New workflow") : t("New version")} closeLabel={t("Close")}>
+        {edit ? <WorkflowEditor key={edit + (cur?.id ?? "")} id={edit === "version" ? cur?.id : undefined} onDone={() => setEdit("")} /> : null}
+      </Sheet>
       <Tabs idBase="wf" label={t("Workflow lists")} value={tab} onChange={setTab} items={[{ id: "definitions", label: t("Definitions") }, { id: "tasks", label: t("My tasks") }, { id: "instances", label: t("Instances") }]} />
       {tab === "definitions" ? (
         <Split leftLabel={t("Definitions")} rightLabel={t("Workflow detail")}
@@ -116,7 +121,7 @@ export function WorkflowsScreen() {
               ) : <Empty heading={t("No workflows defined")} />}
             </Async>
           }
-          right={cur ? <DefinitionDetail key={cur.id} def={cur} /> : <Empty heading={t("Pick a workflow")} />} />
+          right={cur ? <DefinitionDetail key={cur.id} def={cur} onVersion={() => setEdit("version")} /> : <Empty heading={t("Pick a workflow")} />} />
       ) : null}
       {tab === "tasks" ? (
         <Async q={tasks}>

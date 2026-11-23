@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateRetention } from "@/lib/api/retention";
+import { putRetention } from "@/lib/api/v2/admin";
 import { formatInt } from "@/lib/format";
 import { useRetention, usePurgeLog } from "@/lib/v2/admin-queries";
 import { t } from "@/lib/v2/i18n";
@@ -18,7 +18,7 @@ export function Data() {
   const p = ret.data?.policy;
   const e = ret.data?.enforcement;
   const val = (k: "v" | "r" | "a", n: number | null | undefined) => d[k] ?? (n == null ? "" : String(n));
-  const save = () => p && run(() => updateRetention({
+  const save = () => p && run(() => putRetention({
     versions_days: days(val("v", p.versions_days)), reports_days: days(val("r", p.reports_days)), audit_days: days(val("a", p.audit_days)),
     keep_baseline: d.base ?? p.keep_baseline, keep_latest_per_system: Number(d.keep ?? p.keep_latest_per_system),
   }), t("Retention saved."));

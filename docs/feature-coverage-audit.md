@@ -21,7 +21,7 @@ Statuses:
 | Total | 920 | `routes.txt` from `api/routes` |
 | INTERNAL | 25 | list below |
 | LEGACY | 0 | no LegacyFrame or LegacyMount usage |
-| ORPHAN | about 105 | 137 unused v2 client exports, about 105 map to a route; 5 fixed on this branch |
+| ORPHAN | about 105 | 137 unused v2 client exports, about 105 map to a route; about 17 fixed on this branch |
 | MISSING | not measurable by this method | v1-only clients in `lib/api` are dead old-UI code; their v2 equivalents were counted as WIRED where a screen uses them |
 | WIRED | the remainder, about 790 | |
 
@@ -40,8 +40,14 @@ Statuses:
 | --- | --- | --- | --- |
 | Steward queue: filter, approve, reject, escalate, bulk approve confident items, item lifecycle stepper | GET `/stewardship/queue`, POST resolve, POST escalate, POST bulk-approve | `ui/screens/people/StewardQueue.tsx`, rendered in Stewardship | People, Stewardship |
 | Maintenance windows: add and remove (PUT replaces list, max 20, UTC) | PUT `/settings/maintenance` | `ui/screens/admin/ops/MaintenanceEditor.tsx`, in Admin, Enterprise | Admin, Enterprise |
+| Settings writes: theme (name, accents), logo upload and remove, compliance and retention days, automation, chat alerts and test | PUT `/settings/theme`, POST `/settings/theme/logo`, PUT `/settings/compliance`, PUT `/settings/retention`, PUT `/settings/automation`, PUT `/settings/chat-alerts`, POST `/settings/chat-alerts/test` | `ui/screens/admin/ops/{ThemeEditor,ComplianceEditor,AlertSettings}.tsx`, in Admin Enterprise, Data and Notify | Admin |
+| Triage configuration: SLA policy reset, team edit and members, assignment rule add (three steps) and reorder, escalation chain, working calendar and fallback owner | DELETE `/triage/sla-policies/{id}`, PATCH `/triage/teams/{id}`, PUT `/triage/teams/{id}/members`, POST `/triage/rules`, POST `/triage/rules/reorder`, PUT `/triage/escalation-chain`, GET and PUT `/triage/settings` | `ui/screens/admin/ops/TriageConfig.tsx`, mounted in `Triage.tsx` | Admin, Triage settings |
+| Data contracts: edit a draft or pending contract, set limits and enforcement behind a confirm, create a contract for one object in three steps (object picked from the landscape) | PUT `/contracts/{id}`, PUT `/contracts/{id}/enforcement`, POST `/contracts` | `ui/screens/people/ContractTerms.tsx`, in Contracts | People, Contracts |
+| Admin: manager picker on a person, API key edit (name, role, expiry), field mapping create, schedule edit, extraction history (profiles and sync runs per system) | PUT `/users/{id}/manager`, PATCH `/admin/api-keys/{id}`, POST `/field-mappings`, GET and PATCH `/schedules/{id}`, GET `/systems/{id}/profiles`, GET `/systems/{id}/runs` | `ui/screens/admin/access/{Users,ApiKeys}.tsx`, `ui/screens/admin/ops/{Mappings,Schedules}.tsx` | Admin |
+| Steward assign: owner picker fed by the assignable users list, empty releases the item | PUT `/stewardship/{id}/assign` | `ui/screens/people/StewardQueue.tsx` | People, Stewardship |
+| Reports, digests, workflows, custom objects: report schedule edit, digest read before edit, workflow create and new version (three-step and two-step flows, activate behind a confirm), custom object registry edit and anomaly confirm or dismiss | PUT `/reports/schedules/{id}`, GET `/digests/{id}`, GET `/workflows/definitions/{id}`, POST `/workflows/definitions`, POST `/workflows/definitions/{id}/versions`, GET and PUT `/z-objects/registry/{id}`, POST `/z-objects/anomalies/{id}/feedback` | `ui/screens/admin/Reports.tsx`, `ui/screens/people/Digests.tsx`, `ui/screens/requests/WorkflowEditor.tsx`, `ui/screens/systems/CustomTab.tsx` | Admin, People, Work, Systems |
 
-Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`.
+Tests: `people.test.tsx` (three new cases), `MaintenanceEditor.test.tsx`, `SettingsWrites.test.tsx`, `TriageConfig.test.tsx`, `ContractTerms.test.tsx`, `AdminWrites.test.tsx`, `Digests.test.tsx`, `requests.test.tsx` (workflow case), `CustomTab.test.tsx`.
 
 ## ORPHAN capabilities (client exists, no screen)
 
@@ -49,16 +55,13 @@ Suggested home is the journey where the user would expect it.
 
 | Capability | Client functions | Endpoints | Suggested home |
 | --- | --- | --- | --- |
-| Assign a steward to a queue item | `assignStewardItem` | POST `/stewardship/{id}/assign` | People, Stewardship (needs a user picker) |
-| Settings writes: theme, logo, compliance, retention, automation, chat alerts (and test), cost features, AI audit read | `putThemeSettings`, `uploadThemeLogo`, `putCompliance`, `putRetention`, `putAutomation`, `putChatAlerts`, `testChatAlerts`, `getCostFeatures`, `getAiAudit` | `/settings/theme`, `/settings/theme/logo`, `/settings/compliance`, `/settings/retention`, `/settings/automation`, `/settings/chat-alerts`, `/settings/cost-model/features`, `/audit/llm` | Admin, Enterprise and Data |
-| Triage configuration: SLA delete, settings, team update and members, assign rules and reorder, escalation chain | `deleteSlaPolicy`, `getTriageSettings`, `updateTeam`, `setTeamMembers`, `createAssignRule`, `reorderAssignRules`, `putEscalationChain` | `/triage/*` | Work, Triage settings |
+| Cost features read, AI audit read | `getCostFeatures`, `getAiAudit` | `/settings/cost-model/features`, `/audit/llm` | Admin |
 | Subscriptions, delegations | `putSubscriptions`, `getAllDelegations` | `/me/subscriptions`, `/delegations` | Me |
-| Data contracts: update, enforcement, create per object | `updateContract`, `setEnforcement`, `createObjectContract` | `/contracts` | People, Contracts |
 | Dedup candidates, preview, merge | `getDedupCandidates`, `getDedupCandidatesFor`, `previewDedup`, `mergeDedup` | `/dedup/*` | Clean |
 | Learned monitors: break evidence | `getBreakEvidence` | `/aletheia/monitors/{id}/evidence` | Monitor |
 | Learned rules: review, mine, approve; mined rule accept | `getLearnedReview`, `mineFixes`, `acceptMinedRule` | `/learned-rules/*`, `/rules/mined` | Rules |
 | Rule authoring: dry run, publish, update draft, version diff | `dryRunDraft`, `publishDraft`, `updateDraft`, `createRuleVersion` | `/rule-authoring/*`, `/rules/{id}/versions/{v}/diff` | Rules |
-| Sandbox enter and exit, digest read | `enterSandbox`, `exitSandbox`, `getDigest` | `/admin/sandbox/*`, `/digests` | Admin, People Digests |
+| Sandbox enter and exit | `enterSandbox`, `exitSandbox` | `/admin/sandbox/*` | Admin |
 | Analytics: prescriptive, bottlenecks, capacity, sprints, finding impact, MDM health series and history | `getPrescriptive`, `getBottlenecks`, `getCapacity`, `getSprintPlan`, `getFindingImpact`, `getMdmHealthSeries`, `getMdmHistory` | `/analytics/*`, `/mdm-metrics/history` | Home and Monitor |
 | Design: table, config, diff | `getDesignTable`, `getDesignConfig`, `getDesignDiff` | `/systems/{id}/design/*` | Objects, per system |
 | Process mining summary and graph | `getMiningRunSummary`, `getMiningGraph` | `/mining/summary/*`, `/process/mining/graph/*` | Objects, processes |
@@ -67,16 +70,13 @@ Suggested home is the journey where the user would expect it.
 | Connectivity config snapshot | `getConfigSnapshot` | `/connectivity/config/{system}/{module}` | Admin, Systems |
 | Lineage blast radius | `getBlastRadius` | `/lineage/blast-radius/*` | Objects, lineage |
 | Reference data usage | `getRefUsage` | `/reference-data/lists/{id}/usage` | Objects, reference data |
-| Workflow definitions: get, new version, create | `getDefinition`, `newVersion`, `createDefinition` | `/workflows/definitions*` | Work, Requests |
-| Z-object registry: get, update, anomaly feedback | `getZEntry`, `updateZEntry`, `feedbackZAnomaly` | `/z-objects/*` | Objects, Z-objects |
 | Migration: value candidates, value map, load params, reconciliation records, target workbook check | `getValueCandidates`, `saveValueMap`, `loadParams`, `getReconciliationRecords`, `checkTargetWorkbook` | migration routes | Load |
 | Batches: run records, send to SAP, confirm loaded | `getBatchRunRecords`, `sendBatchToSap`, `confirmBatchLoaded` | `/writeback/batches/*`, `/remediation/batches/*` | Load |
 | External database preview and load | `previewDb`, `loadDb` | external-db routes | Load |
 | Survivorship: put, preview | `putSurvivorship`, `previewSurvivorship` | `/survivorship-rules*` | Rules |
 | Fix drafts and cleaning plan | `draftFix`, `getCleaningPlan` | `/aletheia/fix-drafts`, `/aletheia/cleaning-plan` | Clean |
 | Split scope | `splitScope` | `/systems/{id}/versions/{v}/split-scope` | Run |
-| Report schedule update | `updateSchedule` | `/reports/schedules/{id}` | Reports |
-| Admin: user manager, API key update, field mapping create, sync runs and profiles, run schedule get and patch | `setUserManager`, `updateApiKey`, `createFieldMapping`, `listSyncRuns`, `listProfiles`, `getRunSchedule`, `patchRunSchedule` | `/users/{id}/manager`, `/licence`, `/field-mappings`, `/systems/{id}/runs`, `/schedules/{id}` | Admin |
+| Admin (left): `GET /systems/{id}/runs` is declared twice, in sync runs and in process discovery; sync runs is registered first so the process discovery list route is shadowed. The sync runs view uses it. | | `api/routes/process_discovery.py` L619 | Backend |
 | Record findings, glossary batch lookup, DQ firewall validate, AI feedback | `getRecordFindings`, `glossaryBatchLookup`, `validateRecords`, `sendAiFeedback` | various | Objects, Clean |
 
 ## Left to feat/claims (export, import, download)
