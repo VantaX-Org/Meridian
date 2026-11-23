@@ -69,7 +69,7 @@ export function Pair({ id }: { id: string }) {
                 ]}
                 reasons={sc.reasons.map((x) => ({ label: `${x.check_id} ${x.description}`.trim(), value: t("{a} to {b}", { a: pct(x.source_pass_rate), b: pct(x.target_pass_rate) }) }))}
               />
-            ) : <EmptyState heading={t("Not compared yet")} />}
+            ) : <EmptyState heading={t("Not compared yet")} body={t("Run a comparison to see the differences.")} />}
           </Card>
           <Card title={t("Scores over comparisons")}>
             <TrendArea
@@ -109,7 +109,7 @@ export function Pair({ id }: { id: string }) {
                       { key: "target", label: t("Target value"), render: (r) => r.target ?? "" },
                     ]}
                   />
-                ) : <EmptyState heading={cmp ? t("No differences found") : t("Run a comparison to see differences")} />}
+                ) : <EmptyState heading={cmp ? t("No differences found") : t("Run a comparison to see differences")} body={t("Run a comparison, or change the filter, to see differences.")} />}
               </div>
             ) : null}
             {tab === "tables" ? (
@@ -126,7 +126,7 @@ export function Pair({ id }: { id: string }) {
                       { key: "note", label: t("Note"), render: (r) => (r.comparable ? "" : r.reason ?? t("Not comparable")) },
                     ]}
                   />
-                ) : <EmptyState heading={t("No tables compared yet")} />}
+                ) : <EmptyState heading={t("No tables compared yet")} body={t("Run a comparison to see each table.")} />}
               </div>
             ) : null}
             {tab === "config" ? (

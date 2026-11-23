@@ -6,6 +6,7 @@ import { formatModuleName } from "@/lib/format";
 import { useWorkRecord } from "@/lib/v2/work-queries";
 import { STATUS_LABEL } from "@/lib/v2/work";
 import { t } from "@/lib/v2/i18n";
+import { labelText } from "@/lib/v2/labels";
 import { Button, DetailPanel, useSheet, EmptyState, ErrorState, FieldChip, Field, Input, Skeleton, StatTile } from "@/ui/kit";
 import { Comments } from "./Comments";
 import { sevLabel, sevOf, fieldText, day, useDo } from "./shared";
@@ -46,7 +47,7 @@ export function RecordDetail({ module, recordKey, version }: { module: string; r
             <p className="mx-cap">{t("Object")} <FieldChip code={module} description={formatModuleName(module)} /></p>
             {d.events.length ? (
               <ul className="mx-list" aria-label={t("History")}>
-                {d.events.map((e, i) => <li key={i}>{day(e.created_at)} {e.user_label ?? ""} {e.action}{e.to_value ? ` ${e.to_value}` : ""}</li>)}
+                {d.events.map((e, i) => <li key={i}>{day(e.created_at)} {e.user_label ?? ""} {labelText(e.action)}{e.to_value ? ` ${e.to_value}` : ""}</li>)}
               </ul>
             ) : null}
             <Button onClick={() => sheets.open("decisions", { module, recordKey })}>{t("Decisions")}</Button>
@@ -67,6 +68,7 @@ export function RecordDetail({ module, recordKey, version }: { module: string; r
                     <Input value={val[i.check_id] ?? ""} onChange={(e) => setVal({ ...val, [i.check_id]: e.target.value })} />
                   </Field>
                   <Button disabled={!d.can.fix || !(val[i.check_id] ?? "").trim()} onClick={() => void decide(i.check_id, "edit", val[i.check_id])}>{t("Save value")}</Button>
+                  {!d.can.fix ? <p role="status" className="mx-muted">{t("Your role cannot fix records.")}</p> : !(val[i.check_id] ?? "").trim() ? <p role="status" className="mx-muted">{t("Type a value to save it.")}</p> : null}
                 </li>
               ))}
             </ul>

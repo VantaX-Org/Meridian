@@ -19,7 +19,7 @@ function Trail({ id }: { id: string }) {
   const q = useBatchEvents(id);
   if (q.isLoading) return <Skeleton lines={3} label={t("Loading the trail")} />;
   const steps = trailOf(q.data?.items ?? []);
-  if (!steps.length) return <EmptyState heading={t("No steps yet")} />;
+  if (!steps.length) return <EmptyState heading={t("No steps yet")} body={t("A step appears here once the batch is submitted.")} />;
   return (
     <ul className="mx-list">
       {steps.map((s) => (
@@ -81,7 +81,7 @@ function Batches() {
     <div className="mx-split">
       <div className="mx-col">
         <Card title={t("Remediation batches")} sub={t("{n} batches", { n: q.rows.length })}>
-          {q.isLoading ? <Skeleton lines={5} label={t("Loading batches")} /> : q.isError ? <ErrorState heading={t("Batches could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : !q.rows.length ? <EmptyState heading={t("No batches yet")} /> : (
+          {q.isLoading ? <Skeleton lines={5} label={t("Loading batches")} /> : q.isError ? <ErrorState heading={t("Batches could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : !q.rows.length ? <EmptyState heading={t("No batches yet")} body={t("Approve fixes in the work queue to create a batch.")} /> : (
             <DataTable label={t("Batches")} rows={q.rows} rowKey={(r: BatchRow) => r.id} selected={sel?.id ?? null} onSelect={(r) => setPick(r.id)}
               columns={[
                 { key: "b", label: t("Batch"), render: (r) => `${r.label} ${r.name}`, sort: (r) => r.label },
@@ -179,7 +179,7 @@ function Send() {
           )}
         </Card>
         <Card title={t("Approved batches")} sub={t("{n} batches", { n: ready.length })}>
-          {!ready.length ? <EmptyState heading={t("No approved batches")} /> : (
+          {!ready.length ? <EmptyState heading={t("No approved batches")} body={t("Approve a batch to see it here.")} /> : (
             <DataTable label={t("Approved batches")} rows={ready} rowKey={(r: BatchRow) => r.id} selected={sel?.id ?? null} onSelect={(r) => setPick(r.id)}
               columns={[
                 { key: "b", label: t("Batch"), render: (r) => `${r.label} ${r.name}`, sort: (r) => r.label },

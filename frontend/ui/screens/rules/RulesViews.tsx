@@ -239,7 +239,7 @@ export function PacksView() {
             </Card>
           ))}
         </div>
-      ) : <EmptyState heading={t("No policy packs")} />}
+      ) : <EmptyState heading={t("No policy packs")} body={t("Add a policy pack to group rules for a team.")} />}
     </Load>
   );
 }

@@ -21,7 +21,7 @@ export function Schedules() {
     <Sec title={t("Extraction schedules")} scope="schedules" q={[q]} context={t("{n} schedules", { n: rows.length })}
       facts={[t("{n} extraction schedules are set.", { n: rows.length })]}>
       <Card title={t("Schedules")}>
-        {rows.length === 0 ? <EmptyState heading={t("No extraction schedules yet.")} /> : (
+        {rows.length === 0 ? <EmptyState heading={t("No extraction schedules yet.")} body={t("Add a schedule to extract on a regular day.")} /> : (
           <DataTable label={t("Extraction schedules")} rows={rows} rowKey={(r) => r.id} height={340}
             columns={[
               { key: "name", label: t("Schedule"), render: (r) => <Code code={r.name ?? r.id} description={r.system_name} /> },

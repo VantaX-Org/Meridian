@@ -70,7 +70,7 @@ export function Reconcile({ planId, onBack, onNext }: { planId: string; onBack: 
                 />
               </Card> : null}
               <Card title={t("Rows in source and target")} sub={t("Top bar is the source. Bottom bar is the target.")}>
-                {d.entities.length ? <CountsChart rows={d.entities} label={t("Rows in source and target")} /> : <EmptyState heading={t("Nothing to compare")} />}
+                {d.entities.length ? <CountsChart rows={d.entities} label={t("Rows in source and target")} /> : <EmptyState heading={t("Nothing to compare")} body={t("Run the reconciliation after the load to compare the two sides.")} />}
               </Card>
               <Card title={t("By entity")} sub={t("Select an entity to see sample rows that differ.")}>
                 <DataTable columns={cols()} rows={d.entities} rowKey={(r) => r.entity} label={t("By entity")} selected={pick} onSelect={(r) => setPick(r.entity)} />

@@ -52,7 +52,7 @@ export function Reports() {
           ]} />
       </Card>
       <Card title={t("Built files")}>
-        {files.length === 0 ? <EmptyState heading={t("No report has been built yet.")} /> : (
+        {files.length === 0 ? <EmptyState heading={t("No report has been built yet.")} body={t("Build a report to see it here.")} /> : (
           <DataTable label={t("Built files")} rows={files} rowKey={(r) => r.id} height={320}
             columns={[
               { key: "name", label: t("File"), render: (r) => <Code code={r.kind} description={r.file_name} /> },
@@ -70,7 +70,7 @@ export function Reports() {
         )}
       </Card>
       <Card title={t("Schedules")}>
-        {schedules.length === 0 ? <EmptyState heading={t("No report schedules yet.")} /> : (
+        {schedules.length === 0 ? <EmptyState heading={t("No report schedules yet.")} body={t("Add a schedule to send a report on a regular day.")} /> : (
           <DataTable label={t("Report schedules")} rows={schedules} rowKey={(r) => r.id} height={280}
             columns={[
               { key: "name", label: t("Schedule"), render: (r) => <Code code={r.kind} description={r.name} /> },

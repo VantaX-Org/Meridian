@@ -105,7 +105,7 @@ export function MatchRules() {
         </Card>
         <Card title={t("Rules proposed by Aletheia")} sub={t("Drawn from steward corrections. Approve to copy a proposal into the match rules.")}>
           {prop.isLoading ? <Skeleton lines={3} label={t("Loading proposed rules")} /> : (prop.data?.rules ?? []).length === 0 ? (
-            <EmptyState heading={t("No proposals waiting")} />
+            <EmptyState heading={t("No proposals waiting")} body={t("New match rule proposals appear here after the next matching run.")} />
           ) : (
             <DataTable<ProposedRule>
               label={t("Proposed rules")}

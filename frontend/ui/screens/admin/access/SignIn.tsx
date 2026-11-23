@@ -76,7 +76,7 @@ export function SignIn() {
             <Code code={newToken} description={t("SCIM token")} />
           </div>
         )}
-        {!tk ? <EmptyState heading={t("No SCIM status is available")} /> : (
+        {!tk ? <EmptyState heading={t("No SCIM status is available")} body={t("Turn on SCIM and connect your identity provider to see its status.")} /> : (
           <>
             <Facts items={[
               [t("Address"), <Code key="u" code={tk.base_url} description={t("SCIM base address")} />],
@@ -95,7 +95,7 @@ export function SignIn() {
       </Card>
 
       <Card title={t("Group to role")} sub={t("A person in a group gets the mapped role.")}>
-        {maps.length === 0 && <EmptyState heading={t("No groups are mapped yet.")} />}
+        {maps.length === 0 && <EmptyState heading={t("No groups are mapped yet.")} body={t("Map a group from your identity provider to a role.")} />}
         <form className="mx-col" onSubmit={(e) => { e.preventDefault(); void run(() => putScimGroupRoles(maps.filter((m) => m.group.trim())), t("Group mapping saved."), ["scim"]); }}>
           {maps.map((m, i) => (
             <div key={i} className="mx-links">

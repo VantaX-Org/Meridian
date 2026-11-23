@@ -114,7 +114,7 @@ export function GoldenRecord({ id }: { id: string }) {
         />
         {tab === "fields" && (
           <Card title={t("Golden fields")} sub={t("The value that survived for each field and the rule that chose it.")}>
-            {fieldRows.length === 0 ? <EmptyState heading={t("No golden fields")} /> : (
+            {fieldRows.length === 0 ? <EmptyState heading={t("No golden fields")} body={t("Golden fields appear after matching merges the source records of this cluster.")} /> : (
               <DataTable
                 label={t("Golden fields")}
                 rows={fieldRows}
@@ -138,7 +138,7 @@ export function GoldenRecord({ id }: { id: string }) {
         )}
         {tab === "sources" && (
           <Card title={t("Source records")} sub={t("Records merged into this golden record and the systems that supplied values.")}>
-            {members.length === 0 ? <EmptyState heading={t("No source records")} /> : (
+            {members.length === 0 ? <EmptyState heading={t("No source records")} body={t("Run matching to bring the source records of this golden record here.")} /> : (
               <DataTable
                 label={t("Source records")}
                 rows={members.map((m) => ({ m }))}
@@ -167,7 +167,7 @@ export function GoldenRecord({ id }: { id: string }) {
         )}
         {tab === "history" && (
           <Card title={t("Field history")} sub={t("Every change to this record, newest first.")}>
-            {history.isLoading ? <Skeleton lines={4} label={t("Loading history")} /> : (history.data ?? []).length === 0 ? <EmptyState heading={t("No history yet")} /> : (
+            {history.isLoading ? <Skeleton lines={4} label={t("Loading history")} /> : (history.data ?? []).length === 0 ? <EmptyState heading={t("No history yet")} body={t("A change to this golden record appears here once it is made.")} /> : (
               <DataTable
                 label={t("Field history")}
                 rows={history.data ?? []}
@@ -205,7 +205,7 @@ export function GoldenRecord({ id }: { id: string }) {
               )}
             </Card>
             <Card title={t("Write-back requests")} sub={t("A second person approves before anything is written.")}>
-              {(requests.data ?? []).length === 0 ? <EmptyState heading={t("No write-back requests yet")} /> : (
+              {(requests.data ?? []).length === 0 ? <EmptyState heading={t("No write-back requests yet")} body={t("Request a write-back to send the golden value to a source system.")} /> : (
                 <DataTable
                   label={t("Write-back requests")}
                   rows={requests.data ?? []}
@@ -229,7 +229,7 @@ export function GoldenRecord({ id }: { id: string }) {
         )}
         {tab === "events" && (
           <Card title={t("Merge events")} sub={t("Merges, splits and overrides. Undo the last merge or revert one event.")} action={<Button variant="ghost" disabled={busy} onClick={() => setPending({ kind: "undo" })}>{t("Undo last merge")}</Button>}>
-            {(events.data ?? []).length === 0 ? <EmptyState heading={t("No merge events yet")} /> : (
+            {(events.data ?? []).length === 0 ? <EmptyState heading={t("No merge events yet")} body={t("A merge appears here once records are merged into this golden record.")} /> : (
               <DataTable
                 label={t("Merge events")}
                 rows={events.data ?? []}

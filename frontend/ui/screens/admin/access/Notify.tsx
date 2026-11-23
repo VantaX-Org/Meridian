@@ -66,7 +66,7 @@ export function Notify() {
         </div>
       </Card>
       <Card title={t("Recent notifications to you")}>
-        {(deliveries.data?.items.length ?? 0) === 0 ? <EmptyState heading={t("Nothing sent yet")} /> : <DataTable columns={dcols} rows={deliveries.data?.items ?? []} rowKey={(d) => d.id} label={t("Notifications")} />}
+        {(deliveries.data?.items.length ?? 0) === 0 ? <EmptyState heading={t("Nothing sent yet")} body={t("A message appears here after the first notification is sent.")} /> : <DataTable columns={dcols} rows={deliveries.data?.items ?? []} rowKey={(d) => d.id} label={t("Notifications")} />}
       </Card>
       {admin && (
         <>

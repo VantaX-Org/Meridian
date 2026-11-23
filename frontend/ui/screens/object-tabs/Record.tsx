@@ -86,7 +86,7 @@ export function Record({ o, system, module, recordKey }: { o: ObjectRun; system:
                 { key: "fix", label: t("Suggested value"), render: (i) => i.suggestion?.value ?? t("n/a") },
                 { key: "msg", label: t("Why it matters"), render: (i) => i.why_it_matters || i.message },
               ]} />
-            ) : <EmptyState heading={t("No open findings on this record.")} />}
+            ) : <EmptyState heading={t("No open findings on this record.")} body={t("This record passes every rule in this run. Open another record to continue.")} />}
           </Card>
 
           <Card title={t("Field values")} sub={t("Every value as it stands in this run, with its meaning")}>
@@ -98,7 +98,7 @@ export function Record({ o, system, module, recordKey }: { o: ObjectRun; system:
                   { key: "value", label: t("Value"), render: (f) => f.value ?? t("empty") },
                 ]} />
               </section>
-            )) : <EmptyState heading={t("No field values are stored for this record in this run.")} />}
+            )) : <EmptyState heading={t("No field values are stored for this record in this run.")} body={t("Run the object again with this record in scope to store its values.")} />}
           </Card>
 
           <Card title={t("Post-clean monitoring")} sub={t("Did this record fail again after a fix?")}>
@@ -118,7 +118,7 @@ export function Record({ o, system, module, recordKey }: { o: ObjectRun; system:
                 { key: "rules", label: t("Rules failed"), render: (r) => r.checks.map((c) => <code className="mx-code" key={c}>{c}</code>) },
                 { key: "st", label: t("Work status"), render: (r) => r.work_status ? (STATUS_LABEL[r.work_status] ?? r.work_status) : "" },
               ]} />
-            ) : <EmptyState heading={t("This record has no history yet.")} />}
+            ) : <EmptyState heading={t("This record has no history yet.")} body={t("History appears here after the record is changed or scored in another run.")} />}
             {runs.length ? (
               <div className="mx-links">
                 <Select aria-label={t("Show the object as of a run")} value={asOf ?? ""} onChange={(e) => setAsOf(e.target.value || null)} options={[{ value: "", label: t("Show the object as of a run") }, ...runs.map((r) => ({ value: r.run_id, label: r.label ?? r.run_id }))]} />
@@ -137,7 +137,7 @@ export function Record({ o, system, module, recordKey }: { o: ObjectRun; system:
                 { key: "to", label: t("To"), render: (e) => e.to_value ?? "" },
                 { key: "by", label: t("By"), render: (e) => e.by ?? "" },
               ]} />
-            ) : <EmptyState heading={t("Nothing has been changed on this record.")} />}
+            ) : <EmptyState heading={t("Nothing has been changed on this record.")} body={t("A change appears here once a fix is applied to this record.")} />}
           </Card>
 
           <Card title={t("Where it came from")} sub={t("Source tables and linked records")}>
@@ -152,7 +152,7 @@ export function Record({ o, system, module, recordKey }: { o: ObjectRun; system:
               {d?.duplicates?.open ? <Button variant="secondary" href={withFixture(o.hrefWith(objectPath(system, module, "golden")), fx)}>{t("{n} open duplicates", { n: d.duplicates.open })}</Button> : null}
               <Button variant="ghost" href={withFixture(`/work?module=${encodeURIComponent(o.module)}&q=${encodeURIComponent(recordKey)}`, fx)}>{t("Open in the work queue")}</Button>
             </div>
-            {!links.data?.provenance && !d?.golden_record && !d?.duplicates?.open ? <EmptyState heading={t("No lineage was recorded for this record.")} /> : null}
+            {!links.data?.provenance && !d?.golden_record && !d?.duplicates?.open ? <EmptyState heading={t("No lineage was recorded for this record.")} body={t("Run the object again to record where each value came from.")} /> : null}
           </Card>
         </div>
       )}

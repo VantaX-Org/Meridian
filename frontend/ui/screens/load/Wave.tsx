@@ -86,7 +86,7 @@ export function Wave({ id }: { id: string }) {
                     { key: "w", label: t("Why they differ"), render: (o) => (o.dest_contributors.length ? o.dest_contributors.map((x) => <span key={x.check_id}><FieldChip code={x.check_id} description={x.description ?? undefined} /></span>) : t("No difference")) },
                   ]}
                 />
-              ) : <EmptyState heading={t("This wave has not been analysed yet")} />}
+              ) : <EmptyState heading={t("This wave has not been analysed yet")} body={t("Run the analysis for this wave to see its blockers.")} />}
             </Card>
             <Card title={t("Readiness trend")} sub={c.forecast ? STATUS_FORECAST(c.forecast.status) : undefined}>
               <TrendArea label={t("Readiness score per run")} emptyLabel={t("No runs yet")} points={c.trend.map((p) => ({ axis: when(p.completed_at), title: when(p.completed_at), value: p.score }))} />
@@ -106,7 +106,7 @@ export function Wave({ id }: { id: string }) {
                     { key: "x", label: t("Fix"), render: (b) => <Button variant="ghost" disabled={fix.isPending} onClick={() => fix.mutate(b)}>{t("Draft fix batch")}</Button> },
                   ]}
                 />
-              ) : <EmptyState heading={t("No blockers")} />}
+              ) : <EmptyState heading={t("No blockers")} body={t("Nothing blocks this wave. Continue to the next step.")} />}
             </Card>
             <Card title={t("Wave settings")}>
               <Field label={t("Minimum readiness")}><Input inputMode="decimal" value={min} placeholder={String(c.threshold)} onChange={(e) => setMin(e.target.value)} /></Field>

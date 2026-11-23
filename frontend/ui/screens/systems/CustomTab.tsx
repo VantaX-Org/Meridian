@@ -29,7 +29,7 @@ export function CustomTab({ id }: { id: string }) {
     <div className="mx-col">
       <Card title={t("Custom objects")} sub={t("Z objects found in this landscape. The lists cover every system.")} action={me.can("trigger_sync") ? <Button variant="secondary" disabled={busy} onClick={() => void detect()}>{t("Detect custom objects")}</Button> : undefined}>
         <Gate q={reg} empty={{ heading: t("No custom objects found yet"), body: t("Run detection to list them.") }}>
-          {(d) => d.entries.length === 0 ? <EmptyState heading={t("No custom objects found yet.")} /> : (
+          {(d) => d.entries.length === 0 ? <EmptyState heading={t("No custom objects found yet.")} body={t("Run an extraction to find the custom objects.")} /> : (
             <DataTable columns={[
               { key: "object_name", label: t("Object"), render: (r) => <FieldChip code={r.object_name} description={r.description ?? undefined} /> },
               { key: "module", label: t("Module"), render: (r) => r.module },
@@ -43,7 +43,7 @@ export function CustomTab({ id }: { id: string }) {
       </Card>
       <Card title={t("Anomalies")}>
         <Gate q={an} empty={{ heading: t("No anomalies") }}>
-          {(d) => d.anomalies.length === 0 ? <EmptyState heading={t("No anomalies.")} /> : (
+          {(d) => d.anomalies.length === 0 ? <EmptyState heading={t("No anomalies.")} body={t("Nothing unusual was found in the custom objects.")} /> : (
             <DataTable columns={[
               { key: "object_name", label: t("Object"), render: (r) => <FieldChip code={r.object_name} description={r.description ?? undefined} /> },
               { key: "anomaly_type", label: t("Type"), render: (r) => r.anomaly_type },
@@ -57,7 +57,7 @@ export function CustomTab({ id }: { id: string }) {
         <Gate q={ghost} empty={{ heading: t("No ghost objects") }}>
           {(g) => (
             <Gate q={dormant} empty={{ heading: t("No dormant objects") }}>
-              {(dm) => g.length + dm.length === 0 ? <EmptyState heading={t("No ghost or dormant objects.")} /> : (
+              {(dm) => g.length + dm.length === 0 ? <EmptyState heading={t("No ghost or dormant objects.")} body={t("Every custom object is in use.")} /> : (
                 <DataTable columns={[
                   { key: "object_name", label: t("Object"), render: (r) => <FieldChip code={r.object_name} /> },
                   { key: "kind", label: t("Kind"), render: (r) => r.kind },
@@ -70,7 +70,7 @@ export function CustomTab({ id }: { id: string }) {
       </Card>
       <Card title={t("Drift and standard mapping")}>
         <Gate q={drift} empty={{ heading: t("No drift") }}>
-          {(d) => d.length === 0 ? <EmptyState heading={t("No custom object drift.")} /> : (
+          {(d) => d.length === 0 ? <EmptyState heading={t("No custom object drift.")} body={t("Custom objects match the last run.")} /> : (
             <DataTable columns={[
               { key: "object_name", label: t("Object"), render: (r) => <FieldChip code={r.object_name} /> },
               { key: "change_type", label: t("Change"), render: (r) => r.change_type },

@@ -104,7 +104,7 @@ export function Templates() {
                 ) },
               ]}
             />
-          ) : <EmptyState heading={t("Every column has a target field")} />}
+          ) : <EmptyState heading={t("Every column has a target field")} body={t("Nothing to map. Download the template to load.")} />}
           {Object.keys(draft).length ? <div className="mx-actions"><Button variant="primary" onClick={() => save.mutate(cur)} disabled={save.isPending}>{t("Save the mapping")}</Button></div> : null}
         </Card>
       ) : null}

@@ -35,7 +35,7 @@ export function Audit() {
         <Field label={t("Entity type")}><Input value={entity} onChange={(e) => { setEntity(e.target.value); setOffset(0); }} /></Field>
       </Row>
       <Card title={t("Entries")} sub={t("{from} to {to} of {total}", { from: total ? offset + 1 : 0, to: Math.min(offset + PAGE, total), total })}>
-        {rows.length === 0 ? <EmptyState heading={t("No audit entries match.")} /> : (
+        {rows.length === 0 ? <EmptyState heading={t("No audit entries match.")} body={t("Change the filter or the dates to see more entries.")} /> : (
           <DataTable label={t("Audit entries")} rows={rows} rowKey={(r) => r.id} height={420}
             columns={[
               { key: "created_at", label: t("When"), render: (r) => when(r.created_at), sort: (r) => r.created_at },

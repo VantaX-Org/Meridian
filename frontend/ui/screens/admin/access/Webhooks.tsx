@@ -87,7 +87,7 @@ export function Webhooks() {
           <div className="mx-chips">
             {FILTERS.map((f) => <Chip key={f ?? "all"} selected={filter === f} onClick={() => setFilter(f)}>{f ? tx(f) : t("All")}</Chip>)}
           </div>
-          {(dl.data?.deliveries.length ?? 0) === 0 ? <EmptyState heading={t("No deliveries yet")} /> : <DataTable columns={dcols} rows={dl.data?.deliveries ?? []} rowKey={(d) => d.id} label={t("Deliveries")} />}
+          {(dl.data?.deliveries.length ?? 0) === 0 ? <EmptyState heading={t("No deliveries yet")} body={t("A delivery appears here after the webhook fires.")} /> : <DataTable columns={dcols} rows={dl.data?.deliveries ?? []} rowKey={(d) => d.id} label={t("Deliveries")} />}
         </Card>
       )}
       <Confirm open={!!ask} danger title={t("Delete this webhook?")} confirmLabel={t("Delete")} cancelLabel={t("Cancel")} onCancel={() => setAsk(null)}

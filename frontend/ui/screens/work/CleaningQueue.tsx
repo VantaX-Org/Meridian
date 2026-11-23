@@ -63,7 +63,7 @@ export function CleaningQueue() {
               <Button onClick={() => setReject({ group: g })}>{t("Reject the group")}</Button>
             </div>
           ) : null}
-          {props.isLoading ? <Skeleton lines={3} label={t("Loading the queue")} /> : props.isError ? <ErrorState heading={t("The queue could not be loaded")} retryLabel={t("Try again")} onRetry={() => void props.refetch()} /> : !rows.length ? <EmptyState heading={t("Nothing here")} /> : (
+          {props.isLoading ? <Skeleton lines={3} label={t("Loading the queue")} /> : props.isError ? <ErrorState heading={t("The queue could not be loaded")} retryLabel={t("Try again")} onRetry={() => void props.refetch()} /> : !rows.length ? <EmptyState heading={t("Nothing here")} body={t("Choose another view, or open the work queue.")} /> : (
             <DataTable label={t("Proposed fixes")} rows={rows} rowKey={(x) => x.id}
               columns={[
                 { key: "o", label: t("Object"), render: (x) => <ObjChip code={x.object_type} /> },
@@ -84,7 +84,7 @@ export function CleaningQueue() {
     }
     if (tab === "applied") {
       const rows = applied.data?.items ?? [];
-      return !rows.length ? <EmptyState heading={t("No fix is applied yet")} /> : (
+      return !rows.length ? <EmptyState heading={t("No fix is applied yet")} body={t("Apply a fix in the work queue to see it here.")} /> : (
         <DataTable label={t("Applied fixes")} rows={rows} rowKey={(x) => x.id}
           columns={[
             { key: "o", label: t("Object"), render: (x) => <ObjChip code={x.object_type} /> },
@@ -121,7 +121,7 @@ export function CleaningQueue() {
     }
     if (tab === "metrics") {
       const m = metrics.data?.metrics ?? [];
-      return !m.length ? <EmptyState heading={t("No weekly numbers yet")} /> : (
+      return !m.length ? <EmptyState heading={t("No weekly numbers yet")} body={t("Numbers appear here after the first full week of work.")} /> : (
         <DataTable label={t("Weekly numbers")} rows={m} rowKey={(x) => `${x.period}|${x.object_type}`}
           columns={[
             { key: "p", label: t("Week"), render: (x) => day(x.period), sort: (x) => x.period },
@@ -136,7 +136,7 @@ export function CleaningQueue() {
     }
     if (tab === "audit") {
       const a = audit.data?.items ?? [];
-      return !a.length ? <EmptyState heading={t("No decision is logged yet")} /> : (
+      return !a.length ? <EmptyState heading={t("No decision is logged yet")} body={t("A decision appears here once a person makes one.")} /> : (
         <DataTable label={t("Decision log")} rows={a} rowKey={(x) => x.id}
           columns={[
             { key: "d", label: t("When"), render: (x) => day(x.created_at), sort: (x) => x.created_at },

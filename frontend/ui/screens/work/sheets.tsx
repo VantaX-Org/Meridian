@@ -30,7 +30,7 @@ function Decisions({ module, recordKey }: RecArg) {
   const rec = useRecordLinks(module, recordKey, null);
   if (rec.isLoading) return <Skeleton lines={4} label={t("Loading the decisions")} />;
   const rows = rec.data?.history ?? [];
-  if (!rows.length) return <EmptyState heading={t("No decisions yet")} />;
+  if (!rows.length) return <EmptyState heading={t("No decisions yet")} body={t("A decision appears here once a person accepts, edits or rejects a fix.")} />;
   return (
     <DataTable label={t("Decisions")} rows={rows} rowKey={(h) => `${h.check_id}-${h.at}-${h.action}`} height={360}
       columns={[
@@ -47,7 +47,7 @@ function Decisions({ module, recordKey }: RecArg) {
 function Approve({ id }: { id: string }) {
   const q = useBatches();
   const b = q.rows.find((r) => r.id === id);
-  return b ? <BatchDetail b={b} /> : <EmptyState heading={t("Batch not found")} />;
+  return b ? <BatchDetail b={b} /> : <EmptyState heading={t("Batch not found")} body={t("Go back to the batches and open another one.")} />;
 }
 
 /** What if: runs every proposed rule fix as a simulation and shows the score before and after. */

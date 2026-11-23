@@ -419,6 +419,8 @@ export interface WorkGroupRow {
   check_id: string;
   module: string;
   severity: string;
+  /** What the rule checks, in words (the groups endpoint sends it). */
+  message?: string | null;
   records: number;
   /** Records with a machine-proposed value. */
   proposed: number;

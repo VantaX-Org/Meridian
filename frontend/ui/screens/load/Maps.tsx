@@ -71,7 +71,7 @@ export function Maps() {
                     { key: "x", label: "", render: (m) => <Button variant="ghost" onClick={() => drop.mutate(m.id)} aria-label={t("Delete mapping {f}", { f: m.source_field })}>{t("Delete")}</Button> },
                   ]}
                 />
-              ) : <EmptyState heading={t("No mappings yet. Propose them from the dictionary.")} />}
+              ) : <EmptyState heading={t("No mappings yet. Propose them from the dictionary.")} body={t("Use the dictionary to propose the mappings.")} />}
               <div className="mx-links">
                 <Input aria-label={t("Source field")} placeholder="MARA.MTART" value={add.source} onChange={(e) => setAdd({ ...add, source: e.target.value })} />
                 <Input aria-label={t("Target table")} placeholder="MARA" value={add.table} onChange={(e) => setAdd({ ...add, table: e.target.value })} />
@@ -102,7 +102,7 @@ export function Maps() {
                     ) },
                   ]}
                 />
-              ) : <EmptyState heading={t("No value mappings for this field")} />}
+              ) : <EmptyState heading={t("No value mappings for this field")} body={t("Add a value mapping when the source and target values differ.")} />}
             </Gate>
           )}
         </div>

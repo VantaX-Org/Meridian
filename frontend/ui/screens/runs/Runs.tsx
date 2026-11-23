@@ -69,7 +69,7 @@ function RunsView({ onAsk }: { onAsk: (rows: VersionHead[], total: number) => vo
   };
 
   const columns: Column<VersionHead>[] = [
-    { key: "run", label: t("Run"), sort: (h) => h.run_number ?? 0, render: (h) => <span className="rn-num">{runTitle(h)}</span> },
+    { key: "run", label: t("Run"), sort: (h) => h.run_number ?? 0, render: (h) => (h.label?.trim() || h.run_number != null ? <span className="rn-num">{runTitle(h)}</span> : <FieldChip code={runTitle(h)} description={sourceLabel(h)} />) },
     { key: "objects", label: t("Objects"), render: (h) => <Modules list={modulesOf(h)} /> },
     { key: "score", label: t("Score"), align: "end", sort: (h) => runScore(h) ?? -1, render: (h) => <span className="rn-num">{scoreText(runScore(h))}</span> },
     { key: "status", label: t("Status"), sort: (h) => h.status, render: (h) => <StatusPill s={h.status} /> },

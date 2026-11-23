@@ -96,7 +96,7 @@ export function MigrationRun({ id }: { id: string }) {
 }
 
 function Gaps({ gaps }: { gaps: GapGroup[] }) {
-  if (!gaps.length) return <EmptyState heading={t("No gaps found")} />;
+  if (!gaps.length) return <EmptyState heading={t("No gaps found")} body={t("Nothing is missing in the target. Continue to the next step.")} />;
   return (
     <DataTable<GapGroup>
       label={t("Gaps")}
@@ -147,7 +147,7 @@ function Findings({ id, modules }: { id: string; modules: string[] }) {
               { key: "d", label: t("Detail"), render: (r) => r.detail ?? "" },
             ]}
           />
-        ) : <EmptyState heading={t("No findings match")} />}
+        ) : <EmptyState heading={t("No findings match")} body={t("Clear the filter to see every finding.")} />}
       </Gate>
     </>
   );
@@ -206,7 +206,7 @@ function Simulation({ id }: { id: string }) {
             />
           ) : null}
         </>
-      ) : <EmptyState heading={t("No simulation for this run")} />}
+      ) : <EmptyState heading={t("No simulation for this run")} body={t("Run a simulation to see what the load would change.")} />}
     </Gate>
   );
 }
@@ -259,7 +259,7 @@ function Recon({ id, q }: { id: string; q: ReturnType<typeof useRecon> }) {
               ]}
             />
           </>
-        ) : <EmptyState heading={r?.needs_target_extraction ? t("The target has no analysis yet. Extract it first.") : r?.error_detail ?? t("No reconciliation yet")} />}
+        ) : <EmptyState heading={r?.needs_target_extraction ? t("The target has no analysis yet. Extract it first.") : r?.error_detail ?? t("No reconciliation yet")} body={t("Extract the target, or run the reconciliation again.")} />}
       </Gate>
     </>
   );
@@ -284,7 +284,7 @@ function Records({ id }: { id: string }) {
               { key: "r", label: t("Reasons"), render: (r) => r.reasons.join("; ") },
             ]}
           />
-        ) : <EmptyState heading={t("No records in this state")} />}
+        ) : <EmptyState heading={t("No records in this state")} body={t("Choose another state to see its records.")} />}
       </Gate>
     </>
   );
@@ -349,7 +349,7 @@ function Files({ id, dry }: { id: string; dry: boolean }) {
               { key: "at", label: t("Date"), sort: (e) => e.exported_at ?? "", render: (e) => when(e.exported_at) },
             ]}
           />
-        ) : <EmptyState heading={t("No load file handed over yet")} />}
+        ) : <EmptyState heading={t("No load file handed over yet")} body={t("Hand over the load file to see it here.")} />}
       </Gate>
     </>
   );
