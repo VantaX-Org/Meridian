@@ -3,7 +3,8 @@
 import { useCompliance, useScimToken, useStatusPage, useThemeSettings } from "@/lib/v2/enterprise-queries";
 import { t } from "@/lib/v2/i18n";
 import { Card, Code, DataTable, SeverityPill, StatTile, EmptyState } from "@/ui/kit";
-import { day, Sec, when } from "./shared";
+import { MaintenanceEditor } from "./MaintenanceEditor";
+import { day, Sec } from "./shared";
 
 const SEV = { up: "low", degraded: "medium", down: "critical", not_configured: "info" } as const;
 
@@ -31,14 +32,8 @@ export function Enterprise() {
           ]} />
       </Card>
       <Card title={t("Maintenance windows")}>
-        {(s?.maintenance.length ?? 0) === 0 ? <EmptyState heading={t("No maintenance is planned.")} body={t("Add a maintenance window to tell users in advance.")} /> : (
-          <DataTable label={t("Maintenance windows")} rows={s?.maintenance ?? []} rowKey={(r) => r.id ?? r.starts_at} height={200}
-            columns={[
-              { key: "title", label: t("Title"), render: (r) => r.title },
-              { key: "from", label: t("From"), render: (r) => when(r.starts_at) },
-              { key: "to", label: t("To"), render: (r) => when(r.ends_at) },
-            ]} />
-        )}
+        {(s?.maintenance.length ?? 0) === 0 ? <EmptyState heading={t("No maintenance is planned.")} body={t("Add a maintenance window to tell users in advance.")} /> : null}
+        <MaintenanceEditor windows={s?.maintenance ?? []} />
       </Card>
       <Card title={t("Branding")}>
         <p>{theme.data?.product_name_override ?? t("Default product name")}</p>

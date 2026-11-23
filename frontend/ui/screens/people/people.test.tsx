@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { renderWithQuery } from "@/__tests__/render";
 import { stubLayout } from "@/ui/testing/layout-stub";
@@ -41,5 +41,20 @@ describe("people and governance screens in fixture mode", () => {
     renderWithQuery(wrap(<Share token="demo" />));
     expect(await screen.findByRole("heading", { level: 1, name: "Shared with you" })).toBeTruthy();
     expect(await screen.findByRole("link", { name: "Open the shared page" })).toBeTruthy();
+  });
+
+  it("Stewardship queue lists open items and approves the confident ones together", async () => {
+    renderWithQuery(wrap(<Stewardship />));
+    expect(await screen.findByText("Material group is blank")).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "Approve 3 confident items" }));
+    await waitFor(() => expect(screen.queryByText("Material group is blank")).toBeNull());
+  });
+
+  it("Stewardship queue shows the lifecycle for a selected item and escalates it", async () => {
+    renderWithQuery(wrap(<Stewardship />));
+    fireEvent.click(await screen.findByText("Payment terms are blank"));
+    expect(await screen.findByRole("list", { name: "Where the item stands" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Escalate" }));
+    await waitFor(() => expect(screen.queryByRole("list", { name: "Where the item stands" })).toBeNull());
   });
 });
