@@ -1,0 +1,56 @@
+{
+ "route": "/load/compare/[pair]",
+ "url": "/load/compare/pair-0001",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to paired systems",
+   "target": "/load/compare?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Run comparison",
+   "effect": "DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Export differences",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Show as table",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Differences6",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Tables",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Config",
+   "effect": "DOM changes (8)",
+   "ok": true
+  }
+ ]
+}

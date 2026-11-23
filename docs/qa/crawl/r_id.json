@@ -1,0 +1,121 @@
+{
+ "route": "/r/[id]",
+ "url": "/r/MM142",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Material master",
+   "target": "/o/a1b2c3d4-0001-4000-8000-000000000001/material-master?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Rules",
+   "target": "/rules?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Open in clean cycle",
+   "target": "/work?module=material_master&rule=MM142&fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Try a change",
+   "target": "/rules/dry-run?rule=MM142&module=material_master&fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MM003",
+   "target": "/r/MM003?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Scoring weights and thresholds",
+   "target": "/admin/scoring",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (48)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Records",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Apply 0 fixes",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Apply all",
+   "effect": "DOM changes (93); requests: POST /api/v1/work/groups/MM142/accept-all",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Add to workbook",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Assign",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Previous",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Next",
+   "effect": "DOM changes (79); requests: GET /admin/scoring",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Overview",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Fix",
+   "effect": "DOM changes (87)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Why",
+   "effect": "DOM changes (53)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "History",
+   "effect": "DOM changes (53)",
+   "ok": true
+  }
+ ]
+}

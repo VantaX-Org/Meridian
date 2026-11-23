@@ -43,7 +43,7 @@ for (const [path, title] of ROUTES) {
   test(`${path} shows its title and a data row`, async ({ page }) => {
     await page.goto(`${BASE}/${path}?fixture=1`, NAV);
     await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible(NAV);
-    await expect(page.getByRole("main").locator("tr, li, [role=row], [role=listitem]").first()).toBeVisible(NAV);
+    await expect(page.getByRole("main").locator("tr, li, [role=row], [role=listitem]").locator("visible=true").first()).toBeVisible(NAV);
     expect(await page.locator("body").innerText()).not.toContain(String.fromCharCode(183));
   });
 }

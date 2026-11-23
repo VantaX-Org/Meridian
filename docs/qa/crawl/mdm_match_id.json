@@ -1,0 +1,33 @@
+{
+ "route": "/mdm/match/[id]",
+ "url": "/mdm/match/gr-0",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Golden record",
+   "target": "/mdm/golden/gr-0?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Match review",
+   "target": "/mdm/match?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Score",
+   "effect": "DOM changes (1)",
+   "ok": true
+  }
+ ]
+}

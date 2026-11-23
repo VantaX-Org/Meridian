@@ -1,0 +1,65 @@
+{
+ "route": "/load/go-live",
+ "url": "/load/go-live",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to Load",
+   "target": "/load?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Wave 1: finance foundations",
+   "target": "/load/waves/w-1?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Wave 2: master data",
+   "target": "/load/waves/w-2?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Wave 3: operations",
+   "target": "/load/waves/w-3?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Wave",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Verdict",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Save gate",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Issue certificate",
+   "effect": "DOM changes (3)",
+   "ok": true
+  }
+ ]
+}

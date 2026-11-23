@@ -1,0 +1,67 @@
+{
+ "route": "/people/contracts",
+ "url": "/people/contracts",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "New contract for an object",
+   "effect": "DOM changes (4)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "New contract",
+   "effect": "DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "All",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Draft",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Pending approval",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Active",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Expired",
+   "effect": "DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Contract",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Status",
+   "effect": "DOM changes (1)",
+   "ok": true
+  }
+ ]
+}

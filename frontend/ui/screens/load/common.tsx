@@ -25,7 +25,7 @@ export function Verdict({ v }: { v: string | null | undefined }) {
 
 export function Gate({ loading, error, retry, children, what }: { loading: boolean; error: boolean; retry?: () => void; children: ReactNode; what: string }) {
   if (loading) return <Skeleton lines={8} label={t("Loading {what}", { what })} />;
-  if (error) return <ErrorState heading={t("{what} could not be loaded", { what })} retryLabel={t("Try again")} onRetry={retry} />;
+  if (error) return <ErrorState heading={t("{what} could not be loaded", { what })} retryLabel={t("Try again")} onRetry={retry} page />;
   return <>{children}</>;
 }
 

@@ -1,0 +1,173 @@
+{
+ "route": "/mdm/golden",
+ "url": "/mdm/golden",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000101Hex bolt M8 zinc",
+   "target": "/mdm/golden/gr-0?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000102Hex nut M8 zinc",
+   "target": "/mdm/golden/gr-1?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000103Washer 8 mm zinc",
+   "target": "/mdm/golden/gr-2?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000104Bearing 6204 2RS",
+   "target": "/mdm/golden/gr-3?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000105V-belt A42",
+   "target": "/mdm/golden/gr-4?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000106Hydraulic hose 1/2 in",
+   "target": "/mdm/golden/gr-5?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000107Gasket kit pump 40",
+   "target": "/mdm/golden/gr-6?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000108Shaft seal 35x52",
+   "target": "/mdm/golden/gr-7?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000109Cable gland M20",
+   "target": "/mdm/golden/gr-8?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000110Proximity sensor 12 mm",
+   "target": "/mdm/golden/gr-9?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000111Contactor 24 V 16 A",
+   "target": "/mdm/golden/gr-10?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000112Grease cartridge 400 g",
+   "target": "/mdm/golden/gr-11?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000113Pallet 1200x800",
+   "target": "/mdm/golden/gr-12?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000114Safety gloves size 9",
+   "target": "/mdm/golden/gr-13?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000115Filter element 10 micron",
+   "target": "/mdm/golden/gr-14?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "MATNR=000000000000000116Ball valve DN25",
+   "target": "/mdm/golden/gr-15?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Record",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Status",
+   "effect": "DOM changes (15); requests: GET /mdm/golden/gr-10",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Confidence",
+   "effect": "DOM changes (39); requests: GET /mdm/golden/gr-12, GET /mdm/golden/gr-13, GET /mdm/golden/gr-22",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Sources",
+   "effect": "DOM changes (30); requests: GET /mdm/golden/gr-12, GET /mdm/golden/gr-15, GET /mdm/golden/gr-18",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Open issues",
+   "effect": "DOM changes (21); requests: GET /mdm/golden/gr-10",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Promoted",
+   "effect": "DOM changes (37); requests: GET /mdm/golden/gr-15, GET /mdm/golden/gr-16, GET /mdm/golden/gr-17",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Previous page",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Next page",
+   "effect": "DOM changes (6); requests: GET /mdm/golden/gr-25, GET /mdm/golden/gr-26, GET /mdm/golden/gr-27",
+   "ok": true
+  }
+ ]
+}

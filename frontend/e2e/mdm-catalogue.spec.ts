@@ -44,7 +44,7 @@ for (const [path, title] of ROUTES) {
     await page.goto(`${path}?fixture=1`, NAV);
     await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible(NAV);
     // a grid row (header plus one), a list item, a graph node label, or a form field (the new request form) counts as data
-    await expect(page.getByRole("main").locator("tbody tr, [role=row], li, svg g text, input, textarea, select").nth(1)).toBeVisible(NAV);
+    await expect(page.getByRole("main").locator("tbody tr, [role=row], li, svg g text, input, textarea, select").locator("visible=true").nth(1)).toBeVisible(NAV);
     expect(await page.locator("body").innerText()).not.toContain(String.fromCharCode(0xb7));
   });
 }

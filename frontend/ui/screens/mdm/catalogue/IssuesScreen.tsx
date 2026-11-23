@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { bulkIssues, commentIssue, exportIssues, getIssue, getIssues, ISSUE_STATUSES, type Issue, type IssueStatus } from "@/lib/api/v2/issues";
+import { bulkIssues, commentIssue, exportIssues, getIssue, getIssues, ISSUE_STATUSES, RESOLUTIONS, type Issue, type IssueStatus } from "@/lib/api/v2/issues";
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Chip, Code, DataTable, DetailPanel, Input, Search, Split, useToast, ExportMenu } from "@/ui/kit";
 import { Async, Empty, Head, num, Sev, useRead, useScreenScope, when } from "./shared";
@@ -67,7 +67,7 @@ export function IssuesScreen() {
   ]);
   const act = async (next: IssueStatus) => {
     if (!picked.length) return;
-    try { await bulkIssues({ ids: picked, status: next }); toast(t("Issues updated"), "good"); setPicked([]); void qc.invalidateQueries({ queryKey: ["b7b"] }); }
+    try { await bulkIssues({ ids: picked, status: next, resolution: RESOLUTIONS[next]?.[0] }); toast(t("Issues updated"), "good"); setPicked([]); void qc.invalidateQueries({ queryKey: ["b7b"] }); }
     catch { toast(t("The issues could not be updated"), "bad"); }
   };
   const first = q.data?.items[0]?.id;
@@ -75,7 +75,7 @@ export function IssuesScreen() {
   return (
     <>
       <Head title={t("Record issues")} context={q.data ? `${num(q.data.total)} ${t("issues")}` : undefined}
-        actions={<ExportMenu formats={[{ id: "csv", label: t("CSV"), hint: t("The issues that match the filters") }]} onExport={() => exportIssues({ status: status || undefined, search: search || undefined })} />} />
+        actions={<ExportMenu formats={[{ id: "csv", label: t("CSV"), hint: t("The issues that match the filters") }, { id: "xlsx", label: t("Excel"), hint: t("The issues that match the filters") }]} onExport={(f) => exportIssues({ status: status || undefined, search: search || undefined }, f === "csv" ? "csv" : "xlsx")} />} />
       <Split leftLabel={t("Issues")} rightLabel={t("Issue detail")}
         left={
           <>

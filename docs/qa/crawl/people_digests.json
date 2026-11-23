@@ -1,0 +1,25 @@
+{
+ "route": "/people/digests",
+ "url": "/people/digests",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "New digest",
+   "effect": "DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Digest",
+   "effect": "DOM changes (5)",
+   "ok": true
+  }
+ ]
+}

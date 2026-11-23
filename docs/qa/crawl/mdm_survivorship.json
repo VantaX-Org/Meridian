@@ -1,0 +1,134 @@
+{
+ "route": "/mdm/survivorship",
+ "url": "/mdm/survivorship",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Golden records",
+   "target": "/mdm/golden?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (42)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Rules5",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Aletheia decisions4",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Add rule",
+   "effect": "DOM changes (43)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Save rules",
+   "effect": "opens dialog or menu; DOM changes (42)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Move up",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Move down",
+   "effect": "DOM changes (44)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (37)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Move up",
+   "effect": "DOM changes (44)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Move down",
+   "effect": "DOM changes (41)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (33)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Move up",
+   "effect": "DOM changes (41)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Move down",
+   "effect": "DOM changes (41)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (33)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Move up",
+   "effect": "DOM changes (41)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Move down",
+   "effect": "DOM changes (43)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (35)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Move up",
+   "effect": "DOM changes (43)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Move down",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Remove",
+   "effect": "DOM changes (36)",
+   "ok": true
+  }
+ ]
+}

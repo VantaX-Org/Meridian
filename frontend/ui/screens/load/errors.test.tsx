@@ -38,4 +38,9 @@ describe("Load error states", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(retry).toHaveBeenCalledTimes(1);
   });
+
+  it("Gate error gives the page a level-1 heading", () => {
+    renderScreen(<Gate loading={false} error what="Plan">x</Gate>);
+    expect(screen.getByRole("heading", { level: 1, name: "Plan could not be loaded" })).toBeTruthy();
+  });
 });

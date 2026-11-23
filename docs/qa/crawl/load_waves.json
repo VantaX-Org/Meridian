@@ -1,0 +1,71 @@
+{
+ "route": "/load/waves",
+ "url": "/load/waves",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to Load",
+   "target": "/load?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Wave 1: finance foundations",
+   "target": "/load/waves/w-1?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Wave 2: master data",
+   "target": "/load/waves/w-2?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Wave 3: operations",
+   "target": "/load/waves/w-3?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "New wave",
+   "effect": "opens dialog or menu; DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (7)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Wave",
+   "effect": "DOM changes (5)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Stage",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Target date",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Score",
+   "effect": "DOM changes (15)",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,37 @@
+{
+ "route": "/requests/analytics",
+ "url": "/requests/analytics",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (3)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Total",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "SLA breaches",
+   "effect": "DOM changes (11)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Likely decided",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Chance of missing SLA",
+   "effect": "DOM changes (10)",
+   "ok": true
+  }
+ ]
+}

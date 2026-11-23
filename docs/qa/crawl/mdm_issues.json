@@ -1,0 +1,103 @@
+{
+ "route": "/mdm/issues",
+ "url": "/mdm/issues",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Export",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "All",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Open7",
+   "effect": "DOM changes (34)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "In progress2",
+   "effect": "DOM changes (34)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Waiting for SAP1",
+   "effect": "DOM changes (34)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Waiting for requester1",
+   "effect": "DOM changes (34)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Accepted2",
+   "effect": "DOM changes (32)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Resolved2",
+   "effect": "DOM changes (34)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Start work",
+   "effect": "none, accepted: bulk action with no issue ticked is a no-op by design (acts on the ticked rows); the flow spec ticks rows",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Resolve",
+   "effect": "none, accepted: bulk action with no issue ticked is a no-op by design; the flow spec ticks rows",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Severity",
+   "effect": "DOM changes (15)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Rule",
+   "effect": "DOM changes (40)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "History",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Runs",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Comment",
+   "effect": "none, accepted: an empty comment is not sent; the flow spec types one",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,57 @@
+{
+ "route": "/me",
+ "url": "/me",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "link",
+   "label": "Back to Administration",
+   "target": "/admin?fixture=1",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "link",
+   "label": "Inbox",
+   "target": "/me/notifications",
+   "effect": "GET 200",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Save",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Send a test",
+   "effect": "DOM changes (9)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Licence",
+   "effect": "opens dialog or menu; DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Version",
+   "effect": "opens dialog or menu; DOM changes (6)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Help",
+   "effect": "opens dialog or menu; DOM changes (6); requests: GET /api/v1/docs/help-videos/guide2-overview.jpg, GET /api/v1/docs/help-videos/guide2-menu.jpg, GET /api/v1/docs/help-videos/guide2-objects.jpg",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Notification settings",
+   "effect": "opens dialog or menu; DOM changes (4)",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,127 @@
+{
+ "route": "/work/exceptions",
+ "url": "/work/exceptions",
+ "errors": [],
+ "rows": [
+  {
+   "kind": "button",
+   "label": "Export sign-offs",
+   "effect": "opens dialog or menu; DOM changes (2)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Ask Aletheia",
+   "effect": "opens dialog or menu; DOM changes (7)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Exceptions",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Rules",
+   "effect": "DOM changes (19)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "Billing",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "tab",
+   "label": "SAP monitor",
+   "effect": "DOM changes (10)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "All",
+   "effect": "already the selected tab, chip or page link (a click re-selects it, nothing to show)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Open",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Investigating",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Pending approval",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Resolved",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Verified",
+   "effect": "DOM changes (17)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Closed",
+   "effect": "DOM changes (18)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Title",
+   "effect": "DOM changes (21)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Severity",
+   "effect": "DOM changes (8)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Status",
+   "effect": "DOM changes (14)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "SLA",
+   "effect": "DOM changes (1)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Previous",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Next",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  },
+  {
+   "kind": "button",
+   "label": "Raise exception",
+   "effect": "disabled in fixture state (not clicked)",
+   "ok": true
+  }
+ ]
+}
