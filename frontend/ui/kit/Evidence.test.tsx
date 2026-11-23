@@ -26,6 +26,6 @@ describe("AletheiaMark and BandChart", () => {
   });
   it("renders a labelled band chart", () => {
     render(<BandChart label="Projected score" target={80} data={[{ axis: "a", value: 70 }, { axis: "b", point: 74, low: 71, high: 77 }]} />);
-    expect(screen.getByRole("img", { name: "Projected score" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: /^Projected score/ })).toBeTruthy();
   });
 });

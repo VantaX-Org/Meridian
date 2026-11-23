@@ -500,3 +500,22 @@
 .mx-root .mx-import { display: grid; gap: var(--mx-s4); padding: var(--mx-s4); }
 .mx-root .mx-import-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--mx-s3); margin: 0; }
 .mx-root .mx-import-review { display: grid; gap: var(--mx-s3); }
+
+/* DataTable v2: toolbar, bulk bar, footer */
+.mx-root .mx-dt { display: grid; gap: var(--mx-s2); }
+.mx-root .mx-dt-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mx-s2); }
+.mx-root .mx-dt-bulk { padding: var(--mx-s2) var(--mx-s3); background: var(--mx-cobalt-soft); border-radius: var(--mx-r-control); }
+.mx-root .mx-dt-grow { flex: 1; }
+.mx-root .mx-dt-mod { color: var(--mx-ink-3); font-weight: var(--mx-w-body); }
+.mx-root .mx-dt-view, .mx-root .mx-dt-col { display: flex; align-items: center; gap: var(--mx-s1); justify-content: space-between; }
+.mx-root .mx-dt-strip { padding: var(--mx-s2) var(--mx-s3); background: var(--mx-well); border-radius: var(--mx-r-control); font-size: var(--mx-fs-small); }
+.mx-root .mx-dt-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mx-s3); font-size: var(--mx-fs-small); color: var(--mx-ink-2); }
+.mx-root .mx-table .mx-dt-check { inline-size: 2.5rem; text-align: center; }
+.mx-root .mx-table th { position: sticky; }
+.mx-root .mx-table .mx-dt-grip { position: absolute; inset-block: 0; inset-inline-end: 0; inline-size: 6px; cursor: col-resize; }
+.mx-root .mx-table .mx-dt-grip:hover, .mx-root .mx-table .mx-dt-grip:focus-visible { background: var(--mx-cobalt); }
+.mx-root .mx-table tbody tr:hover { background: var(--mx-row-hover); }
+
+/* Chart frame */
+.mx-root .mx-chart { margin: 0; display: grid; gap: var(--mx-s2); }
+.mx-root .mx-chart-read { display: flex; align-items: center; justify-content: space-between; gap: var(--mx-s2); font-size: var(--mx-fs-small); color: var(--mx-ink-2); }
