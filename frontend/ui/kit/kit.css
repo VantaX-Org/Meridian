@@ -538,3 +538,12 @@
 .mx-table td { position: relative; }
 .mx-dt-link { position: absolute; inset: 0; }
 .mx-dt-edit { inline-size: 100%; }
+
+/* Clickable tiles and rows: one transparent button whose hit area covers the whole cell. */
+.mx-root .mx-hit { all: unset; cursor: pointer; color: inherit; }
+.mx-root .mx-hit::after { content: ""; position: absolute; inset: 0; }
+.mx-root .mx-hit:focus-visible { outline: none; }
+.mx-root [data-link] { position: relative; }
+.mx-root [data-link]:hover { background: var(--mx-row-hover); }
+.mx-root [data-link]:has(.mx-hit:focus-visible) { outline: 2px solid var(--mx-focus); outline-offset: -2px; }
+.mx-root [data-link][data-selected="true"] { background: var(--mx-accent-soft); }

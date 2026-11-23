@@ -15944,4 +15944,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Admin setup": "Einrichtung",
   "That did not save. Your change was put back.": "Das wurde nicht gespeichert. Ihre Änderung wurde zurückgesetzt.",
   "Group by": "Gruppieren nach",
+  "{label}: {n} failing rules, {p}% of all": "{label}: {n} fehlgeschlagene Regeln, {p} % aller",
 };

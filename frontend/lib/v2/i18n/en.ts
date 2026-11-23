@@ -15943,6 +15943,7 @@ export const en = {
   "Admin setup": "Admin setup",
   "That did not save. Your change was put back.": "That did not save. Your change was put back.",
   "Group by": "Group by",
+  "{label}: {n} failing rules, {p}% of all": "{label}: {n} failing rules, {p}% of all",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
