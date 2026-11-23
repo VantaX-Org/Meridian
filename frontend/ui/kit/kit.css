@@ -546,7 +546,7 @@
 .mx-dt-group td { background: var(--mx-surface-2, var(--mx-bg)); font-weight: 600; }
 .mx-dt-group button { all: unset; cursor: pointer; padding-inline: var(--mx-s2); }
 .mx-dt-group-n { color: var(--mx-ink-2); margin-inline-start: var(--mx-s2); }
-.mx-dt-chips { display: inline-flex; gap: var(--mx-s1); }
+.mx-dt-chips { display: inline-flex; flex-wrap: wrap; gap: var(--mx-s1); min-inline-size: 0; }
 .mx-dt-groupby select { margin-inline-start: var(--mx-s1); }
 .mx-table td[data-sticky] { position: sticky; inset-inline-start: 0; background: var(--mx-bg); }
 .mx-table td { position: relative; }
