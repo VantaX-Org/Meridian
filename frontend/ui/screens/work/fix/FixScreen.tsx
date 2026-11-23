@@ -118,7 +118,7 @@ export function FixScreen({ scope }: { scope?: string }) {
   return (
     <div className="mx-fix" data-testid="fix-screen">
       <div className="mx-fixboard">
-        <span>{t("Clean board: upload, check and approve")}</span>
+        <div>{board ? null : <h1 className="mx-h2">{t("Clean cycle")}</h1>}<span>{t("Clean board: upload, check and approve")}</span></div>
         <Button variant="ghost" aria-expanded={board} aria-controls="fix-board" onClick={() => setBoard((v) => !v)}>{board ? t("Hide the clean board") : t("Show the clean board")}</Button>
       </div>
       {board ? <div id="fix-board"><CleanBoard module={state.module} onReview={(id) => pickRule(id)} /></div> : null}

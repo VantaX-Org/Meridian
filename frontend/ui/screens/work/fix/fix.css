@@ -1,5 +1,6 @@
 .mx-root .mx-fix { display: grid; gap: var(--mx-s3); }
 .mx-root .mx-fixboard { display: flex; align-items: center; justify-content: space-between; gap: var(--mx-s3); font-size: var(--mx-fs-small); color: var(--mx-ink-2); }
+.mx-root .mx-fixboard h1 { margin: 0; font-size: var(--mx-fs-title); line-height: 1.2; color: var(--mx-ink); }
 .mx-root .mx-fixhead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mx-s3); }
 .mx-root .mx-fixhead .mx-h2 { margin: 0; }
 .mx-root .mx-fixstrip { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--mx-s5); align-items: center; padding: var(--mx-s3) var(--mx-s4); border: 1px solid var(--mx-border); border-radius: var(--mx-r-card); background: var(--mx-surface); box-shadow: var(--mx-elev-1); }

@@ -101,7 +101,12 @@ describe("Work saved view and bulk guard", () => {
     m.getGroups.mockResolvedValue(groupsOf(1));
     mount("/work?fixture=1", <Work />);
     const list = await screen.findByRole("navigation", { name: "Rules with work" }, { timeout: 5000 });
-    fireEvent.click(await within(list).findByRole("button", { name: /Blank base unit/ }));
+    // The rail re-renders when the rows arrive, so click the live button until the rule is picked.
+    await waitFor(() => {
+      const b = within(list).getByRole("button", { name: /Blank base unit/ });
+      if (b.getAttribute("aria-pressed") !== "true") fireEvent.click(b);
+      expect(within(list).getByRole("button", { name: /Blank base unit/ }).getAttribute("aria-pressed")).toBe("true");
+    }, { timeout: 5000 });
     const btn = await screen.findByRole("button", { name: "Accept every proposed value" }, { timeout: 5000 });
     fireEvent.click(btn);
     const ok = await screen.findByRole("button", { name: "Accept all" }, { timeout: 5000 });
