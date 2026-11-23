@@ -8,11 +8,12 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
 import { useUrlParam } from "@/lib/v2/hooks";
 import { formatDuration } from "@/lib/format";
-import { analyseRun, archiveRuns, getRuleTrend, pinBaseline, restoreRuns } from "@/lib/api/v2/runs";
+import { analyseRun, archiveRuns, cappedReads, getRuleTrend, pinBaseline, restoreRuns } from "@/lib/api/v2/runs";
 import { downloadReconciliation, getRunSteps, renameRun, rerunAgents, streamRunEvents, type RunEvent } from "@/lib/api/v2/run-ops";
 import { purgeVersion } from "@/lib/api/v2/admin";
 import { getConfigMatches } from "@/lib/api/v2/config";
 import { exportVersionProfile, getProfile } from "@/lib/api/v2/profile";
+import { SplitCapped } from "./SplitCapped";
 import { MinedDependencies } from "./MinedDependencies";
 import { baselineRefusalOf, getSemanticTypes, putSemanticType, type SemanticColumn, type SemanticType } from "@/lib/api/v2/step9";
 import { getRunPrediction } from "@/lib/api/v2/step10";
@@ -250,6 +251,7 @@ export function Run({ id }: { id: string }) {
       <div role="tabpanel" id={`run-tab-panel-${tab}`} aria-labelledby={`run-tab-tab-${tab}`} className="mx-col">
         {tab === "overview" ? (
           <>
+            <SplitCapped systemId={systemId} versionId={id} capped={cappedReads(h.metadata)} />
             {focus ? <Cycle id={id} module={focus} /> : null}
             <Card title={t("What you can do")} sub={t("Actions on this run.")}>
               <div className="mx-links">

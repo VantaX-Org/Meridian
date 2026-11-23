@@ -44,8 +44,11 @@ Statuses:
 | Rule authoring: dry run, publish, update draft, version diff | PUT `/rule-authoring/drafts/{id}`, POST `/rule-authoring/dry-run`, POST `/rule-authoring/drafts/{id}/publish`, POST `/rules/{id}/versions`, GET `/rules/{id}/versions/{v}/diff` | `ui/screens/rules/DraftReview.tsx` (Review sheet in Drafts), `RuleFix.tsx` (Propose a new version). `dryRunDraft` and `publishDraft` in object.ts hit the same routes as the wired rulelib calls, so they stay unused duplicates | Rules |
 | Learned monitors: break evidence | GET `/aletheia/monitors/{id}/evidence` | `ui/screens/insights/BreakEvidenceSheet.tsx`, Evidence button on the Learned monitor view | Monitor |
 | Learned rules: review, mine; mined rule accept | GET `/learned-rules/review`, POST `/learned-rules/mine`, POST `/rules/mined` | `ui/screens/rules/LearnedReview.tsx`, `ui/screens/runs/MinedDependencies.tsx` (profile tab, confirm first, needs manage_rules) | Rules, Clean |
+| Survivorship: put, preview | `previewSurvivorship`, `putSurvivorshipRulesV2` (`putSurvivorship` in `designer.ts` is an unused duplicate client of the same preview route) | `ui/screens/mdm/SurvivorshipSave.tsx`: Save rules opens a preview sheet, then a confirm that names the rule and golden value counts | Rules |
+| Fix drafts and cleaning plan | `draftFix`, `getCleaningPlan` | `ui/screens/work/CleaningPlan.tsx`, the Plan tab in Clean; Draft a fix needs manage_rules and stores the draft as pending | Clean |
+| Split scope | `splitScope` | `ui/screens/runs/SplitCapped.tsx` on the Run overview: preview, then a confirm naming the scope count before the SAP read is queued (trigger_sync) | Run |
 
-Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `LearnedReview.test.tsx`, `BreakEvidenceSheet.test.tsx`, `MinedDependencies.test.tsx`.
+Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `LearnedReview.test.tsx`, `BreakEvidenceSheet.test.tsx`, `MinedDependencies.test.tsx`, `SurvivorshipSave.test.tsx`, `CleaningPlan.test.tsx`, `SplitCapped.test.tsx`.
 
 ## ORPHAN capabilities (client exists, no screen)
 
@@ -72,9 +75,6 @@ Suggested home is the journey where the user would expect it.
 | Migration: value candidates, value map, load params, reconciliation records, target workbook check | `getValueCandidates`, `saveValueMap`, `loadParams`, `getReconciliationRecords`, `checkTargetWorkbook` | migration routes | Load |
 | Batches: run records, send to SAP, confirm loaded | `getBatchRunRecords`, `sendBatchToSap`, `confirmBatchLoaded` | `/writeback/batches/*`, `/remediation/batches/*` | Load |
 | External database preview and load | `previewDb`, `loadDb` | external-db routes | Load |
-| Survivorship: put, preview | `putSurvivorship`, `previewSurvivorship` | `/survivorship-rules*` | Rules |
-| Fix drafts and cleaning plan | `draftFix`, `getCleaningPlan` | `/aletheia/fix-drafts`, `/aletheia/cleaning-plan` | Clean |
-| Split scope | `splitScope` | `/systems/{id}/versions/{v}/split-scope` | Run |
 | Report schedule update | `updateSchedule` | `/reports/schedules/{id}` | Reports |
 | Admin: user manager, API key update, field mapping create, sync runs and profiles, run schedule get and patch | `setUserManager`, `updateApiKey`, `createFieldMapping`, `listSyncRuns`, `listProfiles`, `getRunSchedule`, `patchRunSchedule` | `/users/{id}/manager`, `/licence`, `/field-mappings`, `/systems/{id}/runs`, `/schedules/{id}` | Admin |
 | Record findings, glossary batch lookup, DQ firewall validate, AI feedback | `getRecordFindings`, `glossaryBatchLookup`, `validateRecords`, `sendAiFeedback` | various | Objects, Clean |
