@@ -443,6 +443,7 @@
 .mx-root .mx-back { display: inline-block; margin-block-end: var(--mx-s1); color: var(--mx-ink-2); font-size: var(--mx-fs-small); }
 .mx-root .mx-actionmenu { position: relative; }
 .mx-root .mx-actionmenu > .mx-menu { z-index: 5; }
+.mx-root .mx-actionmenu > .mx-menu[hidden] { display: none; }
 
 .mx-root .mx-rulerow { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--mx-s3); }
 .mx-root .mx-rulerow > .mx-field { flex: 1 1 12rem; min-inline-size: 0; }

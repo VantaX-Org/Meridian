@@ -19,11 +19,9 @@ export function ActionMenu({ label, items }: { label: string; items: ActionMenuI
   return (
     <div className="mx-actionmenu" ref={ref}>
       <button type="button" className="mx-btn" data-variant="secondary" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>{label}</button>
-      {open ? (
-        <div className="mx-menu" role="menu" aria-label={label}>
+      <div className="mx-menu" role="menu" aria-label={label} hidden={!open}>
           {items.map((m) => <button key={m.id} type="button" role="menuitem" className="mx-menuitem" disabled={m.disabled} onClick={() => { setOpen(false); m.onClick(); }}>{m.label}</button>)}
-        </div>
-      ) : null}
+      </div>
     </div>
   );
 }

@@ -149,12 +149,12 @@
       {
         "route": "/o/{system}/{object}",
         "control": "Fix records",
-        "expect": "Failing rules"
+        "expect": "Failing records"
       },
       {
         "route": "/work?module=material_master&seg=proposed",
         "control": "Waiting for approval",
-        "expect": "Rules with work"
+        "expect": "Rules over tolerance"
       },
       {
         "route": "/work",
@@ -177,10 +177,10 @@
       {
         "route": "/work?rule={rule_id}",
         "control": "{rule_id}",
-        "expect": "Rules with work"
+        "expect": "Rules over tolerance"
       },
       {
-        "route": "/work",
+        "route": "/work?open=cleaning",
         "control": null,
         "expect": "Cleaning queue"
       }
@@ -372,7 +372,7 @@
       {
         "route": "/work?verdict=no-go",
         "control": null,
-        "expect": "Rules with work"
+        "expect": "Rules over tolerance"
       }
     ]
   },
@@ -491,7 +491,7 @@
       {
         "route": "/work?module=sd_customer_master&seg=proposed",
         "control": null,
-        "expect": "Rules with work"
+        "expect": "Rules over tolerance"
       }
     ]
   },
@@ -673,7 +673,7 @@
       {
         "route": "/work",
         "control": "Exceptions",
-        "expect": "Rules with work"
+        "expect": "Rules over tolerance"
       },
       {
         "route": "/work/exceptions",

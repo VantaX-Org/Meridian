@@ -40,11 +40,14 @@ const TOOL_LABEL: Record<Tool, () => string> = { cleaning: () => t("Cleaning que
  * The one fix screen. Scope pins it to one object (the object detail tab); the chips replace the old tabs. Triage, Exceptions,
  * Approvals and the cleaning queue stay reachable as tools in a sheet because their bulk actions have no chip equivalent.
  */
+/** Old work-ledger links (?filter=) open the matching tool sheet. */
+const FILTER_TOOL: Record<string, string> = { proposed: "cleaning", approvals: "approvals", triage: "triage", exceptions: "exceptions" };
+
 export function FixScreen({ scope }: { scope?: string }) {
   useInterfaceLang();
   const params = useSearchParams();
   const [state, setState] = useState<LedgerState>(() => { const s = readState(new URLSearchParams(params.toString())); const base = scope ? { ...s, module: scope } : s; return base.chip === "tofix" && !base.seg ? { ...base, chip: null } : base; });
-  const [tool, setTool] = useState<Tool | null>(() => { const o = params.get("open"); return TOOLS.includes(o as Tool) ? (o as Tool) : null; });
+  const [tool, setTool] = useState<Tool | null>(() => { const o = params.get("open") ?? FILTER_TOOL[params.get("filter") ?? ""]; return TOOLS.includes(o as Tool) ? (o as Tool) : null; });
   const [board, setBoard] = useState(false);
   const [load, setLoad] = useState(false);
   const [sim, setSim] = useState(false);
