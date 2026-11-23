@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, type QueryClient } from "@tanstack/react-query";
 import { useFixture } from "@/lib/api/v2/fixture";
 import type { Landscape } from "@/lib/api/v2/types";
 import { currentLang, tx } from "./i18n";
@@ -65,7 +65,7 @@ export function useTopWork(limit = 5, enabled = true) {
 
 export function useObjectRules(module: string, run: string | null, rows = 0) {
   const fixture = useFixture();
-  return useQuery({ queryKey: v2Keys.rules(fixture, module, run, rows), queryFn: () => getObjectRules(module, run, rows || undefined), staleTime: STALE });
+  return useQuery({ queryKey: v2Keys.rules(fixture, module, run, rows), queryFn: () => getObjectRules(module, run, rows || undefined), staleTime: STALE, placeholderData: keepPreviousData });
 }
 
 /**

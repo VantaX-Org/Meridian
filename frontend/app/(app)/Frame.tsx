@@ -11,6 +11,7 @@ import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { PATHS } from "@/lib/next/nav-defaults";
 import { Breadcrumbs, DemoBar, EnvBadge, Sheet, Standalone, useDocumentLang, type Crumb } from "@/ui/kit";
+import { useRegisteredCommands } from "@/ui/kit/paletteContext";
 import { AletheiaDock, AletheiaProvider, AppShell, CommandPalette, SheetHost, ToastHost, useAletheia } from "@/ui/kit";
 import { SHEETS } from "@/ui/sheets";
 import { Banners, FailedJobLine, HealthWord, usePaletteSearch, ViewAsSheet } from "@/ui/shell/parts";
@@ -39,6 +40,7 @@ function Shell({ children }: { children: ReactNode }) {
   const link = (p: string) => withFixture(p, fx);
   const router = useRouter();
   const [palette, setPalette] = useState(false);
+  const screen = useRegisteredCommands();
   const [q, setQ] = useState("");
   const found = usePaletteSearch(palette ? q : "");
   const [viewAs, setViewAs] = useState(false);
@@ -147,6 +149,8 @@ function Shell({ children }: { children: ReactNode }) {
       open={palette}
       onClose={() => { setPalette(false); setQ(""); }}
       commands={commands}
+      context={screen.commands}
+      contextLabel={screen.label}
       onQuery={setQ}
       extra={found}
       onAsk={(q) => { chat.setOpen(true); chat.ask(q); }}

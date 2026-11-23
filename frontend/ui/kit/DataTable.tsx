@@ -25,6 +25,8 @@ export interface Column<T> {
   value?: (row: T) => string | number;
   /** May the rows be grouped by this column. */
   groupable?: boolean;
+  /** Text for a group heading from the group value; defaults to the value. */
+  groupLabel?: (value: string) => string;
   /** Makes the cell editable: F2 (or Enter, when the table has no `onSelect` or `rowHref`) edits it, Enter commits, Escape cancels. */
   edit?: { value: (row: T) => string; onCommit: (row: T, value: string) => void; label: string };
 }
@@ -281,7 +283,7 @@ export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selecte
                 <tr key={`g:${it.key}`} className="mx-dt-group" style={{ blockSize: rowHeight }} aria-rowindex={first + j + 2} data-active={first + j === cur ? "" : undefined}>
                   <td colSpan={span}>
                     <button type="button" aria-expanded={!shut} onClick={() => setFolded((f) => (shut ? f.filter((x) => x !== it.key) : [...f, it.key]))}>
-                      <span aria-hidden="true">{shut ? "\u25B8" : "\u25BE"}</span> {gc?.label}: {it.key}
+                      <span aria-hidden="true">{shut ? "\u25B8" : "\u25BE"}</span> {gc?.label}: {gc?.groupLabel ? gc.groupLabel(it.key) : it.key}
                     </button>
                     <span className="mx-dt-group-n">{t("{n} rows", { n: whole(it.count) })}{groupSum && it.sum != null ? `, ${groupSum.label} ${whole(it.sum)}` : ""}</span>
                   </td>
