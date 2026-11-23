@@ -166,7 +166,7 @@ export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selecte
             {columns.map((c) => (
               <th key={c.key} scope="col" data-align={c.align} style={prefs.widths[c.key] ?? c.width ? { inlineSize: prefs.widths[c.key] ?? c.width } : undefined} aria-sort={sort?.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : c.sort ? "none" : undefined}>
                 {c.sort ? <button type="button" onClick={() => flip(c)}>{c.label}</button> : c.label}
-                {id ? <span className="mx-dt-grip" role="separator" aria-orientation="vertical" aria-label={t("Resize column {name}", { name: c.label })} tabIndex={0}
+                {id ? <span className="mx-dt-grip" role="separator" aria-orientation="vertical" aria-label={t("Resize column {name}", { name: c.label })} aria-valuenow={prefs.widths[c.key] ?? c.width ?? 160} aria-valuemin={64} aria-valuemax={2000} tabIndex={0}
                   onKeyDown={(e) => { const w = prefs.widths[c.key] ?? c.width ?? 160; if (e.key === "ArrowRight") { e.preventDefault(); resize(c.key, w + 16); } else if (e.key === "ArrowLeft") { e.preventDefault(); resize(c.key, w - 16); } }}
                   onPointerDown={(e) => { const x0 = e.clientX; const w0 = prefs.widths[c.key] ?? c.width ?? (e.currentTarget.parentElement?.offsetWidth ?? 160); const mv = (ev: PointerEvent) => resize(c.key, w0 + ev.clientX - x0); const up = () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); }; window.addEventListener("pointermove", mv); window.addEventListener("pointerup", up); }}
                   onDoubleClick={() => patch({ widths: Object.fromEntries(Object.entries(prefs.widths).filter(([k]) => k !== c.key)) })} /> : null}

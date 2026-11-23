@@ -449,7 +449,7 @@
       {
         "route": "/load/templates",
         "control": null,
-        "expect": "Fill and download"
+        "expect": "Download"
       }
     ]
   },

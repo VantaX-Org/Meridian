@@ -11,20 +11,19 @@ export interface KpiCell {
   href?: string;
 }
 
-/** One card, 4 to 6 cells split by hairlines: label, value, optional delta and note. A cell with an href is one link. */
+/** One card, 4 to 6 cells split by hairlines: label, value, optional delta and note. A cell with an href is one link: the label link stretches over the whole cell, so the dl keeps only dt and dd groups. */
 export function KpiStrip({ label, cells }: { label: string; cells: KpiCell[] }) {
   return (
     <dl className="mx-kpis" aria-label={label}>
       {cells.slice(0, 6).map((c) => {
-        const body = (
-          <>
-            <dt>{c.label}</dt>
+        return (
+          <div key={c.label} className="mx-kpi" data-link={c.href ? "" : undefined}>
+            <dt>{c.href ? <Link href={c.href} className="mx-kpi-link">{c.label}</Link> : c.label}</dt>
             <dd className="mx-kpi-v mx-num">{c.value === null || c.value === undefined ? "—" : c.value}</dd>
             {c.delta ? <dd className="mx-kpi-d" data-tone={c.delta.tone}>{c.delta.dir ? <span aria-hidden="true">{c.delta.dir === "up" ? "↑" : "↓"} </span> : null}{c.delta.text}</dd> : null}
             {c.note ? <dd className="mx-kpi-n">{c.note}</dd> : null}
-          </>
+          </div>
         );
-        return c.href ? <Link key={c.label} href={c.href} className="mx-kpi">{body}</Link> : <div key={c.label} className="mx-kpi">{body}</div>;
       })}
     </dl>
   );
