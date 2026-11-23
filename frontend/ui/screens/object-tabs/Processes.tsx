@@ -21,7 +21,7 @@ export function Processes({ o, system, module }: { o: ObjectRun; system: string;
     evidence: steps.filter((s) => s.blocked).slice(0, 3).map((s) => `${s.id}: ${s.name}`),
   }));
   if (o.runsLoading || q.isLoading) return <Skeleton lines={6} label={t("Loading processes")} />;
-  if (q.isError) return <ErrorState heading={t("Processes could not be loaded.")} />;
+  if (q.isError) return <ErrorState heading={t("Processes could not be loaded.")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
   const cols: Column<StepView>[] = [
     { key: "i", label: t("Step"), render: (s) => <FieldChip code={s.id} description={s.name} /> },
     { key: "p", label: t("Process"), render: (s) => `${s.l1Name}, ${s.l2Name}` },
@@ -39,7 +39,7 @@ export function Processes({ o, system, module }: { o: ObjectRun; system: string;
         <StatTile label={t("Blocked")} value={String(steps.filter((s) => s.blocked).length)} />
       </dl>
       <Card title={t("Process steps")} action={<Link className="mx-btn" data-variant="secondary" href={withFixture(o.hrefWith(objectPath(system, module, "processes/design")), fx)}>{t("Open the process designer")}</Link>}>
-        {steps.length ? <DataTable columns={cols} rows={steps} rowKey={(s) => s.id} label={t("Process steps")} height={440} /> : <EmptyState heading={q.data?.reason ? t("No process definition exists for this object yet.") : t("No process step touches this object.")} />}
+        {steps.length ? <DataTable columns={cols} rows={steps} rowKey={(s) => s.id} label={t("Process steps")} height={440} /> : <EmptyState heading={q.data?.reason ? t("No process definition exists for this object yet.") : t("No process step touches this object.")} body={t("Add a process definition or a step that uses this object.")} />}
       </Card>
     </div>
   );

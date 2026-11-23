@@ -75,13 +75,13 @@ export function AdminBoard() {
     <section className="ab-board" data-testid="admin-board" aria-label={t("Administration board")}>
       <Card title={t("Systems")} sub={t("{n, plural, one {# system} other {# systems}}", { n: list.length })}
         action={<Button variant="primary" href={href("/s/new")}>{t("Add a system")}</Button>}>
-        {systems.isLoading ? <Skeleton lines={3} label={t("Loading the systems")} /> : list.length === 0 ? <EmptyState heading={t("No system is connected yet")} /> : (
+        {systems.isLoading ? <Skeleton lines={3} label={t("Loading the systems")} /> : list.length === 0 ? <EmptyState heading={t("No system is connected yet")} body={t("Connect a system to start analysing it.")} /> : (
           <ul className="ab-systems">{list.map((s) => <SystemCard key={s.id} s={s} />)}</ul>
         )}
       </Card>
       <div className="ab-grid">
         <Card title={t("Licence")} action={<Button variant="secondary" onClick={() => sheet.open("licence")}>{t("Upload licence file")}</Button>}>
-          {licence.isLoading ? <Skeleton lines={3} label={t("Loading the licence")} /> : !lic ? <EmptyState heading={t("No licence data")} /> : (
+          {licence.isLoading ? <Skeleton lines={3} label={t("Loading the licence")} /> : !lic ? <EmptyState heading={t("No licence data")} body={t("Reload the page. If this stays empty, ask your account contact.")} /> : (
             <>
               <dl className="ab-tiles">
                 <StatTile label={t("Days left")} value={lic.days_remaining ?? t("None")} note={lic.expiry_date ? t("Ends {date}", { date: day(lic.expiry_date) }) : undefined} />
@@ -106,13 +106,13 @@ export function AdminBoard() {
           <dl className="ab-tiles"><StatTile label={t("People")} value={people.length} /><StatTile label={t("Roles in use")} value={byRole.length} /></dl>
           <ul className="ab-chips">{byRole.map(([r, n]) => <li key={r}>{roleText(r)}: {n}</li>)}</ul>
           <div className="ab-actions">
-            <Button variant="primary" href={href("/admin/users")}>{t("Invite a person")}</Button>
+            <Button variant="secondary" href={href("/admin/users")}>{t("Invite a person")}</Button>
             <Button variant="secondary" href={href("/admin/roles")}>{t("Edit roles")}</Button>
           </div>
         </Card>
       </div>
       <Card title={t("Audit trail")} action={<Button variant="ghost" href={href("/admin/audit")}>{t("Open the audit trail")}</Button>}>
-        {audit.isLoading ? <Skeleton lines={3} label={t("Loading the audit trail")} /> : (audit.data?.entries.length ?? 0) === 0 ? <EmptyState heading={t("No audit entries")} /> : (
+        {audit.isLoading ? <Skeleton lines={3} label={t("Loading the audit trail")} /> : (audit.data?.entries.length ?? 0) === 0 ? <EmptyState heading={t("No audit entries")} body={t("Entries appear here after people make changes.")} /> : (
           <DataTable
             label={t("Audit trail")}
             rows={audit.data?.entries ?? []}

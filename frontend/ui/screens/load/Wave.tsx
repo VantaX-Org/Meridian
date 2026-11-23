@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
+import { gapText } from "@/lib/v2/labels";
 import { errorSentence } from "@/lib/api/v2/client";
 import { deleteWave, downloadWaveReport, draftBlockerFixBatch, runWave, signOffWave, updateWave } from "@/lib/api/v2/reports";
 import type { WaveBlocker, WaveObject } from "@/types/api";
-import { Button, Card, Confirm, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, StatTile, TrendArea, useAletheiaScope, useToast } from "@/ui/kit";
-import { AskButton, Gate, humanize, pct, useHref, Verdict, when } from "./common";
+import { ActionMenu, Button, Card, Confirm, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, StatTile, TrendArea, useAletheiaScope, useToast } from "@/ui/kit";
+import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, useCockpit } from "./hooks";
 
 const STATUS_FORECAST = (s: string): string => (s === "passing" ? t("Passing now") : s === "projected" ? t("On track") : s === "not_converging" ? t("Not converging") : t("Not enough runs"));
@@ -15,6 +16,7 @@ const STATUS_FORECAST = (s: string): string => (s === "passing" ? t("Passing now
 /** One wave: readiness verdict, per object source / projected / actual target DQS with reasons, trend, blockers and sign-off. */
 export function Wave({ id }: { id: string }) {
   useInterfaceLang();
+  const back = useBack("/load/waves", t("Back to waves"));
   const q = useCockpit(id);
   const href = useHref();
   const qc = useQueryClient();
@@ -48,26 +50,28 @@ export function Wave({ id }: { id: string }) {
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={back}
         title={c?.wave.name ?? t("Wave")}
         context={t("Readiness of every object in the wave against the target system.")}
         actions={<>
           <Button variant="primary" disabled={run.isPending} onClick={() => run.mutate()}>{t("Run wave analysis")}</Button>
           <Button variant="secondary" disabled={sign.isPending || c?.verdict !== "go"} onClick={() => sign.mutate()}>{t("Sign off")}</Button>
-          <Button variant="ghost" disabled={busy !== null} onClick={() => dl("xlsx")}>{t("Download Excel")}</Button>
-          <Button variant="ghost" disabled={busy !== null} onClick={() => dl("pdf")}>{t("Download PDF")}</Button>
-          <Button variant="ghost" onClick={() => setConfirm(true)}>{t("Delete wave")}</Button>
+          <ActionMenu label={t("More actions")} items={[
+            { id: "xlsx", label: t("Download Excel"), disabled: busy !== null, onClick: () => dl("xlsx") },
+            { id: "pdf", label: t("Download PDF"), disabled: busy !== null, onClick: () => dl("pdf") },
+            { id: "del", label: t("Delete wave"), onClick: () => setConfirm(true) },
+          ]} />
           <AskButton />
         </>}
       />
       <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the wave")}>
         {c ? (
-          <>
+          <div className="mx-col">
             <dl className="mx-tiles">
               <StatTile label={t("Verdict")} value={<Verdict v={c.verdict} />} />
               <StatTile label={t("Readiness score")} value={pct(c.score)} note={`${t("Threshold")}: ${pct(c.threshold)}`} />
               <StatTile label={t("Records")} value={c.records_total.toLocaleString()} note={`${t("Blocked")}: ${c.records_blocked.toLocaleString()}`} />
-              <StatTile label={t("Signed off")} value={c.wave.signed_off_at ? when(c.wave.signed_off_at) : t("No")} />
+              <StatTile label={t("Signed off")} value={c.wave.signed_off_at ? when(c.wave.signed_off_at) : t("No")} note={c.wave.signed_off_at || c.verdict === "go" ? undefined : t("Sign-off opens when the verdict is Go")} />
             </dl>
             <Card title={t("Objects")} sub={t("Source DQS, projected and actual target DQS side by side")}>
               {objects.length ? (
@@ -85,7 +89,7 @@ export function Wave({ id }: { id: string }) {
                     { key: "w", label: t("Why they differ"), render: (o) => (o.dest_contributors.length ? o.dest_contributors.map((x) => <span key={x.check_id}><FieldChip code={x.check_id} description={x.description ?? undefined} /></span>) : t("No difference")) },
                   ]}
                 />
-              ) : <EmptyState heading={t("This wave has not been analysed yet")} />}
+              ) : <EmptyState heading={t("This wave has not been analysed yet")} body={t("Run the analysis for this wave to see its blockers.")} />}
             </Card>
             <Card title={t("Readiness trend")} sub={c.forecast ? STATUS_FORECAST(c.forecast.status) : undefined}>
               <TrendArea label={t("Readiness score per run")} emptyLabel={t("No runs yet")} points={c.trend.map((p) => ({ axis: when(p.completed_at), title: when(p.completed_at), value: p.score }))} />
@@ -99,19 +103,19 @@ export function Wave({ id }: { id: string }) {
                   rowKey={(b) => `${b.module}:${b.gap_type}:${b.field}`}
                   columns={[
                     { key: "m", label: t("Object"), render: (b) => <FieldChip code={b.module} description={b.label ? humanize(b.label) : humanize(b.module)} /> },
-                    { key: "f", label: t("Field"), render: (b) => <FieldChip code={b.field ?? "-"} description={humanize(b.gap_type)} /> },
+                    { key: "f", label: t("Field"), render: (b) => <FieldChip code={b.field ?? "-"} description={humanize(gapText(b.gap_type))} /> },
                     { key: "sv", label: t("Severity"), render: (b) => humanize(b.severity) },
                     { key: "r", label: t("Records"), align: "end", sort: (b) => b.records, render: (b) => b.records.toLocaleString() },
                     { key: "x", label: t("Fix"), render: (b) => <Button variant="ghost" disabled={fix.isPending} onClick={() => fix.mutate(b)}>{t("Draft fix batch")}</Button> },
                   ]}
                 />
-              ) : <EmptyState heading={t("No blockers")} />}
+              ) : <EmptyState heading={t("No blockers")} body={t("Nothing blocks this wave. Continue to the next step.")} />}
             </Card>
             <Card title={t("Wave settings")}>
               <Field label={t("Minimum readiness")}><Input inputMode="decimal" value={min} placeholder={String(c.threshold)} onChange={(e) => setMin(e.target.value)} /></Field>
-              <Button variant="secondary" disabled={patch.isPending || !(Number(min) >= 0 && Number(min) <= 100 && min !== "")} onClick={() => patch.mutate()}>{t("Save threshold")}</Button>
+              <div className="mx-actions"><Button variant="secondary" disabled={patch.isPending || !(Number(min) >= 0 && Number(min) <= 100 && min !== "")} onClick={() => patch.mutate()}>{t("Save threshold")}</Button></div>
             </Card>
-          </>
+          </div>
         ) : null}
       </Gate>
       <Confirm open={confirm} title={t("Delete this wave?")} confirmLabel={t("Delete wave")} cancelLabel={t("Cancel")} danger onConfirm={() => { setConfirm(false); del.mutate(); }} onCancel={() => setConfirm(false)} />

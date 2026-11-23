@@ -6,7 +6,6 @@ import { formatDate } from "@/lib/format";
 import { useConfigImpact } from "@/lib/v2/object-queries";
 import { useReceipt } from "@/lib/v2/queries";
 import { DASH, VERDICT_LABEL, f1, int, pct1 } from "@/lib/v2/score";
-import type { Verdict } from "@/lib/api/v2/types";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { withFixture } from "@/lib/api/v2/fixture";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
@@ -20,7 +19,7 @@ import { ObjectTabNav, objectPath } from "@/ui/screens/object-tabs/TabFrame";
 import { RunLines, ToneBars } from "./Board";
 import { answerFor, type PromptId } from "./answers";
 import { AllRulesCard, FindingsCard, MonitorStrip, OldRunGate, RelatedObjects, ScoreReceipt } from "./ObjectExtras";
-import { compactCount, dqsOf, score as fmt, signed } from "./format";
+import { compactCount, dqsOf, score as fmt, signed, verdictFor } from "./format";
 import { useObjectData, type ObjectData } from "./useObjectData";
 import { useObjectRun } from "./useObjectRun";
 
@@ -69,7 +68,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
   });
 
   if (d.loading) return <Skeleton lines={8} label={t("Loading the object")} />;
-  if (d.error) return <ErrorState heading={t("The object could not be loaded")} />;
+  if (d.error) return <ErrorState heading={t("The object could not be loaded")} retryLabel={t("Try again")} onRetry={d.retry} />;
 
   const r = d.failing.find((x) => x.check_id === pick) ?? d.failing[0] ?? null;
   const g = r ? d.groups.find((x) => x.check_id === r.check_id) : undefined;
@@ -98,7 +97,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
   const proposed = g ? Math.min(g.proposed, g.open) : 0;
   const latest = (o.heads.find((h) => isAnalysed(h.status)) ?? o.heads[0])?.id ?? null;
   const onLatest = !latest || !o.runId || o.runId === latest;
-  const verdict: Verdict | null = d.cell?.verdict ?? (d.now === null ? null : d.now >= 85 ? "go" : d.now >= 70 ? "at-risk" : "no-go");
+  const verdict = verdictFor(d.cell, o.runId, d.now);
   const breaches = rc?.breaches ?? [];
   const hidden = d.capped && measuredNow !== null && d.now !== null ? measuredNow - d.now : 0;
   const prevDims = new Map((prev.data?.dimensions ?? []).map((x) => [x.key, x.score]));
@@ -152,7 +151,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
               {tab === "why" ? (
                 <>
                   <p>{r.why || t("The rule sheet shows what it checks and which records fail.")}</p>
-                  <div className="mx-links"><Button variant="primary" href={href(`/more/rules?rule=${encodeURIComponent(r.check_id)}`)}>{t("Open the rule")}</Button></div>
+                  <div className="mx-links"><Button variant="primary" href={href(`/r/${encodeURIComponent(r.check_id)}`)}>{t("Open the rule")}</Button></div>
                 </>
               ) : null}
             </DetailPanel>
@@ -251,7 +250,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
           rows={shownFail}
           height={320}
           columns={[
-            { key: "rule", label: t("Rule"), render: (x) => <a href={href(`/more/rules?rule=${encodeURIComponent(x.check_id)}`)}><code className="mx-code">{x.check_id}</code></a> },
+            { key: "rule", label: t("Rule"), render: (x) => <a href={href(`/r/${encodeURIComponent(x.check_id)}`)}><code className="mx-code">{x.check_id}</code></a> },
             { key: "name", label: t("What it checks"), render: (x) => x.name },
             { key: "field", label: t("Field"), render: (x) => (x.field ? <FieldChip code={x.field} description={fieldText(x)} /> : DASH) },
             { key: "affected", label: checked !== null ? t("Records affected of {n}", { n: int(checked) }) : t("Records affected"), align: "end", render: (x) => int(x.affected_count), sort: (x) => x.affected_count },
@@ -285,7 +284,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
         </div>
         <div className="mx-col">
           <Card title={t("Failing rules")} sub={t("{n} of {m} measured rules fail", { n: d.failing.length, m: d.measured })}>
-            {rows.length ? <MasterList rows={rows} selectedId={!stacked || sheet ? r?.check_id ?? null : null} onSelect={(id) => { setPick(id); setSheet(true); }} label={t("Failing rules")} /> : <EmptyState heading={t("No rule fails in this run")} />}
+            {rows.length ? <MasterList rows={rows} selectedId={!stacked || sheet ? r?.check_id ?? null : null} onSelect={(id) => { setPick(id); setSheet(true); }} label={t("Failing rules")} /> : <EmptyState heading={t("No rule fails in this run")} body={t("Every rule passes in this run. Open another run to compare.")} />}
           </Card>
           {!stacked ? detail : null}
           <FindingsCard system={system} module={o.module} latest={onLatest} />

@@ -28,7 +28,7 @@ export function OverviewTab({ id, scope }: { id: string; scope: RuleScope }) {
       <YamlView label={t("Rule definition")} text={d.expression || JSON.stringify(d.params, null, 2)} />
       {scope.objects.length ? (
         <BarList label={t("Where the rule fails")} items={scope.objects.map((o) => ({ id: `${o.system_id}/${o.module}`, label: `${o.label}${o.system_name ? `, ${o.system_name}` : ""}`, value: o.failing, display: compactCount(o.failing) }))} />
-      ) : <EmptyState heading={t("This rule fails nowhere")} />}
+      ) : <EmptyState heading={t("This rule fails nowhere")} body={t("Every record passes this rule in this run.")} />}
       {scope.contracts.length ? <p className="mx-muted">{t("Named in {n} data contracts", { n: scope.contracts.length })}</p> : null}
       <Button variant="ghost" href="/admin/scoring">{t("Scoring weights and thresholds")}</Button>
       <span hidden>{id}</span>
@@ -56,7 +56,7 @@ export function WhyTab({ id, scope }: { id: string; scope: RuleScope }) {
       <h3 className="mx-card-t">{t("Where the failures sit")}</h3>
       {by.data?.groups.length ? by.data.groups.map((g) => (
         <BarList key={g.field} label={g.field} items={g.values.slice(0, 6).map((v) => ({ id: v.value, label: `${g.field} ${v.value}`, value: v.records, display: compactCount(v.records) }))} />
-      )) : <EmptyState heading={t("No split of the failures is available.")} />}
+      )) : <EmptyState heading={t("No split of the failures is available.")} body={t("Run the object again to split the failures.")} />}
     </div>
   );
 }
@@ -66,7 +66,7 @@ export function HistoryTab({ id }: { id: string }) {
   if (q.isLoading) return <Skeleton lines={4} label={t("Loading the history")} />;
   if (q.isError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
   const runs = q.data ?? [];
-  if (!runs.length) return <EmptyState heading={t("This rule has not run yet")} />;
+  if (!runs.length) return <EmptyState heading={t("This rule has not run yet")} body={t("Run an object that uses this rule to see its results.")} />;
   return (
     <Card title={t("Runs")}>
       <DataTable

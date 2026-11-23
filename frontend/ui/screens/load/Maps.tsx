@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { addFieldMapping, decideValueEntry, deleteFieldMapping, deleteValueEntry, seedFieldMap, updateFieldMapping, type FieldMapping, type ValueEntry } from "@/lib/api/v2/migration";
-import { Button, Card, DataTable, EmptyState, FieldChip, Input, PageHeader, Select, Tabs, Toggle, useAletheiaScope, useToast } from "@/ui/kit";
-import { AskButton, Gate, humanize, when } from "./common";
+import { Button, Card, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Select, Tabs, Toggle, useAletheiaScope, useToast } from "@/ui/kit";
+import { AskButton, Gate, humanize, when, useBack } from "./common";
 import { invalidateLoad, useFieldMap, useLoadPlan, useValueMap } from "./hooks";
 
 const DEST = [{ value: "s4hana", label: "S/4HANA" }, { value: "ecc", label: "ECC" }];
@@ -13,6 +13,7 @@ const DEST = [{ value: "s4hana", label: "S/4HANA" }, { value: "ecc", label: "ECC
 /** Field map and value map between source and target: confirm, add, seed, approve, delete. */
 export function Maps() {
   useInterfaceLang();
+  const back = useBack();
   const qc = useQueryClient();
   const toast = useToast();
   const plan = useLoadPlan();
@@ -46,10 +47,11 @@ export function Maps() {
 
   return (
     <>
-      <PageHeader title={t("Field and value maps")} context={t("How source fields and values become target fields and values")} actions={<><Button onClick={() => seed.mutate()} disabled={seed.isPending}>{t("Propose from the dictionary")}</Button><AskButton /></>} />
+      <PageHeader back={back} title={t("Field and value maps")} context={t("How source fields and values become target fields and values")} actions={<><Button onClick={() => seed.mutate()} disabled={seed.isPending}>{t("Propose from the dictionary")}</Button><AskButton /></>} />
+      <div className="mx-col">
       <div className="mx-links">
-        <Select aria-label={t("Object")} value={mod} onChange={(e) => setPick(e.target.value)} options={(mods.length ? mods : [mod]).map((m) => ({ value: m, label: `${m} ${humanize(m)}` }))} />
-        <Select aria-label={t("Target system")} value={dest} onChange={(e) => setDest(e.target.value)} options={DEST} />
+        <Field label={t("Object")}><Select value={mod} onChange={(e) => setPick(e.target.value)} options={(mods.length ? mods : [mod]).map((m) => ({ value: m, label: `${m} ${humanize(m)}` }))} /></Field>
+        <Field label={t("Target system")}><Select value={dest} onChange={(e) => setDest(e.target.value)} options={DEST} /></Field>
       </div>
       <Card title={t("Maps")}>
         <Tabs idBase="mx-maps" label={t("Map type")} value={tab} onChange={setTab} items={[{ id: "fields", label: t("Field map"), badge: String(maps.length) }, { id: "values", label: t("Value map"), badge: String(values.length) }]} />
@@ -70,7 +72,7 @@ export function Maps() {
                     { key: "x", label: "", render: (m) => <Button variant="ghost" onClick={() => drop.mutate(m.id)} aria-label={t("Delete mapping {f}", { f: m.source_field })}>{t("Delete")}</Button> },
                   ]}
                 />
-              ) : <EmptyState heading={t("No mappings yet. Propose them from the dictionary.")} />}
+              ) : <EmptyState heading={t("No mappings yet. Propose them from the dictionary.")} body={t("Use the dictionary to propose the mappings.")} />}
               <div className="mx-links">
                 <Input aria-label={t("Source field")} placeholder="MARA.MTART" value={add.source} onChange={(e) => setAdd({ ...add, source: e.target.value })} />
                 <Input aria-label={t("Target table")} placeholder="MARA" value={add.table} onChange={(e) => setAdd({ ...add, table: e.target.value })} />
@@ -101,11 +103,12 @@ export function Maps() {
                     ) },
                   ]}
                 />
-              ) : <EmptyState heading={t("No value mappings for this field")} />}
+              ) : <EmptyState heading={t("No value mappings for this field")} body={t("Add a value mapping when the source and target values differ.")} />}
             </Gate>
           )}
         </div>
       </Card>
+      </div>
     </>
   );
 }

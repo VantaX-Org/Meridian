@@ -106,7 +106,7 @@ export function Survivorship() {
               {list.length === 0 ? <EmptyState heading={t("No survivorship rules")} body={t("Without a rule the most recent value wins.")} /> : (
                 <ol className="mx-col">
                   {list.map((r, i) => (
-                    <li key={r.key} className="mx-links">
+                    <li key={r.key} className="mx-rulerow">
                       <Field label={t("Field")} error={tried && errs[r.key]?.field ? msg(errs[r.key].field!) : undefined} hint={describeField(r.field) ?? undefined}>
                         <Input value={r.field} onChange={(e) => patch(r.key, { field: e.target.value })} />
                       </Field>
@@ -118,14 +118,14 @@ export function Survivorship() {
                           <Input value={r.trusted_sources.join(", ")} onChange={(e) => patch(r.key, { trusted_sources: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} />
                         </Field>
                       )}
-                      <Field label={t("Weight")} error={tried && errs[r.key]?.weight ? msg(errs[r.key].weight!) : undefined}>
+                      <div className="mx-rulerow-w"><Field label={t("Weight")} error={tried && errs[r.key]?.weight ? msg(errs[r.key].weight!) : undefined}>
                         <Input value={r.weight} onChange={(e) => patch(r.key, { weight: e.target.value })} inputMode="numeric" />
-                      </Field>
-                      <Toggle label={t("Active")} checked={r.active} onChange={(v) => patch(r.key, { active: v })} />
+                      </Field></div>
+                      <span className="mx-rulerow-end"><Toggle label={t("Active")} checked={r.active} onChange={(v) => patch(r.key, { active: v })} />
                       {r.ai_inferred ? <SeverityPill sev="info" label={t("Inferred by Aletheia")} /> : null}
                       <Button variant="ghost" disabled={i === 0} onClick={() => setDraft(moveBy(list, i, -1))}>{t("Move up")}</Button>
                       <Button variant="ghost" disabled={i === list.length - 1} onClick={() => setDraft(moveBy(list, i, 1))}>{t("Move down")}</Button>
-                      <Button variant="ghost" onClick={() => setDraft(list.filter((x) => x.key !== r.key))}>{t("Remove")}</Button>
+                      <Button variant="ghost" onClick={() => setDraft(list.filter((x) => x.key !== r.key))}>{t("Remove")}</Button></span>
                     </li>
                   ))}
                 </ol>

@@ -31,7 +31,7 @@ export function Enterprise() {
           ]} />
       </Card>
       <Card title={t("Maintenance windows")}>
-        {(s?.maintenance.length ?? 0) === 0 ? <EmptyState heading={t("No maintenance is planned.")} /> : (
+        {(s?.maintenance.length ?? 0) === 0 ? <EmptyState heading={t("No maintenance is planned.")} body={t("Add a maintenance window to tell users in advance.")} /> : (
           <DataTable label={t("Maintenance windows")} rows={s?.maintenance ?? []} rowKey={(r) => r.id ?? r.starts_at} height={200}
             columns={[
               { key: "title", label: t("Title"), render: (r) => r.title },

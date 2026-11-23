@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createDigest, deleteDigest, getDigestNumbers, listDigestDeliveries, listDigests, sendDigestNow, updateDigest, type Digest, type DigestBody } from "@/lib/api/v2/step10";
-import { CUSTOM, PRESETS, cronError, describeCron, isPreset, presetLabel } from "@/lib/v2/cron";
+import { CUSTOM, PRESETS, cronError, describeCron, isPreset } from "@/lib/v2/cron";
 import { relTime } from "@/lib/v2/format";
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Confirm, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Select, Split, StatTile, Toggle, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
@@ -101,7 +101,7 @@ function Detail({ d, onEdit, onGone }: { d: Digest; onEdit: () => void; onGone: 
       </Card>
       <Card title={t("Deliveries")}>
         <Gate q={deliveries} label={t("Loading deliveries")}>
-          {(r) => r.deliveries.length === 0 ? <EmptyState heading={t("Nothing sent yet")} /> : (
+          {(r) => r.deliveries.length === 0 ? <EmptyState heading={t("Nothing sent yet")} body={t("A message appears here after the first notification is sent.")} /> : (
             <DataTable label={t("Deliveries")} rows={r.deliveries} rowKey={(x) => x.id} height={220} columns={[
               { key: "at", label: t("When"), render: (x) => relTime(x.created_at) },
               { key: "how", label: t("How"), render: (x) => (x.manual ? t("Sent by hand") : t("Scheduled")) },
@@ -140,7 +140,7 @@ export function Digests() {
       {() => rows.length === 0 ? <EmptyState heading={t("No digests")} body={t("A digest sends the landscape numbers to a role or a wave on a schedule.")} /> : (
         <DataTable<Digest> label={t("Digests")} rows={rows} rowKey={(r) => r.id} selected={sel ?? undefined} onSelect={(r) => { setSel(r.id); setMode("view"); }} columns={[
           { key: "name", label: t("Digest"), sort: (r) => r.name, render: (r) => r.name },
-          { key: "when", label: t("Schedule"), render: (r) => presetLabel(r.cron) },
+          { key: "when", label: t("Schedule"), render: (r) => describeCron(r.cron) },
           { key: "on", label: t("Enabled"), render: (r) => (r.enabled ? t("On") : t("Off")) },
           { key: "last", label: t("Last sent"), render: (r) => (r.last_sent_at ? relTime(r.last_sent_at) : t("Never")) },
         ]} />

@@ -61,7 +61,7 @@ export function MatchCluster({ id }: { id: string }) {
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
         </>}
       />
-      {q.isLoading ? <Skeleton lines={8} label={t("Loading cluster")} /> : q.isError || !g ? <ErrorState heading={t("The cluster could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : g.nodes.length === 0 ? <EmptyState heading={t("This record has no cluster")} /> : (
+      {q.isLoading ? <Skeleton lines={8} label={t("Loading cluster")} /> : q.isError || !g ? <ErrorState heading={t("The cluster could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : g.nodes.length === 0 ? <EmptyState heading={t("This record has no cluster")} body={t("Run matching to place this record in a cluster.")} /> : (
         <div className="mx-col">
           <dl className="mx-tiles">
             <StatTile label={t("Records")} value={String(g.nodes.length)} />
@@ -103,7 +103,7 @@ export function MatchCluster({ id }: { id: string }) {
                     { key: "w", label: t("Weight"), align: "end", render: (x) => x.weight },
                   ]}
                 />
-              ) : <EmptyState heading={t("No explanation stored for this pair")} />}
+              ) : <EmptyState heading={t("No explanation stored for this pair")} body={t("Run matching again to store why these two records match.")} />}
             </Card>
           )}
           <Card title={t("Weak chains")} sub={t("Two records joined only through a third one.")}>

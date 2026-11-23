@@ -186,7 +186,7 @@ function FindingAction({ f, system, queryKey }: { f: AletheiaFinding; system: st
   });
   const mark = () => void markActed({ module: f.module, check_id: f.check_id, action: kind }).catch(() => undefined);
   if (kind === "assign") return <AssignAction f={f} queryKey={queryKey} />;
-  if (kind === "open") return <Button variant="secondary" href={withFixture(`/more/rules?rule=${encodeURIComponent(f.check_id)}`, fx)}>{ACTION_LABEL.open()}</Button>;
+  if (kind === "open") return <Button variant="secondary" href={withFixture(`/r/${encodeURIComponent(f.check_id)}`, fx)}>{ACTION_LABEL.open()}</Button>;
   if (kind === "merge" || kind === "across") {
     const path = `${objectPath(system, f.module, "golden")}${kind === "across" ? "#across-systems" : ""}`;
     return <span onClick={mark}><Button variant="secondary" href={withFixture(path, fx)}>{ACTION_LABEL[kind]()}</Button></span>;

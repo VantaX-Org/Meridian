@@ -48,7 +48,7 @@ export function Rule({ id: raw }: { id: string }) {
   });
 
   if (scope.isLoading) return <Skeleton lines={8} label={t("Loading the rule")} />;
-  if (scope.isError || !s) return <ErrorState heading={t("The rule could not be loaded")} />;
+  if (scope.isError || !s) return <ErrorState heading={t("The rule could not be loaded")} retryLabel={t("Try again")} onRetry={() => void scope.refetch()} />;
 
   return (
     <>

@@ -69,7 +69,7 @@ export function Triage() {
       </Card>
 
       <Card title={t("Assignment rules")} sub={t("The first rule that matches an item decides who gets it.")}>
-        {(rules.data ?? []).length === 0 ? <EmptyState heading={t("No assignment rules yet.")} /> : (
+        {(rules.data ?? []).length === 0 ? <EmptyState heading={t("No assignment rules yet.")} body={t("Add a rule to assign new findings to a person automatically.")} /> : (
           <DataTable label={t("Assignment rules")} rows={rules.data ?? []} rowKey={(r) => r.id} height={300}
             columns={[
               { key: "pos", label: t("Order"), align: "end", render: (r) => String(r.position), sort: (r) => r.position },

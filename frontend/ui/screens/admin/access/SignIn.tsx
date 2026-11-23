@@ -59,7 +59,7 @@ export function SignIn() {
           <Field label={t("Button label")}><Input value={f.display_name} disabled={!edit} onChange={(e) => setF({ ...f, display_name: e.target.value })} /></Field>
           <Field label={t("Allowed email domains")} hint={t("Separate domains with a comma.")}><Input value={f.domains} disabled={!edit} onChange={(e) => setF({ ...f, domains: e.target.value })} /></Field>
           <Toggle label={t("Require single sign-on")} checked={f.enforce} onChange={(v: boolean) => setF({ ...f, enforce: v })} />
-          {c && <Facts items={[[t("Redirect address"), <Code key="r" code={c.redirect_uri} description={t("Register this with your identity provider")} />], [t("New people get the role"), roleText(c.default_role)]]} />}
+          {c && <Facts items={[[t("Redirect address"), <Code key="r" wrap code={c.redirect_uri} description={t("Register this with your identity provider")} />], [t("New people get the role"), roleText(c.default_role)]]} />}
           <div className="mx-links">
             {edit && <Button variant="primary" type="submit" disabled={busy}>{t("Save")}</Button>}
             <Button variant="secondary" type="button" onClick={runTest}>{t("Test the connection")}</Button>
@@ -73,13 +73,13 @@ export function SignIn() {
         {newToken && (
           <div role="status" className="mx-col">
             <p>{t("Copy the token now. It is shown once.")}</p>
-            <Code code={newToken} description={t("SCIM token")} />
+            <Code wrap code={newToken} description={t("SCIM token")} />
           </div>
         )}
-        {!tk ? <EmptyState heading={t("No SCIM status is available")} /> : (
+        {!tk ? <EmptyState heading={t("No SCIM status is available")} body={t("Turn on SCIM and connect your identity provider to see its status.")} /> : (
           <>
             <Facts items={[
-              [t("Address"), <Code key="u" code={tk.base_url} description={t("SCIM base address")} />],
+              [t("Address"), <Code key="u" wrap code={tk.base_url} description={t("SCIM base address")} />],
               [t("Token"), tk.configured ? tk.token_prefix : t("None")],
               [t("Created"), day(tk.created_at)],
               [t("Last used"), day(tk.last_used_at)],
@@ -95,7 +95,7 @@ export function SignIn() {
       </Card>
 
       <Card title={t("Group to role")} sub={t("A person in a group gets the mapped role.")}>
-        {maps.length === 0 && <EmptyState heading={t("No groups are mapped yet.")} />}
+        {maps.length === 0 && <EmptyState heading={t("No groups are mapped yet.")} body={t("Map a group from your identity provider to a role.")} />}
         <form className="mx-col" onSubmit={(e) => { e.preventDefault(); void run(() => putScimGroupRoles(maps.filter((m) => m.group.trim())), t("Group mapping saved."), ["scim"]); }}>
           {maps.map((m, i) => (
             <div key={i} className="mx-links">

@@ -2,11 +2,12 @@
 
 import { getStewardMetrics } from "@/lib/api/v2/stewardship";
 import { t } from "@/lib/v2/i18n";
+import { labelText } from "@/lib/v2/labels";
 import { BarList, Button, Card, DataTable, EmptyState, PageHeader, StatTile, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { Gate, useQ } from "./common";
 
 const pct = (v: number | null | undefined) => (v === null || v === undefined ? t("n/a") : `${Math.round(v * (v <= 1 ? 100 : 1))}%`);
-const word = (s: string) => s.replace(/_/g, " ");
+const word = labelText;
 
 export function Stewardship() {
   const q = useQ(["stewardship-metrics"], () => getStewardMetrics());
@@ -35,12 +36,12 @@ export function Stewardship() {
               <StatTile label={t("AI acceptance")} value={pct(m.ai_acceptance_rate)} />
             </dl>
             <Card title={t("By status")}>
-              {Object.keys(m.items_by_status).length === 0 ? <EmptyState heading={t("No items")} /> : (
+              {Object.keys(m.items_by_status).length === 0 ? <EmptyState heading={t("No items")} body={t("Nothing waits here. Choose another view.")} /> : (
                 <BarList label={t("Items by status")} items={Object.entries(m.items_by_status).map(([k, v]) => ({ id: k, label: word(k), value: v }))} />
               )}
             </Card>
             <Card title={t("By type")} sub={t("Average hours to resolve")}>
-              {Object.keys(m.items_by_type).length === 0 ? <EmptyState heading={t("No items")} /> : (
+              {Object.keys(m.items_by_type).length === 0 ? <EmptyState heading={t("No items")} body={t("Nothing waits here. Choose another view.")} /> : (
                 <BarList label={t("Items by type")} items={Object.entries(m.items_by_type).map(([k, v]) => {
                   const h = m.avg_resolution_hours_by_type?.[k];
                   return { id: k, label: word(k), value: v, display: h === undefined ? String(v) : `${v}, ${Math.round(h)} h` };

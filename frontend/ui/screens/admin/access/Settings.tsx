@@ -39,7 +39,7 @@ export function Settings() {
 
   return (
     <Frame slug="settings" title={t("Tenant settings")} lead={t("Name, currency, effort plan, alert thresholds and cost model for this tenant.")} loading={q.isLoading} error={q.isError}>
-      {!s ? <EmptyState heading={t("No tenant settings are available")} /> : (
+      {!s ? <EmptyState heading={t("No tenant settings are available")} body={t("Reload the page. If this stays empty, ask an administrator to check the tenant.")} /> : (
         <>
           <Card title={t("Tenant")}>
             <form className="mx-col" onSubmit={(e) => { e.preventDefault(); void run(() => patchTenant({ name, currency }), t("Tenant saved."), ["settings"]); }}>
@@ -49,7 +49,7 @@ export function Settings() {
             </form>
           </Card>
           <Card title={t("Effort plan")} sub={t("Turns findings into hours and cost in the clean-up plan.")}>
-            {!planner ? <EmptyState heading={t("No effort plan is saved")} /> : (
+            {!planner ? <EmptyState heading={t("No effort plan is saved")} body={t("Enter the effort and save the plan to see it here.")} /> : (
               <form className="mx-col" onSubmit={(e) => { e.preventDefault(); void run(() => savePlanner(planner), t("Effort plan saved."), ["settings"]); }}>
                 <Num label={t("Minutes to fix one record")} value={planner.minutes_per_record} step={0.5} onChange={(v) => setP("minutes_per_record", v)} />
                 <Num label={t("Hours per investigation")} value={planner.investigation_hours} step={0.5} onChange={(v) => setP("investigation_hours", v)} />
@@ -62,7 +62,7 @@ export function Settings() {
             )}
           </Card>
           <Card title={t("Alert thresholds")} sub={t("A run raises an alert when it crosses one of these.")}>
-            {!alerts ? <EmptyState heading={t("No alert thresholds are saved")} /> : (
+            {!alerts ? <EmptyState heading={t("No alert thresholds are saved")} body={t("Set a threshold and save it to be alerted.")} /> : (
               <form className="mx-col" onSubmit={(e) => { e.preventDefault(); void run(() => saveAlertThresholds(alerts), t("Alert thresholds saved."), ["settings"]); }}>
                 <Num label={t("Critical findings that raise an alert")} value={alerts.critical_threshold} onChange={(v) => setA("critical_threshold", v)} />
                 <Num label={t("High findings that raise an alert")} value={alerts.high_threshold} onChange={(v) => setA("high_threshold", v)} />
@@ -73,7 +73,7 @@ export function Settings() {
             )}
           </Card>
           <Card title={t("Cost model")} sub={t("What one finding of each severity costs the business.")}>
-            {!model ? <EmptyState heading={t("No cost model is available")} /> : (
+            {!model ? <EmptyState heading={t("No cost model is available")} body={t("Enter your rates to build the cost model.")} /> : (
               <form className="mx-col" onSubmit={(e) => { e.preventDefault(); void run(() => putCostModel(model), t("Cost model saved."), ["settings"]); }}>
                 <Field label={t("Currency")}><Input value={model.currency} maxLength={3} disabled={!edit} onChange={(e) => setModel({ ...model, currency: e.target.value.toUpperCase() })} /></Field>
                 {SEVERITIES.map((sev) => (

@@ -93,7 +93,7 @@ export function InsightsBoard() {
           <ul className="ib-list" data-testid="insights-anomalies">
             {anomalies.map((a) => (
               <li key={`${a.metric}/${a.version_id}`}>
-                <span>{a.label ?? a.version_id ?? t("n/a")}, {a.metric.startsWith("dimension:") ? metric(a.metric) : <FieldChip code={a.metric} description={metric(a.metric)} />}</span>
+                <span>{a.label ?? a.version_id ?? t("n/a")}, {a.metric.startsWith("dimension:") || labels[a.metric] ? metric(a.metric) : <FieldChip code={a.metric} description={metric(a.metric)} />}</span>
                 <span className="ib-note">{sevLabel(sevOf(a.severity))}</span>
                 <span className="ib-note">{t("Expected {e}, observed {o}, z {z}", { e: n1(a.expected), o: n1(a.observed), z: n1(a.z) })}</span>
               </li>

@@ -96,12 +96,12 @@ export function WorkAnalytics() {
                     { key: "f", label: t("Fixed"), render: (r) => whole(r.fixed), sort: (r) => r.fixed, align: "end" },
                     { key: "s", label: t("Still failing"), render: (r) => whole(r.still_failing), sort: (r) => r.still_failing, align: "end" },
                   ]} />
-              ) : <EmptyState heading={t("No run to compare yet")} />}
+              ) : <EmptyState heading={t("No run to compare yet")} body={t("Run the object a second time to compare.")} />}
             </Wait>
           </Card>
           <Card title={t("Where the records sit")} sub={dim?.label}>
             <Wait q={roots}>
-              {dim?.top.length ? <BarList label={t("Records by cause")} items={dim.top.map((x) => ({ id: x.value, label: x.value, value: x.records, display: whole(x.records) }))} /> : <EmptyState heading={t("No cause data yet")} />}
+              {dim?.top.length ? <BarList label={t("Records by cause")} items={dim.top.map((x) => ({ id: x.value, label: x.value, value: x.records, display: whole(x.records) }))} /> : <EmptyState heading={t("No cause data yet")} body={t("Causes appear here after fixes are decided.")} />}
             </Wait>
           </Card>
           <Card title={t("Time to fix")} sub={t("Median days, last {n} days", { n: ttf.data?.window_days ?? 180 })}>
@@ -114,7 +114,7 @@ export function WorkAnalytics() {
                     { key: "m", label: t("Median days"), render: (r) => (r.median_days == null ? "-" : fixed(r.median_days, 1)), sort: (r) => r.median_days ?? 0, align: "end" },
                     { key: "p", label: t("Slowest tenth"), render: (r) => (r.p90_days == null ? "-" : fixed(r.p90_days, 1)), sort: (r) => r.p90_days ?? 0, align: "end" },
                   ]} />
-              ) : <EmptyState heading={t("Nothing fixed in this window")} />}
+              ) : <EmptyState heading={t("Nothing fixed in this window")} body={t("Choose a longer window, or fix records in the work queue.")} />}
             </Wait>
           </Card>
         </div>
@@ -129,7 +129,7 @@ export function WorkAnalytics() {
                     { key: "a", label: t("Accepted"), render: (r) => whole(r.accept), align: "end" },
                     { key: "e", label: t("Edited"), render: (r) => whole(r.edit), align: "end" },
                   ]} />
-              ) : <EmptyState heading={t("No decisions yet")} />}
+              ) : <EmptyState heading={t("No decisions yet")} body={t("A decision appears here once a person accepts, edits or rejects a fix.")} />}
             </Wait>
           </Card>
           <Card title={t("What comes back")} sub={t("Reopened {p} of issues", { p: pct(rec.data?.totals.rate_pct) })}>
@@ -141,7 +141,7 @@ export function WorkAnalytics() {
                     { key: "i", label: t("Issues"), render: (r) => whole(r.issues), align: "end" },
                     { key: "r", label: t("Reopened"), render: (r) => pct(r.rate_pct), sort: (r) => r.rate_pct, align: "end" },
                   ]} />
-              ) : <EmptyState heading={t("Nothing has come back")} />}
+              ) : <EmptyState heading={t("Nothing has come back")} body={t("Records that return after a fix appear here.")} />}
             </Wait>
           </Card>
           <Card title={t("Proposal quality")} sub={t("How often each source is right")}>
@@ -154,7 +154,7 @@ export function WorkAnalytics() {
                     { key: "a", label: t("Approved"), render: (r) => pct(r.approval_rate_pct), align: "end" },
                     { key: "f", label: t("Fixed"), render: (r) => pct(r.fix_rate_pct), align: "end" },
                   ]} />
-              ) : <EmptyState heading={t("No proposals yet")} />}
+              ) : <EmptyState heading={t("No proposals yet")} body={t("Proposals appear here after the next run.")} />}
             </Wait>
           </Card>
           <Card title={t("Rule feedback")} sub={t("Rules people mark as wrong")}>
@@ -166,7 +166,7 @@ export function WorkAnalytics() {
                     { key: "f", label: t("Flagged"), render: (r) => whole(r.flagged), align: "end" },
                     { key: "w", label: t("Wrong"), render: (r) => pct(r.false_positive_rate == null ? null : r.false_positive_rate * 100), align: "end" },
                   ]} />
-              ) : <EmptyState heading={t("No feedback yet")} />}
+              ) : <EmptyState heading={t("No feedback yet")} body={t("Feedback appears here after people review the proposals.")} />}
             </Wait>
           </Card>
         </div>

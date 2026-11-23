@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useLoadHistory, useLoadRuns } from "@/lib/api/next/load";
-import { Card, DataTable, EmptyState, FieldChip, PageHeader, StatTile, useAletheiaScope } from "@/ui/kit";
-import { AskButton, Gate, Verdict, humanize, useHref, when } from "./common";
+import { Button, Card, DataTable, EmptyState, PageHeader, StatTile, useAletheiaScope } from "@/ui/kit";
+import { AskButton, Gate, useHref, when } from "./common";
 import { useLoadPlan } from "./hooks";
 import { LoadBoard } from "./LoadBoard";
 
@@ -45,7 +45,20 @@ export function Load() {
 
   return (
     <>
-      <PageHeader title={t("Load")} context={t("Move clean data into the new system, in the right order.")} actions={<AskButton />} />
+      <PageHeader title={t("Load")} context={t("Move clean data into the new system, in the right order.")} actions={<><Button variant="primary" href={href("/load/plan")}>{t("Review the load order")}</Button><AskButton /></>} />
+      <div className="mx-col">
+        <Card title={t("Everything in Load")}>
+          <DataTable
+            label={t("Everything in Load")}
+            rows={areas}
+            rowKey={(a) => a.to}
+            columns={[
+              { key: "t", label: t("Area"), render: (a) => <Link href={href(a.to)}>{a.title}</Link> },
+              { key: "n", label: t("What it holds"), render: (a) => a.note },
+            ]}
+          />
+        </Card>
+      </div>
       <LoadBoard />
       <div className="mx-col">
       <dl className="mx-tiles">
@@ -55,24 +68,6 @@ export function Load() {
         <StatTile label={t("Migration runs")} value={runs.isError ? t("Unavailable") : String(runs.data?.length ?? 0)} />
         <StatTile label={t("Files handed over")} value={hist.isError ? t("Unavailable") : String(hist.data?.total ?? 0)} />
       </dl>
-          <Card title={t("Load order")} sub={plan.data ? t("{n} steps for release {r}", { n: plan.data.steps, r: plan.data.release }) : undefined}>
-            <Gate loading={plan.isLoading} error={plan.isError} retry={() => void plan.refetch()} what={t("the load order")}>
-              {objects.length ? (
-                <DataTable
-                  label={t("Load order")}
-                  rows={[...objects].sort((a, b) => a.step - b.step)}
-                  rowKey={(o) => o.module}
-                  columns={[
-                    { key: "step", label: t("Step"), align: "end", sort: (o) => o.step, render: (o) => o.step },
-                    { key: "m", label: t("Object"), sort: (o) => o.module, render: (o) => <FieldChip code={o.module} description={o.label || humanize(o.module)} /> },
-                    { key: "a", label: t("Anchor table"), render: (o) => <FieldChip code={o.anchor} description={o.anchor_text} /> },
-                    { key: "s", label: t("Status"), render: (o) => <Verdict v={o.status} /> },
-                    { key: "b", label: t("Blocking findings"), align: "end", sort: (o) => o.blocking, render: (o) => o.blocking },
-                  ]}
-                />
-              ) : <EmptyState heading={t("No load order yet")} body={t("Analyse an object first.")} />}
-            </Gate>
-          </Card>
           <Card title={t("Files handed over")} sub={t("{n} in total", { n: hist.data?.total ?? 0 })}>
             <Gate loading={hist.isLoading} error={hist.isError} retry={() => void hist.refetch()} what={t("the load history")}>
               {hist.data?.items.length ? (
@@ -89,20 +84,9 @@ export function Load() {
                     { key: "at", label: t("Date"), sort: (e) => e.exported_at ?? "", render: (e) => when(e.exported_at) },
                   ]}
                 />
-              ) : <EmptyState heading={t("No file handed over yet")} />}
+              ) : <EmptyState heading={t("No file handed over yet")} body={t("Hand over the cleaned file to see it here.")} />}
             </Gate>
           </Card>
-        <Card title={t("Everything in Load")}>
-          <DataTable
-            label={t("Everything in Load")}
-            rows={areas}
-            rowKey={(a) => a.to}
-            columns={[
-              { key: "t", label: t("Area"), render: (a) => <Link href={href(a.to)}>{a.title}</Link> },
-              { key: "n", label: t("What it holds"), render: (a) => a.note },
-            ]}
-          />
-        </Card>
       </div>
     </>
   );

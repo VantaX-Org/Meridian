@@ -1,5 +1,15 @@
 import type { VersionHead } from "@/lib/api/v2/runs";
 import { f1, int } from "@/lib/v2/score";
+import type { LandscapeCell, Verdict } from "@/lib/api/v2/types";
+
+/**
+ * The gate verdict for the run on screen. The landscape cell describes the newest run, so its verdict is used only
+ * when the page is on that run; for any other run the verdict follows that run's own shown score (gates 70 and 85).
+ */
+export function verdictFor(cell: LandscapeCell | null, runId: string | null, now: number | null): Verdict | null {
+  if (cell?.verdict && (!runId || cell.run_id === runId)) return cell.verdict;
+  return now === null ? null : now >= 85 ? "go" : now >= 70 ? "at-risk" : "no-go";
+}
 
 const SHORT = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSystemsExtended } from "@/lib/api/v2/runs";
 import { apiDetail, downloadCleansingLog, downloadErrors, moveKeys, RUN_DONE, runAction, startRun, usePlan, useRun, type RunCleansing, type Unfixable } from "@/lib/api/next/move";
+import { labelText } from "@/lib/v2/labels";
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Confirm, DataTable, FieldChip, StatTile, type Column } from "@/ui/kit";
 import { WaveProgress } from "./charts";
@@ -74,7 +75,7 @@ export function MoveLoad({ planId, runId, onRun, onBack, onNext }: { planId: str
 
   return (
     <div className="mx-col">
-      <Card title={r ? (r.dry_run ? t("Dry run") : t("Load into {name}", { name })) : t("Start with a dry run")} sub={r ? t("Status: {status}", { status: r.status }) : t("A dry run goes through every step and writes nothing to {name}.", { name })}>
+      <Card title={r ? (r.dry_run ? t("Dry run") : t("Load into {name}", { name })) : t("Start with a dry run")} sub={r ? t("Status: {status}", { status: labelText(r.status) }) : t("A dry run goes through every step and writes nothing to {name}.", { name })}>
         <div className="mx-col">
           {r ? (
             <>

@@ -117,7 +117,7 @@ export function DataRequests() {
           <div className="mx-split">
             <div className="mx-col">
               <Card title={t("Requests")} sub={t("{n} in total", { n: rows.length })}>
-                {q.isLoading ? <Skeleton lines={5} label={t("Loading requests")} /> : q.isError ? <ErrorState heading={t("Requests could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : !rows.length ? <EmptyState heading={t("No requests here")} /> : (
+                {q.isLoading ? <Skeleton lines={5} label={t("Loading requests")} /> : q.isError ? <ErrorState heading={t("Requests could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : !rows.length ? <EmptyState heading={t("No requests here")} body={t("Choose another filter, or send a data request from the work queue.")} /> : (
                   <DataTable label={t("Requests")} rows={rows} rowKey={(r: RequestSummary) => r.id} selected={pick} onSelect={(r) => setPick(r.id)}
                     columns={[
                       { key: "o", label: t("Object"), render: (r) => <ObjChip code={r.module} />, sort: (r) => r.module },

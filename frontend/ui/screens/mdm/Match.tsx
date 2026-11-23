@@ -150,7 +150,7 @@ export function Match() {
                         { key: "c", label: t("Contribution"), align: "end", render: (x) => x.contribution },
                       ]}
                     />
-                  ) : <EmptyState heading={t("No explanation stored for this pair")} />}
+                  ) : <EmptyState heading={t("No explanation stored for this pair")} body={t("Run matching again to store why these two records match.")} />}
                 </Card>
               )}
             </>
@@ -158,7 +158,7 @@ export function Match() {
         )}
         {tab === "clusters" && (
           <Card title={t("Cross-system clusters")} sub={t("Duplicates whose records sit in different connected systems.")}>
-            {across.isError ? <ErrorState heading={t("Cross-system clusters could not be loaded")} retryLabel={t("Try again")} onRetry={() => void across.refetch()} /> : (across.data?.clusters ?? []).length === 0 ? <EmptyState heading={t("No cross-system clusters")} /> : (
+            {across.isError ? <ErrorState heading={t("Cross-system clusters could not be loaded")} retryLabel={t("Try again")} onRetry={() => void across.refetch()} /> : (across.data?.clusters ?? []).length === 0 ? <EmptyState heading={t("No cross-system clusters")} body={t("Run matching on at least two systems to find clusters across them.")} /> : (
               <DataTable
                 label={t("Cross-system clusters")}
                 rows={across.data?.clusters ?? []}
@@ -177,7 +177,7 @@ export function Match() {
         )}
         {tab === "constraints" && (
           <Card title={t("Pair constraints")} sub={t("Pairs a steward decided. Clear one to offer it again.")}>
-            {cons.isError ? <ErrorState heading={t("Pair constraints could not be loaded")} retryLabel={t("Try again")} onRetry={() => void cons.refetch()} /> : (cons.data ?? []).length === 0 ? <EmptyState heading={t("No pair constraints")} /> : (
+            {cons.isError ? <ErrorState heading={t("Pair constraints could not be loaded")} retryLabel={t("Try again")} onRetry={() => void cons.refetch()} /> : (cons.data ?? []).length === 0 ? <EmptyState heading={t("No pair constraints")} body={t("Add a must-link or cannot-link to control how two records match.")} /> : (
               <DataTable
                 label={t("Pair constraints")}
                 rows={cons.data ?? []}

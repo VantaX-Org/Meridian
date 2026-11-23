@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { t } from "@/lib/v2/i18n";
+import { moduleText } from "@/lib/v2/labels";
 import { Button, EmptyState, ErrorState, FieldChip, Skeleton, type Severity } from "@/ui/kit";
 
 /** One read, keyed with the fixture flag so ?fixture=1 never shares a cache with live data. */
@@ -31,10 +32,7 @@ export const sevLabel = (s: string | null | undefined): string => {
 };
 
 /** Human text for a module code: material_master reads "Material master". The code stays beside it. */
-export const modText = (m: string): string => {
-  const s = m.replace(/_/g, " ").trim();
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : m;
-};
+export const modText = (m: string): string => moduleText(m);
 export const Mod = ({ code }: { code: string }) => <FieldChip code={code} description={modText(code)} />;
 
 /** Loading, error and empty in one place so every tab handles all three. */

@@ -13,7 +13,7 @@ const DOT = String.fromCharCode(0xb7);
 
 /** slug, h1 text, and a locator for one real data row or field on that screen. */
 const ROUTES: [string, string, string][] = [
-  ["", "Administration", "ul.mx-links li"],
+  ["", "Administration", "ul li"],
   ["users", "Users", "[role=row], tbody tr"],
   ["roles", "Roles", "[role=row], tbody tr"],
   ["apikeys", "API keys", "[role=row], tbody tr"],

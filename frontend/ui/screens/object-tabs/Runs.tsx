@@ -20,7 +20,7 @@ export function Runs({ o, system, module }: { o: ObjectRun; system: string; modu
   if (o.runsLoading) return <Skeleton lines={5} label={t("Loading runs")} />;
   if (o.runsError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={o.refetchRuns} />;
   const rows = o.heads.filter((h) => h.dqs_summary?.[module]);
-  if (!rows.length) return <EmptyState heading={t("This object has no runs yet.")} />;
+  if (!rows.length) return <EmptyState heading={t("This object has no runs yet.")} body={t("Pull the object from Home to start its first run.")} />;
   // ponytail: the run list carries no cycle field, so the stepper shows the newest five runs oldest first.
   const steps = rows.slice(0, 5).reverse().map((h) => ({ id: h.id, label: h.label ?? `#${h.run_number ?? ""}` }));
   const cols: Column<VersionHead>[] = [

@@ -23,7 +23,7 @@ export function Trend({ o, system, module }: { o: ObjectRun; system: string; mod
     evidence: runs.slice(-3).map((r) => `${day(r.run_at)}: ${score(r.objects[module]?.score ?? 0)}`),
   }));
   if (tl.isLoading) return <Skeleton lines={5} label={t("Loading the trend")} />;
-  if (tl.isError) return <ErrorState heading={t("The trend could not be loaded.")} />;
+  if (tl.isError) return <ErrorState heading={t("The trend could not be loaded.")} retryLabel={t("Try again")} onRetry={() => void tl.refetch()} />;
   const groups = ch.data ?? null;
   const rows: (ChangedCheck & { kind: string })[] = groups ? (Object.entries(groups) as [string, ChangedCheck[]][]).flatMap(([kind, list]) => list.map((c) => ({ ...c, kind }))) : [];
   const KIND: Record<string, string> = { newly_failing: t("Newly failing"), fixed: t("Fixed"), worse: t("Worse"), better: t("Better") };
@@ -57,7 +57,7 @@ export function Trend({ o, system, module }: { o: ObjectRun; system: string; mod
         {runRows.length ? <DataTable columns={runCols} rows={runRows} rowKey={(r) => r.id} label={t("Score by run")} height={240} /> : null}
       </Card>
       <Card title={t("What changed since the run before")} sub={o.previous ? undefined : t("This is the first run, so there is nothing to compare.")}>
-        {ch.isLoading ? <Skeleton lines={3} label={t("Loading changes")} /> : rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => `${r.kind}:${r.check_id}`} label={t("Changed rules")} height={280} /> : <EmptyState heading={t("No rule changed between these two runs.")} />}
+        {ch.isLoading ? <Skeleton lines={3} label={t("Loading changes")} /> : rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => `${r.kind}:${r.check_id}`} label={t("Changed rules")} height={280} /> : <EmptyState heading={t("No rule changed between these two runs.")} body={t("Pick two other runs to compare.")} />}
       </Card>
     </div>
   );

@@ -21,7 +21,7 @@ export const recordPath = (system: string, module: string, key: string) => objec
 export function PostClean({ rule }: { rule?: string }) {
   const q = useBackAfterClean();
   if (q.isLoading) return <Skeleton lines={3} label={t("Loading post-clean monitoring")} />;
-  if (q.isError || !q.data) return <EmptyState heading={t("No post-clean reading yet. Once fixes are sent to SAP, records that return are counted here.")} />;
+  if (q.isError || !q.data) return <EmptyState heading={t("No post-clean reading yet. Once fixes are sent to SAP, records that return are counted here.")} body={t("Send the approved fixes to SAP, then run the object again to see the records that came back.")} />;
   const d = q.data;
   const rules = rule ? d.rules.filter((r) => r.check_id === rule) : d.rules;
   const back = d.weeks.reduce((n, w) => n + w.back, 0);
@@ -96,7 +96,7 @@ export function Records({ o, system, module }: { o: ObjectRun; system: string; m
             <Select aria-label={t("Severity")} value={severity} onChange={(e) => setSeverity(e.target.value)} options={[{ value: "", label: t("Any severity") }, ...["critical", "high", "medium", "low"].map((s) => ({ value: s, label: sevLabel(s) }))]} />
             <Select aria-label={t("Status")} value={status} onChange={(e) => setStatus(e.target.value)} options={[{ value: "", label: t("Any status") }, ...Object.keys(STATUS_LABEL).map((s) => ({ value: s, label: STATUS_LABEL[s] }))]} />
           </div>
-          {rowsQ.isLoading ? <Skeleton lines={6} label={t("Loading records")} /> : rowsQ.isError ? <ErrorState heading={t("The records could not be loaded")} /> : rows.length === 0 ? <EmptyState heading={t("No records match this filter.")} /> : (
+          {rowsQ.isLoading ? <Skeleton lines={6} label={t("Loading records")} /> : rowsQ.isError ? <ErrorState heading={t("The records could not be loaded")} retryLabel={t("Try again")} onRetry={() => void rowsQ.refetch()} /> : rows.length === 0 ? <EmptyState heading={t("No records match this filter.")} body={t("Clear the filter or choose another one to see records.")} /> : (
             <DataTable
               label={t("Records with findings")}
               rows={rows}

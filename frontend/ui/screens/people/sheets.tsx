@@ -45,7 +45,7 @@ export function PersonSheet({ person: p }: { person: Person }) {
       </Gate>
       <h3 className="mx-card-t">{t("Recent activity")}</h3>
       <Gate q={activity} label={t("Loading activity")}>
-        {(a) => a.entries.length === 0 ? <EmptyState heading={t("No activity yet")} /> : (
+        {(a) => a.entries.length === 0 ? <EmptyState heading={t("No activity yet")} body={t("Activity appears here after this person does something.")} /> : (
           <ul className="mx-list" aria-label={t("Recent activity")}>
             {a.entries.slice(0, 12).map((e) => <li key={e.id}>{e.action} <span className="mx-muted">{relTime(e.created_at)}</span></li>)}
           </ul>
@@ -139,7 +139,7 @@ export function DelegationsSheet() {
         {(d) => (
           <>
             <h3 className="mx-card-t">{t("You are away")}</h3>
-            {d.away.length === 0 ? <EmptyState heading={t("No delegations")} /> : (
+            {d.away.length === 0 ? <EmptyState heading={t("No delegations")} body={t("Add a delegation to hand work to another person while away.")} /> : (
               <ul className="mx-list" aria-label={t("You are away")}>
                 {d.away.map((x) => <li key={x.id}>{x.to_name}, {day(x.starts_on)} {t("to")} {day(x.ends_on)} <span className="mx-muted">{x.state}</span> {x.state !== "revoked" && x.state !== "ended" ? <Button variant="ghost" onClick={() => drop.mutate(x.id)}>{t("Revoke")}</Button> : null}</li>)}
               </ul>

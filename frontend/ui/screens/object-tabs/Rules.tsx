@@ -23,7 +23,7 @@ export function Rules({ o, system, module }: { o: ObjectRun; system: string; mod
     return { text: top ? t("{rule} fails most: {n} records.", { rule: top.check_id, n: top.affected_count }) : t("No rule ran yet."), evidence: all.slice(0, 3).map((r) => `${r.check_id}: ${r.affected_count}`) };
   });
   if (rules.isLoading || o.runsLoading) return <Skeleton lines={6} label={t("Loading rules")} />;
-  if (rules.isError) return <ErrorState heading={t("The rules could not be loaded.")} />;
+  if (rules.isError) return <ErrorState heading={t("The rules could not be loaded.")} retryLabel={t("Try again")} onRetry={() => void rules.refetch()} />;
   const cols: Column<RuleRow>[] = [
     { key: "c", label: t("Rule"), sort: (r) => r.check_id, render: (r) => <><FieldChip code={r.check_id} description={r.name} /></> },
     { key: "f", label: t("Field"), render: (r) => (r.field ? <FieldChip code={r.field} description={r.field_description ?? describeField(r.field) ?? undefined} /> : "") },
@@ -37,7 +37,7 @@ export function Rules({ o, system, module }: { o: ObjectRun; system: string; mod
     <Lead tab="rules" title={t("Passing and failing rules")} sentence={t("{f} of {n} rules fail on at least one record.", { f: failingRules, n: all.length })}
       bars={[{ id: "pass", label: t("Passing"), value: all.length - failingRules, tone: "good" }, { id: "fail", label: t("Failing"), value: failingRules, tone: "bad" }]} />
     <Card title={t("Rules")} sub={t("{n} rules ran on this object", { n: all.length })} action={<Search value={q} onChange={setQ} label={t("Search rules")} clearLabel={t("Clear search")} placeholder={t("Search rules")} />}>
-      {rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => r.check_id} label={t("Rules")} height={480} /> : <EmptyState heading={t("No rule matches.")} />}
+      {rows.length ? <DataTable columns={cols} rows={rows} rowKey={(r) => r.check_id} label={t("Rules")} height={480} /> : <EmptyState heading={t("No rule matches.")} body={t("Clear the search or choose another filter to see rules.")} />}
     </Card>
     </div>
   );

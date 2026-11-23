@@ -7,7 +7,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useFixture } from "@/lib/api/v2/fixture";
 import { getMigrationRuns, releaseFor, startMigration, type MigrationMode, type MigrationRun } from "@/lib/api/v2/migration";
 import { Button, Card, Chip, DataTable, EmptyState, Field, FieldChip, PageHeader, Select, Sheet, useAletheiaScope, useToast } from "@/ui/kit";
-import { AskButton, Gate, humanize, pct, useHref, Verdict, when } from "./common";
+import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, useLoadPlan, usePairs } from "./hooks";
 
 export const modeLabel = (m: MigrationMode): string => (m === "s4_dry_run" ? t("S/4HANA dry run") : m === "source_to_destination" ? t("Source to target") : t("Source to source"));
@@ -15,6 +15,7 @@ export const modeLabel = (m: MigrationMode): string => (m === "s4_dry_run" ? t("
 /** Every migration analysis: how ready the source data is to load, with a Sheet to start a new one. */
 export function MigrationRuns() {
   useInterfaceLang();
+  const back = useBack();
   const fx = useFixture();
   const q = useQuery({ queryKey: ["ui", "load", fx, "runs"], queryFn: getMigrationRuns });
   const plan = useLoadPlan();
@@ -48,7 +49,7 @@ export function MigrationRuns() {
   const sysName = (id: string | null) => (id ? sys.find((s) => s.id === id)?.name ?? id : t("Not set"));
   return (
     <>
-      <PageHeader title={t("Migration runs")} context={t("Each run measures how much of the source data can load into the target.")} actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("Start a run")}</Button><AskButton /></>} />
+      <PageHeader back={back} title={t("Migration runs")} context={t("Each run measures how much of the source data can load into the target.")} actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("Start a run")}</Button><AskButton /></>} />
       <Card title={t("Runs")} sub={t("{n} runs", { n: runs.length })}>
         <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the runs")}>
           {runs.length ? (
@@ -69,7 +70,7 @@ export function MigrationRuns() {
                 { key: "at", label: t("Started"), sort: (r) => r.created_at ?? "", render: (r) => when(r.created_at) },
               ]}
             />
-          ) : <EmptyState heading={t("No run yet")} />}
+          ) : <EmptyState heading={t("No run yet")} body={t("A run checks whether your objects are ready to load. Choose Start a run.")} />}
         </Gate>
       </Card>
       <Sheet open={open} onClose={() => setOpen(false)} label={t("Start a run")} closeLabel={t("Close")}>

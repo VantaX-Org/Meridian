@@ -56,7 +56,7 @@ export function Licence() {
             ]} />
           </Card>
           <Card title={t("Licensed modules")} sub={t("{n} modules", { n: whole(l.enabled_modules.length) })}>
-            {l.enabled_modules.length === 0 ? <EmptyState heading={t("No modules are licensed")} /> : (
+            {l.enabled_modules.length === 0 ? <EmptyState heading={t("No modules are licensed")} body={t("Ask your account contact to add modules to the licence.")} /> : (
               <ul className="mx-links">
                 {l.enabled_modules.map((m) => <li key={m}><Code code={m} description={moduleText(m)} /></li>)}
               </ul>

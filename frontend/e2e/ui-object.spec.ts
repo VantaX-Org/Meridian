@@ -40,6 +40,6 @@ test("Aletheia chat opens from the launcher and answers with evidence", async ({
   await page.getByRole("main").getByRole("button", { name: "Ask Aletheia" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "What can I fix first?" }).click();
+  await dialog.getByRole("button", { name: "What should I clean first?" }).click();
   await expect(dialog.getByRole("link", { name: "Review fixes" })).toBeVisible();
 });

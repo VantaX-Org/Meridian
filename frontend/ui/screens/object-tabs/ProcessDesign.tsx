@@ -59,7 +59,7 @@ function Editor({ data, module, onChanged }: { data: ModelWithDocument; module: 
   ];
   return (
     <Card title={data.model.name} sub={t("Version {version_no}", { version_no: data.version_no }) + (dirty ? t(", unsaved changes") : "")}>
-      {rows.length ? <DataTable label={t("Activities in {name}", { name: data.model.name })} rows={rows} rowKey={(r) => r.act.id} columns={cols} height={Math.min(420, 60 + 40 * rows.length)} /> : <EmptyState heading={t("This model has no activity for this object.")} />}
+      {rows.length ? <DataTable label={t("Activities in {name}", { name: data.model.name })} rows={rows} rowKey={(r) => r.act.id} columns={cols} height={Math.min(420, 60 + 40 * rows.length)} /> : <EmptyState heading={t("This model has no activity for this object.")} body={t("Choose another process model, or add this object to an activity.")} />}
       <Field label={t("Change note")}><Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("Edited in the designer")} /></Field>
       <div className="mx-head-actions">
         <Button variant="primary" disabled={!dirty || busy} onClick={() => void save()}>{t("Save new version")}</Button>
@@ -116,7 +116,7 @@ export function ProcessDesign({ o, system, module }: { o: ObjectRun; system: str
   };
 
   if (models.isLoading || ref.isLoading) return <Skeleton lines={5} label={t("Loading process models")} />;
-  if (models.isError && ref.isError) return <ErrorState heading={t("Process models could not be loaded.")} />;
+  if (models.isError && ref.isError) return <ErrorState heading={t("Process models could not be loaded.")} retryLabel={t("Try again")} onRetry={() => { void models.refetch(); void ref.refetch(); }} />;
   const cols: Column<ModelSummary>[] = [
     { key: "n", label: t("Model"), render: (m) => <FieldChip code={m.id} description={m.name} /> },
     { key: "s", label: t("Status"), render: (m) => m.status === "published" ? t("Published") : t("Draft") },
@@ -136,10 +136,10 @@ export function ProcessDesign({ o, system, module }: { o: ObjectRun; system: str
         <StatTile label={t("Reference processes for this object")} value={String(l1.length)} />
       </dl>
       <Card title={t("Reference processes")}>
-        {l1.length ? <ul className="mx-col">{l1.map((x) => <li key={x.id}><FieldChip code={x.id} description={x.name} />{" "}<span className="mx-muted">{x.description}</span></li>)}</ul> : <EmptyState heading={t("No reference process lists this object.")} />}
+        {l1.length ? <ul className="mx-col">{l1.map((x) => <li key={x.id}><FieldChip code={x.id} description={x.name} />{" "}<span className="mx-muted">{x.description}</span></li>)}</ul> : <EmptyState heading={t("No reference process lists this object.")} body={t("Add the object to a process in the process design to see it here.")} />}
       </Card>
       <Card title={t("Your process models")}>
-        {models.data?.length ? <DataTable columns={cols} rows={models.data} rowKey={(m) => m.id} label={t("Your process models")} /> : <EmptyState heading={t("No process model exists yet.")} />}
+        {models.data?.length ? <DataTable columns={cols} rows={models.data} rowKey={(m) => m.id} label={t("Your process models")} /> : <EmptyState heading={t("No process model exists yet.")} body={t("Create a process model to see how this object is used.")} />}
         <div className="mx-head-actions">
           <Field label={t("New model name")}><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
           <Field label={t("Copy from")}><Select value={from} onChange={(e) => setFrom(e.target.value)} options={[{ value: "reference", label: t("Reference model") }, ...(models.data ?? []).map((m) => ({ value: m.id, label: m.name }))]} /></Field>

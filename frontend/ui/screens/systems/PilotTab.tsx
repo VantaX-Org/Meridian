@@ -50,7 +50,7 @@ export function PilotTab({ id }: { id: string }) {
                 { key: "needs_tuning", label: "", render: (r) => (r.needs_tuning ? <SeverityPill sev="medium" label={t("Needs tuning")} /> : null) },
               ]} rows={d.rules} rowKey={(r) => r.check_id} label={t("Rule precision")} height={300} />
               <h3>{t("Known issues the checks missed")}</h3>
-              {d.recall.missed.length === 0 ? <EmptyState heading={t("No missed issues.")} /> : (
+              {d.recall.missed.length === 0 ? <EmptyState heading={t("No missed issues.")} body={t("The pilot found nothing the rules missed.")} /> : (
                 <DataTable columns={[
                   { key: "module", label: t("Module"), render: (r) => r.module },
                   { key: "record_ref", label: t("Record"), render: (r) => <FieldChip code={r.record_ref} description={r.note ?? undefined} /> },
@@ -66,7 +66,7 @@ export function PilotTab({ id }: { id: string }) {
       </Card>
       <Card title={t("Tuning proposals")}>
         <Gate q={tune} empty={{ heading: t("No tuning proposals") }}>
-          {(d) => d.proposals.length === 0 ? <EmptyState heading={t("No checks need tuning.")} /> : <p>{t("{n} checks need tuning.", { n: d.proposals.length })}</p>}
+          {(d) => d.proposals.length === 0 ? <EmptyState heading={t("No checks need tuning.")} body={t("Every check scored well in the pilot.")} /> : <p>{t("{n} checks need tuning.", { n: d.proposals.length })}</p>}
         </Gate>
       </Card>
     </div>

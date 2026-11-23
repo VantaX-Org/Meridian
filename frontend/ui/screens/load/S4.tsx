@@ -4,7 +4,7 @@ import { useState } from "react";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import type { S4Area } from "@/lib/api/v2/s4";
 import { Card, DataTable, EmptyState, FieldChip, MasterList, PageHeader, Sheet, StatTile, useAletheiaScope, useStacked, type Severity, SeverityPill } from "@/ui/kit";
-import { AskButton, Gate, humanize, pct } from "./common";
+import { AskButton, Gate, humanize, pct, useBack } from "./common";
 import { useS4 } from "./hooks";
 
 const sevOf = (s: string): Severity => (s === "red" ? "critical" : s === "amber" ? "medium" : s === "green" ? "low" : "info");
@@ -13,6 +13,7 @@ const statusLabel = (s: string): string => (s === "red" ? t("Failing") : s === "
 /** Rules that must pass before the move to S/4, grouped by the simplification area they come from. */
 export function S4() {
   useInterfaceLang();
+  const back = useBack();
   const q = useS4();
   const stacked = useStacked();
   const [sel, setSel] = useState<string | null>(null);
@@ -55,13 +56,13 @@ export function S4() {
             { key: "p", label: t("Pass rate"), align: "end", sort: (c) => c.pass_rate ?? -1, render: (c) => pct(c.pass_rate) },
           ]}
         />
-      ) : <EmptyState heading={t("No check in this area")} />}
+      ) : <EmptyState heading={t("No check in this area")} body={t("Choose another area to see its checks.")} />}
     </Card>
   ) : <EmptyState heading={t("Choose an area")} body={t("Its checks appear here.")} />;
 
   return (
     <>
-      <PageHeader title={t("S/4 readiness")} context={t("Rules that must pass before the move to S/4HANA.")} actions={<AskButton />} />
+      <PageHeader back={back} title={t("S/4 readiness")} context={t("Rules that must pass before the move to S/4HANA.")} actions={<AskButton />} />
       <dl className="mx-tiles">
         <StatTile label={t("Rules")} value={String(d?.rules ?? 0)} />
         <StatTile label={t("Evaluated")} value={String(d?.evaluated ?? 0)} />

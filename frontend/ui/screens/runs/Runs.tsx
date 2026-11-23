@@ -69,7 +69,7 @@ function RunsView({ onAsk }: { onAsk: (rows: VersionHead[], total: number) => vo
   };
 
   const columns: Column<VersionHead>[] = [
-    { key: "run", label: t("Run"), sort: (h) => h.run_number ?? 0, render: (h) => <span className="rn-num">{runTitle(h)}</span> },
+    { key: "run", label: t("Run"), sort: (h) => h.run_number ?? 0, render: (h) => (h.label?.trim() || h.run_number != null ? <span className="rn-num">{runTitle(h)}</span> : <FieldChip code={runTitle(h)} description={sourceLabel(h)} />) },
     { key: "objects", label: t("Objects"), render: (h) => <Modules list={modulesOf(h)} /> },
     { key: "score", label: t("Score"), align: "end", sort: (h) => runScore(h) ?? -1, render: (h) => <span className="rn-num">{scoreText(runScore(h))}</span> },
     { key: "status", label: t("Status"), sort: (h) => h.status, render: (h) => <StatusPill s={h.status} /> },
@@ -167,7 +167,7 @@ function TimelineView() {
   ], [fx]);
   if (q.isLoading) return <Skeleton lines={6} label={t("Loading the timeline")} />;
   if (q.isError) return <ErrorState heading={t("The timeline could not be loaded")} onRetry={() => void q.refetch()} retryLabel={t("Try again")} />;
-  if (!list.length) return <EmptyState heading={t("No finished run yet")} />;
+  if (!list.length) return <EmptyState heading={t("No finished run yet")} body={t("Pull the object from Home to start its first run.")} />;
   return <Card title={t("Timeline")} sub={t("Every finished run, newest first.")}><DataTable label={t("Timeline")} rows={list} rowKey={(r) => r.id} columns={columns} /></Card>;
 }
 

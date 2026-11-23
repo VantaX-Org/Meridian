@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiDetail, startDelta, useRun } from "@/lib/api/next/move";
+import Link from "next/link";
 import { t } from "@/lib/v2/i18n";
+import { labelText } from "@/lib/v2/labels";
+import { useHref } from "../common";
 import { Button, Card, Field, Input, StatTile } from "@/ui/kit";
 import { WaveProgress } from "./charts";
 
@@ -16,6 +19,7 @@ export function Delta({ planId, onBack }: { planId: string; onBack: () => void }
   const go = useMutation({ mutationFn: (dry: boolean) => startDelta(planId, since, dry), onSuccess: (x) => setRunId(x.id) });
   const r = useRun(runId).data;
   const dryOk = !!r && r.dry_run && r.status === "completed";
+  const href = useHref();
   const all = (r?.waves ?? []).flatMap((w) => w.steps);
 
   return (
@@ -27,13 +31,14 @@ export function Delta({ planId, onBack }: { planId: string; onBack: () => void }
         {r ? (
           <>
             <dl className="mx-tiles">
-              <StatTile label={t("Status")} value={r.status} note={r.dry_run ? t("Dry run, nothing written") : undefined} />
+              <StatTile label={t("Status")} value={labelText(r.status)} note={r.dry_run ? t("Dry run, nothing written") : undefined} />
               <StatTile label={t("Loaded")} value={num(all.reduce((a, s) => a + s.ok, 0))} />
               <StatTile label={t("Failed")} value={num(all.reduce((a, s) => a + s.failed, 0))} />
             </dl>
             <WaveProgress waves={r.waves} planned={{}} label={t("Progress by wave")} />
           </>
         ) : null}
+        {r && !r.dry_run && r.status === "completed" ? <p>{t("The delta is sent. The move is complete.")} <Link href={href("/load")}>{t("Back to Load")}</Link></p> : null}
         {go.isError ? <p className="mx-field-e" role="alert">{apiDetail(go.error) ?? t("The delta could not start.")}</p> : null}
         <div className="mx-actions">
           <Button onClick={onBack}>{t("Back")}</Button>

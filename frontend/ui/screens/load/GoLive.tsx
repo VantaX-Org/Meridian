@@ -9,7 +9,7 @@ import { putWaveGate, type GateCheck, type WaveGate } from "@/lib/api/v2/roles";
 import { errorSentence } from "@/lib/api/v2/client";
 import { downloadCertificate, gateRefusalOf, issueCertificate, signCertificate, type GateRefusal } from "@/lib/api/v2/step9";
 import { Button, Card, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Toggle, useAletheiaScope, useToast } from "@/ui/kit";
-import { AskButton, Gate, humanize, pct, useHref, Verdict, when } from "./common";
+import { AskButton, Gate, humanize, pct, useHref, Verdict, when, useBack } from "./common";
 import { invalidateLoad, useCerts } from "./hooks";
 
 const checkLabel = (k: GateCheck["key"]): string => (k === "min_score" ? t("Minimum score") : k === "zero_criticals" ? t("No failing critical rule") : t("Contracts met"));
@@ -26,11 +26,11 @@ function Settings({ g, onDone }: { g: WaveGate; onDone: () => void }) {
   });
   const bad = min.trim() !== "" && !(Number(min) >= 0 && Number(min) <= 100);
   return (
-    <div>
-      <Field label={t("Minimum score")} error={bad ? t("Enter a score from 0 to 100") : undefined}><Input inputMode="decimal" value={min} onChange={(e) => setMin(e.target.value)} /></Field>
+    <div className="mx-col">
+      <Field label={t("Minimum score")} hint={t("A score from 0 to 100. Leave it empty for no minimum.")} error={bad ? t("Enter a score from 0 to 100") : undefined}><Input inputMode="decimal" value={min} onChange={(e) => setMin(e.target.value)} /></Field>
       <Toggle label={t("No failing critical rule")} checked={zero} onChange={setZero} />
       <Toggle label={t("Contracts met")} checked={con} onChange={setCon} />
-      <Button variant="primary" disabled={bad || save.isPending} onClick={() => save.mutate()}>{t("Save gate")}</Button>
+      <div className="mx-actions"><Button variant="secondary" disabled={bad || save.isPending} onClick={() => save.mutate()}>{t("Save gate")}</Button></div>
     </div>
   );
 }
@@ -53,7 +53,7 @@ function Certificates({ g }: { g: WaveGate }) {
   const vs = q.data?.versions ?? [];
   return (
     <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the certificates")}>
-      <Button variant="primary" disabled={issue.isPending} onClick={() => issue.mutate()}>{t("Issue certificate")}</Button>
+      <div className="mx-actions"><Button variant="primary" disabled={issue.isPending} onClick={() => issue.mutate()}>{t("Issue certificate")}</Button></div>
       {refusal ? (
         <div role="alert">
           <p>{refusal.detail}</p>
@@ -79,7 +79,7 @@ function Certificates({ g }: { g: WaveGate }) {
             ) },
           ]}
         />
-      ) : <EmptyState heading={t("No certificate yet")} />}
+      ) : <EmptyState heading={t("No certificate yet")} body={t("Issue one when every gate check passes.")} />}
       {q.data?.required_signers.length ? <p className="mx-muted">{t("Required signers")}: {q.data.required_signers.map((s) => s.name).join(", ")}</p> : null}
     </Gate>
   );
@@ -88,6 +88,7 @@ function Certificates({ g }: { g: WaveGate }) {
 /** Go-live readiness: every wave gate with its evidence, the gate settings and the readiness certificates. */
 export function GoLive() {
   useInterfaceLang();
+  const back = useBack();
   const q = useWaveGates();
   const qc = useQueryClient();
   const href = useHref();
@@ -109,7 +110,8 @@ export function GoLive() {
 
   return (
     <>
-      <PageHeader title={t("Go-live readiness")} context={t("Each wave must pass its gate before it is signed off and certified.")} actions={<AskButton />} />
+      <PageHeader back={back} title={t("Go-live readiness")} context={t("Each wave must pass its gate before it is signed off and certified.")} actions={<AskButton />} />
+      <div className="mx-col">
       <Card title={t("Wave gates")} sub={t("{n} waves", { n: gates.length })}>
         <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the wave gates")}>
           {gates.length ? (
@@ -128,7 +130,7 @@ export function GoLive() {
                 { key: "so", label: t("Signed off"), render: (x) => (x.signed_off ? t("Yes") : t("No")) },
               ]}
             />
-          ) : <EmptyState heading={t("No wave yet")} />}
+          ) : <EmptyState heading={t("No wave yet")} body={t("A gate belongs to a wave. Plan a wave first.")} action={<Link href={href("/load/waves")}>{t("Open migration waves")}</Link>} />}
         </Gate>
       </Card>
       {g ? (
@@ -158,6 +160,7 @@ export function GoLive() {
           <Card title={t("Readiness certificate")}><Certificates key={g.wave_id} g={g} /></Card>
         </>
       ) : null}
+      </div>
     </>
   );
 }

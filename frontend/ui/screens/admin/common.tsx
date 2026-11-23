@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { useFixture } from "@/lib/api/v2/fixture";
+import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { usePermissionsContext } from "@/lib/permissions";
 import { apiErrorMessage } from "@/lib/error";
 import { t, tx, useInterfaceLang } from "@/lib/v2/i18n";
@@ -82,15 +82,19 @@ export function useAct() {
   return { run, busy };
 }
 
+/** The one back link every admin sub-page shows, to the administration index. */
+export const useAdminBack = () => { const fx = useFixture(); return { href: withFixture("/admin", fx), label: t("Back to Administration") }; };
+
 /** The page frame every section uses: title, one-line lead, loading and error states. */
 export function Frame({ slug, title, lead, actions, loading, error, children }: {
   slug: string; title: string; lead: string; actions?: ReactNode; loading?: boolean; error?: boolean; children: ReactNode;
 }) {
   useInterfaceLang();
   const qc = useQueryClient();
+  const back = useAdminBack();
   return (
     <div className="mx-col" data-admin={slug}>
-      <PageHeader title={title} context={lead} actions={actions} />
+      <PageHeader back={back} title={title} context={lead} actions={actions} />
       {loading ? <Skeleton lines={6} label={t("Loading {section}", { section: title })} />
         : error ? <ErrorState heading={t("{section} could not be loaded", { section: title })} retryLabel={t("Try again")} onRetry={() => void qc.invalidateQueries({ queryKey: ["v2", "admin"] })} />
         : children}

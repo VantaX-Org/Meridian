@@ -6,6 +6,7 @@ import { formatModuleName } from "@/lib/format";
 import { useWorkRecord } from "@/lib/v2/work-queries";
 import { STATUS_LABEL } from "@/lib/v2/work";
 import { t } from "@/lib/v2/i18n";
+import { labelText } from "@/lib/v2/labels";
 import { Button, DetailPanel, useSheet, EmptyState, ErrorState, FieldChip, Field, Input, Skeleton, StatTile } from "@/ui/kit";
 import { Comments } from "./Comments";
 import { sevLabel, sevOf, fieldText, day, useDo } from "./shared";
@@ -46,18 +47,18 @@ export function RecordDetail({ module, recordKey, version }: { module: string; r
             <p className="mx-cap">{t("Object")} <FieldChip code={module} description={formatModuleName(module)} /></p>
             {d.events.length ? (
               <ul className="mx-list" aria-label={t("History")}>
-                {d.events.map((e, i) => <li key={i}>{day(e.created_at)} {e.user_label ?? ""} {e.action}{e.to_value ? ` ${e.to_value}` : ""}</li>)}
+                {d.events.map((e, i) => <li key={i}>{day(e.created_at)} {e.user_label ?? ""} {labelText(e.action)}{e.to_value ? ` ${e.to_value}` : ""}</li>)}
               </ul>
             ) : null}
             <Button onClick={() => sheets.open("decisions", { module, recordKey })}>{t("Decisions")}</Button>
             <Comments kind="record" id={`${module}|${recordKey}`} />
           </>
         ) : tab === "fix" ? (
-          !d.issues.length ? <EmptyState heading={t("Nothing to fix here")} /> : (
+          !d.issues.length ? <EmptyState heading={t("Nothing to fix here")} body={t("This record passes every rule. Pick another record from the list.")} /> : (
             <ul className="mx-list" aria-label={t("Issues")}>
               {d.issues.map((i) => (
                 <li key={i.check_id} className="mx-section">
-                  <p><FieldChip code={i.field ?? ""} description={fieldText(i.field ?? undefined, d.field_descriptions?.[i.field ?? ""])} /> {i.message}</p>
+                  <p>{i.field ? <FieldChip code={i.field} description={fieldText(i.field, d.field_descriptions?.[i.field])} /> : null} {i.message}</p>
                   <p className="mx-muted">{t("Now")}: {i.current_value ?? t("empty")} {i.suggestion ? `${t("Proposed")}: ${i.suggestion.value}` : ""}</p>
                   <div className="mx-links">
                     {i.suggestion ? <Button variant="primary" disabled={!d.can.fix} onClick={() => void decide(i.check_id, "accept")}>{t("Accept the proposed value")}</Button> : null}
@@ -67,6 +68,7 @@ export function RecordDetail({ module, recordKey, version }: { module: string; r
                     <Input value={val[i.check_id] ?? ""} onChange={(e) => setVal({ ...val, [i.check_id]: e.target.value })} />
                   </Field>
                   <Button disabled={!d.can.fix || !(val[i.check_id] ?? "").trim()} onClick={() => void decide(i.check_id, "edit", val[i.check_id])}>{t("Save value")}</Button>
+                  {!d.can.fix ? <p role="status" className="mx-muted">{t("Your role cannot fix records.")}</p> : !(val[i.check_id] ?? "").trim() ? <p role="status" className="mx-muted">{t("Type a value to save it.")}</p> : null}
                 </li>
               ))}
             </ul>
@@ -75,13 +77,13 @@ export function RecordDetail({ module, recordKey, version }: { module: string; r
           <ul className="mx-list" aria-label={t("Why it matters")}>
             {d.issues.map((i) => (
               <li key={i.check_id} className="mx-section">
-                <p><FieldChip code={i.field ?? ""} description={fieldText(i.field ?? undefined, d.field_descriptions?.[i.field ?? ""])} /></p>
+                {i.field ? <p><FieldChip code={i.field} description={fieldText(i.field, d.field_descriptions?.[i.field])} /></p> : null}
                 <p>{i.why_it_matters}</p>
                 {i.sap_impact ? <p className="mx-muted">{i.sap_impact}</p> : null}
                 {i.instruction ? <p className="mx-muted">{i.instruction}</p> : null}
               </li>
             ))}
-            {!d.issues.length ? <EmptyState heading={t("No open issue on this record")} /> : null}
+            {!d.issues.length ? <EmptyState heading={t("No open issue on this record")} body={t("This record passes every rule. Pick another record from the list.")} /> : null}
           </ul>
         )}
       </DetailPanel>
