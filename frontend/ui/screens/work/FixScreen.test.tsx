@@ -45,8 +45,8 @@ describe("the fix screen", () => {
 
   it("keeps the old tabs as filter chips", async () => {
     mount("/work?fixture=1");
-    const chips = await screen.findByRole("group", { name: "Work status" }, { timeout: 5000 });
-    expect(within(chips).getAllByRole("button").length).toBeGreaterThanOrEqual(5);
+    const chips = await screen.findByRole("group", { name: "Show" }, { timeout: 5000 });
+    expect(within(chips).getAllByRole("button").map((b) => b.textContent)).toEqual(["All", "With a proposal", "Needs a person", "Decided"]);
   });
 
   it("accepts with A before the server answers and undoes from the toast", async () => {
@@ -102,6 +102,9 @@ describe("the fix screen", () => {
 
   it("puts the row and the strip sentence back when Undo is pressed", async () => {
     mount("/work?fixture=1&filter=proposed");
+    await firstRow();
+    // Let the list and the strip settle first: a late refetch swaps the row nodes and moves the counts under the test.
+    await new Promise((r) => setTimeout(r, 400));
     const row = await firstRow();
     const before = count();
     const sentence = screen.getByTestId("decision-sentence").textContent;

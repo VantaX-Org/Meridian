@@ -20,7 +20,7 @@ beforeEach(() => { undo = stubLayout(); window.sessionStorage.clear(); });
 afterEach(() => undo());
 
 const cases: [string, string, () => ReactElement][] = [
-  [/Clean cycle/ as unknown as string, "/work", () => <Work />],
+  ["Fix records", "/work", () => <Work />],
   ["Triage", "/work/triage", () => <Triage />],
   ["Exceptions", "/work/exceptions", () => <Exceptions />],
   ["Work analytics", "/work/analytics", () => <WorkAnalytics />],
@@ -41,7 +41,8 @@ describe("Simulate fixing", () => {
   it("rescores the loaded records' object and says nothing changes", async () => {
     window.history.replaceState(null, "", "/work?fixture=1");
     renderWithQuery(<AletheiaProvider><SheetHost sheets={SHEETS} closeLabel="Close"><Work /></SheetHost></AletheiaProvider>);
-    fireEvent.click(await screen.findByRole("button", { name: "Simulate fixing" }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole("button", { name: "More tools" }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Simulate fixing" }));
     const dialog = await screen.findByRole("dialog", { name: "Simulate fixing" });
     expect(within(dialog).getByText("Simulation: nothing is changed in SAP or in Meridian.")).toBeTruthy();
     expect(await within(dialog).findByTestId("sim-result", {}, { timeout: 5000 })).toBeTruthy();

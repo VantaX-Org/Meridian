@@ -5,6 +5,7 @@ import { t } from "@/lib/v2/i18n";
 import type { WorkRow } from "@/lib/api/v2/types";
 import { displayKey, STATUS_LABEL, type LedgerState } from "@/lib/v2/work";
 import { useGridState } from "@/ui/kit/useGridState";
+import { formatMoneyCompact } from "@/lib/format";
 import { Button, DataTable, ProposalChip, useStacked, Sheet, type Column, type RejectReason } from "@/ui/kit";
 import { score as fmt } from "@/ui/screens/object/format";
 import { fieldText } from "../shared";
@@ -25,6 +26,11 @@ const conf = (r: WorkRow): string => (r.suggestion?.confidence === "high" ? t("H
 const source = (r: WorkRow): string =>
   r.suggestion?.source === "rule" ? t("Rule") : r.suggestion?.source === "value_map" ? t("Value map") : r.suggestion?.source === "cleaning" ? t("Cleaning") : "-";
 
+const KEYS = (): [string, string][] => [
+  ["J K", t("move")], ["A", t("accept")], ["E", t("edit")], ["N", t("reject")], ["X", t("select")],
+  [t("Space"), t("evidence")], [t("Enter"), t("record")], [t("Ctrl Z"), t("undo")],
+];
+
 /** The rows that A and Shift+A may accept: open, with a value the engine proposes. */
 export const acceptable = (rows: WorkRow[]): WorkRow[] => rows.filter((r) => r.status === "to_fix" && machineValue(r) !== null);
 
@@ -32,16 +38,17 @@ export const acceptable = (rows: WorkRow[]): WorkRow[] => rows.filter((r) => r.s
  * The record grid. A accepts, R rejects with a reason, E edits the proposed value in the cell, X selects, Shift+A opens the
  * apply-all preview. Keys act on the selected rows, or on the active row when none is selected.
  */
-export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMore, loadingMore, onMore, loading }: {
+export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMore, loadingMore, onMore, loading, head, preview, setPreview }: {
   rows: WorkRow[]; state: LedgerState; module: string | null; drafts: WorkRow[]; fullRules: string[];
   decide: (v: FixVars) => void; hasMore: boolean; loadingMore: boolean; onMore: () => void; loading?: boolean;
+  /** The card's header: the rule, the chips and the bulk buttons, owned by the screen. */
+  head?: React.ReactNode; preview: WorkRow[] | null; setPreview: (r: WorkRow[] | null) => void;
 }) {
   const grid = useGridState("fix");
   const stacked = useStacked();
   const wrap = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [rejecting, setRejecting] = useState<WorkRow[] | null>(null);
-  const [preview, setPreview] = useState<WorkRow[] | null>(null);
   const byId = useMemo(() => new Map(rows.map((r) => [rowId(r), r])), [rows]);
   const open = grid.open ? byId.get(grid.open) ?? null : null;
 
@@ -69,7 +76,7 @@ export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMor
       e.preventDefault();
       const todo = acceptable(targets());
       if (todo.length) decide({ action: "accept", rows: todo });
-    } else if (k === "r") {
+    } else if (k === "r" || k === "n") {
       e.preventDefault();
       const todo = targets().filter((r) => r.status === "to_fix");
       if (todo.length) setRejecting(todo);
@@ -94,7 +101,7 @@ export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMor
     },
     {
       key: "current", label: t("Current value"), width: 160, value: currentText,
-      render: (r) => (currentText(r) ? <span className="mx-num">{currentText(r)}</span> : <span className="mx-muted">{t("Loads on open")}</span>),
+      render: (r) => (currentText(r) ? <span className="mx-num">{currentText(r)}</span> : <span className="mx-muted" aria-label={t("No current value")}>-</span>),
     },
     {
       key: "proposed", label: t("New value"), width: 340, value: (r) => r.new_value ?? machineValue(r) ?? "",
@@ -114,6 +121,10 @@ export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMor
         );
       },
     },
+    ...(rows.some((r) => typeof r.value_at_risk === "number") ? [{
+      key: "value", label: t("Value at risk"), width: 130, value: (r: WorkRow) => r.value_at_risk ?? -1,
+      render: (r: WorkRow) => (typeof r.value_at_risk === "number" ? <span className="mx-num">{formatMoneyCompact(r.value_at_risk)}</span> : <span className="mx-muted">-</span>),
+    } satisfies Column<WorkRow>] : []),
     { key: "source", label: t("Source"), width: 110, value: source, render: source },
     { key: "confidence", label: t("Confidence"), width: 110, value: conf, render: conf },
     { key: "status", label: t("Status"), width: 150, groupable: true, value: (r) => STATUS_LABEL[r.status] ?? r.status, render: (r) => STATUS_LABEL[r.status] ?? r.status },
@@ -123,6 +134,7 @@ export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMor
   return (
     <div className="mx-fixgrid" data-open={open ? "" : undefined}>
       <div ref={wrap} onKeyDown={onKeyDown} className="mx-fixgrid-main" data-testid="fix-grid">
+        {head}
         <DataTable
           id="fix" label={t("Fixes")} columns={columns} rows={rows} rowKey={rowId} height={520}
           grid={grid} selection="multi" selectedKeys={selected} onSelectedKeys={setSelected}
@@ -136,7 +148,9 @@ export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMor
           <span data-testid="loaded-note">{t("{n, plural, one {# record loaded} other {# records loaded}}", { n: rows.length })}</span>
           {filtered ? <span>{" "}{t("Grouped and filtered within the loaded {n} rows", { n: rows.length })}</span> : null}
           {hasMore ? <Button variant="ghost" disabled={loadingMore} onClick={onMore}>{t("Load more")}</Button> : null}
-          <span className="mx-fix-keys"><kbd className="mx-kbd">A</kbd> {t("Accept")} <kbd className="mx-kbd">R</kbd> {t("Reject")} <kbd className="mx-kbd">E</kbd> {t("Edit")} <kbd className="mx-kbd">X</kbd> {t("Select")} <kbd className="mx-kbd">Shift+A</kbd> {t("Accept all")}</span>
+        </p>
+        <p className="mx-fix-keys" aria-label={t("Keyboard shortcuts")}>
+          {KEYS().map(([k, l]) => <span key={k}><kbd className="mx-kbd">{k}</kbd> {l}</span>)}
         </p>
       </div>
       {open && !stacked ? <aside className="mx-fixgrid-side" aria-label={t("Record")}><RecordDetail module={open.module} recordKey={open.record_key} version={open.version_id} /></aside> : null}

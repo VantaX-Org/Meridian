@@ -45,7 +45,7 @@ const tone = (s: number): RulerTone => (s >= 85 ? "go" : s >= 70 ? "watch" : "st
  * Score ruler: 0 to 100 (or `from` to 100), gates at 70 and 85. A solid mark is the shown score. When the measured score is higher
  * (the score is capped) a hollow mark sits at the measured score, tethered to the solid one. Takes translated strings, no i18n inside.
  */
-export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width, zones, first, showName = true }: {
+export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width, zones, first, showName = true, slim = false }: {
   marks: RulerMark[]; labels: RulerLabels; ariaLabel: string; from?: 0 | 50; width?: number;
   /** Header variant: names the three zones under the axis. */
   zones?: { noGo: string; atRisk: string; go: string };
@@ -53,9 +53,42 @@ export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width, zones, f
   first?: { value: number; label: string } | null;
   /** False when the page already names the object (the header ruler). */
   showName?: boolean;
+  /** One thin bar for a strip: gate labels above it, the marks on it, no ticks, zone words or names. Shows the first mark only. */
+  slim?: boolean;
 }) {
   const W = width ?? (from === 50 ? 290 : 1000);
   const x = (s: number) => ((Math.min(100, Math.max(from, s)) - from) * W) / (100 - from);
+  if (slim) {
+    const m = marks[0];
+    const y = 20, h = 8, cy = y + h / 2;
+    const capped = !!m && m.measured != null && m.measured > m.shown;
+    return (
+      <svg className="mx-ruler" data-slim="" viewBox={`-20 0 ${W + 40} 36`} role="img" aria-label={ariaLabel}>
+        <rect className="mx-ruler-z" data-tone="stop" x={x(from)} y={y} width={x(70) - x(from)} height={h} />
+        <rect className="mx-ruler-z" data-tone="watch" x={x(70)} y={y} width={x(85) - x(70)} height={h} />
+        <rect className="mx-ruler-z" data-tone="go" x={x(85)} y={y} width={x(100) - x(85)} height={h} />
+        {[70, 85].map((g) => <line key={g} className="mx-ruler-gate" x1={x(g)} x2={x(g)} y1={y - 4} y2={y + h + 4} />)}
+        <text className="mx-ruler-t" x={x(70)} y={10} textAnchor="middle" fontSize={11}>{labels.cap70}</text>
+        <text className="mx-ruler-t" x={x(85)} y={10} textAnchor="middle" fontSize={11}>{labels.cap85}</text>
+        {m ? (
+          <g data-mark={m.id} data-capped={capped ? "" : undefined}>
+            {capped ? (
+              <>
+                <line className="mx-ruler-tether" x1={x(m.shown)} x2={x(m.measured as number)} y1={cy} y2={cy} data-testid="ruler-tether" />
+                <circle className="mx-ruler-hollow" data-testid="ruler-hollow" cx={x(m.measured as number)} cy={cy} r={5} />
+              </>
+            ) : null}
+            <circle className="mx-ruler-dot" data-tone={m.tone ?? tone(m.shown)} data-testid="ruler-solid" cx={x(m.shown)} cy={cy} r={6} />
+            {m.projected != null ? (
+              <g className="mx-ruler-mk" data-testid="ruler-projected" style={{ transform: `translateX(${x(m.projected)}px)` }}>
+                <polygon className="mx-ruler-proj" transform={`translate(0 ${cy})`} points="0,-7 7,0 0,7 -7,0" />
+              </g>
+            ) : null}
+          </g>
+        ) : null}
+      </svg>
+    );
+  }
   const rowH = 34, top = 30, bandH = 8;
   const H = top + bandH + 40 + marks.length * rowH + 6;
   const ticks: number[] = [];

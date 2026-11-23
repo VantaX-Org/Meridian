@@ -20,21 +20,27 @@ export function RuleRail({ module, severity, picked, onPick, decided }: {
   const q = useWorkGroups({ module: module ?? undefined, severity: severity }, true);
   const rules = useMemo(() => orderRules(q.data?.groups ?? []), [q.data]);
   return (
-    <nav className="mx-fixrail" aria-label={t("Rules with work")} data-testid="rule-rail">
-      <h2 className="mx-card-t">{t("Rules with work")}</h2>
+    <nav className="mx-fixrail" aria-label={t("Rules over tolerance")} data-testid="rule-rail">
+      <h2 className="mx-fixrail-t">{t("Rules over tolerance")}</h2>
       {q.isPending ? <Skeleton label={t("Loading")} /> : q.isError ? <ErrorState onRetry={() => void q.refetch()} /> : !rules.length ? <EmptyState heading={t("No rule has open work.")} /> : (
-        <ul className="mx-list">
+        <ul className="mx-fixrail-l">
           {rules.map((g) => {
             const on = picked === g.check_id;
             const done = decided.get(g.check_id) ?? 0;
+            const pct = g.population ? Math.min(100, (g.records / g.population) * 100) : null;
             return (
               <li key={g.check_id}>
                 <button type="button" className="mx-fixrule" aria-pressed={on} data-sev={sevOf(g.severity)} onClick={() => onPick(on ? null : g.check_id)}>
-                  <span className="mx-fixrule-h"><code className="mx-code">{g.check_id}</code><span className="mx-sev">{sevLabel(g.severity)}</span></span>
-                  <span className="mx-fixrule-t">{g.message ?? ""}</span>
+                  <span className="mx-fixrule-h">
+                    <span className="mx-fixrule-sq" role="img" aria-label={sevLabel(g.severity)} />
+                    <code className="mx-code">{g.check_id}</code>
+                    <span className="mx-fixrule-t">{g.message ?? ""}</span>
+                    <span className="mx-fixrule-c mx-num">{g.records}</span>
+                  </span>
+                  {pct !== null ? <span className="mx-fixrule-bar" aria-hidden="true"><i style={{ inlineSize: `${pct}%` }} /></span> : null}
                   <span className="mx-fixrule-n mx-muted">
-                    {t("{n} records", { n: g.records })}
-                    {done ? <>{" "}<b>{t("{n} decided", { n: done })}</b></> : null}
+                    {g.field ? <>{g.field}, </> : null}{t("{n} proposed", { n: g.proposed })}
+                    {done ? <>, <b>{t("{n} decided", { n: done })}</b></> : null}
                   </span>
                 </button>
               </li>
