@@ -16053,4 +16053,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "With a proposal": "Mit Vorschlag",
   "Space": "Leertaste",
   "Ctrl Z": "Strg Z",
+  "No proposal": "Kein Vorschlag",
+  "Row actions": "Zeilenaktionen",
+  "Accept {code}": "{code} annehmen",
+  "Reject {code}": "{code} ablehnen",
+  "Edit {code}": "{code} bearbeiten",
 };

@@ -16053,4 +16053,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "With a proposal": "提案あり",
   "Space": "Space",
   "Ctrl Z": "Ctrl Z",
+  "No proposal": "提案なし",
+  "Row actions": "行の操作",
+  "Accept {code}": "{code} を承認",
+  "Reject {code}": "{code} を却下",
+  "Edit {code}": "{code} を編集",
 };

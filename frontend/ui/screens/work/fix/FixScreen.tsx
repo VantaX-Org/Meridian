@@ -114,26 +114,26 @@ export function FixScreen({ scope }: { scope?: string }) {
     key: "fix", label: rule ? t("Rule {id}", { id: rule.check_id }) : mod ? formatModuleName(mod) : t("Fix records"),
     suggestions: [t("Which rule should I fix first?"), t("Why is this value wrong?")],
   });
-  const cardHead = (
+  const ruleHead = (
     <div className="mx-fixcard-h" data-testid="fix-card-head">
-      <div className="mx-fixcard-r">
-        {rule ? (
-          <p className="mx-fixcard-t" data-testid="rule-head">
-            <code className="mx-code">{rule.check_id}</code> <span>{rule.message ?? ""}</span>
-            {rule.field ? <span className="mx-muted"> {t("Field {f}", { f: rule.field })}</span> : null}
-            <span className="mx-muted"> {t("{n} failing", { n: rule.records })}, {t("{n} left after drafts", { n: left ?? 0 })}</span>
-          </p>
-        ) : <p className="mx-fixcard-t">{t("All rules over tolerance")}</p>}
+      {rule ? (
+        <p className="mx-fixcard-t" data-testid="rule-head">
+          <strong><code className="mx-code">{rule.check_id}</code> {rule.message ?? ""}</strong>
+          {rule.field ? <span className="mx-muted"> {t("Field {f}", { f: rule.field })}</span> : null}
+          <span className="mx-muted"> {t("{n} failing", { n: rule.records })}, {t("{n} left after drafts", { n: left ?? 0 })}</span>
+        </p>
+      ) : <p className="mx-fixcard-t"><strong>{t("All rules over tolerance")}</strong></p>}
+    </div>
+  );
+  const chipRow = (
+    <div className="mx-fixcard-b">
+      <div className="mx-chips" role="group" aria-label={t("Show")}>
+        {CARD_CHIPS.map((c) => <Chip key={c.id} selected={c.on(state)} onClick={() => setState((x) => ({ ...x, ...c.set }))}>{c.label()}</Chip>)}
       </div>
-      <div className="mx-fixcard-b">
-        <div className="mx-chips" role="group" aria-label={t("Show")}>
-          {CARD_CHIPS.map((c) => <Chip key={c.id} selected={c.on(state)} onClick={() => setState((x) => ({ ...x, ...c.set }))}>{c.label()}</Chip>)}
-        </div>
-        <span className="mx-fixcard-act">
-          <Button variant="secondary" disabled={busy || !proposals} onClick={() => setPreview(acceptable(rows))}>{t("Apply all {n} proposals", { n: proposals })} <kbd className="mx-kbd">Shift A</kbd></Button>
-          <Button variant="ghost" disabled={busy || !sel} onClick={() => setSetOne(true)}>{t("Set one value for selected")}</Button>
-        </span>
-      </div>
+      <span className="mx-fixcard-act">
+        <Button variant="secondary" disabled={busy || !proposals} onClick={() => setPreview(acceptable(rows))}>{t("Apply all {n} proposals", { n: proposals })} <kbd className="mx-kbd">Shift A</kbd></Button>
+        <Button variant="ghost" disabled={busy || !sel} onClick={() => setSetOne(true)}>{t("Set one value for selected")}</Button>
+      </span>
     </div>
   );
 
@@ -173,22 +173,23 @@ export function FixScreen({ scope }: { scope?: string }) {
         </div>
         <CycleStepper label={t("Cycle steps")} step="clean" labels={{ pull: t("Pull"), clean: t("Clean"), upload: t("Upload"), score: t("Re-score"), compare: t("Compare") }} />
         <Button variant="ghost" aria-expanded={board} aria-controls="fix-board" onClick={() => setBoard((v) => !v)}>{board ? t("Hide the clean board") : t("Show the clean board")}</Button>
+        {toolbar}
       </div>
       {board ? <div id="fix-board"><h2 className="mx-h2">{t("Clean cycle")}</h2><CleanBoard module={state.module} onReview={(id) => pickRule(id)} /></div> : null}
       <ScoreStrip module={mod} drafts={drafts} fullRules={fullRules} onCreate={() => setLoad(true)} />
-      {toolbar}
       <div className="mx-fixlayout">
         <RuleRail module={mod} severity={state.severity ?? undefined} picked={sel} onPick={pickRule} decided={decidedMap} />
         <div className="mx-col">
           {q.isError || q.isPending || !rows.length ? (
             <div className="mx-fixgrid-main">
-              {cardHead}
+              {ruleHead}
+              <div className="mx-fixcard-h">{chipRow}</div>
               {q.isError ? <ErrorState heading={t("The records could not be loaded")} onRetry={() => void q.refetch()} retryLabel={t("Try again")} />
                 : q.isPending ? <Skeleton lines={6} label={t("Loading the records")} />
                 : <EmptyState heading={t("No record matches")} body={t("Pick another status above.")} action={sel ? <Button onClick={() => pickRule(null)}>{t("Show all rules")}</Button> : undefined} />}
             </div>
           ) : <FixGrid rows={rows} state={state} module={mod} drafts={drafts} fullRules={fullRules} loading={q.isFetching && !q.isFetchingNextPage}
-                decide={readOnly ? () => undefined : (v) => decide.mutate(v)} hasMore={!!q.hasNextPage} loadingMore={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} preview={preview} setPreview={setPreview} head={cardHead} />}
+                decide={readOnly ? () => undefined : (v) => decide.mutate(v)} hasMore={!!q.hasNextPage} loadingMore={q.isFetchingNextPage} onMore={() => void q.fetchNextPage()} preview={preview} setPreview={setPreview} head={ruleHead} lead={chipRow} />}
         </div>
       </div>
       <LoadFileDialog open={load} onClose={() => setLoad(false)} count={drafts.length} batchId={batchId} />

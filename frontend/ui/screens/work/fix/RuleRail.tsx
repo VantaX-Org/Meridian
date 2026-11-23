@@ -24,13 +24,13 @@ export function RuleRail({ module, severity, picked, onPick, decided }: {
       <h2 className="mx-fixrail-t">{t("Rules over tolerance")}</h2>
       {q.isPending ? <Skeleton label={t("Loading")} /> : q.isError ? <ErrorState onRetry={() => void q.refetch()} /> : !rules.length ? <EmptyState heading={t("No rule has open work.")} /> : (
         <ul className="mx-fixrail-l">
-          {rules.map((g) => {
+          {rules.map((g, i) => {
             const on = picked === g.check_id;
             const done = decided.get(g.check_id) ?? 0;
             const pct = g.population ? Math.min(100, (g.records / g.population) * 100) : null;
             return (
               <li key={g.check_id}>
-                <button type="button" className="mx-fixrule" aria-pressed={on} data-sev={sevOf(g.severity)} onClick={() => onPick(on ? null : g.check_id)}>
+                <button type="button" className="mx-fixrule" aria-pressed={on} data-top={picked === null && i === 0 ? "" : undefined} data-sev={sevOf(g.severity)} onClick={() => onPick(on ? null : g.check_id)}>
                   <span className="mx-fixrule-h">
                     <span className="mx-fixrule-sq" role="img" aria-label={sevLabel(g.severity)} />
                     <code className="mx-code">{g.check_id}</code>

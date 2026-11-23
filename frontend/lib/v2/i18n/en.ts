@@ -16052,6 +16052,11 @@ export const en = {
   "With a proposal": "With a proposal",
   "Space": "Space",
   "Ctrl Z": "Ctrl Z",
+  "No proposal": "No proposal",
+  "Row actions": "Row actions",
+  "Accept {code}": "Accept {code}",
+  "Reject {code}": "Reject {code}",
+  "Edit {code}": "Edit {code}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

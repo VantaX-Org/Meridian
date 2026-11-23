@@ -3,7 +3,7 @@
 .mx-root .mx-fixgrid { display: grid; gap: var(--mx-s3); }
 .mx-root .mx-fixgrid[data-open] { grid-template-columns: minmax(0, 1fr) 400px; }
 .mx-root .mx-fixgrid-main { min-width: 0; }
-.mx-root .mx-fix-rec { display: grid; }
+.mx-root .mx-fix-rec { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mx-root .mx-fix-field { display: grid; }
 .mx-root .mx-fix-draft { color: var(--mx-violet-ink); background: var(--mx-violet-soft); border-radius: var(--mx-r-chip); padding-inline: var(--mx-s2); }
 .mx-root .mx-fix-reasons { display: grid; gap: var(--mx-s2); border: 0; padding: 0; }
@@ -25,7 +25,7 @@
 .mx-root .mx-fixstrip-nums { display: flex; gap: var(--mx-s5); }
 .mx-root .mx-fixstrip-nums > div { display: grid; gap: 0; }
 .mx-root .mx-fixstrip-k { color: var(--mx-ink-2); font-size: var(--mx-fs-micro); }
-.mx-root .mx-fixstrip-nums b { font-size: var(--mx-fs-title); line-height: 1.1; }
+.mx-root .mx-fixstrip-nums b { font-size: 2.25rem; font-weight: var(--mx-w-label); line-height: 1.05; }
 .mx-root .mx-fixstrip-proj { color: var(--mx-violet-ink); }
 .mx-root .mx-fixstrip-ruler { display: grid; gap: var(--mx-s1); min-width: 0; }
 .mx-root .mx-fixstrip-legend { display: flex; gap: var(--mx-s4); margin: 0; padding: 0; list-style: none; font-size: var(--mx-fs-micro); color: var(--mx-ink-2); }
@@ -42,7 +42,8 @@
 .mx-root .mx-fixrule[aria-pressed="true"] { border-color: var(--mx-accent); background: var(--mx-row-selected); }
 .mx-root .mx-fixrule-h { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: var(--mx-s2); }
 .mx-root .mx-fixrule-sq { inline-size: 0.6rem; block-size: 0.6rem; border-radius: 2px; background: var(--sev, var(--mx-ink-3)); }
-.mx-root .mx-fixrule-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--mx-fs-small); }
+.mx-root .mx-fixrule-t { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; font-size: var(--mx-fs-small); }
+.mx-root .mx-fixrule[data-top] { border-color: var(--mx-accent); background: var(--mx-row-selected); }
 .mx-root .mx-fixrule-c { font-size: var(--mx-fs-small); font-weight: var(--mx-w-label); }
 .mx-root .mx-fixrule-bar { display: block; block-size: 3px; border-radius: 2px; background: var(--mx-well); overflow: hidden; }
 .mx-root .mx-fixrule-bar > i { display: block; block-size: 100%; background: var(--sev, var(--mx-ink-3)); }
@@ -59,3 +60,15 @@
   .mx-root .mx-fixstrip { grid-template-columns: minmax(0, 1fr); }
 }
 .mx-root .mx-fixrun-h { display: inline; margin: 0; font: inherit; color: var(--mx-ink-2); }
+.mx-root .mx-fixprop { display: flex; align-items: center; gap: var(--mx-s2); min-width: 0; }
+.mx-root .mx-fixprop-v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 var(--mx-s2); border-radius: var(--mx-r-chip); background: var(--mx-aletheia-soft); color: var(--mx-aletheia-ink); font-weight: var(--mx-w-label); }
+.mx-root .mx-fixprop-acts { display: inline-flex; gap: var(--mx-s1); margin-inline-start: auto; opacity: 0; }
+.mx-root .mx-table tr:hover .mx-fixprop-acts, .mx-root .mx-table tr[data-active] .mx-fixprop-acts, .mx-root .mx-fixprop-acts:focus-within { opacity: 1; }
+.mx-root .mx-fixprop-b { padding: 0 var(--mx-s2); border: 1px solid var(--mx-border-strong); border-radius: var(--mx-r-control); background: var(--mx-surface); color: var(--mx-ink); font: inherit; font-size: var(--mx-fs-micro); line-height: 1.5; cursor: pointer; }
+.mx-root .mx-fixprop-b:hover { background: var(--mx-row-hover); }
+.mx-root .mx-fixrun > .mx-links { margin-inline-start: auto; }
+.mx-root .mx-fixgrid-main .mx-dt-bar { padding: var(--mx-s2) var(--mx-s4); border-block-end: 1px solid var(--mx-border); }
+.mx-root .mx-fixgrid-main .mx-dt-bar > .mx-fixcard-b { flex: 1 1 auto; }
+.mx-root .mx-fixgrid-main .mx-fixcard-h { padding-block-end: 0; border-block-end: 0; }
+.mx-root .mx-dt-viewmenu { display: grid; gap: var(--mx-s2); min-inline-size: 16rem; }
+.mx-root .mx-dt-mh { margin: var(--mx-s2) 0 0; font-size: var(--mx-fs-micro); font-weight: var(--mx-w-label); color: var(--mx-ink-2); }

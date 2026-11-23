@@ -6,7 +6,7 @@ import type { WorkRow } from "@/lib/api/v2/types";
 import { displayKey, STATUS_LABEL, type LedgerState } from "@/lib/v2/work";
 import { useGridState } from "@/ui/kit/useGridState";
 import { formatMoneyCompact } from "@/lib/format";
-import { Button, DataTable, ProposalChip, useStacked, Sheet, type Column, type RejectReason } from "@/ui/kit";
+import { Button, DataTable, useStacked, Sheet, type Column, type RejectReason } from "@/ui/kit";
 import { score as fmt } from "@/ui/screens/object/format";
 import { fieldText } from "../shared";
 import { RecordDetail } from "../RecordDetail";
@@ -38,11 +38,11 @@ export const acceptable = (rows: WorkRow[]): WorkRow[] => rows.filter((r) => r.s
  * The record grid. A accepts, R rejects with a reason, E edits the proposed value in the cell, X selects, Shift+A opens the
  * apply-all preview. Keys act on the selected rows, or on the active row when none is selected.
  */
-export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMore, loadingMore, onMore, loading, head, preview, setPreview }: {
+export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMore, loadingMore, onMore, loading, head, lead, preview, setPreview }: {
   rows: WorkRow[]; state: LedgerState; module: string | null; drafts: WorkRow[]; fullRules: string[];
   decide: (v: FixVars) => void; hasMore: boolean; loadingMore: boolean; onMore: () => void; loading?: boolean;
   /** The card's header: the rule, the chips and the bulk buttons, owned by the screen. */
-  head?: React.ReactNode; preview: WorkRow[] | null; setPreview: (r: WorkRow[] | null) => void;
+  head?: React.ReactNode; lead?: React.ReactNode; preview: WorkRow[] | null; setPreview: (r: WorkRow[] | null) => void;
 }) {
   const grid = useGridState("fix");
   const stacked = useStacked();
@@ -93,7 +93,7 @@ export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMor
   const columns: Column<WorkRow>[] = [
     {
       key: "record", label: t("Record"), width: 220, sort: (r) => displayKey(r.record_key),
-      render: (r) => <span className="mx-fix-rec"><span className="mx-code">{displayKey(r.record_key)}</span><span className="mx-muted">{r.name}</span></span>,
+      render: (r) => <span className="mx-fix-rec" title={`${displayKey(r.record_key)} ${r.name ?? ""}`.trim()}><span className="mx-code">{displayKey(r.record_key)}</span> <span className="mx-muted">{r.name}</span></span>,
     },
     {
       key: "field", label: t("Field"), width: 200, groupable: true, value: (r) => r.top_field ?? "",
@@ -109,15 +109,18 @@ export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMor
       render: (r) => {
         if (isDraft(r)) return <span className="mx-fix-draft" data-testid="draft-value"><span className="mx-num">{r.new_value ?? ""}</span></span>;
         const m = machineValue(r);
-        if (r.status !== "to_fix" || m === null) return <span className="mx-muted">{r.status === "to_fix" ? t("Needs a person") : "-"}</span>;
+        if (r.status !== "to_fix" || m === null) return <span className="mx-muted">{r.status === "to_fix" ? t("No proposal") : "-"}</span>;
+        const code = displayKey(r.record_key);
+        const text = r.suggested_label ? `${m} ${r.suggested_label}` : m;
         return (
-          <ProposalChip
-            current={currentText(r) || "-"} proposed={m} reasons={reasons()}
-            evidence={r.suggestion ? { source: source(r), reason: r.suggestion.why } : undefined}
-            onAccept={() => decide({ action: "accept", rows: [r] })}
-            onReject={(id) => decide({ action: "reject", rows: [r], reason: reasons().find((x) => x.id === id) })}
-            onEdit={() => wrap.current?.querySelector(".mx-table")?.dispatchEvent(new KeyboardEvent("keydown", { key: "F2", bubbles: true }))}
-          />
+          <span className="mx-fixprop">
+            <span className="mx-fixprop-v" title={text}>{text}</span>
+            <span className="mx-fixprop-acts" role="group" aria-label={t("Row actions")}>
+              <button type="button" tabIndex={-1} className="mx-fixprop-b" aria-label={t("Accept {code}", { code })} onClick={() => decide({ action: "accept", rows: [r] })}>{t("Accept")}</button>
+              <button type="button" tabIndex={-1} className="mx-fixprop-b" aria-label={t("Reject {code}", { code })} onClick={() => setRejecting([r])}>{t("Reject")}</button>
+              <button type="button" tabIndex={-1} className="mx-fixprop-b" aria-label={t("Edit {code}", { code })} onClick={() => setTimeout(() => wrap.current?.querySelector(".mx-table")?.dispatchEvent(new KeyboardEvent("keydown", { key: "F2", bubbles: true })), 0)}>{t("Edit")}</button>
+            </span>
+          </span>
         );
       },
     },
@@ -136,7 +139,7 @@ export function FixGrid({ rows, state, module, drafts, fullRules, decide, hasMor
       <div ref={wrap} onKeyDown={onKeyDown} className="mx-fixgrid-main" data-testid="fix-grid">
         {head}
         <DataTable
-          id="fix" label={t("Fixes")} columns={columns} rows={rows} rowKey={rowId} height={520}
+          id="fix" label={t("Fixes")} columns={columns} rows={rows} rowKey={rowId} rowHeight={36} height={520} lead={lead} viewMenu
           grid={grid} selection="multi" selectedKeys={selected} onSelectedKeys={setSelected}
           selected={grid.open} onSelect={(r) => grid.setOpen(rowId(r))}
           bulkActions={[

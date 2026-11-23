@@ -49,7 +49,7 @@ const write = (k: string, v: unknown) => { try { window.localStorage.setItem(k, 
  * A table that renders only the rows in view (fixed `rowHeight`, scroll box `height`), with a sticky header, sortable
  * columns, one selected row and arrow-key navigation (Up, Down, Home, End; Enter or Space selects).
  */
-export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selected: selectedProp, onSelect, height = 360, rowHeight = 32, expand, id, selection, selectedKeys, onSelectedKeys, bulkActions, matching, onSelectAllMatching, paging, footer, toolbar, grid: gridApi, filters, groupSum, stickyFirst, bulkBar, density, rowHref }: {
+export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selected: selectedProp, onSelect, height = 360, rowHeight = 32, expand, id, selection, selectedKeys, onSelectedKeys, bulkActions, matching, onSelectAllMatching, paging, footer, toolbar, grid: gridApi, filters, lead, viewMenu, groupSum, stickyFirst, bulkBar, density, rowHref }: {
   columns: Column<T>[]; rows: T[]; rowKey: (row: T) => string; label: string;
   selected?: string | null; onSelect?: (row: T) => void; height?: number; rowHeight?: number;
   /** v2: a stable table id turns on the toolbar (views, columns, density) and keeps the user's choices per table. */
@@ -67,6 +67,10 @@ export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selecte
   grid?: GridApi;
   /** A chip row that narrows the rows. */
   filters?: TableFilter[];
+  /** Content at the start of the tools bar, for example a screen's own chip row. */
+  lead?: ReactNode;
+  /** Folds View, Columns, row density and Group by into one "View" menu button at the end of the bar. */
+  viewMenu?: boolean;
   /** Group headers show the row count and this sum. */
   groupSum?: { label: string; value: (row: T) => number };
   /** The first column stays in view when the table scrolls sideways. */
@@ -339,9 +343,10 @@ export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selecte
           {bulkActions?.map((a) => <button key={a.id} type="button" className="mx-btn" data-danger={a.danger ? "" : undefined} onClick={() => run(a)}>{a.label}</button>)}
           <button type="button" className="mx-btn" data-variant="ghost" onClick={() => onSelectedKeys?.([])}>{t("Clear")}</button>
         </div>
-      ) : (id || toolbar || filters?.length || allColumns.some((c) => c.groupable)) ? (
+      ) : (id || toolbar || lead || filters?.length || allColumns.some((c) => c.groupable)) ? (
         <div className="mx-dt-bar" role="toolbar" aria-label={t("Table tools")}>
-          {id ? (
+          {lead}
+          {id && !viewMenu ? (
             <Popover label={t("View")} align="start" trigger={<>{t("View")}: {view ?? t("Default")}{modified ? <span className="mx-dt-mod"> {t("Modified")}</span> : null}</>}>
               {(close) => (
                 <>
@@ -360,7 +365,7 @@ export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selecte
               )}
             </Popover>
           ) : null}
-          {id ? (
+          {id && !viewMenu ? (
             <Popover label={t("Columns")} align="start" trigger={t("Columns")}>
               {() => (
                 <>
@@ -380,8 +385,8 @@ export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selecte
               )}
             </Popover>
           ) : null}
-          {id ? <button type="button" className="mx-btn" aria-pressed={prefs.density === "comfortable"} onClick={() => patch({ density: prefs.density === "compact" ? "comfortable" : "compact" })}>{prefs.density === "compact" ? t("Comfortable rows") : t("Compact rows")}</button> : null}
-          {allColumns.some((c) => c.groupable) ? (
+          {id && !viewMenu ? <button type="button" className="mx-btn" aria-pressed={prefs.density === "comfortable"} onClick={() => patch({ density: prefs.density === "compact" ? "comfortable" : "compact" })}>{prefs.density === "compact" ? t("Comfortable rows") : t("Compact rows")}</button> : null}
+          {!viewMenu && allColumns.some((c) => c.groupable) ? (
             <label className="mx-dt-groupby">{t("Group by")}{" "}
               <select value={groupKey ?? ""} onChange={(e) => setGroup(e.target.value || null)}>
                 <option value="">{t("None")}</option>
@@ -400,6 +405,53 @@ export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selecte
           {Object.values(active).some((v) => v.length) ? <button type="button" className="mx-btn" data-variant="ghost" onClick={() => (gridApi ? gridApi.clearFilters() : setLocalFilters({}))}>{t("Clear filters")}</button> : null}
           <span className="mx-dt-grow" />
           {toolbar}
+          {viewMenu && id ? (
+            <Popover label={t("View")} align="end" trigger={<>{t("View")}{modified ? <span className="mx-dt-mod"> {t("Modified")}</span> : null}</>} panelClassName="mx-dt-viewmenu">
+              {(close) => (
+                <>
+                  <h3 className="mx-dt-mh">{t("View")}: {view ?? t("Default")}</h3>
+                <>
+                  <button type="button" className="mx-btn" data-variant="ghost" aria-pressed={view === null} onClick={() => { pickView(null); close(); }}>{t("Default")}</button>
+                  {views.map((v) => (
+                    <div key={v.name} className="mx-dt-view">
+                      <button type="button" className="mx-btn" data-variant="ghost" aria-pressed={view === v.name} onClick={() => { pickView(v); close(); }}>{v.name}</button>
+                      <button type="button" className="mx-btn" data-variant="ghost" aria-label={t("Delete view {name}", { name: v.name })} onClick={() => dropView(v.name)}>{t("Delete")}</button>
+                    </div>
+                  ))}
+                  <form className="mx-dt-view" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget).get("name"); if (typeof f === "string") { saveView(f); close(); } }}>
+                    <input name="name" className="mx-input" aria-label={t("View name")} placeholder={t("View name")} defaultValue={view ?? ""} />
+                    <button type="submit" className="mx-btn">{t("Save view")}</button>
+                  </form>
+                </>
+                  <h3 className="mx-dt-mh">{t("Columns")}</h3>
+                <>
+                  {prefs.order.filter((k) => allColumns.some((c) => c.key === k)).concat(allColumns.map((c) => c.key).filter((k) => !prefs.order.includes(k))).map((k) => {
+                    const c = allColumns.find((x) => x.key === k)!;
+                    const on = !prefs.hidden.includes(k);
+                    return (
+                      <div key={k} className="mx-dt-col" onKeyDown={(e) => { if (e.altKey && e.key === "ArrowUp") { e.preventDefault(); move2(k, -1); } else if (e.altKey && e.key === "ArrowDown") { e.preventDefault(); move2(k, 1); } }}>
+                        <label><input type="checkbox" checked={on} disabled={c.hideable === false} onChange={() => patch({ hidden: on ? [...prefs.hidden, k] : prefs.hidden.filter((x) => x !== k) })} /> {c.label}</label>
+                        <button type="button" className="mx-btn" data-variant="ghost" aria-label={t("Move {name} earlier", { name: c.label })} onClick={() => move2(k, -1)}>{"\u2191"}</button>
+                        <button type="button" className="mx-btn" data-variant="ghost" aria-label={t("Move {name} later", { name: c.label })} onClick={() => move2(k, 1)}>{"\u2193"}</button>
+                      </div>
+                    );
+                  })}
+                  <button type="button" className="mx-btn" onClick={() => patch({ hidden: base.hidden, order: base.order, widths: {} })}>{t("Reset columns")}</button>
+                </>
+                  <h3 className="mx-dt-mh">{t("Rows")}</h3>
+                  <button type="button" className="mx-btn" aria-pressed={prefs.density === "comfortable"} onClick={() => patch({ density: prefs.density === "compact" ? "comfortable" : "compact" })}>{prefs.density === "compact" ? t("Comfortable rows") : t("Compact rows")}</button>
+                  {allColumns.some((c) => c.groupable) ? (
+                    <label className="mx-dt-groupby">{t("Group by")}{" "}
+                      <select value={groupKey ?? ""} onChange={(e) => setGroup(e.target.value || null)}>
+                        <option value="">{t("None")}</option>
+                        {allColumns.filter((c) => c.groupable).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                      </select>
+                    </label>
+                  ) : null}
+                </>
+              )}
+            </Popover>
+          ) : null}
         </div>
       ) : null}
       {selection && all && matching && matching > sorted.length && onSelectAllMatching ? (

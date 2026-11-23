@@ -60,7 +60,7 @@ export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width, zones, f
   const x = (s: number) => ((Math.min(100, Math.max(from, s)) - from) * W) / (100 - from);
   if (slim) {
     const m = marks[0];
-    const y = 20, h = 8, cy = y + h / 2;
+    const y = 8, h = 8, cy = y + h / 2;
     const capped = !!m && m.measured != null && m.measured > m.shown;
     return (
       <svg className="mx-ruler" data-slim="" viewBox={`-20 0 ${W + 40} 36`} role="img" aria-label={ariaLabel}>
@@ -68,8 +68,8 @@ export function ScoreRuler({ marks, labels, ariaLabel, from = 0, width, zones, f
         <rect className="mx-ruler-z" data-tone="watch" x={x(70)} y={y} width={x(85) - x(70)} height={h} />
         <rect className="mx-ruler-z" data-tone="go" x={x(85)} y={y} width={x(100) - x(85)} height={h} />
         {[70, 85].map((g) => <line key={g} className="mx-ruler-gate" x1={x(g)} x2={x(g)} y1={y - 4} y2={y + h + 4} />)}
-        <text className="mx-ruler-t" x={x(70)} y={10} textAnchor="middle" fontSize={11}>{labels.cap70}</text>
-        <text className="mx-ruler-t" x={x(85)} y={10} textAnchor="middle" fontSize={11}>{labels.cap85}</text>
+        <text className="mx-ruler-t" x={x(70)} y={34} textAnchor="middle" fontSize={11}>{labels.cap70}</text>
+        <text className="mx-ruler-t" x={x(85)} y={34} textAnchor="middle" fontSize={11}>{labels.cap85}</text>
         {m ? (
           <g data-mark={m.id} data-capped={capped ? "" : undefined}>
             {capped ? (
