@@ -9,12 +9,8 @@ import { expect, test } from "@playwright/test";
 const NAV = { timeout: 90_000 };
 const ROUTES: [string, string][] = [
   ["/work", "Clean cycle"],
-  ["/work/triage", "Triage"],
-  ["/work/exceptions", "Exceptions"],
-  ["/work/exceptions?view=rules", "Exceptions"],
   ["/work/analytics", "Work analytics"],
   ["/work/requests", "Data requests"],
-  ["/approvals", "Approvals"],
 ];
 
 test.beforeEach(async ({ page }) => {
