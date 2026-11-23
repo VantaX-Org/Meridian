@@ -41,8 +41,9 @@ Statuses:
 | Steward queue: filter, approve, reject, escalate, bulk approve confident items, item lifecycle stepper | GET `/stewardship/queue`, POST resolve, POST escalate, POST bulk-approve | `ui/screens/people/StewardQueue.tsx`, rendered in Stewardship | People, Stewardship |
 | Maintenance windows: add and remove (PUT replaces list, max 20, UTC) | PUT `/settings/maintenance` | `ui/screens/admin/ops/MaintenanceEditor.tsx`, in Admin, Enterprise | Admin, Enterprise |
 | Settings writes: theme (name, accents), logo upload and remove, compliance and retention days, automation, chat alerts and test | PUT `/settings/theme`, POST `/settings/theme/logo`, PUT `/settings/compliance`, PUT `/settings/retention`, PUT `/settings/automation`, PUT `/settings/chat-alerts`, POST `/settings/chat-alerts/test` | `ui/screens/admin/ops/{ThemeEditor,ComplianceEditor,AlertSettings}.tsx`, in Admin Enterprise, Data and Notify | Admin |
+| Triage configuration: SLA policy reset, team edit and members, assignment rule add (three steps) and reorder, escalation chain, working calendar and fallback owner | DELETE `/triage/sla-policies/{id}`, PATCH `/triage/teams/{id}`, PUT `/triage/teams/{id}/members`, POST `/triage/rules`, POST `/triage/rules/reorder`, PUT `/triage/escalation-chain`, GET and PUT `/triage/settings` | `ui/screens/admin/ops/TriageConfig.tsx`, mounted in `Triage.tsx` | Admin, Triage settings |
 
-Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `SettingsWrites.test.tsx`.
+Tests: `people.test.tsx` (two new cases), `MaintenanceEditor.test.tsx`, `SettingsWrites.test.tsx`, `TriageConfig.test.tsx`.
 
 ## ORPHAN capabilities (client exists, no screen)
 
@@ -52,7 +53,6 @@ Suggested home is the journey where the user would expect it.
 | --- | --- | --- | --- |
 | Assign a steward to a queue item | `assignStewardItem` | POST `/stewardship/{id}/assign` | People, Stewardship (needs a user picker) |
 | Cost features read, AI audit read | `getCostFeatures`, `getAiAudit` | `/settings/cost-model/features`, `/audit/llm` | Admin |
-| Triage configuration: SLA delete, settings, team update and members, assign rules and reorder, escalation chain | `deleteSlaPolicy`, `getTriageSettings`, `updateTeam`, `setTeamMembers`, `createAssignRule`, `reorderAssignRules`, `putEscalationChain` | `/triage/*` | Work, Triage settings |
 | Subscriptions, delegations | `putSubscriptions`, `getAllDelegations` | `/me/subscriptions`, `/delegations` | Me |
 | Data contracts: update, enforcement, create per object | `updateContract`, `setEnforcement`, `createObjectContract` | `/contracts` | People, Contracts |
 | Dedup candidates, preview, merge | `getDedupCandidates`, `getDedupCandidatesFor`, `previewDedup`, `mergeDedup` | `/dedup/*` | Clean |
