@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meridian enterprise elevation preview</title>
+<style>
+/* Preview only. Hex lives here because this file is under docs/. Product code uses the --mx-* tokens. */
+:root {
+  --paper:#F4F5F7; --sheet:#FFFFFF; --well:#ECEEF2; --line:#E1E4EA; --line-strong:#C5CAD3;
+  --ink:#0F1115; --ink-2:#474D58; --ink-3:#5E6572; --on-solid:#FFFFFF;
+  --cobalt:#1D4FE0; --cobalt-soft:#E7EDFF;
+  --go-soft:#E3F3EA; --watch-soft:#FBEFD9; --stop:#C4281F; --stop-soft:#FBE6E4;
+  --good-ink:#11603A; --warn-ink:#7A4500; --bad-ink:#A61F1F;
+  --sev-critical:#C4281F; --sev-high:#B84308; --sev-medium:#8A6400;
+  --violet:#6A4BD8; --violet-ink:#3A2890; --violet-soft:#EFEBFF; --violet-edge:#CABDF6;
+  --chart-1:#1D4FE0; --chart-2:#0B7285; --chart-3:#A8327A; --chart-5:#5E6572;
+  --elev-1:0 1px 0 rgb(15 17 21 / 4%);
+  --elev-2:0 4px 12px rgb(15 17 21 / 10%), 0 0 0 1px rgb(15 17 21 / 6%);
+  --elev-dock:0 10px 30px rgb(58 40 144 / 18%);
+  --h-control:32px; --h-row:32px; --h-bar:48px; --h-subbar:40px; --gutter:24px;
+  --r-chip:4px; --r-control:6px; --r-card:8px;
+  --sans:"Geist","Inter",system-ui,-apple-system,"Segoe UI","Noto Sans JP","Hiragino Sans",sans-serif;
+  --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper:#0C0D12; --sheet:#15161D; --well:#1D1F29; --line:#2A2D3A; --line-strong:#3C4052;
+    --ink:#F1F2F6; --ink-2:#B6BAC6; --ink-3:#8D93A2; --on-solid:#0C0D12;
+    --cobalt:#7D9CFF; --cobalt-soft:#1C2750;
+    --go-soft:#14281F; --watch-soft:#2D2410; --stop:#F0685E; --stop-soft:#331816;
+    --good-ink:#7BDDAA; --warn-ink:#F6C478; --bad-ink:#FF9A9A;
+    --sev-critical:#F0685E; --sev-high:#FF8A4C; --sev-medium:#F2C94C;
+    --violet:#A590FF; --violet-ink:#D9CFFF; --violet-soft:#231D45; --violet-edge:#4F4388;
+    --chart-1:#7D9CFF; --chart-2:#3FC1D0; --chart-3:#E07AB8; --chart-5:#A3ABBA;
+    --elev-1:0 1px 0 rgb(0 0 0 / 40%);
+    --elev-2:0 4px 12px rgb(0 0 0 / 50%), 0 0 0 1px rgb(255 255 255 / 8%);
+    --elev-dock:0 10px 30px rgb(0 0 0 / 50%);
+  }
+}
+* { box-sizing:border-box; }
+html { scroll-padding-top:100px; }
+body { margin:0; background:var(--paper); color:var(--ink); font:13px/20px var(--sans); font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased; }
+a { color:inherit; text-decoration:none; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline:2px solid var(--cobalt); outline-offset:2px; border-radius:var(--r-chip); }
+.mono { font-family:var(--mono); font-size:12px; }
+.muted { color:var(--ink-2); } .faint { color:var(--ink-3); }
+.num { text-align:end; }
+
+/* Shell */
+.shell { position:sticky; top:0; z-index:5; background:var(--sheet); }
+.bar { height:var(--h-bar); display:flex; align-items:center; gap:12px; padding:0 var(--gutter); border-bottom:1px solid var(--line); border-top:2px solid var(--stop); }
+.brand { display:flex; align-items:center; gap:8px; font-weight:600; font-size:15px; }
+.glyph { width:22px; height:22px; border-radius:var(--r-chip); background:var(--ink); color:var(--on-solid); display:grid; place-items:center; font-size:12px; font-weight:700; }
+.switch { display:flex; align-items:center; gap:8px; height:var(--h-control); padding:0 10px; border:1px solid var(--line); border-radius:var(--r-control); background:var(--sheet); font:inherit; color:var(--ink); }
+.switch .faint { font-size:12px; }
+.env { font:600 11px/18px var(--sans); padding:0 6px; border-radius:var(--r-chip); border:1px solid currentColor; }
+.env.prod { color:var(--bad-ink); background:var(--stop-soft); }
+.env.qa { color:var(--warn-ink); background:var(--watch-soft); }
+.search { flex:1; max-width:352px; margin:0 auto; height:var(--h-control); display:flex; align-items:center; justify-content:space-between; padding:0 10px; border:1px solid var(--line); border-radius:var(--r-control); background:var(--well); color:var(--ink-3); }
+kbd { font:11px var(--mono); border:1px solid var(--line-strong); border-radius:var(--r-chip); padding:0 4px; background:var(--sheet); color:var(--ink-2); }
+.bar-end { display:flex; align-items:center; gap:12px; }
+.health { display:flex; align-items:center; gap:6px; color:var(--good-ink); font-weight:500; }
+.dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
+.bell { position:relative; width:var(--h-control); height:var(--h-control); display:grid; place-items:center; border-radius:var(--r-control); border:1px solid var(--line); }
+.bell b { position:absolute; top:-5px; right:-5px; min-width:16px; height:16px; border-radius:8px; background:var(--cobalt); color:var(--on-solid); font-size:10px; line-height:16px; text-align:center; }
+.locale { color:var(--ink-2); font-size:12px; white-space:nowrap; }
+.ask { height:var(--h-control); display:flex; align-items:center; gap:6px; padding:0 10px; border:1px solid var(--violet-edge); background:var(--violet-soft); color:var(--violet-ink); border-radius:var(--r-control); font-weight:500; }
+.avatar { width:28px; height:28px; border-radius:50%; background:var(--well); border:1px solid var(--line-strong); display:grid; place-items:center; font-size:11px; font-weight:600; }
+.subbar { height:var(--h-subbar); display:flex; align-items:center; gap:4px; padding:0 var(--gutter); border-bottom:1px solid var(--line); box-shadow:var(--elev-1); }
+.subbar a.tab { height:100%; display:flex; align-items:center; padding:0 10px; color:var(--ink-2); font-weight:500; border-bottom:2px solid transparent; }
+.subbar a.tab.on { color:var(--ink); border-bottom-color:var(--ink); }
+body:has(#object:target) .tab-home { color:var(--ink-2); border-bottom-color:transparent; }
+body:has(#object:target) .tab-objects { color:var(--ink); border-bottom-color:var(--ink); }
+.subbar .sep { width:1px; height:16px; background:var(--line); margin:0 6px; }
+.crumbs { margin-inline-start:auto; display:flex; gap:0; color:var(--ink-3); font-size:12px; }
+.crumbs span + span::before, .crumbs a + span::before, .crumbs a + a::before { content:"/"; margin:0 8px; color:var(--line-strong); }
+.crumbs [aria-current] { color:var(--ink); }
+.crumb-object { display:none; } body:has(#object:target) .crumb-object { display:flex; } body:has(#object:target) .crumb-home { display:none; }
+.sample { background:var(--watch-soft); color:var(--warn-ink); font-size:12px; padding:4px var(--gutter); border-bottom:1px solid var(--line); }
+
+/* Page */
+main { max-width:1680px; margin:0 auto; padding:20px var(--gutter) 120px; }
+#object { display:none; } #object:target { display:block; } #object:target ~ #home { display:none; }
+.head { margin-bottom:16px; }
+.title-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+h1 { font:600 22px/28px var(--sans); margin:0; }
+h2 { font:600 15px/22px var(--sans); margin:0; }
+.actions { margin-inline-start:auto; display:flex; gap:8px; }
+.btn { height:var(--h-control); display:inline-flex; align-items:center; gap:6px; padding:0 12px; border-radius:var(--r-control); border:1px solid var(--line-strong); background:var(--sheet); color:var(--ink); font:500 13px var(--sans); cursor:pointer; }
+.btn.primary { background:var(--ink); color:var(--on-solid); border-color:var(--ink); }
+.meta { display:flex; flex-wrap:wrap; gap:0; margin-top:6px; color:var(--ink-2); font-size:12px; line-height:16px; }
+.meta > span { padding-inline-end:12px; margin-inline-end:12px; border-inline-end:1px solid var(--line); display:flex; align-items:center; gap:6px; }
+.meta > span:last-child { border:0; }
+.badge { display:inline-flex; align-items:center; gap:4px; font:500 12px/20px var(--sans); padding:0 8px; border-radius:999px; white-space:nowrap; }
+.badge.stop { color:var(--bad-ink); background:var(--stop-soft); }
+.badge.watch { color:var(--warn-ink); background:var(--watch-soft); }
+.badge.go { color:var(--good-ink); background:var(--go-soft); }
+.badge.info { color:var(--cobalt); background:var(--cobalt-soft); }
+.sev { font-weight:500; white-space:nowrap; } .sev::before { content:""; display:inline-block; width:8px; height:8px; border-radius:2px; background:currentColor; margin-inline-end:6px; }
+.sev.c { color:var(--sev-critical); } .sev.h { color:var(--sev-high); } .sev.m { color:var(--sev-medium); }
+
+/* Stepper */
+.stepper { list-style:none; display:flex; margin:14px 0 0; padding:12px 0; border-top:1px solid var(--line); gap:0; }
+.stepper li { flex:1; position:relative; padding-inline-end:12px; color:var(--ink-3); }
+.stepper li::before { content:""; position:absolute; top:10px; left:26px; right:6px; height:1px; background:var(--line-strong); }
+.stepper li:last-child::before { display:none; }
+.stepper li.done::before { background:var(--ink); }
+.stepper .n { width:20px; height:20px; border-radius:50%; display:inline-grid; place-items:center; font-size:11px; font-weight:600; border:1px solid var(--line-strong); background:var(--sheet); margin-inline-end:8px; position:relative; }
+.stepper .lbl { display:inline-block; background:var(--paper); padding-inline-end:8px; position:relative; font-weight:500; }
+.stepper .hint { display:block; margin-inline-start:28px; font-size:12px; line-height:16px; }
+.stepper .done { color:var(--ink-2); } .stepper .done .n { background:var(--ink); color:var(--on-solid); border-color:var(--ink); }
+.stepper .current { color:var(--ink); } .stepper .current .n { background:var(--cobalt); color:var(--on-solid); border-color:var(--cobalt); } .stepper .current .lbl { font-weight:600; }
+.stepper .blocked .n { background:var(--watch-soft); color:var(--warn-ink); border-color:var(--warn-ink); } .stepper .blocked .hint { color:var(--warn-ink); } .stepper .blocked .lbl { color:var(--ink); }
+.stepper .error .n { background:var(--stop); color:var(--on-solid); border-color:var(--stop); } .stepper .error .lbl, .stepper .error .hint { color:var(--bad-ink); }
+.prog { display:block; margin:4px 0 0 28px; height:4px; max-width:160px; border-radius:2px; background:var(--well); } .prog i { display:block; height:100%; border-radius:2px; background:var(--cobalt); }
+.mini { display:flex; gap:3px; align-items:center; } .mini i { width:14px; height:4px; border-radius:2px; background:var(--line-strong); } .mini i.d { background:var(--ink); } .mini i.c { background:var(--cobalt); } .mini i.b { background:var(--warn-ink); } .mini span { margin-inline-start:6px; font-size:12px; color:var(--ink-2); }
+.tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin-top:4px; }
+.tabs a { padding:8px 10px; color:var(--ink-2); font-weight:500; border-bottom:2px solid transparent; margin-bottom:-1px; }
+.tabs a.on { color:var(--ink); border-bottom-color:var(--ink); } .tabs a span { color:var(--ink-3); font-weight:400; margin-inline-start:4px; }
+
+/* Cards, KPI strip */
+.card { background:var(--sheet); border:1px solid var(--line); border-radius:var(--r-card); }
+.card > header { display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid var(--line); }
+.card > header .read { margin-inline-start:auto; color:var(--ink-2); font-size:12px; }
+.card .body { padding:16px; }
+.kpis { display:grid; grid-template-columns:repeat(6,1fr); margin-bottom:16px; }
+.kpi { padding:12px 16px; border-inline-end:1px solid var(--line); } .kpi:last-child { border:0; }
+.kpi .l { font-size:12px; line-height:16px; color:var(--ink-2); }
+.kpi .v { font:600 28px/34px var(--sans); letter-spacing:-0.01em; }
+.kpi .v small { font:500 13px var(--sans); color:var(--ink-2); }
+.kpi .d { font-size:12px; line-height:16px; color:var(--ink-2); }
+.up { color:var(--good-ink); } .down { color:var(--bad-ink); }
+.grid { display:grid; gap:16px; margin-bottom:16px; }
+.g-3 { grid-template-columns:repeat(3,1fr); } .g-2 { grid-template-columns:1fr 1fr; } .g-score { grid-template-columns:minmax(0,5fr) minmax(0,7fr); }
+
+/* Ruler */
+.ruler { position:relative; padding:26px 0 22px; }
+.ruler .track { display:flex; height:8px; border-radius:4px; overflow:hidden; }
+.ruler .z1 { flex:70; background:var(--stop-soft); } .ruler .z2 { flex:15; background:var(--watch-soft); } .ruler .z3 { flex:15; background:var(--go-soft); }
+.ruler .gate { position:absolute; top:20px; width:1px; height:20px; background:var(--ink-2); }
+.ruler .gate b { position:absolute; top:22px; left:-8px; font:500 11px var(--sans); color:var(--ink-2); }
+.ruler .mk { position:absolute; top:24px; width:12px; height:12px; margin-left:-6px; border-radius:50%; background:var(--ink); border:2px solid var(--sheet); }
+.ruler .mk.hollow { background:var(--sheet); border:1.5px solid var(--ink-2); }
+.ruler .mk em { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); font:600 11px var(--sans); white-space:nowrap; }
+.ruler .mk.hollow em { color:var(--ink-2); font-weight:500; left:120%; transform:none; }
+.zones { display:flex; font-size:11px; color:var(--ink-3); } .zones span:nth-child(1) { flex:70; } .zones span:nth-child(2) { flex:15; } .zones span:nth-child(3) { flex:15; }
+.rrow { display:grid; grid-template-columns:200px 1fr 90px; gap:16px; align-items:center; padding:6px 0; border-top:1px solid var(--line); }
+.rrow:first-of-type { border:0; }
+.rrow .ruler { padding:20px 0 16px; } .rrow .ruler .gate { top:14px; } .rrow .ruler .mk { top:18px; }
+.score { font:600 56px/56px var(--sans); letter-spacing:-0.02em; }
+
+/* Tables */
+.toolbar { display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+.toolbar .end { margin-inline-start:auto; display:flex; gap:8px; position:relative; }
+.chip { display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 8px; border-radius:var(--r-chip); background:var(--well); font-size:12px; }
+.tw { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; }
+th { position:sticky; top:0; background:var(--well); font:500 11px/16px var(--sans); color:var(--ink-3); text-align:start; padding:0 12px; height:var(--h-row); white-space:nowrap; border-bottom:1px solid var(--line); }
+td { height:var(--h-row); padding:0 12px; border-bottom:1px solid var(--line); white-space:nowrap; }
+tbody tr:hover td { background:var(--well); }
+tr.sel td { background:var(--cobalt-soft); } tr.sel td:first-child { box-shadow:inset 2px 0 0 var(--cobalt); }
+th.num, td.num { text-align:end; }
+td .mono { color:var(--ink); margin-inline-end:6px; }
+.foot { display:flex; align-items:center; gap:16px; padding:8px 12px; color:var(--ink-2); font-size:12px; } .foot .end { margin-inline-start:auto; display:flex; gap:8px; align-items:center; }
+.bar-cell { display:flex; align-items:center; gap:8px; justify-content:flex-end; } .bar-cell i { display:block; height:6px; border-radius:2px; background:var(--chart-1); }
+.audit { padding:8px 16px; border-top:1px solid var(--line); color:var(--ink-3); font-size:12px; }
+
+/* Export popover (native details) */
+details.export > summary { list-style:none; } details.export > summary::-webkit-details-marker { display:none; }
+.pop { position:absolute; right:0; top:38px; width:340px; z-index:3; background:var(--sheet); border-radius:var(--r-card); box-shadow:var(--elev-2); padding:12px 16px; white-space:normal; }
+.pop h3 { font:500 11px/16px var(--sans); color:var(--ink-3); margin:10px 0 4px; } .pop h3:first-child { margin-top:0; }
+.pop label { display:flex; gap:8px; padding:3px 0; } .pop label small { color:var(--ink-3); display:block; font-size:12px; line-height:16px; }
+.pop .sum { margin:12px 0 8px; padding-top:10px; border-top:1px solid var(--line); color:var(--ink-2); font-size:12px; }
+
+/* Charts */
+svg text { font:11px var(--sans); fill:var(--ink-3); }
+.gridl { stroke:var(--line); stroke-width:1; } .gatel { stroke:var(--ink-3); stroke-width:1; stroke-dasharray:4 3; }
+.s1 { stroke:var(--chart-1); fill:none; stroke-width:1.5; } .s5 { stroke:var(--chart-5); fill:none; stroke-width:1.5; stroke-dasharray:2 3; }
+.f1 { fill:var(--chart-1); } .f5 { fill:var(--chart-5); }
+.legend { display:flex; gap:16px; font-size:12px; color:var(--ink-2); } .legend i { display:inline-block; width:10px; height:2px; vertical-align:middle; margin-inline-end:6px; }
+.dim { display:grid; grid-template-columns:110px 1fr 44px 44px; gap:12px; align-items:center; height:28px; }
+.dim .t { position:relative; height:6px; border-radius:2px; background:var(--well); } .dim .t i { position:absolute; inset:0 auto 0 0; border-radius:2px; background:var(--chart-1); } .dim .t b { position:absolute; left:85%; top:-4px; width:1px; height:14px; background:var(--ink-2); }
+.list { list-style:none; margin:0; padding:0; } .list li { display:flex; gap:8px; align-items:center; height:var(--h-row); border-top:1px solid var(--line); padding:0 16px; } .list li:first-child { border:0; } .list .end { margin-inline-start:auto; color:var(--ink-2); }
+
+/* Aletheia dock */
+.dock { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); width:min(760px, calc(100% - 32px)); background:var(--sheet); border:1px solid var(--violet-edge); border-radius:999px; box-shadow:var(--elev-dock); display:flex; align-items:center; gap:8px; padding:6px 8px 6px 16px; z-index:4; }
+.dock .q { color:var(--ink-3); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .dock .who { color:var(--violet-ink); font-weight:600; }
+.dock .sug { height:26px; padding:0 10px; display:inline-flex; align-items:center; border-radius:999px; background:var(--violet-soft); color:var(--violet-ink); font-size:12px; white-space:nowrap; }
+
+@media (max-width:1100px) {
+  .locale, .health span, .crumbs { display:none; }
+  .kpis { grid-template-columns:repeat(3,1fr); } .kpi:nth-child(3) { border-inline-end:0; } .kpi:nth-child(-n+3) { border-bottom:1px solid var(--line); }
+  .g-3, .g-2, .g-score { grid-template-columns:1fr; }
+}
+@media (max-width:768px) {
+  :root { --gutter:16px; }
+  .switch .faint, .search span, .ask span, .dock .sug { display:none; } .search { max-width:44px; justify-content:center; }
+  .kpis { grid-template-columns:repeat(2,1fr); } .kpi { border-bottom:1px solid var(--line); }
+  .stepper { flex-direction:column; gap:10px; } .stepper li::before { display:none; }
+  .rrow { grid-template-columns:1fr; gap:0; }
+  .actions { margin-inline-start:0; width:100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="bar">
+    <a class="brand" href="#home"><span class="glyph">M</span>Meridian</a>
+    <button class="switch" type="button" aria-label="Tenant and system">Komatsu <span class="faint">/ ECC production, client 100</span> <span aria-hidden="true">&#9662;</span></button>
+    <span class="env prod" title="Production system. Changes here reach live data.">PROD</span>
+    <div class="search" role="search"><span>Search or jump to</span><kbd>Ctrl K</kbd></div>
+    <div class="bar-end">
+      <span class="health"><i class="dot"></i><span>Healthy</span></span>
+      <a class="bell" href="#home" aria-label="3 unread notifications"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7a4 4 0 0 1 8 0v3l1.5 2h-11L4 10V7zM6.5 14h3"/></svg><b>3</b></a>
+      <span class="locale">EN &nbsp; SAST UTC+02:00</span>
+      <a class="ask" href="#home"><svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M6 0l1.5 4.5L12 6 7.5 7.5 6 12 4.500 7.5 0 6l4.500-1.500z"/></svg><span>Ask Aletheia</span></a>
+      <span class="avatar" title="Thandi Mokoena, Data steward, Komatsu">TM</span>
+    </div>
+  </div>
+  <nav class="subbar" aria-label="Sections">
+    <a class="tab tab-home on" href="#home">Home</a>
+    <a class="tab tab-objects" href="#object">Objects</a>
+    <a class="tab" href="#home">Clean</a>
+    <a class="tab" href="#home">Load</a>
+    <a class="tab" href="#home">Monitor</a>
+    <span class="sep"></span>
+    <a class="tab" href="#home">More <span aria-hidden="true">&nbsp;&#9662;</span></a>
+    <div class="crumbs crumb-home" aria-label="Breadcrumb"><span aria-current="page">Home</span></div>
+    <div class="crumbs crumb-object" aria-label="Breadcrumb"><a href="#object">Objects</a><span aria-current="page">Material master</span></div>
+  </nav>
+  <div class="sample">Sample data for design review. Figures are illustrative and do not come from a live system. Use the Home and Objects tabs to switch between the two pages.</div>
+</div>
+
+<main>
+
+<!-- ============ Object detail ============ -->
+<section id="object">
+  <div class="head">
+    <div class="title-row">
+      <h1>Material master</h1>
+      <span class="badge stop"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><path d="M3 0h4l3 3v4L7 10H3L0 7V3z"/></svg>No-go</span>
+      <div class="actions">
+        <button class="btn" type="button">Download workbook</button>
+        <button class="btn primary" type="button">Continue clean cycle 3</button>
+      </div>
+    </div>
+    <div class="meta">
+      <span>ECC production, client 100 <b class="env prod">PROD</b></span>
+      <span>Run 8</span>
+      <span>As of 16 Oct 2026, 05:17 SAST</span>
+      <span>61,816 records</span>
+      <span>Coverage 97.4%</span>
+    </div>
+    <ol class="stepper" aria-label="Clean cycle">
+      <li class="done"><span class="n">&#10003;</span><span class="lbl">Pull</span><span class="hint">61,816 records pulled</span></li>
+      <li class="current" aria-current="step"><span class="n">2</span><span class="lbl">Clean</span><span class="hint">Cycle 3. 2 critical rules hold the gate</span><span class="prog"><i style="width:42%"></i></span></li>
+      <li><span class="n">3</span><span class="lbl">Upload</span><span class="hint">Cleaned workbook, .xlsx</span></li>
+      <li class="blocked"><span class="n"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="1.5" y="4.500" width="7" height="4.500" rx="1"/><path d="M3 4.500V3a2 2 0 0 1 4 0v1.500"/></svg></span><span class="lbl">Re-score</span><span class="hint">Blocked. Needs an uploaded workbook</span></li>
+      <li><span class="n">5</span><span class="lbl">Compare</span><span class="hint">Run 8 against run 9</span></li>
+    </ol>
+    <div class="tabs" role="tablist">
+      <a class="on" href="#object">Overview</a><a href="#object">Rules<span>80</span></a><a href="#object">Fields</a><a href="#object">Records<span>61,816</span></a><a href="#object">Runs<span>8</span></a><a href="#object">Trend</a><a href="#object">Readiness</a><a href="#object">More &#9662;</a>
+    </div>
+  </div>
+
+  <div class="grid g-score">
+    <div class="card">
+      <header><h2>Score</h2><span class="read">Run 1, 28 Aug: 60.8</span></header>
+      <div class="body">
+        <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
+          <div class="score">70.0</div>
+          <div><div style="font-weight:600">Held at the 70 gate by 2 critical rules</div><div class="muted">Measured 71.8. Fix 2 critical rules to release 1.8 points and pass the gate.</div></div>
+        </div>
+        <div class="ruler" role="img" aria-label="Shown score 70.0, measured 71.8, gates at 70 and 85">
+          <div class="track"><span class="z1"></span><span class="z2"></span><span class="z3"></span></div>
+          <span class="gate" style="left:70%"><b>70</b></span><span class="gate" style="left:85%"><b>85</b></span>
+          <span class="mk hollow" style="left:71.8%"><em>71.8 measured</em></span>
+          <span class="mk" style="left:70%"><em>70.0</em></span>
+        </div>
+        <div class="zones"><span>No-go</span><span>At risk</span><span>Go</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <header><h2>Holding the cap</h2><span class="read">2 critical rules, 4,324 records</span></header>
+      <div class="tw"><table>
+        <thead><tr><th>Rule</th><th>Field</th><th>Severity</th><th class="num">Records</th><th class="num">Share</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">MM003</span>Material type is mandatory</td><td><span class="mono">MTART</span><span class="muted">Material type</span></td><td><span class="sev c">Critical</span></td><td class="num">2,904</td><td class="num">4.7%</td><td class="num"><a class="btn" style="height:24px" href="#object">Fix</a></td></tr>
+          <tr><td><span class="mono">MM035</span>Valuation class is mandatory</td><td><span class="mono">BKLAS</span><span class="muted">Valuation class</span></td><td><span class="sev c">Critical</span></td><td class="num">1,420</td><td class="num">2.3%</td><td class="num"><a class="btn" style="height:24px" href="#object">Fix</a></td></tr>
+        </tbody>
+      </table></div>
+      <div class="kpis" style="margin:0;grid-template-columns:repeat(4,1fr)">
+        <div class="kpi"><div class="l">Records</div><div class="v">61,816</div><div class="d">Coverage 97.4%</div></div>
+        <div class="kpi"><div class="l">Rules</div><div class="v">80</div><div class="d">2 critical breached</div></div>
+        <div class="kpi"><div class="l">Open items</div><div class="v">25,712</div><div class="d">Across all rules</div></div>
+        <div class="kpi"><div class="l">Since run 1</div><div class="v up">+11.0</div><div class="d">8 weekly runs</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g-2">
+    <div class="card">
+      <header><h2>Score by run</h2><span class="read">Up 11.0 points in 8 weekly runs. The cap has hidden the last 1.8.</span></header>
+      <div class="body">
+        <svg viewBox="0 0 600 190" width="100%" role="img" aria-label="Score by run. Measured rose from 60.8 to 71.8. Shown is held at 70 for the last two points.">
+          <line class="gridl" x1="36" x2="590" y1="20" y2="20"/><line class="gridl" x1="36" x2="590" y1="60" y2="60"/><line class="gridl" x1="36" x2="590" y1="100" y2="100"/><line class="gridl" x1="36" x2="590" y1="140" y2="140"/>
+          <text x="8" y="24">90</text><text x="8" y="64">80</text><text x="8" y="104">70</text><text x="8" y="144">60</text>
+          <line class="gatel" x1="36" x2="590" y1="100" y2="100"/><text x="540" y="94">Gate 70</text>
+          <line class="gatel" x1="36" x2="590" y1="40" y2="40"/><text x="548" y="34">Go 85</text>
+          <polyline class="s5" points="50,136.800 180,122.800 310,107.200 440,96.400 570,92.800"/>
+          <polyline class="s1" points="50,136.800 180,122.800 310,107.200 440,100 570,100"/>
+          <circle class="f5" cx="570" cy="92.800" r="3"/><circle class="f1" cx="570" cy="100" r="3"/>
+          <text x="538" y="84">71.8</text><text x="538" y="116">70.0</text>
+          <text x="40" y="170">28 Aug</text><text x="548" y="170">16 Oct</text>
+        </svg>
+        <div class="legend"><span><i style="background:var(--chart-1)"></i>Shown</span><span><i style="background:var(--chart-5)"></i>Measured</span><a href="#object" style="margin-inline-start:auto;color:var(--cobalt)">Show as table</a></div>
+      </div>
+    </div>
+    <div class="card">
+      <header><h2>Six dimensions</h2><span class="read">Line marks the 85 go level</span></header>
+      <div class="body">
+        <div class="dim"><span>Completeness</span><span class="t"><i style="width:68%"></i><b></b></span><span class="num">68.0</span><span class="num up">+4.1</span></div>
+        <div class="dim"><span>Accuracy</span><span class="t"><i style="width:74%"></i><b></b></span><span class="num">74.0</span><span class="num up">+0.6</span></div>
+        <div class="dim"><span>Consistency</span><span class="t"><i style="width:71%"></i><b></b></span><span class="num">71.0</span><span class="num up">+0.3</span></div>
+        <div class="dim"><span>Timeliness</span><span class="t"><i style="width:88%"></i><b></b></span><span class="num">88.0</span><span class="num muted">0.0</span></div>
+        <div class="dim"><span>Uniqueness</span><span class="t"><i style="width:93%"></i><b></b></span><span class="num">93.0</span><span class="num muted">0.0</span></div>
+        <div class="dim"><span>Validity</span><span class="t"><i style="width:66%"></i><b></b></span><span class="num">66.0</span><span class="num up">+0.8</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <header><h2>Worst rules, by records affected</h2></header>
+    <div class="toolbar">
+      <button class="btn" type="button">View: Open items &#9662;</button>
+      <button class="btn" type="button">Filter +</button>
+      <span class="chip">Severity: Critical, High <span aria-hidden="true">&#215;</span></span>
+      <span class="chip">Plant: all</span>
+      <div class="end">
+        <button class="btn" type="button">Columns</button>
+        <details class="export" open>
+          <summary class="btn">Export &#9662;</summary>
+          <div class="pop">
+            <h3>Format</h3>
+            <label><input type="radio" name="f" checked><span>Excel workbook (.xlsx)<small>For cleaning and re-upload</small></span></label>
+            <label><input type="radio" name="f"><span>CSV (.csv)<small>For other tools, UTF-8</small></span></label>
+            <h3>Scope</h3>
+            <label><input type="radio" name="s"><span>Selected rows (1)</span></label>
+            <label><input type="radio" name="s" checked><span>Current view (7 rules, 12,930 records)<small>Severity: Critical, High</small></span></label>
+            <label><input type="radio" name="s"><span>Everything (80 rules, 25,712 records)</span></label>
+            <h3>Columns</h3>
+            <label><input type="radio" name="c" checked><span>Visible columns (6)</span></label>
+            <label><input type="radio" name="c"><span>All columns</span></label>
+            <div class="sum">12,930 rows, 6 columns. Dates in ISO 8601, times in UTC. Prepared as a job; you can leave this page.</div>
+            <button class="btn primary" type="button">Export 12,930 rows</button>
+          </div>
+        </details>
+        <button class="btn" type="button">Import</button>
+      </div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th style="width:32px"><input type="checkbox" aria-label="Select all on this page"></th><th>Rule</th><th>Field</th><th>Severity</th><th class="num">Records &#9662;</th><th class="num">Share</th><th>S/4HANA feature affected</th></tr></thead>
+      <tbody>
+        <tr class="sel"><td><input type="checkbox" checked aria-label="Select MM003"></td><td><span class="mono">MM003</span>Material type is mandatory</td><td><span class="mono">MTART</span><span class="muted">Material type</span></td><td><span class="sev c">Critical</span></td><td class="num"><span class="bar-cell"><i style="width:80px"></i>2,904</span></td><td class="num">4.7%</td><td>Migration cockpit material load <span class="badge stop">Blocked</span></td></tr>
+        <tr><td><input type="checkbox" aria-label="Select MM142"></td><td><span class="mono">MM142</span>Base unit must exist in T006</td><td><span class="mono">MEINS</span><span class="muted">Base unit of measure</span></td><td><span class="sev h">High</span></td><td class="num"><span class="bar-cell"><i style="width:66px"></i>2,410</span></td><td class="num">3.9%</td><td>Material ledger actual costing <span class="badge stop">Blocked</span></td></tr>
+        <tr><td><input type="checkbox" aria-label="Select MM007"></td><td><span class="mono">MM007</span>Material group is required</td><td><span class="mono">MATKL</span><span class="muted">Material group</span></td><td><span class="sev h">High</span></td><td class="num"><span class="bar-cell"><i style="width:58px"></i>2,106</span></td><td class="num">3.4%</td><td>Product compliance <span class="badge watch">Degraded</span></td></tr>
+        <tr><td><input type="checkbox" aria-label="Select MM015"></td><td><span class="mono">MM015</span>Gross weight for shipping</td><td><span class="mono">BRGEW</span><span class="muted">Gross weight</span></td><td><span class="sev h">High</span></td><td class="num"><span class="bar-cell"><i style="width:50px"></i>1,812</span></td><td class="num">2.9%</td><td>Advanced available-to-promise <span class="badge watch">Degraded</span></td></tr>
+        <tr><td><input type="checkbox" aria-label="Select MM035"></td><td><span class="mono">MM035</span>Valuation class is mandatory</td><td><span class="mono">BKLAS</span><span class="muted">Valuation class</span></td><td><span class="sev c">Critical</span></td><td class="num"><span class="bar-cell"><i style="width:39px"></i>1,420</span></td><td class="num">2.3%</td><td>Inventory valuation by plant <span class="badge watch">Degraded</span></td></tr>
+        <tr><td><input type="checkbox" aria-label="Select MM023"></td><td><span class="mono">MM023</span>MRP type not in T438A</td><td><span class="mono">DISMM</span><span class="muted">MRP type</span></td><td><span class="sev h">High</span></td><td class="num"><span class="bar-cell"><i style="width:34px"></i>1,238</span></td><td class="num">2.0%</td><td>MRP Live <span class="badge watch">Degraded</span></td></tr>
+        <tr><td><input type="checkbox" aria-label="Select MM302"></td><td><span class="mono">MM302</span>Purchasing group</td><td><span class="mono">EKGRP</span><span class="muted">Purchasing group</span></td><td><span class="sev h">High</span></td><td class="num"><span class="bar-cell"><i style="width:29px"></i>1,040</span></td><td class="num">1.7%</td><td>Source of supply determination <span class="badge watch">Degraded</span></td></tr>
+      </tbody>
+    </table></div>
+    <div class="foot"><span>1 to 7 of 7 rules in this view</span><span>1 selected</span><div class="end">Rows per page <button class="btn" style="height:24px" type="button">50 &#9662;</button><span>Page 1 of 1</span></div></div>
+    <div class="audit">Rules last changed by Thandi Mokoena on 14 Oct 2026, 16:42 SAST. Scored by Run 8 on 16 Oct 2026, 05:17 SAST (03:17 UTC).</div>
+  </div>
+</section>
+
+<!-- ============ Home ============ -->
+<section id="home">
+  <div class="head">
+    <div class="title-row">
+      <h1>Good morning, Thandi</h1>
+      <div class="actions"><button class="btn" type="button">Export summary</button><a class="btn primary" href="#object">Continue cleaning material master</a></div>
+    </div>
+    <div class="meta">
+      <span>All systems</span>
+      <span>Run 8</span>
+      <span>Finished 16 Oct 2026, 05:17 SAST</span>
+      <span>702 s</span>
+      <span>Licence valid to 31 Mar 2027</span>
+    </div>
+  </div>
+
+  <div class="card kpis">
+    <div class="kpi"><div class="l">Objects at Go</div><div class="v">0 <small>of 3</small></div><div class="d">Go line is 85</div></div>
+    <div class="kpi"><div class="l">Held at a gate</div><div class="v">2 <small>of 3</small></div><div class="d">By critical rules</div></div>
+    <div class="kpi"><div class="l">Records checked</div><div class="v">400,662</div><div class="d">Run 8</div></div>
+    <div class="kpi"><div class="l">Rules evaluated</div><div class="v">794</div><div class="d">Across 3 objects</div></div>
+    <div class="kpi"><div class="l">Open items, material master</div><div class="v">25,712</div><div class="d">Coverage 97.4%</div></div>
+    <div class="kpi"><div class="l">Value at risk, top rules</div><div class="v">4.14 M <small>ZAR</small></div><div class="d">5 rules</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <header><h2>Where every object stands</h2><span class="read">Solid marker is the shown score. Hollow marker is the measured score before a cap.</span></header>
+    <div class="body" style="padding-block:4px">
+      <div class="rrow">
+        <div><a href="#object" style="font-weight:600">Material master</a><div class="muted" style="font-size:12px">ECC production, client 100 <b class="env prod">PROD</b></div></div>
+        <div class="ruler"><div class="track"><span class="z1"></span><span class="z2"></span><span class="z3"></span></div><span class="gate" style="left:70%"><b>70</b></span><span class="gate" style="left:85%"><b>85</b></span><span class="mk hollow" style="left:71.8%"><em>71.8</em></span><span class="mk" style="left:70%"></span></div>
+        <div class="num"><b style="font-size:22px">70.0</b><div><span class="badge stop">No-go</span></div></div>
+      </div>
+      <div class="rrow">
+        <div><a href="#object" style="font-weight:600">Employee data</a><div class="muted" style="font-size:12px">SuccessFactors, BWA, ZAF, MOZ, NAM <b class="env prod">PROD</b></div></div>
+        <div class="ruler"><div class="track"><span class="z1"></span><span class="z2"></span><span class="z3"></span></div><span class="gate" style="left:70%"><b>70</b></span><span class="gate" style="left:85%"><b>85</b></span><span class="mk hollow" style="left:80.4%"><em>80.4</em></span><span class="mk" style="left:70%"></span></div>
+        <div class="num"><b style="font-size:22px">70.0</b><div><span class="badge stop">No-go</span></div></div>
+      </div>
+      <div class="rrow">
+        <div><a href="#object" style="font-weight:600">Customer master</a><div class="muted" style="font-size:12px">ECC production, client 100 <b class="env prod">PROD</b></div></div>
+        <div class="ruler"><div class="track"><span class="z1"></span><span class="z2"></span><span class="z3"></span></div><span class="gate" style="left:70%"><b>70</b></span><span class="gate" style="left:85%"><b>85</b></span><span class="mk" style="left:78.2%"></span></div>
+        <div class="num"><b style="font-size:22px">78.2</b><div><span class="badge watch">At risk</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <header><h2>Objects</h2></header>
+    <div class="toolbar"><button class="btn" type="button">View: All objects &#9662;</button><button class="btn" type="button">Filter +</button><div class="end"><button class="btn" type="button">Columns</button><button class="btn" type="button">Export &#9662;</button></div></div>
+    <div class="tw"><table>
+      <thead><tr><th>Object</th><th>System</th><th>Status</th><th class="num">Shown</th><th class="num">Measured</th><th class="num">Records</th><th class="num">Rules</th><th>Clean cycle</th><th>Last run, SAST</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><a href="#object" style="font-weight:500">Material master</a></td><td>ECC production, client 100</td><td><span class="badge stop">No-go</span></td><td class="num">70.0</td><td class="num">71.8</td><td class="num">61,816</td><td class="num">80</td><td><span class="mini"><i class="d"></i><i class="c"></i><i></i><i class="b"></i><i></i><span>Step 2 of 5: Clean</span></span></td><td>16 Oct 2026, 05:17</td><td class="num"><a class="btn" style="height:24px" href="#object">Continue</a></td></tr>
+        <tr><td><a href="#object" style="font-weight:500">Employee data</a></td><td>SuccessFactors</td><td><span class="badge stop">No-go</span></td><td class="num">70.0</td><td class="num">80.4</td><td class="num">5,932</td><td class="num">47</td><td><span class="mini"><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i><span>Step 3 of 5: Upload</span></span></td><td>16 Oct 2026, 05:17</td><td class="num"><a class="btn" style="height:24px" href="#object">Upload</a></td></tr>
+        <tr><td><a href="#object" style="font-weight:500">Customer master</a></td><td>ECC production, client 100</td><td><span class="badge watch">At risk</span></td><td class="num">78.2</td><td class="num">78.2</td><td class="num">29,415</td><td class="num">40</td><td><span class="mini"><i class="c"></i><i></i><i></i><i></i><i></i><span>Step 1 of 5: Pull</span></span></td><td>16 Oct 2026, 05:17</td><td class="num"><a class="btn" style="height:24px" href="#object">Start</a></td></tr>
+      </tbody>
+    </table></div>
+    <div class="foot"><span>3 objects</span></div>
+  </div>
+
+  <div class="grid g-3">
+    <div class="card">
+      <header><h2>What moved since run 7</h2></header>
+      <ul class="list">
+        <li><span class="mono">MM007</span>Material group is required<span class="end up">&#9660; 412</span></li>
+        <li><span class="mono">MM035</span>Valuation class is mandatory<span class="end up">&#9660; 186</span></li>
+        <li><span class="mono">MM142</span>Base unit must exist in T006<span class="end up">&#9660; 95</span></li>
+        <li><span class="mono">MM003</span>Material type is mandatory<span class="end down">&#9650; 61</span></li>
+        <li><span class="mono">MM015</span>Gross weight for shipping<span class="end muted">0</span></li>
+      </ul>
+      <div class="audit">Records failing, change against run 7. Down is better.</div>
+    </div>
+    <div class="card">
+      <header><h2>Value at risk, top rules</h2><span class="read">ZAR 4.14 M</span></header>
+      <ul class="list">
+        <li><span class="mono">MM035</span>Valuation class is mandatory<span class="end">ZAR 1.62 M</span></li>
+        <li><span class="mono">MM003</span>Material type is mandatory<span class="end">ZAR 1.08 M</span></li>
+        <li><span class="mono">MM142</span>Base unit must exist in T006<span class="end">ZAR 0.74 M</span></li>
+        <li><span class="mono">MM007</span>Material group is required<span class="end">ZAR 0.45 M</span></li>
+        <li><span class="mono">MM015</span>Gross weight for shipping<span class="end">ZAR 0.25 M</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <header><h2>Systems</h2></header>
+      <ul class="list">
+        <li>ECC production <span class="muted">ECC 6.0 EHP8</span><span class="end"><b class="env prod">PROD</b> <span class="badge go">Healthy</span></span></li>
+        <li>S/4HANA sandbox <span class="muted">S/4HANA 2023</span><span class="end"><b class="env qa">QA</b> <span class="badge go">Healthy</span></span></li>
+        <li>SuccessFactors <span class="muted">2H 2026</span><span class="end"><b class="env prod">PROD</b> <span class="badge go">Healthy</span></span></li>
+      </ul>
+      <div class="audit">Last checked 16 Oct 2026, 05:30 SAST.</div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="dock" role="complementary" aria-label="Aletheia">
+  <span class="who">Aletheia</span>
+  <span class="q">Ask about any object, rule or run</span>
+  <span class="sug">What lifts the cap fastest?</span>
+  <span class="sug">Why did MM003 grow?</span>
+</div>
+
+</body>
+</html>
