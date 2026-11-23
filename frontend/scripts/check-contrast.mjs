@@ -115,6 +115,8 @@ const mxPairs = [
   ["ink", "row-hover"], ["ink", "row-selected"],
   ...[1, 2, 3, 4, 5, 6].flatMap((n) => ["sheet"].map((s) => [`chart-${n}`, s])),
   ["cobalt", "sheet"], ["violet-ink", "violet-soft"], ["on-solid", "cobalt"],
+  // toasts and the danger button
+  ["bg", "ink"], ["good-ink", "go-soft"], ["bad-ink", "stop-soft"], ["on-solid", "stop"],
 ];
 const mxSeriesOnWell = [1, 2, 3, 4, 5, 6].map((n) => [`chart-${n}`, "well"]);
 for (const [theme, vars] of Object.entries(mxThemes)) {
