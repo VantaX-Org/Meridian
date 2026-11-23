@@ -31,7 +31,7 @@ export interface PromotionThresholds {
 export interface PromotionRule {
   id: string;
   field: string;
-  field_text: string;
+  field_text: string | null;
   check_class: string;
   severity: string;
   message: string;

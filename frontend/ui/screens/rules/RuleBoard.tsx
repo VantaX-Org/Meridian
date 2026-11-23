@@ -11,8 +11,9 @@ import { useObjectRules, useReceipt } from "@/lib/v2/queries";
 import { RECORDS_PAGE, useFailingRecords, type FailingRecord } from "@/lib/api/next/failing";
 import { acceptAllInGroup, decide, downloadFixSheet } from "@/lib/api/work";
 import type { RuleRun, RuleScope } from "@/lib/api/v2/object";
-import { BarList, Button, Card, DataTable, EmptyState, FieldChip, Select, Skeleton, StatTile, YamlView, type Column } from "@/ui/kit";
+import { BarList, Button, Card, DataTable, EmptyState, ErrorState, FieldChip, Select, Skeleton, StatTile, YamlView, type Column } from "@/ui/kit";
 import { compactCount, pct, sevLabel } from "./format";
+import { FailedReads } from "./FailedReads";
 import { useAct, useRuleReads } from "./queries";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -69,16 +70,23 @@ const listParams = (p: Record<string, unknown>): [string, string[]][] =>
 export function RuleBoard({ id, scope }: { id: string; scope: RuleScope }) {
   const fx = useFixture();
   const d = scope.definition;
-  const hist = useRuleHistory(id).data ?? [];
+  const histQ = useRuleHistory(id);
+  const hist = histQ.data ?? [];
   const run = hist[0]?.version_id ?? scope.objects[0]?.run_id ?? null;
   const mod = scope.module ?? scope.objects[0]?.module ?? "";
-  const rules = useObjectRules(mod, run).data ?? [];
+  const rulesQ = useObjectRules(mod, run);
+  const rules = rulesQ.data ?? [];
   const row = rules.find((r) => r.check_id === id);
-  const receipt = useReceipt(mod, run, Boolean(mod && run)).data;
-  const groups = useWorkGroups(mod, run, Boolean(mod)).data ?? [];
-  const impact = useConfigImpact(run).data ?? [];
-  const by = useRuleFailuresBy(id).data;
-  const reads = useRuleReads(id).data;
+  const receiptQ = useReceipt(mod, run, Boolean(mod && run));
+  const receipt = receiptQ.data;
+  const groupsQ = useWorkGroups(mod, run, Boolean(mod));
+  const groups = groupsQ.data ?? [];
+  const impactQ = useConfigImpact(run);
+  const impact = impactQ.data ?? [];
+  const byQ = useRuleFailuresBy(id);
+  const by = byQ.data;
+  const readsQ = useRuleReads(id);
+  const reads = readsQ.data;
 
   const latest = hist[0];
   const prev = hist[1];
@@ -101,8 +109,10 @@ export function RuleBoard({ id, scope }: { id: string; scope: RuleScope }) {
   const dimension = row?.dimension ?? d.dimension;
   const owner = reads?.owners.map((o) => o.owner_name ?? o.steward_name).find(Boolean);
 
+  if (histQ.isError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void histQ.refetch()} />;
   return (
     <div className="mx-rule-stack">
+      <FailedReads qs={[rulesQ, receiptQ, groupsQ, impactQ, byQ, readsQ]} />
       <dl className="mx-tiles" aria-label={t("Rule in this run")}>
         <StatTile
           label={t("Records failing in this run")}
@@ -216,7 +226,8 @@ function FailingRecordsTable({ id, run, module }: { id: string; run: string | nu
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [steward, setSteward] = useState("");
   const q = useFailingRecords(run, id, offset);
-  const stewards = useStewards(true).data ?? [];
+  const stewardsQ = useStewards(true);
+  const stewards = stewardsQ.data ?? [];
   const items = q.data?.items ?? [];
   const n = q.data?.total ?? 0;
   const chosen = items.filter((r) => sel.has(r.record_key));
@@ -240,8 +251,9 @@ function FailingRecordsTable({ id, run, module }: { id: string; run: string | nu
   return (
     <Card title={t("Failing records")} sub={run ? undefined : t("This rule has not run yet")}>
       <div id="mx-rule-records" className="mx-rules-form">
-        {!run ? <EmptyState heading={t("This rule has not run yet")} /> : q.isLoading ? <Skeleton lines={5} label={t("Loading the records")} /> : (
+        {!run ? <EmptyState heading={t("This rule has not run yet")} /> : q.isLoading ? <Skeleton lines={5} label={t("Loading the records")} /> : q.isError ? <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : (
           <>
+            <FailedReads qs={[stewardsQ]} />
             <div className="mx-rules-row" role="toolbar" aria-label={t("Bulk actions")}>
               <label className="mx-rules-row"><input type="checkbox" checked={all} onChange={() => setSel(all ? new Set() : new Set(items.map((r) => r.record_key)))} /> {t("Select this page")}</label>
               <span className="mx-muted">{t("{n} selected", { n: chosen.length })}</span>

@@ -48,9 +48,9 @@ export function DraftsView() {
     { key: "act", label: t("Actions"), render: (d) => (
       <span className="mx-rules-row">
         <Button variant="ghost" onClick={() => setShown(shown === d.id ? null : d.id)}>{t("Show rule")}</Button>
-        <Button variant="ghost" onClick={() => dry.mutate(d)}>{t("Try it on the data")}</Button>
-        <Button variant="secondary" onClick={() => pub.mutate(d.id)}>{t("Publish")}</Button>
-        <Button variant="ghost" onClick={() => del.mutate(d.id)}>{t("Delete")}</Button>
+        <Button variant="ghost" disabled={dry.isPending} onClick={() => dry.mutate(d)}>{t("Try it on the data")}</Button>
+        <Button variant="secondary" disabled={pub.isPending} onClick={() => pub.mutate(d.id)}>{t("Publish")}</Button>
+        <Button variant="ghost" disabled={del.isPending} onClick={() => del.mutate(d.id)}>{t("Delete")}</Button>
       </span>
     ) },
   ];
@@ -86,8 +86,8 @@ export function LearnedView({ modules }: { modules: string[] }) {
     { key: "vio", label: t("Rows breaking it"), render: (p) => compactCount(p.violations), sort: (p) => p.violations, align: "end" },
     { key: "act", label: t("Actions"), render: (p) => (
       <span className="mx-rules-row">
-        <Button variant="secondary" onClick={() => ok.mutate({ id: p.id, s: "medium" })}>{t("Approve as a rule")}</Button>
-        <Button variant="ghost" onClick={() => no.mutate(p.id)}>{t("Reject")}</Button>
+        <Button variant="secondary" disabled={ok.isPending} onClick={() => ok.mutate({ id: p.id, s: "medium" })}>{t("Approve as a rule")}</Button>
+        <Button variant="ghost" disabled={no.isPending} onClick={() => no.mutate(p.id)}>{t("Reject")}</Button>
       </span>
     ) },
   ];
@@ -110,8 +110,8 @@ export function LearnedView({ modules }: { modules: string[] }) {
                 { key: "n", label: t("Corrections backing it"), render: (r) => compactCount(r.supporting_correction_count), align: "end" },
                 { key: "act", label: t("Actions"), render: (r) => (
                   <span className="mx-rules-row">
-                    <Button variant="secondary" onClick={() => pOk.mutate(r.id)}>{t("Approve")}</Button>
-                    <Button variant="ghost" onClick={() => pNo.mutate(r.id)}>{t("Reject")}</Button>
+                    <Button variant="secondary" disabled={pOk.isPending} onClick={() => pOk.mutate(r.id)}>{t("Approve")}</Button>
+                    <Button variant="ghost" disabled={pNo.isPending} onClick={() => pNo.mutate(r.id)}>{t("Reject")}</Button>
                   </span>
                 ) },
               ]}
@@ -226,8 +226,8 @@ export function PacksView() {
               title={p.name}
               sub={p.authority}
               action={p.applied
-                ? <Button variant="ghost" onClick={() => off.mutate(p.id)}>{t("Remove the pack")}</Button>
-                : <Button variant="secondary" onClick={() => on.mutate(p.id)}>{t("Apply the pack")}</Button>}
+                ? <Button variant="ghost" disabled={off.isPending} onClick={() => off.mutate(p.id)}>{t("Remove the pack")}</Button>
+                : <Button variant="secondary" disabled={on.isPending} onClick={() => on.mutate(p.id)}>{t("Apply the pack")}</Button>}
             >
               <p className="mx-muted">{p.description}</p>
               <dl className="mx-tiles">
@@ -268,8 +268,8 @@ export function FixDraftsView({ fixture }: { fixture: boolean }) {
               { key: "a", label: t("Actions"), render: (d) => (
                 <span className="mx-rules-row">
                   <Button variant="ghost" href={withFixture(`/r/${encodeURIComponent(d.rule_id)}`, fixture)}>{t("Open the rule")}</Button>
-                  <Button variant="secondary" disabled={d.status === "approved"} onClick={() => ok.mutate(d.rule_id)}>{t("Approve")}</Button>
-                  <Button variant="ghost" disabled={d.status === "rejected"} onClick={() => no.mutate(d.rule_id)}>{t("Reject")}</Button>
+                  <Button variant="secondary" disabled={d.status === "approved" || ok.isPending} onClick={() => ok.mutate(d.rule_id)}>{t("Approve")}</Button>
+                  <Button variant="ghost" disabled={d.status === "rejected" || no.isPending} onClick={() => no.mutate(d.rule_id)}>{t("Reject")}</Button>
                 </span>
               ) },
             ]}

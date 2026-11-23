@@ -14,7 +14,7 @@ import { moduleText } from "@/lib/v2/labels";
 import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { useTimeline } from "@/lib/v2/runs-queries";
 import { systemForModule } from "@/lib/v2/score";
-import { Button, Card, Chip, EmptyState, Skeleton, StatTile, useAletheiaScope, useSheet, useToast } from "@/ui/kit";
+import { Button, Card, Chip, EmptyState, ErrorState, Skeleton, StatTile, useAletheiaScope, useSheet, useToast } from "@/ui/kit";
 import { compactCount, dqsOf, score, signed } from "../object/format";
 import { answer } from "./answers";
 import { runPath } from "./util";
@@ -82,6 +82,7 @@ export function RunsBoard() {
   });
 
   if (landscape.isLoading) return <Skeleton lines={5} label={t("Loading the runs")} />;
+  if (landscape.isError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void landscape.refetch()} />;
   if (!objects.length) return null;
 
   const exportOne = async () => {
@@ -100,7 +101,7 @@ export function RunsBoard() {
       </div>
       <Card title={t("All runs")} sub={t("{n, plural, one {# run} other {# runs}}", { n: heads.length })}
         action={<span className="rn-row-actions"><Button onClick={() => sheet.open("cycle")}>{t("Run now")}</Button>{head && <Button variant="secondary" onClick={() => void exportOne()}>{t("Export run {n}", { n: head.run_number ?? "" })}</Button>}</span>}>
-        {runs.isLoading ? <Skeleton lines={4} label={t("Loading the runs")} /> : rows.length === 0 ? <EmptyState heading={t("No runs yet")} body={t("Start a run to see this object on the ruler.")} /> : (
+        {runs.isLoading ? <Skeleton lines={4} label={t("Loading the runs")} /> : runs.isError ? <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void runs.refetch()} /> : rows.length === 0 ? <EmptyState heading={t("No runs yet")} body={t("Start a run to see this object on the ruler.")} /> : (
           <table className="rn-board-table">
             <thead><tr><th scope="col">{t("Run")}</th><th scope="col">{t("Finished")}</th><th scope="col">{t("On the ruler, 55 to 80")}</th><th scope="col" className="rn-num">{t("Shown")}</th><th scope="col" className="rn-num">{t("Measured")}</th><th scope="col" className="rn-num">{t("Change")}</th><th scope="col">{t("Compare")}</th></tr></thead>
             <tbody>

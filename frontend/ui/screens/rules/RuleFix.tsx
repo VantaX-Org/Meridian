@@ -10,6 +10,7 @@ import { draftTunedVersion } from "@/lib/api/v2/pilot";
 import { handOffRule, suppressRule, type RuleScope } from "@/lib/api/v2/object";
 import { useStewards } from "@/lib/v2/object-queries";
 import { pct } from "./format";
+import { FailedReads } from "./FailedReads";
 import { useAct, useFeedback, useSuppressions, useTuning, useVersionDiff } from "./queries";
 
 const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
@@ -22,12 +23,17 @@ export function RuleFix({ id, scope }: { id: string; scope: RuleScope }) {
   const [note, setNote] = useState("");
   const [due, setDue] = useState(inDays(14));
   const [diffAt, setDiffAt] = useState<number | null>(null);
-  const feedback = useFeedback(id).data?.rules.find((r) => r.check_id === id);
-  const sup = (useSuppressions().data?.suppressions ?? []).filter((s) => s.check_id === id && s.active);
-  const tune = (useTuning().data?.proposals ?? []).filter((p) => p.rule_id === id);
-  const stewards = useStewards(true).data ?? [];
+  const feedbackQ = useFeedback(id);
+  const feedback = feedbackQ.data?.rules.find((r) => r.check_id === id);
+  const supQ = useSuppressions();
+  const sup = (supQ.data?.suppressions ?? []).filter((s) => s.check_id === id && s.active);
+  const tuneQ = useTuning();
+  const tune = (tuneQ.data?.proposals ?? []).filter((p) => p.rule_id === id);
+  const stewardsQ = useStewards(true);
+  const stewards = stewardsQ.data ?? [];
   const rid = scope.tenant_rule?.id ?? id; // versions live on the tenant row
-  const diff = useVersionDiff(rid, diffAt).data;
+  const diffQ = useVersionDiff(rid, diffAt);
+  const diff = diffQ.data;
 
   const toggle = useAct((on: boolean) => setRuleEnabled(rid, on), () => t("Rule switch saved"));
   const suppress = useAct(() => suppressRule(id, reason, new Date(until).toISOString()), () => t("Rule suppressed"));
@@ -38,7 +44,8 @@ export function RuleFix({ id, scope }: { id: string; scope: RuleScope }) {
 
   return (
     <div className="mx-rules-form">
-      {scope.tenant_rule ? <Toggle label={t("Rule is on")} checked={scope.tenant_rule.enabled} onChange={(v) => toggle.mutate(v)} /> : <p className="mx-muted">{t("This rule is not in your library yet.")}</p>}
+      <FailedReads qs={[feedbackQ, supQ, tuneQ, stewardsQ, diffQ]} />
+      {scope.tenant_rule ? <Toggle label={t("Rule is on")} checked={scope.tenant_rule.enabled} disabled={toggle.isPending} onChange={(v) => toggle.mutate(v)} /> : <p className="mx-muted">{t("This rule is not in your library yet.")}</p>}
 
       <h3 className="mx-card-t">{t("Suppress")}</h3>
       <div className="mx-rules-row">
@@ -52,7 +59,7 @@ export function RuleFix({ id, scope }: { id: string; scope: RuleScope }) {
             <li key={s.id} className="mx-rules-item">
               <span>{s.reason}</span>
               <span className="mx-muted">{t("Until {date}", { date: s.expires_at.slice(0, 10) })}</span>
-              <Button variant="ghost" onClick={() => unsuppress.mutate(s.id)}>{t("End suppression")}</Button>
+              <Button variant="ghost" disabled={unsuppress.isPending} onClick={() => unsuppress.mutate(s.id)}>{t("End suppression")}</Button>
             </li>
           ))}
         </ul>

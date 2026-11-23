@@ -6,7 +6,7 @@ import { t } from "@/lib/v2/i18n";
 import { formatModuleName } from "@/lib/format";
 import { useRuleScope } from "@/lib/v2/object-queries";
 import { setRuleEnabled } from "@/lib/api/v2/rulelib";
-import { Button, FieldChip, SeverityPill, Skeleton, StatTile, Toggle } from "@/ui/kit";
+import { Button, ErrorState, FieldChip, SeverityPill, Skeleton, StatTile, Toggle } from "@/ui/kit";
 import type { Severity } from "@/ui/kit/SeverityStrip";
 import { checkId, compactCount, pct, ruleCheck, sevLabel, type RuleArg } from "./format";
 import { useAct, useRuleLibrary } from "./queries";
@@ -14,8 +14,10 @@ import { useAct, useRuleLibrary } from "./queries";
 /** The library row's quick view: what the rule is, whether it is on, and the way into its page. */
 export function LibraryRuleSheet({ arg }: { arg: RuleArg }) {
   const fx = useFixture();
-  const r = useRuleLibrary().data?.rules.find((x) => x.id === arg.id || ruleCheck(x) === arg.id);
+  const lib = useRuleLibrary();
+  const r = lib.data?.rules.find((x) => x.id === arg.id || ruleCheck(x) === arg.id);
   const toggle = useAct((on: boolean) => setRuleEnabled(arg.id, on), () => t("Rule switch saved"));
+  if (lib.isError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void lib.refetch()} />;
   if (!r) return <Skeleton lines={4} label={t("Loading the rule")} />;
   return (
     <div className="mx-rules-form">
@@ -26,7 +28,7 @@ export function LibraryRuleSheet({ arg }: { arg: RuleArg }) {
         <StatTile label={t("Pass rate")} value={pct(r.last_pass_rate)} />
         <StatTile label={t("Records failing")} value={r.last_affected_count == null ? t("n/a") : compactCount(r.last_affected_count)} />
       </dl>
-      <Toggle label={t("Rule is on")} checked={r.enabled} onChange={(v) => toggle.mutate(v)} />
+      <Toggle label={t("Rule is on")} checked={r.enabled} disabled={toggle.isPending} onChange={(v) => toggle.mutate(v)} />
       <Button variant="primary" href={withFixture(`/r/${encodeURIComponent(ruleCheck(r))}`, fx)}>{t("Open the rule")}</Button>
     </div>
   );
@@ -36,7 +38,9 @@ export function LibraryRuleSheet({ arg }: { arg: RuleArg }) {
 export function RuleSheet({ arg }: { arg: RuleArg }) {
   const fx = useFixture();
   const id = checkId(arg.id);
-  const s = useRuleScope(id).data;
+  const q = useRuleScope(id);
+  const s = q.data;
+  if (q.isError) return <ErrorState heading={t("This could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
   if (!s) return <Skeleton lines={4} label={t("Loading the rule")} />;
   return (
     <div className="mx-rules-form">
