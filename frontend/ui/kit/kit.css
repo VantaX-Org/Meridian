@@ -132,7 +132,7 @@
 /* States */
 .mx-root .mx-state { padding: var(--mx-s5); display: grid; gap: var(--mx-s2); justify-items: start; background: var(--mx-surface); border: 1px dashed var(--mx-border-strong); border-radius: var(--mx-r-card); }
 .mx-root .mx-state[data-tone="error"] { border-color: var(--mx-bad); }
-.mx-root .mx-state-h { font-weight: var(--mx-w-heading); }
+.mx-root .mx-state-h { font-weight: var(--mx-w-heading); font-size: inherit; margin: 0; }
 .mx-root .mx-skeleton { display: grid; gap: var(--mx-s3); }
 .mx-root .mx-skel { display: block; block-size: var(--mx-s4); border-radius: var(--mx-r-control); background: var(--mx-surface-2); }
 

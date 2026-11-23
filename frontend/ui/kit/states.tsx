@@ -10,10 +10,11 @@ export function EmptyState({ heading, body, action }: { heading: string; body?: 
   );
 }
 
-export function ErrorState({ heading, body, retryLabel, onRetry }: { heading: string; body?: string; retryLabel?: string; onRetry?: () => void }) {
+export function ErrorState({ heading, body, retryLabel, onRetry, page }: { heading: string; body?: string; retryLabel?: string; onRetry?: () => void; page?: boolean }) {
+  const H = page ? "h1" : "p";
   return (
     <div className="mx-state" role="alert" data-tone="error">
-      <p className="mx-state-h">{heading}</p>
+      <H className="mx-state-h">{heading}</H>
       {body ? <p className="mx-muted">{body}</p> : null}
       {onRetry && retryLabel ? <button type="button" className="mx-btn" data-variant="secondary" onClick={onRetry}>{retryLabel}</button> : null}
     </div>
