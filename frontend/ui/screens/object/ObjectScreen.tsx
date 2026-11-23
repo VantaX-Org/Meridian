@@ -1,5 +1,6 @@
 "use client";
 
+import { isAnalysed } from "@/lib/v2/run-label";
 import { useState } from "react";
 import { formatDate } from "@/lib/format";
 import { useConfigImpact } from "@/lib/v2/object-queries";
@@ -95,7 +96,7 @@ export function ObjectScreen({ system, module }: { system: string; module: strin
   const first = oldest && firstScore !== null ? { value: firstScore, label: t("Run {n}: {score}", { n: oldest.run_number ?? "", score: fmt(firstScore) }) } : null;
   const pairScores = d.pair?.last?.scores;
   const proposed = g ? Math.min(g.proposed, g.open) : 0;
-  const latest = o.heads[0]?.id ?? null;
+  const latest = (o.heads.find((h) => isAnalysed(h.status)) ?? o.heads[0])?.id ?? null;
   const onLatest = !latest || !o.runId || o.runId === latest;
   const verdict: Verdict | null = d.cell?.verdict ?? (d.now === null ? null : d.now >= 85 ? "go" : d.now >= 70 ? "at-risk" : "no-go");
   const breaches = rc?.breaches ?? [];

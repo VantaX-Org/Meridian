@@ -4,6 +4,7 @@
  * The top of the Runs route: one object's runs on a shared scale, the figures of its newest run, and the two runs to
  * compare. Every figure is read from an existing endpoint; what no endpoint supplies is left out (see the change report).
  */
+import { isAnalysed } from "@/lib/v2/run-label";
 import { useState } from "react";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { exportRuns } from "@/lib/api/v2/run-ops";
@@ -48,7 +49,7 @@ export function RunsBoard() {
   const system = L && mod ? systemForModule(L.systems, L.cells, mod) : undefined;
   const runs = useRunsInfinite(system?.id ?? null, mod);
   const heads = runs.data?.pages.flatMap((p) => p.versions) ?? [];
-  const head = heads[0] ?? null;
+  const head = heads.find((h) => isAnalysed(h.status)) ?? heads[0] ?? null;
   const receipt = useReceipt(mod ?? "", head?.id ?? null, !!mod && !!head).data;
   const timeline = useTimeline(system?.id ?? null, 8, mod ?? undefined).data?.runs ?? [];
   const tl = timeline.find((r) => r.id === head?.id);

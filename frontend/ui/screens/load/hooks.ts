@@ -22,7 +22,7 @@ export const useFieldMap = (module: string, dest: string) => { const fx = useFix
 export const useValueMap = (module: string, field: string | null) => { const fx = useFixture(); return useQuery({ queryKey: K(fx, "valuemap", module, field), queryFn: () => mig.getValueMap(module, field as string), enabled: !!field }); };
 export const useTemplateList = (module: string) => { const fx = useFixture(); return useQuery({ queryKey: K(fx, "templates", module), queryFn: () => mig.getTemplates(module) }); };
 export const usePairs = () => { const fx = useFixture(); return useQuery({ queryKey: K(fx, "pairs"), queryFn: cmp.getPairs }); };
-export const usePairLatest = (id: string) => { const fx = useFixture(); return useQuery({ queryKey: K(fx, "pair", id), queryFn: () => cmp.getLatest(id) }); };
+export const usePairLatest = (id: string) => { const fx = useFixture(); return useQuery({ queryKey: K(fx, "pair", id), queryFn: () => cmp.getLatest(id), enabled: !!id }); };
 export const usePairTrend = (id: string) => { const fx = useFixture(); return useQuery({ queryKey: K(fx, "pair-trend", id), queryFn: () => cmp.getTrend(id) }); };
 export const useDiffs = (cid: string | null, q: cmp.DiffQuery) => { const fx = useFixture(); return useQuery({ queryKey: K(fx, "diffs", cid, q), queryFn: () => cmp.getDifferences(cid as string, q), enabled: !!cid }); };
 

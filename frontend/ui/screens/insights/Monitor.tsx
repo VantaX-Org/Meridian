@@ -237,7 +237,7 @@ function Contracts() {
   const codes = Array.from(new Set((mods.data?.objects ?? []).map((o) => o.module)));
   const [picked, setPicked] = useState<string | null>(null);
   const mod = picked ?? codes[0] ?? null;
-  const q = useQ("contracts", () => getObjectContracts(mod ?? ""), [mod]);
+  const q = useQ("contracts", () => getObjectContracts(mod ?? ""), [mod], !!mod);
   const cs = q.data?.contracts ?? [];
   return (
     <div className="b8-stack">
