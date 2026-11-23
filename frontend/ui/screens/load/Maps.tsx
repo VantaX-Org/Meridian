@@ -55,7 +55,7 @@ export function Maps() {
         <Tabs idBase="mx-maps" label={t("Map type")} value={tab} onChange={setTab} items={[{ id: "fields", label: t("Field map"), badge: String(maps.length) }, { id: "values", label: t("Value map"), badge: String(values.length) }]} />
         <div id={`mx-maps-panel-${tab}`} role="tabpanel">
           {tab === "fields" ? (
-            <Gate loading={fm.isLoading} error={fm.isError} what={t("the field map")}>
+            <Gate loading={fm.isLoading} error={fm.isError} retry={() => void fm.refetch()} what={t("the field map")}>
               {maps.length ? (
                 <DataTable<FieldMapping>
                   label={t("Field map")}
@@ -79,7 +79,7 @@ export function Maps() {
               </div>
             </Gate>
           ) : (
-            <Gate loading={vm.isLoading} error={vm.isError} what={t("the value map")}>
+            <Gate loading={vm.isLoading} error={vm.isError} retry={() => void vm.refetch()} what={t("the value map")}>
               <Select aria-label={t("Target field")} value={vf} onChange={(e) => setVf(e.target.value)} options={[...new Set([vf, ...maps.filter((m) => m.value_map && m.dest_table).map((m) => `${m.dest_table}.${m.dest_field}`)])].map((f) => ({ value: f, label: f }))} />
               {values.length ? (
                 <DataTable<ValueEntry>

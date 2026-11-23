@@ -48,7 +48,7 @@ export function Waves() {
     <>
       <PageHeader title={t("Migration waves")} context={t("Group objects into waves and track each wave to sign-off.")} actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("New wave")}</Button><AskButton /></>} />
       <Card title={t("Waves")} sub={t("{n} waves", { n: waves.length })}>
-        <Gate loading={q.isLoading} error={q.isError} what={t("the waves")}>
+        <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the waves")}>
           {waves.length ? (
             <DataTable
               label={t("Waves")}

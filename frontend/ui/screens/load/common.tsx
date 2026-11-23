@@ -20,9 +20,9 @@ export function Verdict({ v }: { v: string | null | undefined }) {
   return <SeverityPill sev={sev} label={verdictLabel(v)} />;
 }
 
-export function Gate({ loading, error, children, what }: { loading: boolean; error: boolean; children: ReactNode; what: string }) {
+export function Gate({ loading, error, retry, children, what }: { loading: boolean; error: boolean; retry?: () => void; children: ReactNode; what: string }) {
   if (loading) return <Skeleton lines={8} label={t("Loading {what}", { what })} />;
-  if (error) return <ErrorState heading={t("{what} could not be loaded", { what })} />;
+  if (error) return <ErrorState heading={t("{what} could not be loaded", { what })} retryLabel={t("Try again")} onRetry={retry} />;
   return <>{children}</>;
 }
 

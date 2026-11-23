@@ -50,7 +50,7 @@ export function MigrationRuns() {
     <>
       <PageHeader title={t("Migration runs")} context={t("Each run measures how much of the source data can load into the target.")} actions={<><Button variant="primary" onClick={() => setOpen(true)}>{t("Start a run")}</Button><AskButton /></>} />
       <Card title={t("Runs")} sub={t("{n} runs", { n: runs.length })}>
-        <Gate loading={q.isLoading} error={q.isError} what={t("the runs")}>
+        <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the runs")}>
           {runs.length ? (
             <DataTable
               label={t("Runs")}

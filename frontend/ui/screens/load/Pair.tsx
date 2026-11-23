@@ -45,7 +45,7 @@ export function Pair({ id }: { id: string }) {
   const s = cmp?.summary;
 
   return (
-    <Gate loading={q.isLoading} error={q.isError} what={t("the pair")}>
+    <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the pair")}>
       <PageHeader
         title={name}
         context={pair ? <>{<FieldChip code={pair.module} description={humanize(pair.module)} />}{cmp ? `, ${t("compared {when}", { when: when(cmp.completed_at ?? cmp.created_at) })}` : ""}</> : null}
