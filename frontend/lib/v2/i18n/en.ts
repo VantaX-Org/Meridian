@@ -15001,6 +15001,7 @@ export const en = {
   "Change the address or the credentials, test, then save. A secret left empty keeps the stored one.": "Change the address or the credentials, test, then save. A secret left empty keeps the stored one.",
   "Test these settings": "Test these settings",
   "Save and test": "Save and test",
+  "Every measured rule": "Every measured rule",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

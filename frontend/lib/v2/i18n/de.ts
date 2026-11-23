@@ -15002,4 +15002,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Change the address or the credentials, test, then save. A secret left empty keeps the stored one.": "Adresse oder Zugangsdaten ändern, testen, dann speichern. Ein leeres Geheimnis behält das gespeicherte.",
   "Test these settings": "Diese Einstellungen testen",
   "Save and test": "Speichern und testen",
+  "Every measured rule": "Jede gemessene Regel",
 };

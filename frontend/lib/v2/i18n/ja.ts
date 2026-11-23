@@ -15002,4 +15002,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Change the address or the credentials, test, then save. A secret left empty keeps the stored one.": "アドレスまたは認証情報を変更し、テストしてから保存します。空のシークレットは保存済みのものを保持します。",
   "Test these settings": "この設定をテスト",
   "Save and test": "保存してテスト",
+  "Every measured rule": "測定したすべてのルール",
 };

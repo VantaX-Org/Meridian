@@ -39,6 +39,19 @@ describe("ObjectScreen", () => {
     expect(dl.fn).toHaveBeenCalledTimes(1);
   });
 
+  it("lists every measured rule, passing too, with All, Failing and Passing views", async () => {
+    renderWithQuery(screenWithChat());
+    await screen.findByRole("list", { name: "Failing rules" });
+    const all = await screen.findByRole("tab", { name: /^All/ });
+    const count = (el: HTMLElement) => Number(el.textContent?.replace(/\D/g, ""));
+    const fail = count(screen.getByRole("tab", { name: /^Failing/ }));
+    const pass = count(screen.getByRole("tab", { name: /^Passing/ }));
+    expect(count(all)).toBe(fail + pass);
+    fireEvent.click(screen.getByRole("tab", { name: /^Passing/ }));
+    const table = document.getElementById("all-rules-panel-passing") as HTMLElement;
+    if (pass > 0) expect(within(table).getAllByRole("link")[0].getAttribute("href")).toContain("/r/");
+  });
+
   it("turns an old as_of link into run", async () => {
     window.history.replaceState(null, "", "/o/ecc-production/material-master?fixture=1&as_of=b0500000-0000-4000-8000-000000000005");
     renderWithQuery(screenWithChat());
