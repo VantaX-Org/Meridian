@@ -20,7 +20,7 @@ export function Systems({ pick, onPick, onNext }: { pick: Pick; onPick: (p: Pick
 
   return (
     <Card title={t("Choose the two systems")} sub={t("Everything moves from the source system to the new target system.")}>
-      <Gate loading={q.isLoading} error={q.isError} what={t("the systems")}>
+      <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the systems")}>
         <div className="mx-col">
           <Field label={t("Move from (source)")} hint={t("The system that holds the data today.")}>
             <Select options={opts(pick.target)} value={pick.source} onChange={(e) => onPick({ ...pick, source: e.target.value })} />
@@ -30,9 +30,9 @@ export function Systems({ pick, onPick, onNext }: { pick: Pick; onPick: (p: Pick
           </Field>
           {target ? (
             <>
-              <Toggle label={t("Use {name} as a migration target", { name: target.name })} checked={!!target.migration_target} onChange={(v) => flag.mutate({ id: target.id, target: v })} />
+              <Toggle label={t("Use {name} as a migration target", { name: target.name })} checked={!!target.migration_target} disabled={flag.isPending} onChange={(v) => flag.mutate({ id: target.id, target: v })} />
               {!target.migration_target ? <p className="mx-muted" role="status">{t("Switch this on. A system must be flagged as a migration target before anything can be written to it.")}</p> : null}
-              {flag.isError ? <p className="mx-field-e" role="alert">{t("The flag could not be saved.")}</p> : null}
+              {flag.isError ? <p className="mx-field-e" role="alert">{t("The flag could not be saved.")} <Button variant="ghost" onClick={() => flag.mutate({ id: target.id, target: !!flag.variables?.target })}>{t("Try again")}</Button></p> : null}
             </>
           ) : null}
           <div className="mx-actions"><Button variant="primary" disabled={!ready} onClick={onNext}>{t("Continue to scope")}</Button></div>

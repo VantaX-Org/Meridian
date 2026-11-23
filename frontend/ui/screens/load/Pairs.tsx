@@ -31,13 +31,13 @@ export function Pairs() {
     },
   });
 
-  const run = useMutation({ mutationFn: (id: string) => runPair(id), onSuccess: () => { toast(t("Comparison started"), "info"); invalidateLoad(qc); } });
+  const run = useMutation({ mutationFn: (id: string) => runPair(id), onSuccess: () => { toast(t("Comparison started"), "info"); invalidateLoad(qc); }, onError: () => toast(t("The comparison could not be started"), "bad") });
   const add = useMutation({
     mutationFn: () => createPair({ module: form.module, source_system_id: form.source, target_system_id: form.target }),
     onSuccess: () => { setOpen(false); toast(t("Pair created"), "good"); invalidateLoad(qc); },
     onError: () => toast(t("The pair could not be created"), "bad"),
   });
-  const del = useMutation({ mutationFn: (id: string) => deletePair(id), onSuccess: () => { setDrop(null); invalidateLoad(qc); } });
+  const del = useMutation({ mutationFn: (id: string) => deletePair(id), onSuccess: () => { setDrop(null); toast(t("Pair deleted"), "good"); invalidateLoad(qc); }, onError: () => { setDrop(null); toast(t("The pair could not be deleted"), "bad"); } });
 
   const sys = q.data?.systems ?? [];
   const mods = q.data?.modules ?? [];
@@ -67,7 +67,7 @@ export function Pairs() {
                 { key: "at", label: t("Last compared"), render: (p) => (p.last ? when(p.last.at) : t("Never")) },
                 { key: "act", label: t("Actions"), render: (p) => (
                   <span className="mx-links">
-                    <Button variant="secondary" onClick={() => run.mutate(p.id)}>{t("Run comparison")}</Button>
+                    <Button variant="secondary" disabled={run.isPending} onClick={() => run.mutate(p.id)}>{t("Run comparison")}</Button>
                     <Button variant="ghost" onClick={() => setDrop(p)}>{t("Remove")}</Button>
                   </span>
                 ) },

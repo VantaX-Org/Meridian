@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { startReconcile, useReconciliation, type ReconEntity, type Reconciliation } from "@/lib/api/next/move";
+import { apiDetail, startReconcile, useReconciliation, type ReconEntity, type Reconciliation } from "@/lib/api/next/move";
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, DataTable, DqsPair, EmptyState, FieldChip, type Column } from "@/ui/kit";
 import { Gate } from "../common";
@@ -50,10 +50,10 @@ export function Reconcile({ planId, onBack, onNext }: { planId: string; onBack: 
             <Button onClick={onBack}>{t("Back")}</Button>
             <Button variant="primary" disabled={start.isPending} onClick={() => start.mutate()}>{start.isPending ? t("Comparing") : t("Reconcile now")}</Button>
           </div>
-          {start.isError ? <p className="mx-field-e" role="alert">{t("The comparison could not start.")}</p> : null}
+          {start.isError ? <p className="mx-field-e" role="alert">{apiDetail(start.error) ?? t("The comparison could not start.")}</p> : null}
         </Card>
       ) : (
-        <Gate loading={q.isLoading} error={q.isError} what={t("the comparison")}>
+        <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the comparison")}>
           {d ? (
             <>
               {d.status === "failed" ? <p className="mx-field-e" role="alert">{d.reason ?? t("The comparison failed.")}</p> : null}
@@ -80,9 +80,10 @@ export function Reconcile({ planId, onBack, onNext }: { planId: string; onBack: 
                   {sample.length ? <DataTable columns={sampleCols()} rows={sample} rowKey={(r) => r.k} label={t("Sample rows for {entity}", { entity: sel.entity })} /> : <EmptyState heading={t("No sample rows")} body={t("Nothing differs for this entity.")} />}
                 </Card>
               ) : null}
+              {start.isError ? <p className="mx-field-e" role="alert">{apiDetail(start.error) ?? t("The comparison could not start.")}</p> : null}
               <div className="mx-actions">
                 <Button onClick={onBack}>{t("Back")}</Button>
-                <Button onClick={() => start.mutate()}>{t("Reconcile again")}</Button>
+                <Button disabled={start.isPending} onClick={() => start.mutate()}>{start.isPending ? t("Comparing") : t("Reconcile again")}</Button>
                 <Button variant="primary" onClick={onNext}>{t("Plan the cut-over delta")}</Button>
               </div>
             </>

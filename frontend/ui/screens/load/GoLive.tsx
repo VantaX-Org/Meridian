@@ -73,7 +73,7 @@ function Certificates({ g }: { g: WaveGate }) {
             { key: "sig", label: t("Signed by"), render: (v) => v.signatures.map((s) => s.user ?? s.user_id).join(", ") || t("Nobody yet") },
             { key: "act", label: t("Actions"), render: (v) => (
               <span className="mx-links">
-                {v.status === "issued" ? <Button variant="secondary" onClick={() => sign.mutate(v.id)}>{t("Sign")}</Button> : null}
+                {v.status === "issued" ? <Button variant="secondary" disabled={sign.isPending} onClick={() => sign.mutate(v.id)}>{t("Sign")}</Button> : null}
                 <Button variant="ghost" onClick={() => { downloadCertificate(g.wave_id, v.id, v.version).catch((e) => toast(errorSentence(e, t("That did not work. Try again.")), "bad")); }}>{t("Download PDF")}</Button>
               </span>
             ) },

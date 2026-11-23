@@ -15021,4 +15021,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Billing is open to people who manage settings.": "Die Abrechnung ist für Personen mit Einstellungsrechten offen.",
   "View name": "Name der Ansicht",
   "A name is required.": "Ein Name ist erforderlich.",
+  "Unavailable": "Nicht verfügbar",
+  "The comparison could not be started": "Der Vergleich konnte nicht gestartet werden",
+  "Pair deleted": "Paar gelöscht",
+  "The pair could not be deleted": "Das Paar konnte nicht gelöscht werden",
+  "The target fields could not be loaded": "Die Zielfelder konnten nicht geladen werden",
 };

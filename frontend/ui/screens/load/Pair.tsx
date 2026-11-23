@@ -24,7 +24,7 @@ export function Pair({ id }: { id: string }) {
   const pair = q.data?.pair ?? null;
   const filter = { kind: kind || undefined, limit: 200 };
   const diffs = useDiffs(cmp?.id ?? null, filter);
-  const run = useMutation({ mutationFn: () => runPair(id), onSuccess: () => { toast(t("Comparison started"), "info"); invalidateLoad(qc); } });
+  const run = useMutation({ mutationFn: () => runPair(id), onSuccess: () => { toast(t("Comparison started"), "info"); invalidateLoad(qc); }, onError: () => toast(t("The comparison could not be started"), "bad") });
   const sc = cmp?.scores ?? pair?.last?.scores ?? null;
   const name = pair ? `${pair.source.name} ${t("to")} ${pair.target.name}` : "";
 

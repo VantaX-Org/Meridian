@@ -24,7 +24,8 @@ export function Wave({ id }: { id: string }) {
   const c = q.data;
   const done = () => invalidateLoad(qc);
   const sign = useMutation({ mutationFn: () => signOffWave(id), onSuccess: () => { toast(t("Wave signed off"), "good"); done(); }, onError: () => toast(t("The wave is not a go yet, so it cannot be signed off"), "bad") });
-  const dl = (fmt: "xlsx" | "pdf") => { downloadWaveReport(id, fmt).catch((e) => toast(errorSentence(e, t("That did not work. Try again.")), "bad")); };
+  const [busy, setBusy] = useState<string | null>(null);
+  const dl = (fmt: "xlsx" | "pdf") => { setBusy(fmt); downloadWaveReport(id, fmt).catch((e) => toast(errorSentence(e, t("That did not work. Try again.")), "bad")).finally(() => setBusy(null)); };
   const run = useMutation({ mutationFn: () => runWave(id), onSuccess: () => { toast(t("Wave analysis started"), "good"); done(); }, onError: () => toast(t("The wave analysis could not start"), "bad") });
   const patch = useMutation({ mutationFn: () => updateWave(id, { min_readiness: Number(min) }), onSuccess: () => { toast(t("Threshold saved"), "good"); done(); }, onError: () => toast(t("The threshold could not be saved"), "bad") });
   const del = useMutation({ mutationFn: () => deleteWave(id), onSuccess: () => { toast(t("Wave deleted"), "good"); window.location.assign(href("/load/waves")); }, onError: () => toast(t("The wave could not be deleted"), "bad") });
@@ -53,8 +54,8 @@ export function Wave({ id }: { id: string }) {
         actions={<>
           <Button variant="primary" disabled={run.isPending} onClick={() => run.mutate()}>{t("Run wave analysis")}</Button>
           <Button variant="secondary" disabled={sign.isPending || c?.verdict !== "go"} onClick={() => sign.mutate()}>{t("Sign off")}</Button>
-          <Button variant="ghost" onClick={() => dl("xlsx")}>{t("Download Excel")}</Button>
-          <Button variant="ghost" onClick={() => dl("pdf")}>{t("Download PDF")}</Button>
+          <Button variant="ghost" disabled={busy !== null} onClick={() => dl("xlsx")}>{t("Download Excel")}</Button>
+          <Button variant="ghost" disabled={busy !== null} onClick={() => dl("pdf")}>{t("Download PDF")}</Button>
           <Button variant="ghost" onClick={() => setConfirm(true)}>{t("Delete wave")}</Button>
           <AskButton />
         </>}

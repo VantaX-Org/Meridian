@@ -15021,4 +15021,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Billing is open to people who manage settings.": "請求は設定を管理する人が利用できます。",
   "View name": "ビュー名",
   "A name is required.": "名前が必要です。",
+  "Unavailable": "利用できません",
+  "The comparison could not be started": "比較を開始できませんでした",
+  "Pair deleted": "ペアを削除しました",
+  "The pair could not be deleted": "ペアを削除できませんでした",
+  "The target fields could not be loaded": "対象フィールドを読み込めませんでした",
 };

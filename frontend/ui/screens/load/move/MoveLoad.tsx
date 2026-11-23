@@ -68,7 +68,8 @@ export function MoveLoad({ planId, runId, onRun, onBack, onNext }: { planId: str
   const stopping = r?.status === "stopping";
   const name = systems.find((x) => x.id === plan?.target)?.name ?? plan?.target ?? "";
   const [dlErr, setDlErr] = useState<unknown>(null);
-  const dl = (p: Promise<unknown>) => { setDlErr(null); p.catch(setDlErr); };
+  const [dlBusy, setDlBusy] = useState(false);
+  const dl = (p: Promise<unknown>) => { setDlErr(null); setDlBusy(true); p.catch(setDlErr).finally(() => setDlBusy(false)); };
   const err = start.error ?? act.error ?? dlErr;
 
   return (
@@ -89,10 +90,10 @@ export function MoveLoad({ planId, runId, onRun, onBack, onNext }: { planId: str
             <Button onClick={onBack} disabled={live}>{t("Back")}</Button>
             {!r || (done && !realOk && !dryOk) ? <Button variant="primary" disabled={start.isPending} onClick={() => start.mutate(true)}>{t("Run a dry run")}</Button> : null}
             {live ? <Button disabled={stopping || act.isPending} onClick={() => act.mutate("stop")}>{stopping ? t("Stopping after this batch") : t("Stop")}</Button> : null}
-            {done && r?.status !== "completed" ? <Button onClick={() => act.mutate("resume")}>{t("Resume")}</Button> : null}
-            {done && failed > 0 ? <Button onClick={() => act.mutate("retry-failed")}>{t("Retry failed")}</Button> : null}
-            {runId && plan?.mode === "cleansed" ? <Button onClick={() => dl(downloadCleansingLog(runId))}>{t("Download cleansing log (CSV)")}</Button> : null}
-            {failed > 0 && runId ? <Button onClick={() => dl(downloadErrors(runId))}>{t("Download errors (CSV)")}</Button> : null}
+            {done && r?.status !== "completed" ? <Button disabled={act.isPending} onClick={() => act.mutate("resume")}>{t("Resume")}</Button> : null}
+            {done && failed > 0 ? <Button disabled={act.isPending} onClick={() => act.mutate("retry-failed")}>{t("Retry failed")}</Button> : null}
+            {runId && plan?.mode === "cleansed" ? <Button disabled={dlBusy} onClick={() => dl(downloadCleansingLog(runId))}>{t("Download cleansing log (CSV)")}</Button> : null}
+            {failed > 0 && runId ? <Button disabled={dlBusy} onClick={() => dl(downloadErrors(runId))}>{t("Download errors (CSV)")}</Button> : null}
             {realOk ? <Button variant="primary" onClick={onNext}>{t("Reconcile")}</Button> : null}
           </div>
           {err ? <p className="mx-field-e" role="alert">{apiDetail(err) ?? t("That did not work. Nothing was changed.")}</p> : null}
@@ -102,7 +103,7 @@ export function MoveLoad({ planId, runId, onRun, onBack, onNext }: { planId: str
       {r?.cleansing ? <RunCleansingCard c={r.cleansing} /> : null}
       {dryOk ? (
         <Card title={t("Dry run passed")} sub={t("Nothing has been written yet. The next button writes real data.")}>
-          <div className="mx-actions"><Button variant="primary" onClick={() => setAsk(true)}>{t("Load into {name}", { name })}</Button></div>
+          <div className="mx-actions"><Button variant="primary" disabled={start.isPending} onClick={() => setAsk(true)}>{t("Load into {name}", { name })}</Button></div>
         </Card>
       ) : null}
       <Confirm

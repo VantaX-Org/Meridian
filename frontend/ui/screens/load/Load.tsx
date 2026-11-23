@@ -52,8 +52,8 @@ export function Load() {
         <StatTile label={t("Objects in the plan")} value={String(objects.length)} />
         <StatTile label={t("Go")} value={String(go)} />
         <StatTile label={t("No-go")} value={String(noGo)} />
-        <StatTile label={t("Migration runs")} value={String(runs.data?.length ?? 0)} />
-        <StatTile label={t("Files handed over")} value={String(hist.data?.total ?? 0)} />
+        <StatTile label={t("Migration runs")} value={runs.isError ? t("Unavailable") : String(runs.data?.length ?? 0)} />
+        <StatTile label={t("Files handed over")} value={hist.isError ? t("Unavailable") : String(hist.data?.total ?? 0)} />
       </dl>
           <Card title={t("Load order")} sub={plan.data ? t("{n} steps for release {r}", { n: plan.data.steps, r: plan.data.release }) : undefined}>
             <Gate loading={plan.isLoading} error={plan.isError} retry={() => void plan.refetch()} what={t("the load order")}>
