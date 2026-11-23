@@ -173,3 +173,21 @@ describe("displayKey", () => {
     expect(alphaOut("0000")).toBe("0");
   });
 });
+
+describe("fix flow url: seg and several rules", () => {
+  const s = readState(new URLSearchParams("module=material_master&seg=proposed&rule=MM003,MM007"));
+  it("reads the object, the seg and the raw rule list, with no status chip", () => {
+    expect(s).toMatchObject({ module: "material_master", seg: "proposed", rule: "MM003,MM007", chip: null });
+  });
+  it("sends one rule to the server and several to the client", () => {
+    expect(filtersOf(s)).toMatchObject({ module: "material_master", proposed: true });
+    expect(filtersOf(s).check_id).toBeUndefined();
+    expect(filtersOf(readState(new URLSearchParams("seg=proposed&rule=MM003"))).check_id).toBe("MM003");
+  });
+  it("splits the ids and writes seg back", async () => {
+    const { ruleIds } = await import("./work");
+    expect(ruleIds(s)).toEqual(["MM003", "MM007"]);
+    expect(toParams(s)).toMatchObject({ seg: "proposed", rule: "MM003,MM007" });
+    expect(readState(new URLSearchParams(toParams(s)))).toMatchObject({ seg: "proposed", rule: "MM003,MM007", chip: null });
+  });
+});

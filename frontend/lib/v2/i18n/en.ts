@@ -15980,6 +15980,11 @@ export const en = {
   "Description not in the API": "Description not in the API",
   "Sample failing records": "Sample failing records",
   "Not in the API yet": "Not in the API yet",
+  "{n, plural, one {# draft decision} other {# draft decisions}} in {m, plural, one {# rule} other {# rules}}": "{n, plural, one {# draft decision} other {# draft decisions}} in {m, plural, one {# rule} other {# rules}}",
+  "No cap": "No cap",
+  "Capped at {cap} by {n, plural, one {# critical rule} other {# critical rules}}": "Capped at {cap} by {n, plural, one {# critical rule} other {# critical rules}}",
+  "The drafted fixes lift the cap": "The drafted fixes lift the cap",
+  "Cap lifts to {cap}": "Cap lifts to {cap}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

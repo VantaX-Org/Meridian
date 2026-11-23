@@ -15981,4 +15981,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Description not in the API": "Beschreibung nicht in der API",
   "Sample failing records": "Beispiele fehlerhafter Datensätze",
   "Not in the API yet": "Noch nicht in der API",
+  "{n, plural, one {# draft decision} other {# draft decisions}} in {m, plural, one {# rule} other {# rules}}": "{n, plural, one {# Entwurfsentscheidung} other {# Entwurfsentscheidungen}} in {m, plural, one {# Regel} other {# Regeln}}",
+  "No cap": "Kein Deckel",
+  "Capped at {cap} by {n, plural, one {# critical rule} other {# critical rules}}": "Bei {cap} gedeckelt durch {n, plural, one {# kritische Regel} other {# kritische Regeln}}",
+  "The drafted fixes lift the cap": "Die Entwurfskorrekturen heben den Deckel auf",
+  "Cap lifts to {cap}": "Der Deckel steigt auf {cap}",
 };

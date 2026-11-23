@@ -15981,4 +15981,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Description not in the API": "説明はAPIにありません",
   "Sample failing records": "失敗レコードの例",
   "Not in the API yet": "APIにはまだありません",
+  "{n, plural, one {# draft decision} other {# draft decisions}} in {m, plural, one {# rule} other {# rules}}": "{m}件のルールに{n}件の下書き判断",
+  "No cap": "上限なし",
+  "Capped at {cap} by {n, plural, one {# critical rule} other {# critical rules}}": "重大ルール{n}件により上限は{cap}",
+  "The drafted fixes lift the cap": "下書きの修正で上限が外れます",
+  "Cap lifts to {cap}": "上限は{cap}に上がります",
 };
