@@ -9,7 +9,7 @@ import { createRuleBatch, getFindings, markActed, type AletheiaFinding } from "@
 import { putOwner } from "@/lib/api/v2/mdm";
 import { draftTunedVersion } from "@/lib/api/v2/pilot";
 import { getObjectMonitor, type Freshness } from "@/lib/api/v2/run-ops";
-import type { Receipt, RuleRow } from "@/lib/api/v2/types";
+import type { Receipt } from "@/lib/api/v2/types";
 import { formatDate } from "@/lib/format";
 import { useAssignable } from "@/lib/v2/approvals-queries";
 import { describeCron } from "@/lib/v2/cron";
@@ -20,8 +20,7 @@ import { moneyCompactText } from "@/lib/v2/labels";
 import { notFound, useRelated } from "@/lib/v2/roles-queries";
 import { describeField } from "@/lib/v2/sap-fields";
 import { DASH, f1, int, pct1 } from "@/lib/v2/score";
-import { Badge, Button, Card, DataTable, FieldChip, Select, SeverityPill, StatTile, Tabs, useToast } from "@/ui/kit";
-import { ruleCheck, sevLabel } from "../rules/format";
+import { Badge, Button, Card, DataTable, FieldChip, Select, StatTile, useToast } from "@/ui/kit";
 import { objectPath } from "../object-tabs/TabFrame";
 
 /** "How {score} is made": the receipt behind the score, folded under the ring. */
@@ -231,35 +230,5 @@ function AssignAction({ f, queryKey }: { f: AletheiaFinding; queryKey: unknown[]
       <Button variant="secondary" disabled={!who || act.isPending} onClick={() => act.mutate()}>{t("Assign")}</Button>
       {act.isError ? <span role="alert" className="mx-muted">{failureText(act.error)}</span> : null}
     </span>
-  );
-}
-
-/** Every rule measured on the run, passing ones too. The hook sorts failing first. */
-export function AllRulesCard({ rules, href }: { rules: RuleRow[]; href: (path: string) => string }) {
-  const [view, setView] = useState("all");
-  const fails = rules.filter((r) => r.affected_count > 0).length;
-  const shown = view === "failing" ? rules.filter((r) => r.affected_count > 0) : view === "passing" ? rules.filter((r) => r.affected_count === 0) : rules;
-  return (
-    <Card title={t("Every measured rule")} sub={t("{n} of {m} measured rules fail", { n: fails, m: rules.length })}>
-      <Tabs idBase="all-rules" label={t("Every measured rule")} value={view} onChange={setView} items={[
-        { id: "all", label: t("All"), badge: String(rules.length) },
-        { id: "failing", label: t("Failing"), badge: String(fails) },
-        { id: "passing", label: t("Passing"), badge: String(rules.length - fails) },
-      ]} />
-      <div role="tabpanel" id={`all-rules-panel-${view}`} aria-labelledby={`all-rules-tab-${view}`}>
-        <DataTable
-          label={t("Every measured rule")}
-          rowKey={(x) => x.check_id}
-          rows={shown}
-          height={360}
-          columns={[
-            { key: "rule", label: t("Rule"), render: (x) => <a href={href(`/r/${encodeURIComponent(ruleCheck({ id: x.check_id, name: x.name }))}`)}><code className="mx-code">{ruleCheck({ id: x.check_id, name: x.name })}</code></a> },
-            { key: "name", label: t("What it checks"), render: (x) => x.name.replace(/^[^:]+:\s*/, "") },
-            { key: "sev", label: t("Severity"), render: (x) => <SeverityPill sev={x.severity} label={sevLabel(x.severity)} /> },
-            { key: "pass", label: t("Pass"), align: "end", render: (x) => (x.pass_rate === null ? DASH : `${f1(x.pass_rate)}%`), sort: (x) => x.pass_rate ?? 0 },
-          ]}
-        />
-      </div>
-    </Card>
   );
 }
