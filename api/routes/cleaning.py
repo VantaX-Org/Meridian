@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -16,6 +16,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.middleware.cache import cached_json, mark_work_changed
 from api.services.branded_xlsx import content_disposition
 from api.routes.dq_firewall import DdicEvidence
+from api.services import undo
 from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
 logger = logging.getLogger("meridian.cleaning")
@@ -511,6 +512,7 @@ _NOT_PROPOSER = """NOT EXISTS (SELECT 1 FROM cleaning_audit pa WHERE pa.queue_id
 async def approve_cleaning_item(
     item_id: str,
     body: ApproveBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("approve", scope=scope_from_path)),
@@ -533,6 +535,8 @@ async def approve_cleaning_item(
                                  {"id": item_id, "me": me})).first()
     if proposed:
         raise HTTPException(status_code=403, detail="You proposed this change, so another user must approve it")
+    rec = undo.Recorder()
+    await rec.cleaning_rows(db, tenant, [item_id])
     await db.execute(
         text("""
             UPDATE cleaning_queue SET status = 'approved', approved_by = :approver
@@ -547,10 +551,11 @@ async def approve_cleaning_item(
         data_after=row.get("record_data_after"),
         metadata={"notes": body.notes} if body.notes else None,
     )
+    action_id = await rec.save(db, tenant, request, "cleaning_approve", {"id": item_id})
     mark_work_changed(db, tenant.id)
     await db.commit()
 
-    return {"id": item_id, "status": "approved"}
+    return {"id": item_id, "status": "approved", "action_id": action_id}
 
 
 # ── POST /api/v1/cleaning/reject/{id} ────────────────────────────────────────
@@ -560,6 +565,7 @@ async def approve_cleaning_item(
 async def reject_cleaning_item(
     item_id: str,
     body: RejectBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -574,6 +580,8 @@ async def reject_cleaning_item(
         raise HTTPException(status_code=404, detail="Item not found")
 
     row = _row_to_dict(item)
+    rec = undo.Recorder()
+    await rec.cleaning_rows(db, tenant, [item_id])
     await db.execute(
         text("UPDATE cleaning_queue SET status = 'rejected' WHERE id = :id AND tenant_id = :tid"),
         {"id": item_id, "tid": str(tenant.id)},
@@ -583,10 +591,11 @@ async def reject_cleaning_item(
         db, tenant.id, item_id, "rejected", row["record_key"], row["object_type"],
         metadata={"reason": body.reason},
     )
+    action_id = await rec.save(db, tenant, request, "cleaning_reject", {"id": item_id})
     mark_work_changed(db, tenant.id)
     await db.commit()
 
-    return {"id": item_id, "status": "rejected"}
+    return {"id": item_id, "status": "rejected", "action_id": action_id}
 
 
 # ── POST /api/v1/cleaning/bulk-approve ───────────────────────────────────────
@@ -595,6 +604,7 @@ async def reject_cleaning_item(
 @router.post("/cleaning/bulk-approve")
 async def bulk_approve(
     body: BulkApproveBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("approve", scope=scope_from_path)),
@@ -632,6 +642,11 @@ async def bulk_approve(
         params["rid"] = body.rule_id
     where += " AND " + _NOT_PROPOSER  # nobody approves a change they proposed (four-eyes)
 
+    rec = undo.Recorder()
+    picked = (await db.execute(
+        text(f"SELECT id FROM cleaning_queue cq WHERE {where} ORDER BY priority DESC LIMIT :max_count"),
+        {**params, "me": current_user_label()})).fetchall()
+    await rec.cleaning_rows(db, tenant, [str(r[0]) for r in picked])
     result = await db.execute(
         text(f"""
             UPDATE cleaning_queue cq SET status = 'approved', approved_by = :approver
@@ -651,10 +666,13 @@ async def bulk_approve(
     actor = current_user_label()
     for r in approved:
         await _create_audit(db, tenant.id, str(r[0]), "approved", r[1], r[2], actor_name=actor, metadata={"bulk": True})
+    # only rows the update really changed go in the undo
+    rec.cleaning = {k: v for k, v in rec.cleaning.items() if k in set(approved_ids)}
+    action_id = await rec.save(db, tenant, request, "cleaning_bulk_approve", {"count": len(approved_ids)})
     mark_work_changed(db, tenant.id)
     await db.commit()
 
-    return {"approved_count": len(approved_ids), "skipped_count": 0}
+    return {"approved_count": len(approved_ids), "skipped_count": 0, "action_id": action_id}
 
 
 class BulkRejectBody(BaseModel):
@@ -667,6 +685,7 @@ class BulkRejectBody(BaseModel):
 @router.post("/cleaning/bulk-reject")
 async def bulk_reject(
     body: BulkRejectBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("approve", scope=scope_from_path)),
@@ -688,6 +707,9 @@ async def bulk_reject(
             params["vid"] = str(body.version_id)
         if body.kind:
             where += " AND " + kind_filter(body.kind, params)
+    rec = undo.Recorder()
+    await rec.cleaning_rows(db, tenant, [str(r[0]) for r in (await db.execute(
+        text(f"SELECT id FROM cleaning_queue WHERE {where}"), params)).fetchall()])
     result = await db.execute(
         text(f"UPDATE cleaning_queue SET status = 'rejected' WHERE {where} RETURNING id, record_key, object_type"),
         params,
@@ -696,9 +718,10 @@ async def bulk_reject(
     actor = current_user_label()
     for r in rejected:
         await _create_audit(db, tenant.id, str(r[0]), "rejected", r[1], r[2], actor_name=actor, metadata={"reason": body.reason.strip(), "bulk": True})
+    action_id = await rec.save(db, tenant, request, "cleaning_bulk_reject", {"count": len(rejected)})
     mark_work_changed(db, tenant.id)
     await db.commit()
-    return {"rejected_count": len(rejected)}
+    return {"rejected_count": len(rejected), "action_id": action_id}
 
 
 # ── POST /api/v1/cleaning/apply/{id} ─────────────────────────────────────────
@@ -708,6 +731,7 @@ async def bulk_reject(
 async def apply_cleaning_item(
     item_id: str,
     body: ApplyBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("apply", scope=scope_from_path)),
@@ -742,6 +766,8 @@ async def apply_cleaning_item(
         after_data.update(body.override_data)
 
     import json
+    rec = undo.Recorder()
+    await rec.cleaning_rows(db, tenant, [item_id])
     await db.execute(
         text("""
             UPDATE cleaning_queue
@@ -761,10 +787,11 @@ async def apply_cleaning_item(
         data_before=row.get("record_data_before"),
         data_after=after_data,
     )
+    action_id = await rec.save(db, tenant, request, "cleaning_apply", {"id": item_id})
     mark_work_changed(db, tenant.id)
     await db.commit()
 
-    return {"id": item_id, "status": "applied", "rollback_deadline": deadline.isoformat()}
+    return {"id": item_id, "status": "applied", "rollback_deadline": deadline.isoformat(), "action_id": action_id}
 
 
 # ── POST /api/v1/cleaning/rollback/{id} ──────────────────────────────────────

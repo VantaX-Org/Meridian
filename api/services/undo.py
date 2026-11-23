@@ -10,6 +10,8 @@ snapshots the rows it is about to change into a ``Recorder`` and saves one ``und
   items    remediation_items of a draft fix batch: rows the decision created are deleted, rows it replaced or
            removed are put back as they were
   batch    remediation_batches status, approval and filter (approve, send-back)
+  cleaning cleaning_queue status, approver, applied time, rollback deadline and after-values (cleaning approve,
+           reject, apply, bulk-approve and bulk-reject)
 
 The clock is ``now()`` below so a test can freeze it; the window is ``WINDOW``. Nothing here commits: the route
 that calls it commits once, so the decision and its undo row land together.
@@ -52,6 +54,10 @@ def _json(row: dict) -> dict:
     return {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in row.items()}
 
 
+_CLEAN_COLS = ("status", "approved_by", "applied_at", "rollback_deadline", "record_data_after")
+_CLEAN_SELECT = ("SELECT id::text AS id, status, approved_by::text AS approved_by, applied_at, rollback_deadline, "
+                 "record_data_after FROM cleaning_queue WHERE tenant_id = CAST(:t AS uuid) AND id = ANY(CAST(:ids AS uuid[]))")
+
 Key = tuple[str, str, str]  # (batch id, check id, record key)
 
 
@@ -68,6 +74,7 @@ class Recorder:
         self.touched: list[tuple[str, str]] = []
         self.scope: Optional[str] = None
         self.batch: Optional[dict] = None
+        self.cleaning: dict[str, dict] = {}
 
     # snapshots ---------------------------------------------------------------------------------------------
 
@@ -77,6 +84,14 @@ class Recorder:
             return
         for r in (await db.execute(text(_ISSUE_SELECT), {"t": str(tenant.id), "ids": new})).mappings().all():
             self.issues[r["id"]] = _json(dict(r))
+
+    async def cleaning_rows(self, db: AsyncSession, tenant: Tenant, ids: list[str]) -> None:
+        """Snapshot cleaning_queue rows before a cleaning decision changes them (first snapshot wins)."""
+        new = [i for i in dict.fromkeys(ids) if i and i not in self.cleaning]
+        if not new:
+            return
+        for r in (await db.execute(text(_CLEAN_SELECT), {"t": str(tenant.id), "ids": new})).mappings().all():
+            self.cleaning[r["id"]] = _json(dict(r))
 
     async def item_rows(self, db: AsyncSession, tenant: Tenant, scope: str, module: str, record_key: str,
                         check_id: Optional[str] = None) -> None:
@@ -114,11 +129,12 @@ class Recorder:
                       "delete": [{"batch_id": b, "check_id": c, "record_key": k}
                                  for b, c, k in sorted(self.written) if (b, c, k) not in self.items_before]},
             "batch": self.batch,
+            "cleaning": list(self.cleaning.values()),
             "touched": [list(t) for t in dict.fromkeys(self.touched)],
         }
 
     def empty(self) -> bool:
-        return not (self.issues or self.written or self.removed or self.batch)
+        return not (self.issues or self.written or self.removed or self.batch or self.cleaning)
 
     async def save(self, db: AsyncSession, tenant: Tenant, request: Request, kind: str, payload: dict) -> Optional[str]:
         """Write the undo row and return its id; None when the decision changed nothing there is to put back."""
@@ -182,7 +198,23 @@ async def apply_inverse(db: AsyncSession, tenant: Tenant, request: Request, row:
         if cur != batch["after_status"]:
             raise HTTPException(status_code=409, detail=f"The batch is now {cur}, so this change can no longer be undone.")
 
-    done = {"issues": 0, "items_restored": 0, "items_removed": 0, "batch": False}
+    done = {"issues": 0, "items_restored": 0, "items_removed": 0, "batch": False, "cleaning": 0}
+
+    clean = inv.get("cleaning") or []
+    if clean:
+        res = await db.execute(text("""
+            UPDATE cleaning_queue cq SET status = x.status, approved_by = x.approved_by, applied_at = x.applied_at,
+                   rollback_deadline = x.rollback_deadline, record_data_after = x.record_data_after
+              FROM jsonb_to_recordset(CAST(:rows AS jsonb)) AS x(id uuid, status text, approved_by uuid,
+                   applied_at timestamptz, rollback_deadline timestamptz, record_data_after jsonb)
+             WHERE cq.id = x.id AND cq.tenant_id = CAST(:t AS uuid)"""), {"t": t, "rows": json.dumps(clean)})
+        done["cleaning"] = res.rowcount
+        for c in clean:
+            await db.execute(text("""
+                INSERT INTO cleaning_audit (tenant_id, queue_id, action, actor_name, record_key, object_type, metadata)
+                SELECT tenant_id, id, 'undone', :who, record_key, object_type, CAST(:m AS jsonb)
+                  FROM cleaning_queue WHERE id = CAST(:i AS uuid) AND tenant_id = CAST(:t AS uuid)"""),
+                {"t": t, "i": c["id"], "who": current_user_label(), "m": json.dumps({"restored_status": c["status"]})})
 
     if delete:
         res = await db.execute(text("""
@@ -240,7 +272,6 @@ async def apply_inverse(db: AsyncSession, tenant: Tenant, request: Request, row:
              "f": json.dumps(batch["filter"]), "b": batch["id"], "t": t})
         # the batch's approval follows its status: back to draft withdraws it, back to approved reinstates it
         from api.services import workflow
-        from api.services.rbac import current_user_id, current_user_label
         uid, label = current_user_id(request), current_user_label()
         if batch["status"] == "draft":
             await db.run_sync(lambda s: workflow.close(s, t, "fix_batch", batch["id"], "withdrawn", uid, label,
