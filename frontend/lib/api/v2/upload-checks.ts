@@ -87,3 +87,18 @@ export function staleRun(err: unknown): { sentence: string; latest: string | nul
   const d = (err as { response?: { status?: number; data?: { detail?: { error?: string; detail?: string; latest_version_id?: string } } } } | null)?.response;
   return d?.status === 409 && d.data?.detail?.error === "stale_run" ? { sentence: d.data.detail.detail ?? t("This run is no longer the latest."), latest: d.data.detail.latest_version_id ?? null } : null;
 }
+
+/** The check result as the shared import review: rows ready, warnings, rejected cells and the problems behind them. */
+export function validationOf(chk: Pick<UploadChecks, "checks"> & Partial<UploadChecks>): { ready: number; warnings: number; rejected: number; problems: { row?: string; column: string; value?: string; problem: string; fix?: string }[] } {
+  const bad = chk.checks.filter((c) => c.status !== "pass");
+  const flagged = chk.flagged ?? [];
+  return {
+    ready: (chk.verdict ?? worstOf(chk.checks)) === "fail" ? 0 : chk.edits ?? 0,
+    warnings: bad.filter((c) => c.status === "warn").length,
+    rejected: chk.flagged_total ?? flagged.length,
+    problems: [
+      ...bad.map((c) => ({ column: checkSentence(c.id), problem: c.detail, fix: c.status === "fail" ? t("Fix the file and choose it again.") : undefined })),
+      ...flagged.map((f) => ({ row: f.key, column: f.description ?? f.field, problem: flagReason(f.reason), fix: t("Correct the value in the workbook.") })),
+    ],
+  };
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useFixture } from "@/lib/api/v2/fixture";
@@ -8,7 +8,7 @@ import {
   checkTemplate, downloadBlankTemplate, downloadTemplateFile, exportTemplate, getTemplateFields, saveTemplateMapping, uploadTemplate,
   type TargetTemplate, type WorkbookReport,
 } from "@/lib/api/v2/migration";
-import { Button, Card, DataTable, EmptyState, Field, FieldChip, PageHeader, Select, StatTile, useAletheiaScope, useToast, ExportMenu } from "@/ui/kit";
+import { Button, Card, DataTable, EmptyState, Field, FieldChip, PageHeader, Select, StatTile, useAletheiaScope, useToast, ExportMenu, ImportDialog } from "@/ui/kit";
 import { AskButton, Gate, humanize, when, useBack } from "./common";
 import { invalidateLoad, useLoadPlan, useTemplateList } from "./hooks";
 
@@ -29,12 +29,11 @@ export function Templates() {
   const rows = q.data?.templates ?? [];
   const [sel, setSel] = useState<string | null>(null);
   const cur = rows.find((r) => r.id === sel) ?? rows[0];
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
   const [report, setReport] = useState<WorkbookReport | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const bad = () => toast(t("The action failed"), "bad");
   const fields = useQuery({ queryKey: ["ui", "load", fx, "tplfields", mod], queryFn: () => getTemplateFields(mod) });
-  const upload = useMutation({ mutationFn: (f: File) => uploadTemplate(mod, f, f.name.replace(/\.[^.]+$/, "")), onSuccess: () => { toast(t("Template kept"), "good"); invalidateLoad(qc); }, onError: bad });
   const check = useMutation({ mutationFn: (x: TargetTemplate) => checkTemplate(mod, x.id), onSuccess: (r) => { setReport(r); toast(t("Template checked"), "good"); }, onError: bad });
   const save = useMutation({ mutationFn: (x: TargetTemplate) => saveTemplateMapping(mod, x.id, { ...x.column_map, ...draft }), onSuccess: () => { setDraft({}); toast(t("Mapping saved"), "good"); invalidateLoad(qc); }, onError: bad });
 
@@ -53,8 +52,10 @@ export function Templates() {
         title={t("Target templates")}
         context={t("Kept workbooks that the load reads and fills")}
         actions={<>
-          <input ref={fileRef} type="file" accept=".xlsx,.xlsm,.csv" hidden aria-label={t("Choose a template file")} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = ""; }} />
-          <Button variant="primary" onClick={() => fileRef.current?.click()} disabled={upload.isPending}>{t("Upload a template")}</Button>
+          <Button variant="primary" onClick={() => setImporting(true)}>{t("Upload a template")}</Button>
+          <ImportDialog open={importing} onClose={() => setImporting(false)} label={t("Upload a template")} closeLabel={t("Close")}
+            accept=".xlsx,.xlsm,.csv" fileLabel={t("Choose a template file")} hint={t("Drop the target workbook.")} target={t("PROD")}
+            apply={async (f) => { await uploadTemplate(mod, f, f.name.replace(/\.[^.]+$/, "")); invalidateLoad(qc); return t("Template kept"); }} />
           <ExportMenu label={t("Download a blank template")} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={() => downloadBlankTemplate(mod)} />
           <AskButton />
         </>}

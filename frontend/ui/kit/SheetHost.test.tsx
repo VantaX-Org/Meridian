@@ -52,4 +52,18 @@ describe("SheetHost ?open deep link", () => {
     land("?open=feature:f1");
     expect(screen.getByRole("status").textContent).toContain("feature, which has no page yet");
   });
+  it("asks before closing while a sheet reports unsaved work", () => {
+    window.history.replaceState({}, "", "/x");
+    const Dirty = () => { const s = useSheet(); return <button type="button" onClick={() => s.guard(true)}>mark</button>; };
+    render(<SheetHost closeLabel="Close" sheets={{ rule: { label: "Rule", render: () => <Dirty /> } }}><Opener /></SheetHost>);
+    fireEvent.click(screen.getByText("go"));
+    fireEvent.click(screen.getByText("mark"));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("dialog", { name: "Rule" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Stay" }));
+    expect(screen.getByRole("dialog", { name: "Rule" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Leave" }));
+    expect(screen.queryByRole("dialog", { name: "Rule" })).toBeNull();
+  });
 });

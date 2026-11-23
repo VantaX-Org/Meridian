@@ -6,19 +6,19 @@
  */
 import { isAnalysed } from "@/lib/v2/run-label";
 import "./clean.css";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
 import { getCleaningMetrics } from "@/lib/api/v2/cleaning";
 import { downloadCleaningWorkbook, uploadCleaned } from "@/lib/api/v2/roundtrip";
-import { checkWorkbook, checkSentence, flagReason, type UploadChecks } from "@/lib/api/v2/upload-checks";
+import { checkWorkbook, checkSentence, flagReason, validationOf, type UploadChecks } from "@/lib/api/v2/upload-checks";
 import { postAcceptAll } from "@/lib/api/v2/work";
 import { useRunsInfinite } from "@/lib/api/next/runs";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useLandscape, useReceipt } from "@/lib/v2/queries";
 import { systemForModule } from "@/lib/v2/score";
 import { useWorkGroups } from "@/lib/v2/work-queries";
-import { Button, Card, Chip, Confirm, EmptyState, ErrorState, FieldChip, PageHeader, ScoreRuler, Skeleton, Stepper, useAletheia, useAletheiaScope, useToast, ExportMenu } from "@/ui/kit";
+import { Button, Card, Chip, Confirm, EmptyState, ErrorState, FieldChip, PageHeader, ScoreRuler, Skeleton, Stepper, useAletheia, useAletheiaScope, useToast, ExportMenu, ImportDialog } from "@/ui/kit";
 import { compactCount, score } from "../object/format";
 import { day, fieldText, useDo } from "./shared";
 
@@ -56,7 +56,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
   const run = useDo();
   const toast = useToast();
   const [approving, setApproving] = useState(false);
-  const pick = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
   const [chosen, setChosen] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [chk, setChk] = useState<UploadChecks | null>(null);
@@ -106,15 +106,6 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
     },
   });
 
-  const onFile = (f: File | null) => {
-    if (!f || !head) return;
-    setFile(f); setApplied(false);
-    void run(() => checkWorkbook(f, head.id, mod ?? undefined), () => t("File checked.")).then((r) => setChk(r));
-  };
-  const apply = () => {
-    if (!file || !head || !chk) return;
-    void run(() => uploadCleaned(file, head.id, mod ?? undefined, true, rejected > 0), (r) => t("{n} rows applied. Rescoring.", { n: r.applied })).then((r) => { if (r) setApplied(true); });
-  };
   const download = () => { if (!head || !mod) throw new Error(t("Pick a run and an object first")); return downloadCleaningWorkbook(head.id, mod); };
   const dlMenu = (label: string) => <ExportMenu label={label} disabled={!head || !mod} formats={[{ id: "xlsx", label: t("Excel workbook") }]} onExport={download} />;
   /** Accepts every proposed rule, one at a time. A failed rule is counted, not hidden, and the rest still run. */
@@ -157,8 +148,6 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
       {objects.map((o) => <Chip key={o.module} selected={o.module === mod} onClick={() => { setChosen(o.module); setFile(null); setChk(null); setApplied(false); }}>{o.label}</Chip>)}
     </div>
   );
-  const canApply = !!file && !!chk && chk.verdict !== "fail" && ready > 0 && !applied;
-  const applyLabel = ready > 0 ? t("Apply {n} and rescore", { n: compactCount(ready) }) : t("Apply and rescore");
 
   if (landscape.isLoading) return <Skeleton lines={6} label={t("Loading the clean cycle")} />;
   if (landscape.isError) return <ErrorState heading={t("The clean cycle could not be loaded")} retryLabel={t("Try again")} onRetry={() => void landscape.refetch()} />;
@@ -173,7 +162,7 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
         title={t("Clean cycle")}
         context={head ? t("Run {n}, pulled {date}", { n: runNo ?? "", date: day(head.run_at) }) : ""}
         actions={<>
-          {chk || !head ? <Button variant="primary" disabled={!canApply} onClick={apply}>{applyLabel}</Button>
+          {chk || !head ? <Button variant="primary" disabled={!head} onClick={() => setImporting(true)}>{t("Upload cleaned file")}</Button>
             : dlMenu(t("Download workbook"))}
           <Button href={withFixture("/approvals", fx)}>{t("Approvals")}</Button>
           <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>
@@ -221,9 +210,24 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
         )}
       </Card>
 
+      <ImportDialog open={importing} onClose={() => setImporting(false)} label={t("Upload the cleaned file")} closeLabel={t("Close")}
+        accept=".xlsx" fileLabel={t("Choose the cleaned file")} hint={t("Drop the Excel file you cleaned.")} target={t("PROD")}
+        validate={async (f) => {
+          if (!head) throw new Error(t("Pick a run and an object first"));
+          setFile(f); setApplied(false);
+          const r = await checkWorkbook(f, head.id, mod ?? undefined);
+          setChk(r);
+          return validationOf(r);
+        }}
+        apply={async (f, v) => {
+          if (!head) throw new Error(t("Pick a run and an object first"));
+          const r = await uploadCleaned(f, head.id, mod ?? undefined, true, (v?.rejected ?? 0) > 0);
+          setApplied(true);
+          return t("{n} rows applied. Rescoring.", { n: r.applied });
+        }} />
+
       <Card title={t("Upload check")} sub={file ? file.name : t("No file yet")}
-        action={<><input ref={pick} type="file" accept=".xlsx" hidden aria-label={t("Choose the cleaned file")} onChange={(e) => { onFile(e.target.files?.[0] ?? null); e.target.value = ""; }} />
-          <Button onClick={() => pick.current?.click()}>{file ? t("Replace file") : t("Choose file")}</Button></>}>
+        action={<Button disabled={!head} onClick={() => setImporting(true)}>{file ? t("Replace file") : t("Choose file")}</Button>}>
         {!chk ? <EmptyState heading={t("No upload to check yet")} body={t("Download the workbook, type the fixes in Excel, then choose the saved file here.")} /> : (
           <>
             <ul className="mx-tiles" aria-label={t("Upload counts")}>
@@ -244,7 +248,6 @@ export function CleanBoard({ module: initial, onReview }: { module?: string | nu
               </>
             ) : null}
             <div className="mx-links">
-              <Button variant="secondary" disabled={!canApply} onClick={apply}>{applyLabel}</Button>
               {dlMenu(t("Download {n} to fix", { n: compactCount(rejected) }))}
             </div>
           </>

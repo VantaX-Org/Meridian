@@ -493,3 +493,8 @@
 .mx-root .mx-export { min-inline-size: 18rem; padding: var(--mx-s3); }
 .mx-root .mx-export-body, .mx-root .mx-export-fmt { display: grid; gap: var(--mx-s2); border: 0; margin: 0; padding: 0; }
 .mx-root .mx-export-opt { display: flex; align-items: flex-start; gap: var(--mx-s2); cursor: pointer; font-size: var(--mx-fs-body); }
+
+/* Import sheet */
+.mx-root .mx-import { display: grid; gap: var(--mx-s4); padding: var(--mx-s4); }
+.mx-root .mx-import-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--mx-s3); margin: 0; }
+.mx-root .mx-import-review { display: grid; gap: var(--mx-s3); }
