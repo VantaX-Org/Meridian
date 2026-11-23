@@ -21,8 +21,8 @@ const count = async (page: import("@playwright/test").Page): Promise<number> =>
 test("a filtered link lands on the grid; accept, undo, accept all and the load file work by keyboard", async ({ page }) => {
   await page.goto("/work?fixture=1&seg=proposed", NAV);
   await expect(page.getByTestId("fix-grid")).toBeVisible(NAV);
-  const row = page.getByTestId("fix-grid").getByRole("row").nth(1);
-  await row.click();
+  const row = page.getByTestId("fix-grid").getByRole("row").filter({ hasText: "To fix" }).first();
+  await row.getByRole("gridcell").nth(1).click(); // the record cell: a click on the proposal would focus it and swallow the key
   const before = await count(page);
   const t0 = Date.now();
   await page.keyboard.press("a");
@@ -37,6 +37,24 @@ test("a filtered link lands on the grid; accept, undo, accept all and the load f
   await page.getByTestId("create-load-file").focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("load-dialog")).toBeVisible();
+});
+
+test("keypress to changed row is measured in the page and stays under 50 ms", async ({ page }) => {
+  await page.goto("/work?fixture=1&seg=proposed", NAV);
+  await expect(page.getByTestId("fix-grid")).toBeVisible(NAV);
+  await page.getByTestId("fix-grid").getByRole("row").filter({ hasText: "To fix" }).first().getByRole("gridcell").nth(1).click();
+  await page.evaluate(() => {
+    const drafts = () => document.querySelectorAll('[data-testid="draft-value"]').length;
+    const start = drafts();
+    document.addEventListener("keydown", (e) => { if (e.key === "a") performance.mark("key"); }, { capture: true, once: true });
+    new MutationObserver((_, o) => { if (drafts() > start) { performance.mark("row"); o.disconnect(); } })
+      .observe(document.querySelector('[data-testid="fix-grid"]')!, { childList: true, subtree: true, characterData: true });
+  });
+  await page.keyboard.press("a");
+  await page.waitForFunction(() => performance.getEntriesByName("row").length > 0, undefined, NAV);
+  const ms = await page.evaluate(() => performance.measure("k2r", "key", "row").duration);
+  console.log(`keypress-to-row: ${ms.toFixed(1)} ms`);
+  expect(ms).toBeLessThan(50);
 });
 
 for (const [from, to] of [["/work/triage", "triage"], ["/work/exceptions", "exceptions"], ["/approvals", "approvals"]]) {

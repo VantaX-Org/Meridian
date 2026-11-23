@@ -51,7 +51,7 @@ const SAMPLE: [string, string][] = [
   ["/workbench?tab=batches&batch=B1", "/work?batch=B1&tab=batches"],
 ];
 
-/** Pages, not config: these three open a tool on the fix screen from the query, so the redirect is temporary (307). */
+/** Pages, not config: these three open a tool on the fix screen from the query, so the redirect is temporary and happens in the page. */
 const TOOL_PAGES: [string, string][] = [
   ["/work/triage", "/work?open=triage"],
   ["/work/exceptions", "/work?open=exceptions"],
@@ -85,11 +85,10 @@ test.describe("old addresses", () => {
   }
 
   for (const [from, to] of TOOL_PAGES) {
-    test(`${from} answers with a temporary redirect to ${to}`, async ({ request }) => {
-      const r = await request.get(from, { maxRedirects: 0 });
-      expect(r.status(), from).toBe(307);
-      const got = where(r.headers()["location"]);
-      expect(same(got, to), `${from} went to ${got}`).toBe(true);
+    // A page redirect streams, so the status can be 200 with a client redirect; the address the browser lands on is what counts.
+    test(`${from} lands on ${to}`, async ({ page }) => {
+      await page.goto(`${from}${from.includes("?") ? "&" : "?"}fixture=1`, { timeout: 90_000 });
+      await page.waitForURL((u) => same(`${u.pathname}${u.search.replace(/&?fixture=1/, "").replace(/^\?$/, "")}`, to), { timeout: 90_000 });
     });
   }
 

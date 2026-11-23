@@ -102,7 +102,7 @@ The inbox, approvals and exceptions: the inbox panel, or the ledger's chip for t
 | `/work/exceptions` | always | `/work?open=exceptions` |
 | `/approvals` | always | `/work?open=approvals` |
 
-The last three are pages, not config entries (`app/(app)/work/triage`, `app/(app)/work/exceptions` and `app/(app)/approvals`). They answer with a temporary redirect (307), carry the query along, and the fix screen opens the tool named in `open`.
+The last three are pages, not config entries (`app/(app)/work/triage`, `app/(app)/work/exceptions` and `app/(app)/approvals`). They redirect temporarily from the page (not a permanent 308), carry the query along, and the fix screen opens the tool named in `open`.
 | `/workbench/record/:issueId` | always | `/work` |
 | `/stewardship` | always | `/people` |
 | `/stewardship/metrics` | always | `/people` |
