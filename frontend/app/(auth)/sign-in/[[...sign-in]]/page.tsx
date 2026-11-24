@@ -52,6 +52,9 @@ export default function SignInPage() {
     const query = new URLSearchParams(window.location.search);
     setSsoError(ssoErrorSentence(query.get("sso_error")));
     setNext(query.get("next"));
+    // Back from setting a password whose automatic sign-in was refused: the email is already known.
+    const known = query.get("email");
+    if (known && EMAIL_RE.test(known)) setEmail(known);
     if (query.get("reset") === "1") setNotice(t("Password updated. Sign in with the new password."));
     else if (query.get("invited") === "1") setNotice(t("Password set. Sign in to finish joining."));
     let live = true;
