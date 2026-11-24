@@ -26,7 +26,7 @@ const go = async (page: Page, path: string) => {
 const toast = (page: Page, tone: "good" | "bad") => page.locator(`.mx-toasts .mx-toast[data-tone=${tone}]`).last();
 const main = (page: Page) => page.locator("main");
 
-test.fixme("work: clean board, segments, rule rail, set one value, export, import and more tools", async ({ page }) => {
+test("work: clean board, segments, rule rail, set one value, export, import and more tools", async ({ page }) => {
   const errs = await go(page, "/work");
   await expect(page.getByTestId("fix-grid")).toBeVisible(NAV);
 
@@ -43,18 +43,23 @@ test.fixme("work: clean board, segments, rule rail, set one value, export, impor
 
   const setOne = page.getByRole("button", { name: "Set one value for selected" });
   await expect(setOne).toBeDisabled();
-  await main(page).getByRole("button", { name: /^MM0\d\d/ }).first().click();
+  // a rule button's name starts with its severity, then the rule id
+  await main(page).getByRole("navigation", { name: "Rules over tolerance" }).getByRole("button", { name: /MM0\d\d/ }).first().click();
   await expect(page.getByTestId("rule-head")).toBeVisible();
   await expect(setOne).toBeEnabled();
   await setOne.click();
-  const dlg = page.getByRole("dialog");
+  // a confirm step, so it is an alertdialog
+  const dlg = page.getByRole("alertdialog", { name: "Set one value for selected" });
   await dlg.getByRole("textbox").fill("KG");
   await dlg.getByRole("button", { name: "Set the value" }).click();
   await expect(toast(page, "good")).toContainText("values set");
 
   await page.getByRole("button", { name: "Export workbook" }).click();
   const dl = page.waitForEvent("download", { timeout: 30_000 }).catch(() => null);
-  await page.getByRole("menuitem", { name: "Excel workbook" }).click();
+  // the export popover picks a format (one radio here), then Export
+  const exp = page.getByRole("dialog", { name: "Export workbook" });
+  await expect(exp.getByRole("radio", { name: "Excel workbook" })).toBeChecked();
+  await exp.getByRole("button", { name: "Export", exact: true }).click();
   const file = await dl;
   if (!file) await expect(page.locator(".mx-toasts .mx-toast").last()).toBeVisible();
 
@@ -76,19 +81,23 @@ test.fixme("work: clean board, segments, rule rail, set one value, export, impor
   expect(errs).toEqual([]);
 });
 
-test.fixme("work: row accept, reject and load more on the grid", async ({ page }) => {
+test("work: row accept, reject and load more on the grid", async ({ page }) => {
   await go(page, "/work");
   const grid = page.getByTestId("fix-grid");
   await expect(grid).toBeVisible(NAV);
   const before = Number(/^(\d+)/.exec(await page.getByTestId("decision-sentence").innerText())?.[1]);
   await grid.getByRole("button", { name: "Accept" }).first().click();
   await expect.poll(async () => Number(/^(\d+)/.exec(await page.getByTestId("decision-sentence").innerText())?.[1]), NAV).toBe(before + 1);
-  await grid.getByRole("button", { name: "Reject" }).first().click();
+  // a rejected fix leaves the list and is not a load-file draft, so the draft count stays where the accept left it
+  const rej = grid.getByRole("button", { name: /^Reject / }).first();
+  const label = String(await rej.getAttribute("aria-label"));
+  await rej.click();
   const why = page.getByTestId("reject-dialog");
   await expect(why).toBeVisible();
   await why.getByRole("button", { name: "The proposed value is wrong" }).click();
   await expect(why).toHaveCount(0);
-  await expect.poll(async () => Number(/^(\d+)/.exec(await page.getByTestId("decision-sentence").innerText())?.[1]), NAV).toBe(before + 2);
+  await expect(grid.getByRole("button", { name: label, exact: true })).toHaveCount(0, NAV);
+  expect(Number(/^(\d+)/.exec(await page.getByTestId("decision-sentence").innerText())?.[1])).toBe(before + 1);
   const more = page.getByRole("button", { name: "Load more" });
   if (await more.count()) {
     const rows = await grid.getByRole("row").count();
@@ -97,7 +106,7 @@ test.fixme("work: row accept, reject and load more on the grid", async ({ page }
   }
 });
 
-test.fixme("triage sheet: buckets, sort, pick and bulk apply", async ({ page }) => {
+test("triage sheet: buckets, sort, pick and bulk apply", async ({ page }) => {
   const errs = await go(page, "/work?open=triage");
   const sheet = page.getByRole("dialog").first();
   const buckets = sheet.getByRole("group", { name: "Buckets" });
@@ -119,7 +128,7 @@ test.fixme("triage sheet: buckets, sort, pick and bulk apply", async ({ page }) 
   expect(errs).toEqual([]);
 });
 
-test.fixme("exceptions sheet: tabs, status filters, raise and export sign-offs", async ({ page }) => {
+test("exceptions sheet: tabs, status filters, raise and export sign-offs", async ({ page }) => {
   const errs = await go(page, "/work?open=exceptions");
   const sheet = page.getByRole("dialog").first();
   await expect(sheet.getByRole("tab", { name: "Exceptions" })).toBeVisible(NAV);
@@ -159,25 +168,29 @@ test("approvals sheet: batches, send to SAP and a refused write-back shows the r
 test("work analytics and work requests", async ({ page }) => {
   let errs = await go(page, "/work/analytics");
   await page.getByRole("button", { name: "Show as table" }).first().click();
-  await expect(main(page).getByRole("table").first()).toBeVisible(NAV);
+  // DataTable renders role=grid, and the switch now offers the chart back
+  await expect(main(page).getByRole("grid").first()).toBeVisible(NAV);
+  await expect(main(page).getByRole("button", { name: "Show as chart" }).first()).toHaveAttribute("aria-pressed", "true");
   expect(errs).toEqual([]);
 
   errs = await go(page, "/work/requests");
-  await page.getByRole("button", { name: "All requests" }).click();
-  await expect(page.getByRole("button", { name: "All requests" })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "Asked of me" }).click();
-  await page.getByRole("button", { name: "New request" }).click();
-  await expect(page.getByRole("dialog").last()).toBeVisible();
-  expect(errs).toEqual([]);
-});
-
-test("requests list: tabs and links", async ({ page }) => {
-  const errs = await go(page, "/requests");
-  for (const tab of ["To approve", "All requests", "My requests"]) {
+  for (const tab of ["All requests", "Asked of me"]) {
     await main(page).getByRole("tab", { name: tab }).click();
     await expect(main(page).getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
   }
-  await main(page).getByRole("tab", { name: "All requests" }).click();
+  // New request is a third tab with the form in its panel
+  await main(page).getByRole("tab", { name: "New request" }).click();
+  await expect(main(page).getByRole("tabpanel", { name: "New request" })).toBeVisible();
+  expect(errs).toEqual([]);
+});
+
+test("requests list: views and links", async ({ page }) => {
+  const errs = await go(page, "/requests");
+  const views = main(page).getByRole("group", { name: "Request views" });
+  for (const v of ["To approve", "All requests", "My requests", "All requests"]) {
+    await views.getByRole("button", { name: v, exact: true }).click();
+    await expect(views.getByRole("button", { name: v, exact: true })).toHaveAttribute("aria-pressed", "true");
+  }
   await expect(main(page).getByText("CR-1001").first()).toBeVisible(NAV);
   await main(page).getByRole("link", { name: "Workflows" }).click();
   await expect(page).toHaveURL(/\/requests\/workflows/, NAV);
@@ -190,10 +203,12 @@ test("requests list: tabs and links", async ({ page }) => {
   expect(errs).toEqual([]);
 });
 
-test.fixme("new request: save draft, validate, entry rules tabs and submit", async ({ page }) => {
+test("new request: save draft, validate, entry rules tabs and submit", async ({ page }) => {
   const errs = await go(page, "/requests/new");
   await expect(page.getByRole("button", { name: "Save draft" })).toBeVisible(NAV);
   await main(page).getByRole("textbox").first().fill("Seal kit for plant 1000");
+  // a draft must propose at least one field, as the API requires
+  await main(page).getByRole("textbox", { name: /MAKT\.MAKTX/ }).fill("Seal kit");
   await page.getByRole("button", { name: "Save draft" }).click();
   await expect(toast(page, "good")).toContainText("Draft saved");
   await page.getByRole("button", { name: "Save draft" }).click();
@@ -212,9 +227,13 @@ test.fixme("new request: save draft, validate, entry rules tabs and submit", asy
 
 test("request detail: comment, approve, and a draft validates, submits and cancels", async ({ page }) => {
   let errs = await go(page, "/requests/CR-1001");
+  // comments live on their own tab, named with its count
+  await main(page).getByRole("tab", { name: /^Comments/ }).click();
   await main(page).getByRole("textbox").last().fill("Checked the seal size with the plant.");
   await main(page).getByRole("button", { name: "Post comment" }).click();
   await expect(main(page).getByText("Checked the seal size with the plant.")).toBeVisible(NAV);
+  // the approve action sits on the Approval tab
+  await main(page).getByRole("tab", { name: "Approval" }).click();
   await main(page).getByRole("button", { name: "Approve" }).first().click();
   await expect(main(page).getByRole("button", { name: "Approve" })).toHaveCount(0, NAV);
   expect(errs).toEqual([]);
@@ -236,8 +255,11 @@ test("workflows and request analytics", async ({ page }) => {
     await main(page).getByRole("tab", { name: tab }).click();
     await expect(main(page).getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
   }
-  await main(page).getByRole("button", { name: "Steps" }).first().click();
-  await main(page).getByRole("button", { name: "Facts and rules" }).first().click();
+  // the definition detail switches between steps and facts with tabs
+  for (const tab of ["Facts and rules", "Steps"]) {
+    await main(page).getByRole("tab", { name: tab }).first().click();
+    await expect(main(page).getByRole("tab", { name: tab }).first()).toHaveAttribute("aria-selected", "true");
+  }
   await main(page).getByRole("button", { name: "New version" }).first().click();
   await expect(page.getByRole("dialog").last()).toBeVisible();
   await page.keyboard.press("Escape");

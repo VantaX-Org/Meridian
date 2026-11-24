@@ -140,6 +140,8 @@
 /* Aletheia sheet */
 .mx-root .mx-scrim { position: fixed; inset: 0; z-index: 40; background: var(--mx-scrim); display: flex; justify-content: flex-end; }
 .mx-root .mx-sheet { display: grid; grid-template-rows: auto 1fr auto auto; gap: var(--mx-s3); inline-size: min(100%, 28rem); block-size: 100%; overflow-y: auto; padding: var(--mx-s4); background: var(--mx-surface); border-inline-start: 1px solid var(--mx-aletheia-edge); }
+/* Content sheets stack every child at its own height and scroll as one column; the chat sheet keeps its 1fr thread row. */
+.mx-root .mx-sheet[data-place="bottom"] { grid-template-rows: none; grid-auto-rows: max-content; overflow-y: auto; overscroll-behavior: contain; }
 .mx-root .mx-sheet-h { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--mx-s3); }
 .mx-root .mx-aletheia-mark { display: inline-block; inline-size: var(--mx-s4); block-size: var(--mx-s4); margin-inline-end: var(--mx-s2); vertical-align: middle; }
 .mx-root .mx-aletheia-tag { display: inline-flex; align-items: center; padding: var(--mx-s1) var(--mx-s2); border-radius: var(--mx-r-pill); border: 1px solid var(--mx-aletheia-edge); background: var(--mx-aletheia-soft); color: var(--mx-aletheia-ink); font-size: var(--mx-fs-small); }
