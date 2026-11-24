@@ -32,7 +32,7 @@ export function DryRun() {
   const fail = (e: unknown) => toast(e instanceof Error ? e.message : t("The change did not go through"), "bad");
 
   const impact = useMutation({
-    mutationFn: () => runImpactDryRun({ module, ...(ruleId ? { rule_id: ruleId } : {}), ...(severity !== NO_CHANGE ? { rule: { severity } } : {}) }),
+    mutationFn: () => runImpactDryRun({ module, rule_id: ruleId.trim(), ...(severity !== NO_CHANGE ? { rule: { severity } } : {}) }),
     onError: fail,
   });
   const gen = useMutation({
@@ -82,11 +82,11 @@ export function DryRun() {
           <Card title={t("Impact of a change")} sub={t("Runs the rule over the latest data and compares it with now.")}>
             <div className="mx-rules-form">
               <Field label={t("Object")}><Input value={module} onChange={(e) => setModule(e.target.value)} /></Field>
-              <Field label={t("Rule to change")} hint={t("Leave empty to test a new rule.")}><Input value={ruleId} onChange={(e) => setRuleId(e.target.value)} /></Field>
+              <Field label={t("Rule to change")} hint={t("The rule id, such as MM142. To test a new rule, draft it beside this and try it on the data.")}><Input value={ruleId} onChange={(e) => setRuleId(e.target.value)} /></Field>
               <Field label={t("Severity")}>
                 <Select value={severity} onChange={(e) => setSeverity(e.target.value)} options={[{ value: NO_CHANGE, label: t("Keep as is") }, ...SEVERITIES.map((s) => ({ value: s, label: sevLabel(s) }))]} />
               </Field>
-              <div className="mx-rules-row"><Button variant="primary" disabled={!module.trim() || impact.isPending} onClick={() => impact.mutate()}>{t("Check the impact")}</Button></div>
+              <div className="mx-rules-row"><Button variant="primary" disabled={!module.trim() || !ruleId.trim() || impact.isPending} onClick={() => impact.mutate()}>{t("Check the impact")}</Button></div>
             </div>
             {r ? (
               r.evaluated ? (

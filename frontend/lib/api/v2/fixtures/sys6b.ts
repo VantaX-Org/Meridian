@@ -621,7 +621,9 @@ export function sys6bWrite(method: string, path: string, body: unknown): unknown
   if (method === "POST" && path === "/rule-authoring/dry-run") return { version_id: "d3229ded-0708-4967-9dfb-1b7f4fada953", evaluated: true, hits: 212, population: 61816, pass_rate: 99.66, sample: [] };
   if (method === "POST" && path === "/rule-authoring/generate") {
     const d = String(b.description ?? "");
-    return { rule_yaml: "", valid: true, errors: [], rule: { id: "ZR000500", check_class: "null_check", severity: "medium", dimension: "completeness", message: d.slice(0, 80), field: "MARA.MATNR" } };
+    const rule = { id: "ZR000500", check_class: "null_check", severity: "medium", dimension: "completeness", message: d.slice(0, 80), field: "MARA.MATNR" };
+    // The real route returns the rule as YAML text; JSON is valid YAML and the drafts fixture parses it back.
+    return { rule_yaml: JSON.stringify(rule, null, 2), valid: true, errors: [], rule };
   }
   if (method === "POST" && path === "/rule-authoring/drafts") {
     const rule = JSON.parse(String(b.rule_yaml)) as RuleDraft["proposed_rule"];
