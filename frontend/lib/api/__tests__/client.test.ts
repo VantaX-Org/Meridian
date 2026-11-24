@@ -210,6 +210,19 @@ describe("apiClient session continuity", () => {
     }
   });
 
+  it("stays on a signed-out page such as accept an invitation when a call there meets a 401", async () => {
+    const original = window.location;
+    try {
+      for (const path of ["/accept-invite", "/reset-password", "/sign-in"]) {
+        const loc = stubLocation(path, "?token=abc");
+        await runResponseErrorInterceptors(apiClient, expired("get", "/api/v1/auth/me"));
+        expect(loc.href).toBe(`http://localhost${path}?token=abc`);
+      }
+    } finally {
+      Object.defineProperty(window, "location", { value: original, configurable: true, writable: true });
+    }
+  });
+
   it("keeps an edit lost to the expiry for this tab, never a read, an auth call or a secret", async () => {
     const original = window.location;
     try {

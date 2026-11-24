@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from "axios";
+import { isPublicRoute } from "@/lib/public-routes";
 
 declare module "axios" {
   interface AxiosRequestConfig {
@@ -229,7 +230,9 @@ function instrument(client: AxiosInstance): AxiosInstance {
       if (typeof window !== "undefined" && error.response) {
         // a 401 from the login call means wrong credentials, not an expired session: let the form show it
         // the user comes back to the same page after signing in, and an edit in flight is kept for this tab
-        if (error.response.status === 401 && !String(error.config?.url ?? "").endsWith("/api/v1/auth/login")) {
+        // a 401 on a signed-out page (accept an invitation, reset a password) is expected: stay and let the page work
+        if (error.response.status === 401 && !String(error.config?.url ?? "").endsWith("/api/v1/auth/login")
+          && !isPublicRoute(window.location.pathname)) {
           if ([...expiredListeners].some((l) => l())) return Promise.reject(error);
           keepDraft(error.config ?? {});
           clearBrowserSession();
