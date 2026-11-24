@@ -101,7 +101,7 @@ function Shell({ children }: { children: ReactNode }) {
     { id: "act-status", label: t("Platform status"), group: t("Actions"), run: () => router.push("/status") },
   ];
   const chords: [string, string][] = [["g h", t("Home")], ["g o", t("Objects")], ["g c", t("Clean")], ["g l", t("Load")], ["g m", t("Monitor")], ["g r", t("Runs")], ["g u", t("Rules")], ["g k", t("Insights")], ["g a", t("Admin")], [hint, t("Jump to")], ["?", t("Keyboard shortcuts")]];
-  const here = [...sections, ...moreItems].find((s) => path !== "/" && path.startsWith(new URL(s.href, "http://x").pathname));
+  const here = [...sections, ...moreItems].map((s) => ({ s, p: new URL(s.href, "http://x").pathname })).filter(({ p }) => p !== "/" && (path === p || path.startsWith(p + "/"))).sort((a, b) => b.p.length - a.p.length)[0]?.s;
   const crumbs: Crumb[] = path === "/" ? [{ label: t("Home") }] : [{ label: t("Home"), href: link("/") }, ...(here ? [{ label: here.label, href: system ? here.href : undefined }] : []), ...(system ? [{ label: system.name }] : [])];
   return (
     <>
