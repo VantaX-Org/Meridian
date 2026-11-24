@@ -12663,6 +12663,7 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Write one dataset to a file.": "1つのデータセットをファイルに書き出します。",
   "Dataset": "データセット",
   "Export queued.": "エクスポートをキューに追加しました。",
+  "Export queued. The file appears under Built files when it is ready.": "エクスポートをキューに追加しました。準備ができると作成済みファイルに表示されます。",
   "Start export": "エクスポートを開始",
   "Loading licence": "ライセンスを読み込み中",
   "{n} days left": "残り {n} 日",

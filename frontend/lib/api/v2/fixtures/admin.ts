@@ -807,13 +807,13 @@ export function adminFixtureWrite(method: string, path: string, body: unknown, p
   const inviteAct = /^\/users\/([^/]+)\/invite\/(resend|link)$/.exec(path);
   if (inviteAct && method === "POST") {
     const id = decodeURIComponent(inviteAct[1]);
-    return inviteAct[2] === "resend" ? { id, invite_status: "sent", invite_expires_at: soon(7) } : { id, url: `https://meridian.demo-corp.example/accept?token=demo-${id}`, expires_at: soon(7) };
+    return inviteAct[2] === "resend" ? { id, invite_status: "sent", invite_expires_at: soon(7) } : { id, url: `https://meridian.demo-corp.example/accept-invite?token=demo-${id}`, expires_at: soon(7) };
   }
   const reset = /^\/users\/([^/]+)\/reset-password$/.exec(path);
   if (reset && method === "POST") {
     const id = decodeURIComponent(reset[1]);
     const email = b.send_email === true;
-    return { id, must_change_password: true, emailed: email, link: email ? null : `https://meridian.demo-corp.example/reset?token=demo-${id}` };
+    return { id, must_change_password: true, emailed: email, link: email ? null : `https://meridian.demo-corp.example/reset-password?token=demo-${id}` };
   }
   const setPw = /^\/users\/([^/]+)\/set-password$/.exec(path);
   if (setPw && method === "POST") {

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { getInvitePreview } from "@/lib/api/auth";
+import { useAuth } from "@/context/auth-context";
 import { t } from "@/lib/v2/i18n";
 import { labelText } from "@/lib/v2/labels";
 import { Skeleton } from "@/ui/kit";
@@ -21,9 +22,10 @@ export function SetPasswordForm({ title, lead, gate, submitLabel, missingToken, 
   retryHref?: string;
   /** Wraps the form: accept an invitation shows who it is for above it, and no form at all for a dead invitation. */
   gate?: (form: ReactNode) => ReactNode;
-  submit: (token: string, password: string) => Promise<unknown>;
+  submit: (token: string, password: string) => Promise<{ email: string }>;
 }) {
   const router = useRouter();
+  const { login } = useAuth();
   const token = useSearchParams().get("token") ?? "";
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -39,9 +41,16 @@ export function SetPasswordForm({ title, lead, gate, submitLabel, missingToken, 
     setErrors({});
     setSubmitting(true);
     try {
-      await submit(token, password);
-      // The sign-in page says the password was set (?reset=1 or ?invited=1).
-      router.replace(redirect);
+      const { email } = await submit(token, password);
+      try {
+        // Sign straight in with the password just chosen, so the link never ends on a second login screen.
+        await login(email, password);
+        router.replace("/");
+      } catch {
+        // Sign-in refused (single sign-on enforced, account locked): the sign-in page says the password was set
+        // (?reset=1 or ?invited=1) with the email already filled in.
+        router.replace(`${redirect}&email=${encodeURIComponent(email)}`);
+      }
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setErrors({ form: typeof detail === "string" ? detail : failure });

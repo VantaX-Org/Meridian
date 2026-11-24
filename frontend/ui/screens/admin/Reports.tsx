@@ -101,7 +101,7 @@ export function Reports() {
           <Field label={t("Dataset")}><Select value={ds} onChange={(e) => setDataset(e.target.value)} options={sets.map((x) => ({ value: x.id, label: x.name }))} /></Field>
           <Field label={t("Format")}><Select value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)} options={[{ value: "xlsx", label: "XLSX" }, { value: "csv", label: "CSV" }, { value: "json", label: "JSON" }, { value: "pdf", label: "PDF" }]} /></Field>
           <Button variant="primary" disabled={busy || !ds}
-            onClick={() => run(() => startExport(exportRequest({ dataset: ds, format, columns: [], system: "", module: "", run: "latest", severity: [], split: "none" })), t("Export queued."))}>{t("Start export")}</Button>
+            onClick={() => run(() => startExport(exportRequest({ dataset: ds, format, columns: [], system: "", module: "", run: "latest", severity: [], split: "none" })), t("Export queued. The file appears under Built files when it is ready."))}>{t("Start export")}</Button>
         </Row>
       </Card>
       <Sheet open={!!edit} onClose={() => setEdit("")} label={t("Edit schedule")} closeLabel={t("Close")}>

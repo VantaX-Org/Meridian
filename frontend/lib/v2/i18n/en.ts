@@ -12662,6 +12662,7 @@ export const en = {
   "Write one dataset to a file.": "Write one dataset to a file.",
   "Dataset": "Dataset",
   "Export queued.": "Export queued.",
+  "Export queued. The file appears under Built files when it is ready.": "Export queued. The file appears under Built files when it is ready.",
   "Start export": "Start export",
   "Loading licence": "Loading licence",
   "{n} days left": "{n} days left",
