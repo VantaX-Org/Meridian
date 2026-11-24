@@ -175,6 +175,11 @@ export function insightsWrite(method: string, path: string, body: unknown): unkn
     const b = body as { name: string };
     return { id: "batch-aletheia-1", name: b.name, status: "draft", item_count: 0 };
   }
+  if (path === "/insights/feedback") {
+    const vote = (body as { vote?: string }).vote;
+    if (vote !== "up" && vote !== "down") throw Object.assign(new Error("vote must be up or down"), { status: 422, response: { status: 422, data: { detail: "vote must be up or down" } } });
+    return { id: "fb-001", status: "recorded" };
+  }
   if (path !== "/insights/findings/acted") return NONE_INSIGHTS_WRITE;
   const b = body as { module: string; check_id: string; action: string };
   const f = [across, ...found].find((x) => x.module === b.module && x.check_id === b.check_id);

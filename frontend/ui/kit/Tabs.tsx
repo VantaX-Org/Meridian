@@ -1,6 +1,6 @@
 "use client";
 
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { Badge } from "./Badge";
 
 export interface TabItem { id: string; label: string; badge?: string }
@@ -23,4 +23,9 @@ export function Tabs({ idBase, label, items, value, onChange }: { idBase: string
       ))}
     </div>
   );
+}
+
+/** The panel for the selected tab, wired to the tab that names it. */
+export function TabPanel({ idBase, value, className, children }: { idBase: string; value: string; className?: string; children: ReactNode }) {
+  return <div id={`${idBase}-panel-${value}`} role="tabpanel" aria-labelledby={`${idBase}-tab-${value}`} className={className}>{children}</div>;
 }

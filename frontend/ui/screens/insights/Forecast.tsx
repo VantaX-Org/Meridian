@@ -10,7 +10,7 @@ import { streamAnswer } from "@/ui/kit/aletheia/stream";
 import { useState } from "react";
 import { labelText } from "@/lib/v2/labels";
 import { PlanCard } from "./PlanCards";
-import { Gate, InsightsNav, Mod, Tbl, day, n0, n1, sevLabel, sevOf, useQ } from "./shared";
+import { Gate, InsightsNav, Mod, Tbl, day, modText, n0, n1, sevLabel, sevOf, useQ } from "./shared";
 
 const trendText = (s: string) => (s === "improving" ? t("Improving") : s === "declining" ? t("Declining") : s === "critical" ? t("Critical") : t("Stable"));
 
@@ -183,7 +183,7 @@ export function Forecast() {
     <div className="b8-page">
       <PageHeader crumbs={crumbs("insights",t("Forecast"))} title={t("Forecast")} context={t("Where each object's score is heading, with the band it should stay in.")}
         actions={<><InsightsNav here="forecast" /><Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button></>} />
-      <Card title={t("Object forecast")} action={mods.length ? <Select aria-label={t("Object")} value={mod ?? ""} onChange={(e) => setPicked(e.target.value)} options={mods.map((m) => ({ value: m, label: m }))} /> : undefined}>
+      <Card title={t("Object forecast")} action={mods.length ? <Select aria-label={t("Object")} value={mod ?? ""} onChange={(e) => setPicked(e.target.value)} options={mods.map((m) => ({ value: m, label: modText(m) }))} /> : undefined}>
         {mod ? <ModuleForecast module={mod} /> : <EmptyState heading={t("No object to forecast")} body={t("Objects appear after the first scored run.")} />}
       </Card>
       <ForesightCard q={fore} />

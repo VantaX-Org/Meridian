@@ -39,7 +39,7 @@ export { ChartSkeleton, EmptyState, ErrorState, GridSkeleton, HeroSkeleton, Skel
 export { ProposalChip, type RejectReason } from "./ProposalChip";
 export { ShortcutSheet, type Shortcut } from "./ShortcutSheet";
 export { StatTile } from "./StatTile";
-export { Tabs, type TabItem } from "./Tabs";
+export { TabPanel, Tabs, type TabItem } from "./Tabs";
 export { TrendArea, type TrendPoint } from "./TrendArea";
 export { BandChart, type BandDatum } from "./BandChart";
 export { type ChartStatus } from "./ChartFrame";

@@ -151,3 +151,12 @@ def test_consolidation_pack_rows() -> None:
         ("MARA", "LVORM", "X"), ("MARA", "BISMT", "M-1"), ("MARA", "MSTAE", None)]
     assert [r["field"] for r in pack_rows("sd_customer_master", merged)] == ["LOEVM", "SPERR", "AUFSD"]
     assert pack_rows("employee_central", merged)[0]["action"] == "map_to_survivor"
+
+
+def test_consolidation_pack_old_material_number_is_the_bare_survivor_number() -> None:
+    merged = [{"loser": "MATNR=000000000000006001", "survivor": "MATNR=000000000000005001", "merged_at": None}]
+    bismt = [r for r in pack_rows("material_master", merged) if r["field"] == "BISMT"][0]
+    assert bismt["value"] == "000000000000005001"
+    assert bismt["survivor_key"] == "MATNR=000000000000005001"
+    composite = [{"loser": "A=1|B=2", "survivor": "A=1|B=3", "merged_at": None}]
+    assert [r for r in pack_rows("material_master", composite) if r["field"] == "BISMT"][0]["value"] == "A=1|B=3"

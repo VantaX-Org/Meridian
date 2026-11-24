@@ -7,14 +7,14 @@ import { useFixture } from "@/lib/api/v2/fixture";
 import { applyMatchCalibration, downloadConsolidationPack, markNotDuplicate, mergePair, proposeMerges } from "@/lib/api/v2/mdm";
 import type { ReviewPair } from "@/lib/api/match-review";
 import { bulkMergePairs, clearPairConstraint, getPairConstraints, matchTuningDryRun } from "@/lib/api/v2/mdm-extra";
-import { describeField } from "@/lib/v2/sap-fields";
+import { describeField, describeTable } from "@/lib/v2/sap-fields";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useAcrossSystems, useConsolidationPack, useMatchCalibration, useMatchPairs } from "@/lib/v2/mdm-queries";
-import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, SeverityPill, Skeleton, StatTile, Tabs, useAletheia, useAletheiaScope, ExportMenu } from "@/ui/kit";
-import { DEFAULT_DOMAIN, DomainSelect, day, pct, useAct, useHref } from "./shared";
+import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, SeverityPill, Skeleton, StatTile, TabPanel, Tabs, useAletheia, useAletheiaScope, ExportMenu } from "@/ui/kit";
+import { DEFAULT_DOMAIN, DomainSelect, codeText, day, pct, useAct, useHref } from "./shared";
 
 type Tab = "review" | "clusters" | "constraints" | "tuning" | "pack";
-type Pending = null | { kind: "merge" | "dismiss"; pair: ReviewPair } | { kind: "bulk" } | { kind: "propose" } | { kind: "apply" };
+type Pending = null | { kind: "merge" | "dismiss"; pair: ReviewPair } | { kind: "bulk" } | { kind: "propose" } | { kind: "apply" } | { kind: "clear"; id: string };
 const BAND_SEV = { auto_merge: "low", review: "medium", low: "info" } as const;
 
 export function Match() {
@@ -60,11 +60,12 @@ export function Match() {
     else if (p.kind === "dismiss") await act(() => markNotDuplicate(p.pair.id, why || t("Not a duplicate")), t("Marked as not a duplicate"));
     else if (p.kind === "bulk") await act(() => bulkMergePairs({ min_score: Number(minScore), reason: why || t("Bulk merge by a steward"), domain }), (r) => t("{n} pairs merged", { n: r.merged }));
     else if (p.kind === "propose") await act(() => proposeMerges(list.slice(0, 20).map((x, i) => ({ match_score_id: x.id, priority: i + 1 }))), (r) => t("{n} merge decisions queued", { n: r.created.length }));
+    else if (p.kind === "clear") await act(() => clearPairConstraint(p.id, why || undefined), t("Constraint cleared"));
     else if (p.kind === "apply") await act(() => applyMatchCalibration({ domain, reason: why || t("Calibrated from steward decisions"), add_profile_rules: true }), (r) => t("{n} weights changed", { n: r.changed.length }));
   };
   const titles: Record<NonNullable<Pending>["kind"], string> = {
     merge: t("Merge this pair?"), dismiss: t("Mark this pair as not a duplicate?"), bulk: t("Merge every pair at or above the score?"),
-    propose: t("Queue merge decisions for the top pairs?"), apply: t("Apply the recommended weights?"),
+    propose: t("Queue merge decisions for the top pairs?"), apply: t("Apply the recommended weights?"), clear: t("Clear this pair constraint?"),
   };
 
   return (
@@ -98,6 +99,7 @@ export function Match() {
             { id: "pack", label: t("Consolidation pack") },
           ]}
         />
+        <TabPanel idBase="mdm-match" value={tab} className="mx-col">
         {tab === "review" && (
           pairs.isLoading ? <Skeleton lines={8} label={t("Loading match pairs")} /> : pairs.isError ? <ErrorState heading={t("Match pairs could not be loaded")} retryLabel={t("Try again")} onRetry={() => void pairs.refetch()} /> : list.length === 0 ? (
             <EmptyState heading={t("No pairs waiting")} body={t("Every candidate pair has a decision.")} />
@@ -123,7 +125,7 @@ export function Match() {
                     { key: "b", label: t("Record B"), render: (p) => <FieldChip code={p.b} /> },
                     { key: "s", label: t("Score"), align: "end", sort: (p) => p.total, render: (p) => pct(p.total) },
                     { key: "band", label: t("Band"), render: (p) => <SeverityPill sev={BAND_SEV[p.band]} label={p.band === "auto_merge" ? t("Auto-merge") : p.band === "review" ? t("Review") : t("Low")} /> },
-                    { key: "c", label: t("Constraint"), render: (p) => p.constraint ?? "" },
+                    { key: "c", label: t("Constraint"), render: (p) => codeText(p.constraint) },
                     {
                       key: "x", label: t("Decision"), render: (p) => p.same_cluster ? t("Already merged") : (
                         <span className="mx-links">
@@ -187,10 +189,10 @@ export function Match() {
                 columns={[
                   { key: "a", label: t("Record A"), render: (c) => <FieldChip code={c.key_lo} /> },
                   { key: "b", label: t("Record B"), render: (c) => <FieldChip code={c.key_hi} /> },
-                  { key: "k", label: t("Kind"), render: (c) => c.kind },
+                  { key: "k", label: t("Kind"), render: (c) => codeText(c.kind) },
                   { key: "r", label: t("Reason"), render: (c) => c.reason ?? "" },
                   { key: "d", label: t("Decided"), render: (c) => day(c.created_at) },
-                  { key: "x", label: t("Action"), render: (c) => <Button variant="ghost" disabled={busy} onClick={() => act(() => clearPairConstraint(c.id), t("Constraint cleared"))}>{t("Clear")}</Button> },
+                  { key: "x", label: t("Action"), render: (c) => <Button variant="ghost" disabled={busy} onClick={() => setPending({ kind: "clear", id: c.id })}>{t("Clear")}</Button> },
                 ]}
               />
             )}
@@ -246,14 +248,16 @@ export function Match() {
                 columns={[
                   { key: "l", label: t("Retired record"), render: (r) => <FieldChip code={r.loser_key} /> },
                   { key: "s", label: t("Survivor"), render: (r) => <FieldChip code={r.survivor_key} /> },
-                  { key: "t", label: t("Table"), render: (r) => r.table ?? "" },
-                  { key: "f", label: t("Field"), render: (r) => (r.field ? <FieldChip code={r.field} description={describeField(r.field) ?? undefined} /> : "") },
-                  { key: "a", label: t("Action"), render: (r) => r.action },
+                  { key: "t", label: t("Table"), render: (r) => (r.table ? <FieldChip code={r.table} description={describeTable(r.table) ?? undefined} /> : "") },
+                  { key: "f", label: t("Field"), render: (r) => (r.field ? <FieldChip code={r.field} description={describeField(r.table ? `${r.table}-${r.field}` : r.field) ?? undefined} /> : "") },
+                  { key: "v", label: t("Value"), render: (r) => r.value ?? (r.field ? t("Your own status value") : "") },
+                  { key: "a", label: t("Action"), render: (r) => codeText(r.action) },
                 ]}
               />
             )}
           </Card>
         )}
+        </TabPanel>
       </div>
       <Confirm
         open={pending !== null}
