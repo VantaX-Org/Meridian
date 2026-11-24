@@ -82,3 +82,14 @@ def test_password_is_masked_when_the_reopen_fails():
     with pytest.raises(SAPConnectorError) as exc:
         _reader()._read_paged("MARD", ["MATNR"], None, 0, 2, conn=conn)
     assert "secret" not in str(exc.value)
+
+
+def test_a_quoted_literal_with_an_apostrophe_stays_one_token():
+    """MARC failed OPTION_NOT_VALID: a key range bound like O'B became `'O' 'B'` in the WHERE."""
+    from sap.rfc import _range_where, where_options
+
+    where = where_options(_range_where("WERKS IN ( 'A' , 'B' )", "MATNR", (">=", "O'B", "Z")))
+    joined = " ".join(o["TEXT"] if isinstance(o, dict) else o for o in where) \
+        if isinstance(where, list) else where
+    assert "'O''B'" in joined
+    assert "'O' 'B'" not in joined

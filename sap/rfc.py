@@ -733,7 +733,7 @@ def where_options(where: Optional[str]) -> list[dict]:
     """
     if not where:
         return []
-    tokens = re.findall(r"'[^']*'|[(),]|[^\s(),']+", where)
+    tokens = re.findall(r"'(?:[^']|'')*'|[(),]|[^\s(),']+", where)
     lines, cur = [], ""
     for tok in tokens:
         if len(tok) > 72:
