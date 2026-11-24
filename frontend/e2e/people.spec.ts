@@ -13,6 +13,7 @@ const ROUTES: [string, string][] = [
   ["/people/contracts?fixture=1", "Data contracts"],
   ["/people/digests?fixture=1", "Digests"],
   ["/people/assignments?fixture=1", "Assignments"],
+  ["/people/team?fixture=1", "My team"],
   ["/share/demo-token?fixture=1", "Shared with you"],
 ];
 
@@ -55,4 +56,15 @@ test("an admin names an owner and steward for an object, previews the template a
   await expect(apply).toBeEnabled(NAV);
   await apply.click();
   await expect(page.getByText(/^Template applied: \d+ changes/)).toBeVisible(NAV);
+});
+
+test("a lead sees each person's workload and hands work from one member to another", async ({ page }) => {
+  await page.goto("/people/team?fixture=1", NAV);
+  await expect(page.getByRole("heading", { level: 1, name: "My team" })).toBeVisible(NAV);
+  await expect(page.getByRole("group", { name: "People on the team" }).getByText("A. Naidoo")).toBeVisible(NAV);
+  await page.getByRole("checkbox", { name: "Pick iss-101" }).check();
+  await page.getByRole("combobox", { name: "Give to" }).selectOption("u-pk");
+  await page.getByRole("button", { name: "Hand over 1 items" }).click();
+  await expect(page.getByLabel("Hand over").getByText("1 items assigned to P. Khumalo.")).toBeVisible(NAV);
+  await expect(page.getByRole("checkbox", { name: "Pick iss-101" })).toHaveCount(0);
 });
