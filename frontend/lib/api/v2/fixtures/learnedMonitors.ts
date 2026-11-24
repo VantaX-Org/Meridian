@@ -141,7 +141,8 @@ export function learnedMonitorsRead(path: string): unknown {
     return evidence(b) satisfies BreakEvidence;
   }
   if (path !== "/aletheia/monitors") return NONE_LEARNED_MONITORS;
-  const all = [...mem.values()];
+  // Copies, so a write never mutates what React Query already holds (structural sharing would then see no change).
+  const all = [...mem.values()].map((b) => ({ ...b }));
   return { min_runs: 5, history: 30, coverage: COVERAGE, breaks: all.filter((b) => b.source === "run" && b.status !== "below_minimum"), below_minimum: all.filter((b) => b.status === "below_minimum"), thresholds: THRESHOLDS, interim: all.filter((b) => b.source === "interim") } satisfies LearnedMonitors;
 }
 
