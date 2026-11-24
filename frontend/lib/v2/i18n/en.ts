@@ -16116,6 +16116,19 @@ export const en = {
   "Pick who takes it": "Pick who takes it",
   "Share out across the team": "Share out across the team",
   "Hand over {n} items": "Hand over {n} items",
+  "Clear this pair constraint?": "Clear this pair constraint?",
+  "Your own status value": "Your own status value",
+  "Promoted in the workbench": "Promoted in the workbench",
+  "Unmerged": "Unmerged",
+  "Pair rejected": "Pair rejected",
+  "Pair constraint cleared": "Pair constraint cleared",
+  "Simulating": "Simulating",
+  "Written with errors": "Written with errors",
+  "Cannot link": "Cannot link",
+  "Must link": "Must link",
+  "Block with a cross-plant status": "Block with a cross-plant status",
+  "Block orders": "Block orders",
+  "Steward review": "Steward review",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

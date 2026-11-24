@@ -10,7 +10,7 @@ import { describeField } from "@/lib/v2/sap-fields";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useGoldenEvents, useGoldenExplain, useGoldenHistory, useGoldenRecord, useWritebackPreview, useWritebackRequests } from "@/lib/v2/mdm-queries";
 import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Skeleton, Tabs, useAletheia, useAletheiaScope } from "@/ui/kit";
-import { day, pct, show, statusLabel, useAct, useHref } from "./shared";
+import { codeText, day, pct, show, statusLabel, useAct, useHref } from "./shared";
 
 type Tab = "fields" | "sources" | "history" | "writeback" | "events";
 type Pending = null | { kind: "promote" | "undo" | "split" | "approve" | "reject" | "revert"; arg?: string };
@@ -177,7 +177,7 @@ export function GoldenRecord({ id }: { id: string }) {
                 columns={[
                   { key: "at", label: t("When"), sort: (x) => x.changed_at, render: (x) => day(x.changed_at) },
                   { key: "by", label: t("By"), render: (x) => x.changed_by ?? t("system") },
-                  { key: "t", label: t("Change"), render: (x) => x.change_type },
+                  { key: "t", label: t("Change"), render: (x) => codeText(x.change_type) },
                   { key: "n", label: t("Fields changed"), align: "end", render: (x) => Object.keys(x.new_fields ?? {}).length },
                   { key: "ai", label: t("Aletheia involved"), render: (x) => (x.ai_was_involved ? t("Yes") : t("No")) },
                 ]}
@@ -213,7 +213,7 @@ export function GoldenRecord({ id }: { id: string }) {
                   rows={requests.data ?? []}
                   rowKey={(x) => x.id}
                   columns={[
-                    { key: "st", label: t("Status"), render: (x) => x.status },
+                    { key: "st", label: t("Status"), render: (x) => codeText(x.status) },
                     { key: "by", label: t("Requested by"), render: (x) => x.requested_by ?? "" },
                     { key: "at", label: t("Created"), render: (x) => day(x.created_at) },
                     {
@@ -238,7 +238,7 @@ export function GoldenRecord({ id }: { id: string }) {
                 rowKey={(x) => x.id}
                 columns={[
                   { key: "at", label: t("When"), sort: (x) => x.created_at, render: (x) => day(x.created_at) },
-                  { key: "t", label: t("Event"), render: (x) => x.event_type },
+                  { key: "t", label: t("Event"), render: (x) => codeText(x.event_type) },
                   { key: "k", label: t("Records"), render: (x) => x.member_keys.join(", ") },
                   { key: "by", label: t("By"), render: (x) => x.actor ?? t("system") },
                   { key: "r", label: t("Reason"), render: (x) => x.reason ?? "" },

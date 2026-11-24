@@ -66,3 +66,47 @@ export const statusLabel = (s: string): string =>
 
 /** A master data key with its plain description beside it (for materials: the name). */
 export const keyText = (key: string): string => key.replace(/^[A-Z]+=/, "").replace(/^0+(?=\d)/, "");
+
+/** Plain text for the codes the master data API returns: history changes, merge events, write-back
+ * status, pair constraints and consolidation pack actions. An unknown code shows as it came. */
+const CODE_TEXT: Record<string, () => string> = {
+  created: () => t("Created"),
+  updated: () => t("Updated"),
+  promoted: () => t("Promoted"),
+  promoted_via_workbench: () => t("Promoted in the workbench"),
+  merged: () => t("Merged"),
+  superseded: () => t("Superseded"),
+  unmerged: () => t("Unmerged"),
+  steward_override: () => t("Steward override"),
+  merge: () => t("Merge"),
+  unmerge: () => t("Split"),
+  undo: () => t("Undo"),
+  remerge: () => t("Merged again"),
+  override: () => t("Steward override"),
+  pair_accept: () => t("Pair accepted"),
+  pair_reject: () => t("Pair rejected"),
+  pair_clear: () => t("Pair constraint cleared"),
+  simulating: () => t("Simulating"),
+  simulated: () => t("Simulated"),
+  simulation_failed: () => t("Simulation failed"),
+  pending_approval: () => t("Waiting for approval"),
+  approved: () => t("Approved"),
+  applying: () => t("Writing to SAP"),
+  applied: () => t("Written to SAP"),
+  applied_with_errors: () => t("Written with errors"),
+  failed: () => t("Failed"),
+  rejected: () => t("Rejected"),
+  cancelled: () => t("Cancelled"),
+  do_not_match: () => t("Cannot link"),
+  always_match: () => t("Must link"),
+  flag_for_deletion: () => t("Flag for deletion"),
+  point_to_survivor: () => t("Point to the survivor"),
+  cross_plant_status_block: () => t("Block with a cross-plant status"),
+  posting_block: () => t("Block posting"),
+  order_block: () => t("Block orders"),
+  central_block: () => t("Block centrally"),
+  map_to_survivor: () => t("Map to the survivor"),
+  steward_review: () => t("Steward review"),
+};
+
+export const codeText = (c: string | null | undefined): string => (c ? CODE_TEXT[c]?.() ?? c : "");
