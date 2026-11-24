@@ -16117,4 +16117,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Pick who takes it": "Wählen Sie, wer es übernimmt",
   "Share out across the team": "Im Team verteilen",
   "Hand over {n} items": "{n} Einträge übergeben",
+  "{n} problems reported: {first}": "{n} Probleme gemeldet: {first}",
 };
