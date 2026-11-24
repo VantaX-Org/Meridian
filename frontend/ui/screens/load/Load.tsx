@@ -50,7 +50,7 @@ export function Load() {
       <PageHeader crumbs={crumbs("load")} stepper={<Flow label={t("Load journey")} at={0} steps={LOAD_STEPS()} />} title={t("Load")} context={t("Move clean data into the new system, in the right order.")} actions={<><Button variant="primary" href={href("/load/plan")}>{t("Review the load order")}</Button><AskButton /></>} />
       <div className="mx-col">
         <Card title={t("Everything in Load")}>
-          <DataTable
+          <DataTable id="load-1" viewMenu
             label={t("Everything in Load")}
             rows={areas}
             rowKey={(a) => a.to}
@@ -73,7 +73,7 @@ export function Load() {
           <Card title={t("Files handed over")} sub={t("{n} in total", { n: hist.data?.total ?? 0 })}>
             <Gate loading={hist.isLoading} error={hist.isError} retry={() => void hist.refetch()} what={t("the load history")}>
               {hist.data?.items.length ? (
-                <DataTable
+                <DataTable id="load-2" viewMenu
                   label={t("Files handed over")}
                   rows={hist.data.items}
                   rowKey={(e) => e.id}

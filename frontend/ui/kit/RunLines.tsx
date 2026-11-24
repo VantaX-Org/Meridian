@@ -1,0 +1,46 @@
+"use client";
+
+import { score as fmt } from "../screens/object/format";
+import { PlotLayer } from "./PlotLayer";
+
+export interface RunPoint { n: number | string; axis: string; shown: number | null; measured: number | null }
+
+/**
+ * Shown and measured score per run, gate lines at 70 and 85. Measured is drawn only when some run stored it.
+ * Hover shows a crosshair and the run's figures; the points are one keyboard stop (arrow keys), and `onSelect`
+ * fires with the run from a click or Enter.
+ */
+export function RunLines({ points, labels, ariaLabel, onSelect }: { points: RunPoint[]; labels: { shown: string; measured: string; go: string; gate: string }; ariaLabel: string; onSelect?: (point: RunPoint) => void }) {
+  const W = 320, H = 170, L = 30, R = 8, T = 10, B = 28;
+  const vals = points.flatMap((p) => [p.shown, p.measured]).filter((v): v is number => v !== null);
+  if (points.length < 2 || vals.length === 0) return null;
+  const lo = Math.max(0, Math.floor(Math.min(...vals, 70) / 10) * 10 - 10);
+  const x = (i: number) => L + (points.length === 1 ? 0 : (i * (W - L - R)) / (points.length - 1));
+  const y = (v: number) => T + ((100 - Math.min(100, Math.max(lo, v))) * (H - T - B)) / (100 - lo);
+  const line = (k: "shown" | "measured") => points.map((p, i) => (p[k] === null ? null : `${x(i)},${y(p[k] as number)}`)).filter(Boolean).join(" ");
+  const hasMeasured = points.some((p) => p.measured !== null && p.shown !== null && p.measured !== p.shown);
+  const describe = (i: number) => {
+    const p = points[i];
+    const parts = [p.shown !== null ? `${labels.shown} ${fmt(p.shown)}` : null, hasMeasured && p.measured !== null ? `${labels.measured} ${fmt(p.measured)}` : null].filter(Boolean);
+    return `${p.axis}: ${parts.join(", ")}`;
+  };
+  return (
+    <PlotLayer n={points.length} label={ariaLabel} describe={describe} onSelect={onSelect ? (i) => onSelect(points[i]) : undefined} inset={{ start: L / W, end: R / W }}>
+      <svg className="mx-runlines" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={ariaLabel}>
+        {[85, 70].map((g) => (
+          <g key={g}>
+            <line className="mx-rl-gate" x1={L} x2={W - R} y1={y(g)} y2={y(g)} />
+            <text className="mx-ruler-ax" x={L - 4} y={y(g) + 4} textAnchor="end" fontSize={10}>{g}</text>
+          </g>
+        ))}
+        {hasMeasured ? <polyline className="mx-rl-measured" points={line("measured")} fill="none" /> : null}
+        <polyline className="mx-rl-shown" points={line("shown")} fill="none" />
+        {points.map((p, i) => (p.shown === null ? null : <circle key={i} className="mx-rl-dot" cx={x(i)} cy={y(p.shown)} r={3} />))}
+        {points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8 ? <text key={`a${i}`} className="mx-ruler-ax" x={x(i)} y={H - 12} textAnchor="middle" fontSize={10}>{p.n}</text> : null))}
+        <text className="mx-ruler-ax" x={L} y={H - 1} fontSize={10}>{points[0].axis}</text>
+        <text className="mx-ruler-ax" x={W - R} y={H - 1} textAnchor="end" fontSize={10}>{points[points.length - 1].axis}</text>
+        <title>{hasMeasured ? `${labels.shown}, ${labels.measured}` : labels.shown}</title>
+      </svg>
+    </PlotLayer>
+  );
+}

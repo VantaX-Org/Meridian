@@ -101,6 +101,8 @@ export function Objects() {
           : !cells.length ? <EmptyState heading={t("No object has a finished run yet, so there is nothing to score.")} body={t("Extract a system and run an analysis to score its objects.")} />
           : (
             <DataTable<LandscapeCell>
+              id="objects-pinned"
+              viewMenu
               label={t("Objects in the pinned run")}
               rows={cells}
               rowKey={(c) => `${c.system_id}/${c.module}`}
@@ -127,6 +129,7 @@ export function Objects() {
         : (
           <DataTable<PortfolioRow>
             id="objects"
+            viewMenu
             label={t("Objects")}
             rows={rows}
             rowKey={key}

@@ -30,6 +30,7 @@ const OLD_ROUTES = [
   "/rule-promotion", "/data-requests", "/work/monitor", "/admin/matchrules", "/admin/workflows", "/admin/runschedules",
   "/admin/step10", "/admin/thresholds", "/admin/accuracy", "/admin/kit", "/admin/capabilities", "/admin/tenant",
   "/admin/sandbox", "/admin/maintenance", "/admin/runs", "/system-compare", "/migration/load-plan", "/s4", "/go-live",
+  "/work/triage", "/work/exceptions", "/approvals",
 ] as const;
 
 /** A sample value for each dynamic segment, so `/runs/[versionId]` is tested as `/runs/R1`. */

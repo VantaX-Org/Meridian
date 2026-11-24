@@ -84,7 +84,8 @@ describe("Work saved view and bulk guard", () => {
   it("names a view in a dialog with a text field and refuses an empty name", async () => {
     const prompt = vi.spyOn(window, "prompt");
     mount("/work?fixture=1", <Work />);
-    fireEvent.click(await screen.findByRole("button", { name: "Save this view" }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole("button", { name: "More tools" }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Save this view" }));
     const dialog = await screen.findByRole("alertdialog", { name: "Name this view" });
     expect(within(dialog).getByText("A name is required.")).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Save this view" }));
@@ -100,10 +101,16 @@ describe("Work saved view and bulk guard", () => {
     m.postAcceptAll.mockImplementation(() => new Promise((r) => { done = r; }));
     m.getGroups.mockResolvedValue(groupsOf(1));
     mount("/work?fixture=1", <Work />);
-    const list = await screen.findByRole("list", { name: "Rules with work" }, { timeout: 5000 });
-    fireEvent.click(await within(list).findByRole("button", { name: /Blank base unit/ }));
-    const btn = await screen.findByRole("button", { name: "Accept every proposed value" }, { timeout: 5000 });
-    fireEvent.click(btn);
+    const list = await screen.findByRole("navigation", { name: "Rules over tolerance" }, { timeout: 5000 });
+    // The rail re-renders when the rows arrive, so click the live button until the rule is picked.
+    await waitFor(() => {
+      const b = within(list).getByRole("button", { name: /Blank base unit/ });
+      if (b.getAttribute("aria-pressed") !== "true") fireEvent.click(b);
+      expect(within(list).getByRole("button", { name: /Blank base unit/ }).getAttribute("aria-pressed")).toBe("true");
+    }, { timeout: 5000 });
+    const btn = await screen.findByRole("button", { name: "Set one value for selected" }, { timeout: 5000 });
+    fireEvent.click(await screen.findByRole("button", { name: "More tools" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Accept every proposed value" }));
     const ok = await screen.findByRole("button", { name: "Accept all" }, { timeout: 5000 });
     fireEvent.click(ok);
     fireEvent.click(ok);

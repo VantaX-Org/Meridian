@@ -84,9 +84,9 @@ function Batches() {
       <div className="mx-col">
         <Card title={t("Remediation batches")} sub={t("{n} batches", { n: q.rows.length })}>
           {q.isLoading ? <Skeleton lines={5} label={t("Loading batches")} /> : q.isError ? <ErrorState heading={t("Batches could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} /> : !q.rows.length ? <EmptyState heading={t("No batches yet")} body={t("Approve fixes in the work queue to create a batch.")} /> : (
-            <DataTable label={t("Batches")} rows={q.rows} rowKey={(r: BatchRow) => r.id} selected={sel?.id ?? null} onSelect={(r) => setPick(r.id)}
+            <DataTable id="approval-batches" viewMenu label={t("Batches")} rows={q.rows} rowKey={(r: BatchRow) => r.id} selected={sel?.id ?? null} onSelect={(r) => setPick(r.id)}
               columns={[
-                { key: "b", label: t("Batch"), render: (r) => `${r.label} ${r.name}`, sort: (r) => r.label },
+                { key: "b", label: t("Batch"), render: (r) => <span title={r.name}><span className="mx-code">{r.label}</span> {r.name}</span>, sort: (r) => r.label },
                 { key: "s", label: t("Status"), render: (r) => BATCH_STATUS_LABEL[r.status], sort: (r) => r.status },
                 { key: "o", label: t("Objects"), render: (r) => <span className="mx-chips">{r.modules.map((m) => <ObjChip key={m} code={m} />)}</span> },
                 { key: "n", label: t("Records"), render: (r) => whole(r.records), sort: (r) => r.records, align: "end" },
@@ -172,19 +172,21 @@ function Send() {
       <div className="mx-col">
         <Card title={t("Waiting for a second person")} sub={t("{n} write-backs", { n: pending.length })}>
           {wb.isLoading ? <Skeleton lines={3} label={t("Loading approvals")} /> : wb.isError ? <ErrorState heading={t("Approvals could not be loaded")} retryLabel={t("Try again")} onRetry={() => void wb.refetch()} /> : !pending.length ? <EmptyState heading={t("Nothing waits for approval")} body={t("Batches appear here when a cleaner sends fixes for approval.")} /> : (
-            <DataTable label={t("Write-back approvals")} rows={pending} rowKey={(p: PendingWriteback) => p.id}
+            <DataTable id="approval-writebacks" viewMenu label={t("Write-back approvals")} rows={pending} rowKey={(p: PendingWriteback) => p.id}
               columns={[
                 { key: "m", label: t("Object"), render: (p) => (p.module ? <ObjChip code={p.module} /> : "") },
                 { key: "c", label: t("Rule"), render: (p) => (p.check_id ? <FieldChip code={p.check_id} description={p.rule_message ?? undefined} /> : "") },
                 { key: "n", label: t("Records"), render: (p) => whole(p.records_updated), align: "end" },
-                { key: "u", label: t("Asked by"), render: (p) => p.requested_by_name ?? "" },
-                { key: "a", label: t("Approve"), render: (p) => <Button variant="secondary" disabled={busy === p.id} onClick={() => { setBusy(p.id); void run(() => approveWriteback(p.id), (x) => t("{n} records are written.", { n: whole(x.applied) })).finally(() => setBusy(null)); }}>{t("Approve")}</Button> },
+                { key: "u", label: t("Asked by"), value: (p) => p.requested_by_name ?? "", render: (p) => (
+                  <span className="mx-row-end"><span>{p.requested_by_name ?? ""}</span>
+                    <span className="mx-row-acts"><Button variant="secondary" disabled={busy === p.id} onClick={(e) => { e.stopPropagation(); setBusy(p.id); void run(() => approveWriteback(p.id), (x) => t("{n} records are written.", { n: whole(x.applied) })).finally(() => setBusy(null)); }}>{t("Approve")}</Button></span>
+                  </span>) },
               ]} />
           )}
         </Card>
         <Card title={t("Approved batches")} sub={t("{n} batches", { n: ready.length })}>
           {!ready.length ? <EmptyState heading={t("No approved batches")} body={t("Approve a batch to see it here.")} /> : (
-            <DataTable label={t("Approved batches")} rows={ready} rowKey={(r: BatchRow) => r.id} selected={sel?.id ?? null} onSelect={(r) => setPick(r.id)}
+            <DataTable id="approved-batches" viewMenu label={t("Approved batches")} rows={ready} rowKey={(r: BatchRow) => r.id} selected={sel?.id ?? null} onSelect={(r) => setPick(r.id)}
               columns={[
                 { key: "b", label: t("Batch"), render: (r) => `${r.label} ${r.name}`, sort: (r) => r.label },
                 { key: "s", label: t("Status"), render: (r) => BATCH_STATUS_LABEL[r.status], sort: (r) => r.status },

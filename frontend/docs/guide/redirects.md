@@ -98,6 +98,11 @@ The inbox, approvals and exceptions: the inbox panel, or the ledger's chip for t
 | `/workbench/triage` | always | `/work?open=triage` |
 | `/workbench/progress` | always | `/people` |
 | `/workbench/report` | always | `/reports` |
+| `/work/triage` | always | `/work?open=triage` |
+| `/work/exceptions` | always | `/work?open=exceptions` |
+| `/approvals` | always | `/work?open=approvals` |
+
+The last three are pages, not config entries (`app/(app)/work/triage`, `app/(app)/work/exceptions` and `app/(app)/approvals`). They redirect temporarily from the page (not a permanent 308), carry the query along, and the fix screen opens the tool named in `open`.
 | `/workbench/record/:issueId` | always | `/work` |
 | `/stewardship` | always | `/people` |
 | `/stewardship/metrics` | always | `/people` |

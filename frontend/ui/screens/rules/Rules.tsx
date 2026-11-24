@@ -132,7 +132,7 @@ export function Rules() {
               {SEVERITIES.map((s) => <Chip key={s} selected={sev === s} onClick={() => setSev(sev === s ? null : s)} count={rules.filter((r) => r.severity === s).length}>{sevLabel(s)}</Chip>)}
             </div>
             {shown.length ? (
-              <DataTable columns={cols} rows={shown} rowKey={(r) => r.id} label={t("Rule library")} height={520} selected={null} onSelect={(r) => sheet.open("library-rule", { id: r.id })} />
+              <DataTable id="rules-1" viewMenu columns={cols} rows={shown} rowKey={(r) => r.id} label={t("Rule library")} height={520} selected={null} onSelect={(r) => sheet.open("library-rule", { id: r.id })} />
             ) : <EmptyState heading={t("No rule matches")} body={t("Clear the search or the severity to see every rule.")} />}
             <p className="mx-muted">{t("Pick a rule for its summary; open it for the fix, history and failing records.")}</p>
           </>

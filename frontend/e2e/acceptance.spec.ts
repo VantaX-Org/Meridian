@@ -182,7 +182,7 @@ test("5. steward: a decision and a proposed fix in Work", async ({ page, request
   await signIn(page, "steward");
   await page.goto(`/work?module=${MODULE}`);
   // the records of the object with work, one row each; a row opens its decide panel
-  const rows = page.getByRole("group", { name: "Records" }).locator("tbody tr[aria-rowindex]");
+  const rows = page.getByRole("group", { name: "Fixes" }).locator("tbody tr[id^=mx-row-]");
   await expect(rows.nth(1)).toBeVisible({ timeout: 45_000 });
   // a fix goes into the steward's draft batch, which the owner approves in test 6
   type Batches = { items: { status: string; items: number }[] };
@@ -228,8 +228,8 @@ test("7. steward: an exception is raised and listed", async ({ page, request }) 
     description: "Raised by the acceptance walk.", object_type: MODULE });
   expect(r.status).toBe(201);
   await page.goto("/work?filter=exceptions");
-  await expect(page.getByRole("button", { name: /^Exceptions \d+/ })).toBeVisible({ timeout: 45_000 });
-  note((await page.getByRole("button", { name: /^Exceptions \d+/ }).innerText()).replace(/\s+/g, " "));
+  await expect(page.getByText("Acceptance walk exception").first()).toBeVisible({ timeout: 45_000 });
+  note("raised exception listed in the exceptions sheet");
 });
 
 test("8. owner: send an approved batch to SAP; no SAP is reachable, so Meridian hands the load file", async ({ request }) => {

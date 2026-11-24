@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Object detail, market bar preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Token values copied from ui/tokens.css. New tokens proposed in market-bar-build.md are marked "new". */
+:root{
+  --mx-paper:#F4F5F7;--mx-sheet:#FFFFFF;--mx-well:#ECEEF2;--mx-line:#E1E4EA;--mx-line-strong:#C5CAD3;
+  --mx-ink:#0F1115;--mx-ink-2:#474D58;--mx-ink-3:#5E6572;
+  --mx-cobalt:#1D4FE0;--mx-cobalt-soft:#E7EDFF;
+  --mx-go:#157A47;--mx-go-soft:#E3F3EA;--mx-watch:#A86200;--mx-watch-soft:#FBEFD9;--mx-stop:#C4281F;--mx-stop-soft:#FBE6E4;
+  --mx-sev-critical:#C4281F;--mx-sev-high:#B84308;--mx-sev-medium:#8A6400;--mx-sev-low:#3D5BD9;
+  --mx-violet:#6A4BD8;--mx-violet-ink:#3A2890;--mx-violet-soft:#EFEBFF;--mx-violet-edge:#CABDF6;
+  --mx-on-solid:#FFFFFF;--mx-scrim:rgb(15 17 21 / 40%);--mx-glass:rgb(255 255 255 / 96%);
+  --mx-elev-1:0 1px 0 rgb(15 17 21 / 4%);
+  --mx-elev-2:0 4px 12px rgb(15 17 21 / 10%),0 0 0 1px rgb(15 17 21 / 6%);
+  --mx-elev-3:0 16px 48px rgb(15 17 21 / 18%),0 0 0 1px rgb(15 17 21 / 8%);
+  --mx-elev-dock:0 10px 30px rgb(58 40 144 / 18%);
+  --mx-s1:4px;--mx-s2:8px;--mx-s3:12px;--mx-s4:16px;--mx-s5:24px;--mx-s6:32px;--mx-s7:48px;/* s7 new */
+  --mx-h-control:32px;--mx-h-row:32px;--mx-h-bar:48px;--mx-h-subbar:40px;--mx-page-gutter:24px;--mx-page-max:105rem;
+  --mx-r-chip:4px;--mx-r-control:6px;--mx-r-card:8px;--mx-r-pill:999px;
+  --mx-font:"Geist",system-ui,sans-serif;--mx-mono:"Geist Mono",ui-monospace,monospace;
+  --mx-fs-micro:11px;--mx-fs-small:12px;--mx-fs-body:13px;--mx-fs-title:15px;--mx-fs-h1:22px;--mx-fs-display:28px;--mx-fs-score:56px;
+  --mx-dur-instant:80ms;--mx-dur:140ms;--mx-dur-panel:220ms;--mx-dur-value:600ms;/* instant, panel, value new */
+  --mx-ease:cubic-bezier(0.2,0,0,1);--mx-ease-exit:cubic-bezier(0.4,0,1,1);--mx-ease-value:cubic-bezier(0.3,0,0.2,1);/* exit, value new */
+}
+:root[data-theme="dark"]{
+  --mx-paper:#0C0D12;--mx-sheet:#15161D;--mx-well:#1D1F29;--mx-line:#2A2D3A;--mx-line-strong:#3C4052;
+  --mx-ink:#F1F2F6;--mx-ink-2:#B6BAC6;--mx-ink-3:#8D93A2;--mx-cobalt:#7D9CFF;--mx-cobalt-soft:#1C2750;
+  --mx-go:#4CC38A;--mx-go-soft:#14281F;--mx-watch:#E5A63A;--mx-watch-soft:#2D2410;--mx-stop:#F0685E;--mx-stop-soft:#331816;
+  --mx-sev-critical:#F0685E;--mx-sev-high:#FF8A4C;--mx-sev-medium:#E5A63A;--mx-sev-low:#7D9CFF;
+  --mx-violet:#A590FF;--mx-violet-ink:#D9CFFF;--mx-violet-soft:#231D45;--mx-violet-edge:#4F4388;--mx-on-solid:#0C0D12;
+  --mx-glass:rgb(21 22 29 / 96%);
+}
+@media (prefers-reduced-motion:reduce){:root{--mx-dur-instant:0ms;--mx-dur:0ms;--mx-dur-panel:0ms;--mx-dur-value:0ms}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--mx-paper);color:var(--mx-ink);font:400 var(--mx-fs-body)/20px var(--mx-font);font-variant-numeric:tabular-nums;padding-bottom:120px}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+:focus-visible{outline:2px solid var(--mx-cobalt);outline-offset:1px;border-radius:var(--mx-r-chip)}
+.mono{font-family:var(--mx-mono)}.muted{color:var(--mx-ink-3)}.ink2{color:var(--mx-ink-2)}.num{text-align:right}
+kbd{font:500 var(--mx-fs-micro)/16px var(--mx-mono);border:1px solid var(--mx-line-strong);border-radius:var(--mx-r-chip);padding:0 4px;color:var(--mx-ink-2);background:var(--mx-sheet)}
+
+/* shell */
+.topbar{position:sticky;top:0;z-index:30;height:var(--mx-h-bar);background:var(--mx-glass);box-shadow:var(--mx-elev-1);border-bottom:1px solid var(--mx-line);display:flex;align-items:center;gap:var(--mx-s5);padding:0 var(--mx-page-gutter)}
+.brand{font-weight:600;font-size:var(--mx-fs-title)}
+.nav{display:flex;gap:var(--mx-s1)}
+.nav a{color:var(--mx-ink-2);text-decoration:none;padding:6px 10px;border-radius:var(--mx-r-control);font-weight:500}
+.nav a[aria-current]{color:var(--mx-ink);background:var(--mx-well)}
+.nav a:hover{background:var(--mx-well)}
+.spacer{flex:1}
+.btn{height:var(--mx-h-control);padding:0 var(--mx-s3);border:1px solid var(--mx-line-strong);border-radius:var(--mx-r-control);background:var(--mx-sheet);font-weight:500;display:inline-flex;align-items:center;gap:var(--mx-s2);transition:background var(--mx-dur-instant) var(--mx-ease)}
+.btn:hover{background:var(--mx-well)}
+.btn.primary{background:var(--mx-cobalt);border-color:var(--mx-cobalt);color:var(--mx-on-solid)}
+.btn.primary:hover{background:var(--mx-cobalt)}
+.btn.quiet{border-color:transparent;background:none}
+.subbar{height:var(--mx-h-subbar);display:flex;align-items:center;gap:var(--mx-s4);padding:0 var(--mx-page-gutter);border-bottom:1px solid var(--mx-line);background:var(--mx-sheet);font-size:var(--mx-fs-small)}
+.crumbs a{color:var(--mx-ink-2);text-decoration:none}.crumbs b{font-weight:600}
+.stepper{display:flex;align-items:center;gap:var(--mx-s2);list-style:none;margin:0;padding:0}
+.stepper li{display:flex;align-items:center;gap:6px;color:var(--mx-ink-3)}
+.stepper li::before{content:attr(data-n);width:18px;height:18px;border-radius:var(--mx-r-pill);border:1px solid var(--mx-line-strong);display:grid;place-items:center;font-size:var(--mx-fs-micro);font-weight:600}
+.stepper li.done{color:var(--mx-ink-2)}.stepper li.done::before{background:var(--mx-go-soft);border-color:var(--mx-go);color:var(--mx-go);content:"\2713"}
+.stepper li.now{color:var(--mx-ink);font-weight:600}.stepper li.now::before{background:var(--mx-cobalt);border-color:var(--mx-cobalt);color:var(--mx-on-solid)}
+.stepper li+li{padding-left:var(--mx-s2);border-left:1px solid var(--mx-line)}
+.page{max-width:var(--mx-page-max);margin:0 auto;padding:var(--mx-s5) var(--mx-page-gutter);display:grid;gap:var(--mx-s4)}
+.card{background:var(--mx-sheet);border:1px solid var(--mx-line);border-radius:var(--mx-r-card);padding:var(--mx-s4)}
+.card h2{margin:0 0 var(--mx-s3);font:600 var(--mx-fs-body)/20px var(--mx-font);display:flex;align-items:baseline;gap:var(--mx-s2)}
+.card h2 small{font-weight:400;color:var(--mx-ink-3);font-size:var(--mx-fs-small)}
+
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(360px,5fr) 7fr;gap:var(--mx-s5);align-items:center}
+.score{display:flex;align-items:baseline;gap:var(--mx-s3)}
+.score b{font:600 var(--mx-fs-score)/1 var(--mx-font);letter-spacing:-0.02em}
+.verdict{font-size:var(--mx-fs-title);font-weight:600;line-height:22px}
+.ruler{position:relative;height:52px;margin-top:var(--mx-s3)}
+.ruler .zones{position:absolute;inset:16px 0 auto 0;height:12px;display:flex;border-radius:var(--mx-r-chip);overflow:hidden;gap:2px}
+.ruler .zones i{display:block;height:100%}
+.ruler .gate{position:absolute;top:10px;height:24px;width:1.5px;background:var(--mx-ink)}
+.ruler .gate span{position:absolute;top:26px;left:50%;transform:translateX(-50%);font-size:var(--mx-fs-micro);color:var(--mx-ink-2);white-space:nowrap}
+.ruler .mk{position:absolute;top:14px;width:16px;height:16px;margin-left:-8px;border-radius:var(--mx-r-pill);transition:left var(--mx-dur-value) var(--mx-ease-value)}
+.ruler .mk.solid{background:var(--mx-ink);border:2px solid var(--mx-sheet)}
+.ruler .mk.hollow{background:var(--mx-sheet);border:2px solid var(--mx-ink)}
+.ruler .mk.proj{background:var(--mx-sheet);border:2px dashed var(--mx-cobalt)}
+.ruler .mk span{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);font-size:var(--mx-fs-micro);white-space:nowrap;color:var(--mx-ink-2)}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid var(--mx-line);border-radius:var(--mx-r-card);overflow:hidden}
+.kpi{padding:var(--mx-s3) var(--mx-s4);border-right:1px solid var(--mx-line);display:block;transition:background var(--mx-dur-instant) var(--mx-ease)}
+.kpi:last-child{border-right:0}.kpi:hover{background:var(--mx-well)}
+.kpi[aria-pressed="true"]{background:var(--mx-cobalt-soft);box-shadow:inset 0 -2px 0 var(--mx-cobalt)}
+.kpi span{display:block;font-size:var(--mx-fs-small);color:var(--mx-ink-2)}
+.kpi b{display:block;font:600 var(--mx-fs-h1)/28px var(--mx-font)}
+.kpi em{font-style:normal;font-size:var(--mx-fs-micro);color:var(--mx-ink-3)}
+.cap{margin-top:var(--mx-s3);padding:var(--mx-s2) var(--mx-s3);border-left:3px solid var(--mx-stop);background:var(--mx-stop-soft);border-radius:0 var(--mx-r-control) var(--mx-r-control) 0;font-size:var(--mx-fs-small)}
+.linkish{color:var(--mx-cobalt);font-weight:500;text-decoration:underline;text-decoration-color:transparent;text-underline-offset:2px}
+.linkish:hover{text-decoration-color:currentColor}
+
+/* charts */
+.charts{display:grid;grid-template-columns:5fr 4fr 3fr;gap:var(--mx-s4)}
+svg text{font:400 11px var(--mx-font);fill:var(--mx-ink-3)}
+.tip{position:fixed;z-index:60;pointer-events:none;background:var(--mx-sheet);box-shadow:var(--mx-elev-2);border-radius:var(--mx-r-control);padding:var(--mx-s2) var(--mx-s3);font-size:var(--mx-fs-small);line-height:16px;max-width:320px;display:none}
+.tip b{font-weight:600}
+.dim{display:grid;grid-template-columns:110px 1fr 40px 64px;gap:var(--mx-s2);align-items:center;width:100%;height:28px;padding:0 var(--mx-s1);border-radius:var(--mx-r-chip)}
+.dim:hover{background:var(--mx-well)}.dim[aria-pressed="true"]{background:var(--mx-cobalt-soft)}
+.dim .track{height:8px;background:var(--mx-well);border-radius:var(--mx-r-chip);position:relative}
+.dim .track i{position:absolute;inset:0 auto 0 0;background:var(--mx-cobalt);border-radius:var(--mx-r-chip)}
+.dim .track u{position:absolute;top:-3px;height:14px;width:1.5px;background:var(--mx-ink)}
+.sevbar{display:flex;gap:2px;height:20px;margin:var(--mx-s2) 0 var(--mx-s3)}
+.sevbar button{height:100%;border-radius:var(--mx-r-chip);min-width:6px}
+.sevrow{display:grid;grid-template-columns:12px 1fr auto;gap:var(--mx-s2);align-items:center;width:100%;height:28px;padding:0 var(--mx-s1);border-radius:var(--mx-r-chip)}
+.sevrow:hover{background:var(--mx-well)}.sevrow[aria-pressed="true"]{background:var(--mx-cobalt-soft)}
+.dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+/* grid */
+.toolbar{display:flex;align-items:center;gap:var(--mx-s2);flex-wrap:wrap;margin-bottom:var(--mx-s3)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 var(--mx-s2);border-radius:var(--mx-r-chip);background:var(--mx-cobalt-soft);font-size:var(--mx-fs-small);font-weight:500}
+.chip button{color:var(--mx-ink-2);font-size:14px;line-height:1}
+select.btn{appearance:none;padding-right:var(--mx-s5);background-image:none}
+table{width:100%;border-collapse:collapse}
+th{position:sticky;top:var(--mx-h-bar);background:var(--mx-sheet);z-index:5;text-align:left;font:500 var(--mx-fs-small)/16px var(--mx-font);color:var(--mx-ink-2);height:var(--mx-h-row);padding:0 var(--mx-s2);border-bottom:1px solid var(--mx-line-strong);white-space:nowrap}
+th button{font-weight:500}th.num{text-align:right}
+td{height:var(--mx-h-row);padding:0 var(--mx-s2);border-bottom:1px solid var(--mx-line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0}
+tbody tr{cursor:pointer;transition:background var(--mx-dur-instant) var(--mx-ease)}
+tbody tr:hover{background:var(--mx-well)}
+tbody tr.focus{box-shadow:inset 2px 0 0 var(--mx-cobalt);background:var(--mx-cobalt-soft)}
+tr.group td{background:var(--mx-well);font-weight:600;font-size:var(--mx-fs-small);cursor:default}
+.sev{display:inline-flex;align-items:center;gap:6px;font-size:var(--mx-fs-small);font-weight:500}
+.cellbar{display:inline-block;height:6px;border-radius:2px;vertical-align:middle;margin-right:var(--mx-s2)}
+.bulk{display:none;align-items:center;gap:var(--mx-s3);padding:var(--mx-s2) var(--mx-s3);background:var(--mx-ink);color:var(--mx-sheet);border-radius:var(--mx-r-control);margin-bottom:var(--mx-s3)}
+.bulk.on{display:flex}.bulk .btn{background:var(--mx-sheet);color:var(--mx-ink);border-color:var(--mx-sheet)}
+.foot{display:flex;justify-content:space-between;padding-top:var(--mx-s3);font-size:var(--mx-fs-small);color:var(--mx-ink-2)}
+
+/* panel */
+.panel{position:fixed;top:var(--mx-h-bar);right:0;bottom:0;width:420px;background:var(--mx-sheet);box-shadow:var(--mx-elev-3);z-index:40;transform:translateX(100%);transition:transform var(--mx-dur-panel) var(--mx-ease);display:flex;flex-direction:column}
+.panel.open{transform:none}
+.panel header{padding:var(--mx-s4);border-bottom:1px solid var(--mx-line);display:grid;gap:var(--mx-s2)}
+.panel h3{margin:0;font:600 var(--mx-fs-title)/22px var(--mx-font);white-space:normal}
+.panel .body{padding:var(--mx-s4);overflow:auto;display:grid;gap:var(--mx-s4);align-content:start;flex:1}
+.panel footer{padding:var(--mx-s3) var(--mx-s4);border-top:1px solid var(--mx-line);display:flex;gap:var(--mx-s2);align-items:center}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--mx-line);border-radius:var(--mx-r-card)}
+.trio button{padding:var(--mx-s2) var(--mx-s3);border-right:1px solid var(--mx-line)}.trio button:last-child{border:0}
+.trio button:hover{background:var(--mx-well)}
+.trio span{display:block;font-size:var(--mx-fs-micro);color:var(--mx-ink-2)}.trio b{font:600 var(--mx-fs-title)/22px var(--mx-font)}
+.label{font-size:var(--mx-fs-micro);font-weight:600;color:var(--mx-ink-2);margin-bottom:var(--mx-s1)}
+.rec{display:grid;grid-template-columns:1fr auto;gap:2px var(--mx-s2);padding:var(--mx-s2) 0;border-bottom:1px solid var(--mx-line);font-size:var(--mx-fs-small)}
+.prop{display:inline-flex;align-items:center;gap:4px;padding:0 6px;border-radius:var(--mx-r-chip);background:var(--mx-violet-soft);color:var(--mx-violet-ink);border:1px solid var(--mx-violet-edge);font-weight:500}
+
+/* dock, toast, menus */
+.dock{position:fixed;left:50%;bottom:var(--mx-s4);transform:translateX(-50%);width:min(40rem,calc(100% - 48px));height:44px;background:var(--mx-sheet);border:1.5px solid var(--mx-violet-edge);border-radius:var(--mx-r-pill);box-shadow:var(--mx-elev-dock);display:flex;align-items:center;gap:var(--mx-s2);padding:0 6px 0 var(--mx-s3);z-index:35}
+.dock .scope{background:var(--mx-violet-soft);color:var(--mx-violet-ink);border-radius:var(--mx-r-pill);padding:2px 10px;font-size:var(--mx-fs-small);font-weight:500;white-space:nowrap}
+.dock input{flex:1;border:0;background:none;font:inherit;color:inherit;outline:none;min-width:0}
+.dock .go{background:var(--mx-violet);color:var(--mx-on-solid);border-radius:var(--mx-r-pill);height:32px;padding:0 var(--mx-s3);font-weight:500}
+.toasts{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:50;display:grid;gap:var(--mx-s2)}
+.toast{background:var(--mx-ink);color:var(--mx-sheet);border-radius:var(--mx-r-control);padding:var(--mx-s2) var(--mx-s3);display:flex;gap:var(--mx-s3);align-items:center;box-shadow:var(--mx-elev-2)}
+.toast button{color:var(--mx-sheet);font-weight:600;text-decoration:underline}
+.scrim{position:fixed;inset:0;background:var(--mx-scrim);z-index:70;display:none;place-items:start center;padding-top:12vh}
+.scrim.open{display:grid}
+.modal{width:min(560px,calc(100% - 32px));background:var(--mx-sheet);border-radius:var(--mx-r-card);box-shadow:var(--mx-elev-3);overflow:hidden}
+.modal input{width:100%;height:44px;border:0;border-bottom:1px solid var(--mx-line);padding:0 var(--mx-s4);font:inherit;font-size:var(--mx-fs-title);background:none;color:inherit;outline:none}
+.modal ul{list-style:none;margin:0;padding:var(--mx-s2);max-height:50vh;overflow:auto}
+.modal li{display:flex;justify-content:space-between;align-items:center;height:var(--mx-h-row);padding:0 var(--mx-s2);border-radius:var(--mx-r-control);cursor:pointer}
+.modal li:hover,.modal li.on{background:var(--mx-well)}
+.modal h4{margin:0;padding:var(--mx-s3) var(--mx-s4) 0;font:600 var(--mx-fs-body)/20px var(--mx-font)}
+
+/* states */
+.sk{background:var(--mx-well);border-radius:var(--mx-r-chip);animation:mx-pulse 1400ms ease-in-out infinite}
+@keyframes mx-pulse{50%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+.skel,.state-empty,.state-error{display:none}
+body[data-state="loading"] .live{display:none}body[data-state="loading"] .skel{display:block}
+body[data-state="empty"] #gridLive,body[data-state="error"] #gridLive{display:none}
+body[data-state="empty"] .state-empty,body[data-state="error"] .state-error{display:grid}
+.state{justify-items:start;gap:var(--mx-s2);padding:var(--mx-s6) var(--mx-s4)}
+.state b{font-size:var(--mx-fs-title)}
+.previewbar{position:fixed;left:var(--mx-s4);bottom:var(--mx-s4);z-index:36;background:var(--mx-sheet);border:1px dashed var(--mx-line-strong);border-radius:var(--mx-r-control);padding:var(--mx-s1) var(--mx-s2);font-size:var(--mx-fs-micro);display:flex;gap:var(--mx-s1);align-items:center}
+.previewbar button{padding:2px 6px;border-radius:var(--mx-r-chip)}.previewbar button[aria-pressed="true"]{background:var(--mx-well);font-weight:600}
+@media (max-width:1100px){.hero,.charts{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.panel{width:100%}}
+</style>
+</head>
+<body data-state="loaded">
+
+<div class="topbar">
+  <span class="brand">Meridian</span>
+  <nav class="nav" aria-label="Main">
+    <a href="#">Home</a><a href="#" aria-current="page">Objects</a><a href="fix-flow.html">Clean</a><a href="#">Load</a><a href="#">Monitor</a><a href="#">More</a>
+  </nav>
+  <span class="spacer"></span>
+  <button class="btn" id="openCmd">Search or run a command <kbd>Ctrl K</kbd></button>
+  <button class="btn quiet" id="openKeys" aria-label="Keyboard shortcuts"><kbd>?</kbd></button>
+  <button class="btn quiet" id="theme">Dark</button>
+</div>
+
+<div class="subbar">
+  <span class="crumbs"><a href="#">ECC production</a> <span class="muted">(ECC 6.0 EHP8, client 100)</span> / <b>Material master</b></span>
+  <span class="muted">Run 8, 16 Oct 2026 05:17 UTC</span>
+  <span class="muted" id="fresh" title="Shown from cache at once, refreshed in the background">Refreshed 12 s ago</span>
+  <span class="spacer"></span>
+  <ol class="stepper" aria-label="Cleaning cycle">
+    <li class="done" data-n="1">Pull</li><li class="now" data-n="2">Clean</li><li data-n="3">Upload</li><li data-n="4">Score</li><li data-n="5">Compare</li>
+  </ol>
+</div>
+
+<main class="page">
+
+  <!-- Hero: score, ruler, and five numbers that each open their records -->
+  <section class="card">
+    <div class="live hero">
+      <div>
+        <div class="score"><b id="shown">70</b>
+          <div><div class="verdict">Held at the 70 gate</div>
+          <div class="ink2">Measured <button class="linkish" data-drill="receipt">71.8</button>, capped by <button class="linkish" data-drill="sev:critical">2 critical rules</button> over tolerance</div></div>
+        </div>
+        <div class="ruler" id="ruler" role="img" aria-label="Score ruler from 40 to 100. Shown score 70, measured 71.8, gates at 70 and 85."></div>
+        <div class="cap">Clear <button class="linkish" data-rule="MM003">MM003 Material type</button> and <button class="linkish" data-rule="MM035">MM035 Valuation class</button> to lift the cap. One cleared: cap moves to 85 and the score shows 71.8. Tolerance is 25 rows or 0.1 %.</div>
+      </div>
+      <div>
+        <div class="kpis">
+          <button class="kpi" data-drill="all"><span>Records checked</span><b>61,816</b><em>coverage 97.4 %</em></button>
+          <button class="kpi" data-drill="open"><span>Open work</span><b>25,712</b><em>records to fix</em></button>
+          <button class="kpi" data-drill="var"><span>Value at risk</span><b title="ZAR 4,200,000">ZAR 4.2M</b><em>sorted by value</em></button>
+          <button class="kpi" data-drill="rules"><span>Rules measured</span><b>80</b><em>8 over tolerance</em></button>
+          <button class="kpi" data-drill="features"><span>SAP features</span><b>3 <small class="muted" style="font-size:13px;font-weight:500">blocked</small></b><em>5 degraded</em></button>
+        </div>
+        <p class="muted" style="margin:var(--mx-s2) 0 0;font-size:var(--mx-fs-small)">Every number opens what it counts. Click one: the rule grid below filters, the filter shows as a chip, and the address bar keeps it.</p>
+      </div>
+    </div>
+    <div class="skel"><div style="display:grid;grid-template-columns:5fr 7fr;gap:24px"><div><div class="sk" style="height:56px;width:220px"></div><div class="sk" style="height:12px;margin-top:28px"></div></div><div class="sk" style="height:84px"></div></div></div>
+  </section>
+
+  <!-- Charts: each is a control -->
+  <section class="charts">
+    <div class="card">
+      <h2>Score by run <small>drag to zoom, hover for the run</small><span class="spacer" style="flex:1"></span><span id="zoomChip"></span></h2>
+      <div class="live" id="trend"></div>
+      <div class="skel"><div class="sk" style="height:180px"></div></div>
+      <div class="muted" style="font-size:var(--mx-fs-micro);display:flex;gap:var(--mx-s4);margin-top:var(--mx-s1)">
+        <span><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="var(--mx-cobalt)" stroke-width="2"/></svg> Shown score</span>
+        <span><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="var(--mx-ink-3)" stroke-width="2" stroke-dasharray="3 3"/></svg> Measured score</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Dimensions <small>click to filter rules, tick marks the 70 gate</small></h2>
+      <div class="live" id="dims"></div>
+      <div class="skel"><div class="sk" style="height:180px"></div></div>
+    </div>
+    <div class="card">
+      <h2>Failing records by severity</h2>
+      <div class="live" id="sevs"></div>
+      <div class="skel"><div class="sk" style="height:180px"></div></div>
+    </div>
+  </section>
+
+  <!-- One rule grid, replacing three rule lists -->
+  <section class="card">
+    <h2>Rules <small id="ruleCount"></small></h2>
+    <div class="toolbar">
+      <span id="chips"></span>
+      <span class="spacer" style="flex:1"></span>
+      <label class="muted" for="groupBy">Group by</label>
+      <select class="btn" id="groupBy"><option value="">None</option><option value="dimension">Dimension</option><option value="severity">Severity</option><option value="table">SAP table</option></select>
+      <button class="btn" id="saveView">Save view</button>
+      <button class="btn">Export</button>
+    </div>
+    <div class="bulk" id="bulk"><span id="bulkText"></span><span class="spacer" style="flex:1"></span><button class="btn" id="bulkFix">Fix these records</button><button class="btn" id="bulkClear">Clear</button></div>
+    <div id="gridLive" class="live">
+      <table id="grid" aria-label="Rules over tolerance">
+        <colgroup><col style="width:32px"><col style="width:104px"><col style="width:29%"><col style="width:22%"><col style="width:12%"><col style="width:9%"><col style="width:9%"><col style="width:10%"><col style="width:8%"></colgroup>
+        <thead><tr>
+          <th><input type="checkbox" id="all" aria-label="Select all rules"></th>
+          <th><button data-sort="sev">Severity</button></th><th><button data-sort="id">Rule</button></th><th><button data-sort="field">Field</button></th>
+          <th class="num"><button data-sort="aff">Failing records</button></th><th class="num"><button data-sort="pass">Pass rate</button></th>
+          <th class="num"><button data-sort="prop">With proposal</button></th><th class="num"><button data-sort="var">Value at risk</button></th><th>Dimension</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="foot"><span id="footText"></span><span><kbd>J</kbd> <kbd>K</kbd> move, <kbd>X</kbd> select, <kbd>Enter</kbd> open, <kbd>F</kbd> fix, <kbd>Esc</kbd> close</span></div>
+    </div>
+    <div class="skel">
+      <div style="display:grid;gap:8px"><div class="sk" style="height:16px;width:60%"></div><div class="sk" style="height:16px"></div><div class="sk" style="height:16px;width:92%"></div><div class="sk" style="height:16px;width:96%"></div><div class="sk" style="height:16px;width:88%"></div><div class="sk" style="height:16px"></div></div>
+    </div>
+    <div class="state state-empty"><b>No rule fails over tolerance in run 8</b><span class="ink2">All 80 rules are within 25 rows or 0.1 %. The score is not capped.</span><button class="btn primary">See all 80 rules</button></div>
+    <div class="state state-error"><b>The rule list did not load</b><span class="ink2">The server took more than 10 seconds to answer. The score and charts above are from the last refresh and still correct.</span><span><button class="btn primary" data-state="loaded">Try again</button> <button class="btn">Open the run log</button></span></div>
+  </section>
+</main>
+
+<!-- Rule panel: opens in place, never a route change -->
+<aside class="panel" id="panel" aria-label="Rule detail"></aside>
+
+<div class="tip" id="tip" role="status"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<div class="dock"><span class="scope" id="dockScope">Material master, run 8</span><input placeholder="Ask Aletheia about this object" aria-label="Ask Aletheia"><button class="go">Ask</button></div>
+
+<div class="scrim" id="cmd"><div class="modal" role="dialog" aria-label="Command menu"><input id="cmdIn" placeholder="Type a command, a rule or a record"><ul id="cmdList"></ul></div></div>
+<div class="scrim" id="keys"><div class="modal" role="dialog" aria-label="Keyboard shortcuts"><h4>Shortcuts on this screen</h4><ul>
+  <li>Move down and up the grid <span><kbd>J</kbd> <kbd>K</kbd></span></li><li>Select the row <kbd>X</kbd></li><li>Open the rule <kbd>Enter</kbd></li>
+  <li>Fix the rule's records <kbd>F</kbd></li><li>Group by dimension <kbd>G</kbd></li><li>Clear all filters <kbd>C</kbd></li>
+  <li>Command menu <kbd>Ctrl K</kbd></li><li>Undo the last change <kbd>Ctrl Z</kbd></li><li>Close <kbd>Esc</kbd></li></ul></div></div>
+
+<div class="previewbar" aria-label="Preview only">Preview state
+  <button data-state="loaded" aria-pressed="true">Loaded</button><button data-state="loading">Loading</button><button data-state="empty">Empty</button><button data-state="error">Error</button>
+</div>
+
+<script>
+// Content from lib/api/v2/fixtures (receipt, rules, work rows). Marked "illustrative": per-run scores and the
+// "with proposal" counts, which the fixtures do not state. See market-bar-build.md, backend gaps.
+const RULES=[
+ {id:"MM142",sev:"high",field:"MARA.MEINS",fd:"Base unit of measure",aff:3640,pass:94.11,v:1184000,dim:"Consistency",prop:2184,name:"Base unit of measure must reference a valid entry in T006",why:"UoM conversions fail; stock quantities cannot be resolved; costing and CO-PA calculations error."},
+ {id:"MM003",sev:"critical",field:"MARA.MTART",fd:"Material type",aff:2904,pass:95.3,v:902000,dim:"Completeness",prop:0,name:"Material type is mandatory, it determines procurement and storage behaviour",why:"Material cannot be created or used in MM, PP, SD, or FI without a valid material type."},
+ {id:"MM007",sev:"medium",field:"MARA.MATKL",fd:"Material group",aff:3118,pass:94.96,v:611000,dim:"Completeness",prop:1730,name:"Material group is required for reporting and procurement",why:"Spend analysis and procurement reporting are incomplete."},
+ {id:"MM015",sev:"medium",field:"MARA.BRGEW",fd:"Gross weight",aff:2266,pass:96.33,v:402000,dim:"Completeness",prop:0,name:"Gross weight is recommended for shipping and transportation planning",why:"Transportation planning and load building produce incorrect results."},
+ {id:"MM302",sev:"medium",field:"MARC.EKGRP",fd:"Purchasing group",aff:2712,pass:95.61,v:338000,dim:"Completeness",prop:1990,name:"Externally procured, MRP-planned material has no purchasing group",why:""},
+ {id:"MM023",sev:"high",field:"MARC.DISMM",fd:"MRP type",aff:1894,pass:96.94,v:268000,dim:"Validity",prop:0,name:"MRP type (plant level) must exist in T438A",why:""},
+ {id:"MM035",sev:"critical",field:"MBEW.BKLAS",fd:"Valuation class",aff:1420,pass:97.7,v:241000,dim:"Completeness",prop:1402,name:"Valuation class is mandatory for FI account determination",why:""},
+ {id:"MM028",sev:"high",field:"MARC.BESKZ",fd:"Procurement type",aff:1260,pass:97.96,v:198000,dim:"Validity",prop:0,name:"Procurement type must be E (in-house), F (external), or X (both)",why:""}];
+const ROWS=[["232","Hydraulic hose 3/8 in","MM003",null,12390],["100","Hex bolt M8 zinc","MM142","EA",11120],["140","Hex bolt M8 zinc","MM142",null,10880],["101","Hex bolt M8 zinc","MM142","EA",10530],["318","Pump seal kit KSB 80","MM003",null,9140],["370","Relay 24 V DC 2 CO","MM003",null,8850],["238","Pump seal kit KSB 80","MM142","EA",8000],["296","Grease EP2 18 kg","MM142",null,7780],["496","Grease EP2 18 kg","MM015",null,7420],["364","Oil filter 10 micron","MM007","0420",7070],["892","Hydraulic hose 3/8 in","MM035","3000",6770],["428","Circuit breaker 3P 32A","MM003",null,6720],["430","Relay 24 V DC 2 CO","MM142","EA",5740],["1024","Oil filter 10 micron","MM028",null,5670],["506","Gasket flange DN50","MM142",null,5560],["582","Coupling jaw L100","MM015",null,5480],["628","Circuit breaker 3P 32A","MM302","P01",4740],["634","Conveyor roller 89 mm","MM015",null,4130]];
+const DIMS=[["Completeness",.25,62,15.5,21],["Accuracy",.25,72,18,5],["Consistency",.20,70,14,24],["Timeliness",.10,88,8.8,3],["Uniqueness",.10,90,9,3],["Validity",.10,65,6.5,24]];
+const RUNS=[["28 Aug",64.2],["4 Sep",65.9],["11 Sep",66.8],["18 Sep",68.4],["25 Sep",69.1],["2 Oct",70.6],["9 Oct",71.2],["16 Oct",71.8]]; // measured, illustrative except run 8
+const SEVC={critical:"var(--mx-sev-critical)",high:"var(--mx-sev-high)",medium:"var(--mx-sev-medium)",low:"var(--mx-sev-low)"};
+const SEVO={critical:0,high:1,medium:2,low:3};
+const $=s=>document.querySelector(s),n=x=>x.toLocaleString("en-ZA").replace(/ /g,","),cap=s=>s[0].toUpperCase()+s.slice(1);
+const zar=x=>"ZAR "+(x>=1e6?(x/1e6).toFixed(1)+"M":Math.round(x/1e3)+"k");
+let F={dim:null,sev:null},sort={k:"var",d:-1},sel=new Set(),focus=0,view=[],zoom=[0,7];
+
+// tooltip
+const tip=$("#tip");
+function showTip(e,html){tip.innerHTML=html;tip.style.display="block";const w=tip.offsetWidth;tip.style.left=Math.min(e.clientX+12,innerWidth-w-8)+"px";tip.style.top=(e.clientY+14)+"px"}
+const hideTip=()=>tip.style.display="none";
+
+// ruler, scale 40 to 100
+const pos=v=>((v-40)/60*100)+"%";
+$("#ruler").innerHTML=`<div class="zones"><i style="width:50%;background:var(--mx-stop-soft)"></i><i style="width:25%;background:var(--mx-watch-soft)"></i><i style="width:25%;background:var(--mx-go-soft)"></i></div>
+ <div class="gate" style="left:${pos(70)}"><span>70 gate</span></div><div class="gate" style="left:${pos(85)}"><span>85 gate</span></div>
+ <div class="mk hollow" style="left:${pos(71.8)}"><span style="left:28px">measured 71.8</span></div><div class="mk solid" style="left:${pos(70)}"><span style="left:auto;right:22px;transform:none">shown 70</span></div>`;
+
+// trend chart with hover and brush zoom
+function trend(){
+  const W=560,H=180,L=30,R=44,T=10,B=22,pts=RUNS.slice(zoom[0],zoom[1]+1),lo=60,hi=90;
+  const x=i=>L+(pts.length>1?i*(W-L-R)/(pts.length-1):0),y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
+  const shown=pts.map(p=>Math.min(p[1],70)); // cap 70 applied in every run shown, illustrative
+  const path=a=>a.map((v,i)=>(i?"L":"M")+x(i)+" "+y(v)).join(" ");
+  let g="";[60,70,80,90].forEach(v=>g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--mx-line)"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${v}</text>`);
+  g+=`<line x1="${L}" x2="${W-R}" y1="${y(70)}" y2="${y(70)}" stroke="var(--mx-ink)" stroke-width="1"/><line x1="${L}" x2="${W-R}" y1="${y(85)}" y2="${y(85)}" stroke="var(--mx-ink)" stroke-width="1"/><text x="${W-R+4}" y="${y(85)+4}">85 gate</text>`;
+  pts.forEach((p,i)=>g+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle">${p[0]}</text>`);
+  g+=`<path d="${path(pts.map(p=>p[1]))}" fill="none" stroke="var(--mx-ink-3)" stroke-width="2" stroke-dasharray="3 3"/><path d="${path(shown)}" fill="none" stroke="var(--mx-cobalt)" stroke-width="2"/>`;
+  const last=pts.length-1;g+=`<circle cx="${x(last)}" cy="${y(shown[last])}" r="4" fill="var(--mx-cobalt)" stroke="var(--mx-sheet)" stroke-width="2"/><text x="${W-R+4}" y="${y(shown[last])+12}" style="fill:var(--mx-ink);font-weight:600">${shown[last]}</text>`;
+  g+=`<line id="cross" y1="${T}" y2="${H-B}" stroke="var(--mx-ink-3)" stroke-width="1" visibility="hidden"/><rect id="brush" y="${T}" height="${H-T-B}" fill="var(--mx-cobalt)" opacity=".12" visibility="hidden"/>`;
+  $("#trend").innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="cursor:crosshair;user-select:none" role="img" aria-label="Shown and measured score for runs ${zoom[0]+1} to ${zoom[1]+1}">${g}</svg>`;
+  const svg=$("#trend svg"),idx=e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)/r.width*W;return Math.max(0,Math.min(pts.length-1,Math.round((px-L)/((W-L-R)/Math.max(1,pts.length-1)))))};
+  let down=null;
+  svg.onmousemove=e=>{const i=idx(e),c=svg.querySelector("#cross");c.setAttribute("x1",x(i));c.setAttribute("x2",x(i));c.setAttribute("visibility","visible");
+    const prev=i?pts[i][1]-pts[i-1][1]:null;
+    showTip(e,`<b>Run ${zoom[0]+i+1}, ${pts[i][0]} 2026</b><br>Shown ${shown[i]}${pts[i][1]>70?" (capped at 70)":""}<br>Measured ${pts[i][1]}${prev==null?"":`, ${prev>=0?"+":""}${prev.toFixed(1)} points on the run before`}`);
+    if(down!=null){const b=svg.querySelector("#brush"),a=Math.min(down,i),z=Math.max(down,i);b.setAttribute("x",x(a));b.setAttribute("width",Math.max(2,x(z)-x(a)));b.setAttribute("visibility","visible")}};
+  svg.onmouseleave=()=>{hideTip();svg.querySelector("#cross").setAttribute("visibility","hidden")};
+  svg.onmousedown=e=>down=idx(e);
+  svg.onmouseup=e=>{const i=idx(e);if(down!=null&&Math.abs(i-down)>=1){zoom=[zoom[0]+Math.min(down,i),zoom[0]+Math.max(down,i)];trend();
+    $("#zoomChip").innerHTML=`<span class="chip">Runs ${zoom[0]+1} to ${zoom[1]+1}<button aria-label="Reset zoom" id="rz">&times;</button></span>`;$("#rz").onclick=()=>{zoom=[0,7];$("#zoomChip").innerHTML="";trend()}}down=null};
+}
+
+// dimensions and severity: click to filter
+function side(){
+  $("#dims").innerHTML=DIMS.map(d=>`<button class="dim" aria-pressed="${F.dim===d[0]}" data-dim="${d[0]}"><span>${d[0]}</span><span class="track"><i style="width:${d[2]}%"></i><u style="left:70%"></u></span><b class="num">${d[2]}</b><span class="muted num" style="font-size:11px">${d[3]} points</span></button>`).join("")+
+   `<p class="muted" style="font-size:11px;margin:8px 4px 0">Score = weight &times; dimension score. Completeness and Accuracy weigh 25 %, Consistency 20 %, the rest 10 % each.</p>`;
+  document.querySelectorAll(".dim").forEach((b,i)=>{b.onclick=()=>{F.dim=F.dim===b.dataset.dim?null:b.dataset.dim;render()};
+    b.onmousemove=e=>showTip(e,`<b>${DIMS[i][0]}</b><br>Score ${DIMS[i][2]}, weight ${DIMS[i][1]*100} %, ${DIMS[i][3]} points<br>${DIMS[i][4]} rules measured`);b.onmouseleave=hideTip});
+  const tot={critical:0,high:0,medium:0};RULES.forEach(r=>tot[r.sev]+=r.aff);const sum=tot.critical+tot.high+tot.medium,other=25712-sum;
+  $("#sevs").innerHTML=`<div class="sevbar">${Object.keys(tot).map(s=>`<button style="width:${tot[s]/25712*100}%;background:${SEVC[s]}" data-sev="${s}" aria-label="${cap(s)}, ${n(tot[s])} records"></button>`).join("")}<button style="width:${other/25712*100}%;background:var(--mx-line-strong)" aria-label="Other rules"></button></div>`+
+   Object.keys(tot).map(s=>`<button class="sevrow" aria-pressed="${F.sev===s}" data-sev="${s}"><i class="dot" style="background:${SEVC[s]}"></i><span>${cap(s)}</span><b>${n(tot[s])}</b></button>`).join("")+
+   `<div class="sevrow" style="cursor:default"><i class="dot" style="background:var(--mx-line-strong)"></i><span class="ink2">72 rules within tolerance</span><b>${n(other)}</b></div>`;
+  document.querySelectorAll("[data-sev]").forEach(b=>b.onclick=()=>{F.sev=F.sev===b.dataset.sev?null:b.dataset.sev;render()});
+}
+
+// grid
+function render(){
+  side();
+  view=RULES.filter(r=>(!F.dim||r.dim===F.dim)&&(!F.sev||r.sev===F.sev));
+  const key={sev:r=>-SEVO[r.sev],id:r=>r.id,field:r=>r.field,aff:r=>r.aff,pass:r=>r.pass,prop:r=>r.prop,var:r=>r.v}[sort.k];
+  view.sort((a,b)=>(key(a)>key(b)?1:key(a)<key(b)?-1:0)*sort.d);
+  const g=$("#groupBy").value,gk=r=>g==="table"?r.field.split(".")[0]:g==="severity"?cap(r.sev):r.dim;
+  if(g)view.sort((a,b)=>gk(a).localeCompare(gk(b)));
+  focus=Math.min(focus,Math.max(0,view.length-1));
+  const max=Math.max(...RULES.map(r=>r.aff));let html="",lastG=null;
+  view.forEach((r,i)=>{
+    if(g&&gk(r)!==lastG){lastG=gk(r);const grp=view.filter(x=>gk(x)===lastG);html+=`<tr class="group"><td colspan="9">${lastG} <span class="muted" style="font-weight:400">${grp.length} rules, ${n(grp.reduce((s,x)=>s+x.aff,0))} failing records, ${zar(grp.reduce((s,x)=>s+x.v,0))} at risk</span></td></tr>`}
+    html+=`<tr data-i="${i}" class="${i===focus?"focus":""}"><td><input type="checkbox" ${sel.has(r.id)?"checked":""} data-sel="${r.id}" aria-label="Select ${r.id}"></td>
+     <td><span class="sev"><i class="dot" style="background:${SEVC[r.sev]}"></i>${cap(r.sev)}</span></td>
+     <td title="${r.name}"><span class="mono">${r.id}</span> <span class="ink2">${r.name}</span></td>
+     <td><span class="mono">${r.field}</span> <span class="ink2">${r.fd}</span></td>
+     <td class="num"><i class="cellbar" style="width:${r.aff/max*48}px;background:${SEVC[r.sev]}"></i>${n(r.aff)}</td>
+     <td class="num">${r.pass.toFixed(1)} %</td>
+     <td class="num">${r.prop?`<span class="prop">${n(r.prop)}</span>`:`<span class="muted">none</span>`}</td>
+     <td class="num" title="ZAR ${n(r.v)}">${zar(r.v)}</td><td class="ink2">${r.dim}</td></tr>`});
+  $("#grid tbody").innerHTML=html||`<tr><td colspan="9" style="height:96px;white-space:normal"><b>No rule matches these filters.</b> <button class="linkish" id="clr2">Clear the filters</button> to see all 8.</td></tr>`;
+  if($("#clr2"))$("#clr2").onclick=()=>{F={dim:null,sev:null};render()};
+  $("#chips").innerHTML=(F.dim?`<span class="chip">Dimension is ${F.dim}<button data-x="dim" aria-label="Remove filter">&times;</button></span> `:"")+(F.sev?`<span class="chip">Severity is ${F.sev}<button data-x="sev" aria-label="Remove filter">&times;</button></span>`:"")||`<span class="muted">No filters. Click a chart, a number or a column to add one.</span>`;
+  document.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{F[b.dataset.x]=null;render()});
+  $("#ruleCount").textContent=`${view.length} of 8 over tolerance, 80 measured`;
+  $("#footText").textContent=`${n(view.reduce((s,r)=>s+r.aff,0))} failing records in view, ${zar(view.reduce((s,r)=>s+r.v,0))} at risk`;
+  const picked=RULES.filter(r=>sel.has(r.id));$("#bulk").classList.toggle("on",picked.length>0);
+  $("#bulkText").textContent=`${picked.length} rules selected, ${n(picked.reduce((s,r)=>s+r.aff,0))} failing records, ${n(picked.reduce((s,r)=>s+r.prop,0))} with a proposal`;
+  history.replaceState(null,"","?"+new URLSearchParams(Object.entries({dim:F.dim,sev:F.sev,group:g}).filter(e=>e[1])).toString());
+}
+$("#grid").onclick=e=>{const c=e.target.closest("[data-sel]");if(c){c.checked?sel.add(c.dataset.sel):sel.delete(c.dataset.sel);render();return}
+  const s=e.target.closest("[data-sort]");if(s){sort={k:s.dataset.sort,d:sort.k===s.dataset.sort?-sort.d:-1};render();return}
+  const tr=e.target.closest("tr[data-i]");if(tr){focus=+tr.dataset.i;render();openRule(view[focus].id)}};
+$("#all").onchange=e=>{view.forEach(r=>e.target.checked?sel.add(r.id):sel.delete(r.id));render()};
+$("#groupBy").onchange=render;$("#bulkClear").onclick=()=>{sel.clear();render()};
+$("#bulkFix").onclick=()=>location.href="fix-flow.html?rule="+[...sel][0];
+$("#saveView").onclick=()=>toast("View saved for the team as “Over tolerance, by value”","Undo");
+
+// rule panel
+function openRule(id){
+  const r=RULES.find(x=>x.id===id),recs=ROWS.filter(x=>x[2]===id),crit=r.sev==="critical";
+  $("#panel").innerHTML=`<header><span class="sev"><i class="dot" style="background:${SEVC[r.sev]}"></i>${cap(r.sev)} <span class="muted">, ${r.dim}</span><span class="spacer" style="flex:1"></span><button class="btn quiet" id="closeP" aria-label="Close">Close <kbd>Esc</kbd></button></span>
+    <h3><span class="mono">${r.id}</span> ${r.name}</h3><div><span class="mono">${r.field}</span> <span class="ink2">${r.fd}</span></div></header>
+   <div class="body">
+    <div class="trio"><button title="Open these records"><span>Failing records</span><b>${n(r.aff)}</b></button><button><span>Pass rate</span><b>${r.pass.toFixed(1)} %</b></button><button title="ZAR ${n(r.v)}"><span>Value at risk</span><b>${zar(r.v)}</b></button></div>
+    ${crit?`<div class="cap" style="margin:0">This rule caps the score. It is ${n(r.aff-62)} records over the tolerance of 62 (0.1 % of 61,816). Bring it under and the cap moves from 70 to 85.</div>`:""}
+    ${r.why?`<div><div class="label">Why it matters in SAP</div>${r.why}</div>`:""}
+    <div><div class="label">Aletheia proposals</div>${r.prop?`<span class="prop">${n(r.prop)} of ${n(r.aff)}</span> records have a proposed value with evidence. ${n(r.aff-r.prop)} need a person.`:`No proposals for this rule. The value cannot be inferred from the record, so each one needs a person or a value map.`}</div>
+    <div><div class="label">Highest value records</div>${recs.map(x=>`<div class="rec"><span><span class="mono">${x[0].padStart(18,"0")}</span></span><span class="num">${zar(x[4])}</span><span class="ink2">${x[1]}</span><span class="num">${x[3]?`<span class="prop">${x[3]}</span>`:`<span class="muted">no proposal</span>`}</span></div>`).join("")}
+     <button class="linkish" style="margin-top:8px" data-go>See all ${n(r.aff)} records</button></div>
+   </div>
+   <footer><button class="btn primary" data-go>Fix ${n(r.aff)} records <kbd style="background:none;color:inherit;border-color:currentColor">F</kbd></button><button class="btn" id="askA">Ask Aletheia</button><span class="spacer" style="flex:1"></span><button class="btn quiet">Rule history</button></footer>`;
+  $("#panel").classList.add("open");$("#closeP").onclick=closeRule;
+  document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>location.href="fix-flow.html?rule="+id);
+  $("#askA").onclick=()=>{$("#dockScope").textContent=`${r.id} ${r.fd}, run 8`;document.querySelector(".dock input").focus()};
+}
+function closeRule(){$("#panel").classList.remove("open")}
+document.querySelectorAll("[data-rule]").forEach(b=>b.onclick=()=>openRule(b.dataset.rule));
+document.querySelectorAll("[data-drill]").forEach(b=>b.onclick=()=>{const d=b.dataset.drill;
+  if(d.startsWith("sev:")){F.sev=d.slice(4);render();$("#grid").scrollIntoView({behavior:"smooth",block:"center"})}
+  else if(d==="var"){sort={k:"var",d:-1};F={dim:null,sev:null};render();$("#grid").scrollIntoView({behavior:"smooth",block:"center"})}
+  else if(d==="open"||d==="all"){location.href="fix-flow.html"}
+  else toast({receipt:"Opens the score receipt in the side panel: six dimensions, weights, cap rule",rules:"Opens all 80 rules in this grid, passing ones included",features:"Filters the grid to the rules behind 3 blocked and 5 degraded SAP features"}[d])});
+
+// toast with an action slot
+function toast(msg,action,fn){const t=document.createElement("div");t.className="toast";t.innerHTML=`<span>${msg}</span>${action?`<button>${action}</button>`:""}`;$("#toasts").append(t);
+  if(action)t.querySelector("button").onclick=()=>{fn&&fn();t.remove()};setTimeout(()=>t.remove(),8000)}
+
+// command menu and shortcuts
+const CMDS=[["Fix records for the focused rule","F",()=>location.href="fix-flow.html?rule="+view[focus].id],["Group rules by dimension","G",()=>{$("#groupBy").value="dimension";render()}],["Clear all filters","C",()=>{F={dim:null,sev:null};render()}],["Show only critical rules","",()=>{F.sev="critical";render()}],["Download the score receipt","",()=>toast("Score receipt for run 8 is downloading")],["Go to Clean","",()=>location.href="fix-flow.html"],...RULES.map(r=>[`Open rule ${r.id} ${r.fd}`,"",()=>openRule(r.id)])];
+function cmdList(q){$("#cmdList").innerHTML=CMDS.map((c,i)=>[c,i]).filter(([c])=>c[0].toLowerCase().includes(q.toLowerCase())).map(([c,i],j)=>`<li data-c="${i}" class="${j?"":"on"}">${c[0]}${c[1]?`<kbd>${c[1]}</kbd>`:""}</li>`).join("")||`<li>No command matches. Press Enter to search records for “${q}”.</li>`}
+const openM=id=>{$(id).classList.add("open");if(id==="#cmd"){$("#cmdIn").value="";cmdList("");$("#cmdIn").focus()}};
+$("#openCmd").onclick=()=>openM("#cmd");$("#openKeys").onclick=()=>openM("#keys");
+$("#cmdIn").oninput=e=>cmdList(e.target.value);
+$("#cmdList").onclick=e=>{const li=e.target.closest("[data-c]");if(li){$("#cmd").classList.remove("open");CMDS[+li.dataset.c][2]()}};
+document.querySelectorAll(".scrim").forEach(s=>s.onclick=e=>{if(e.target===s)s.classList.remove("open")});
+document.onkeydown=e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();openM("#cmd");return}
+  if(e.key==="Escape"){document.querySelectorAll(".scrim.open").forEach(s=>s.classList.remove("open"));closeRule();return}
+  if($("#cmd").classList.contains("open")){if(e.key==="Enter"){const li=$("#cmdList .on");if(li&&li.dataset.c){$("#cmd").classList.remove("open");CMDS[+li.dataset.c][2]()}}return}
+  if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
+  const k=e.key.toLowerCase();
+  if(e.key==="?")openM("#keys");
+  else if(k==="j"){focus=Math.min(view.length-1,focus+1);render()}else if(k==="k"){focus=Math.max(0,focus-1);render()}
+  else if(k==="x"&&view[focus]){const id=view[focus].id;sel.has(id)?sel.delete(id):sel.add(id);render()}
+  else if(e.key==="Enter"&&view[focus])openRule(view[focus].id)
+  else if(k==="f"&&view[focus])location.href="fix-flow.html?rule="+view[focus].id
+  else if(k==="g"){$("#groupBy").value=$("#groupBy").value?"":"dimension";render()}
+  else if(k==="c"){F={dim:null,sev:null};render()}};
+
+// preview state switch and theme
+document.querySelectorAll("[data-state]").forEach(b=>b.onclick=()=>{document.body.dataset.state=b.dataset.state;document.querySelectorAll(".previewbar button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.state===b.dataset.state))});
+$("#theme").onclick=e=>{const d=document.documentElement,dark=d.dataset.theme!=="dark";d.dataset.theme=dark?"dark":"light";e.target.textContent=dark?"Light":"Dark"};
+let age=12;setInterval(()=>{age=age>=60?0:age+1;$("#fresh").textContent=age?`Refreshed ${age} s ago`:"Refreshing"},1000);
+
+const q=new URLSearchParams(location.search);F.dim=q.get("dim");F.sev=q.get("sev");if(q.get("group"))$("#groupBy").value=q.get("group");
+trend();render();
+</script>
+</body>
+</html>

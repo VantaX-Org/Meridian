@@ -55,7 +55,7 @@ export function MigrationRuns() {
       <Card title={t("Runs")} sub={t("{n} runs", { n: runs.length })}>
         <Gate loading={q.isLoading} error={q.isError} retry={() => void q.refetch()} what={t("the runs")}>
           {runs.length ? (
-            <DataTable
+            <DataTable id="migrationruns-1" viewMenu
               label={t("Runs")}
               rows={runs}
               rowKey={(r: MigrationRun) => r.id}

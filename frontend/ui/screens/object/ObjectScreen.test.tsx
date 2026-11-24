@@ -29,101 +29,92 @@ beforeEach(() => {
 afterEach(() => undo());
 
 describe("ObjectScreen", () => {
+  const ready = async () => { await screen.findByTestId("score-hero"); await screen.findByRole("group", { name: "Every measured rule" }); };
+  const rowCount = () => within(screen.getByRole("group", { name: "Every measured rule" })).getAllByRole("row").length - 1;
+  const url = async () => (await import("@/ui/testing/nav-store")).getUrl();
+
   it("shows why the workbook download failed", async () => {
     dl.fn.mockRejectedValue(new Error("That run has not finished."));
     renderWithQuery(screenWithChat());
-    await screen.findByRole("list", { name: "Failing rules" });
+    await ready();
     await waitFor(() => expect((screen.getByRole("button", { name: "Download workbook" }) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "Download workbook" }));
     expect((await screen.findByTestId("download-error")).textContent).toBe("That run has not finished.");
-    expect(dl.fn).toHaveBeenCalledTimes(1);
-  });
-
-  it("lists every measured rule, passing too, with All, Failing and Passing views", async () => {
-    renderWithQuery(screenWithChat());
-    await screen.findByRole("list", { name: "Failing rules" });
-    const all = await screen.findByRole("tab", { name: /^All/ });
-    const count = (el: HTMLElement) => Number(el.textContent?.replace(/\D/g, ""));
-    const fail = count(screen.getByRole("tab", { name: /^Failing/ }));
-    const pass = count(screen.getByRole("tab", { name: /^Passing/ }));
-    expect(count(all)).toBe(fail + pass);
-    fireEvent.click(screen.getByRole("tab", { name: /^Passing/ }));
-    const table = document.getElementById("all-rules-panel-passing") as HTMLElement;
-    if (pass > 0) expect(within(table).getAllByRole("link")[0].getAttribute("href")).toContain("/r/");
   });
 
   it("turns an old as_of link into run", async () => {
     window.history.replaceState(null, "", "/o/ecc-production/material-master?fixture=1&as_of=b0500000-0000-4000-8000-000000000005");
     renderWithQuery(screenWithChat());
-    const { getUrl } = await import("@/ui/testing/nav-store");
-    await waitFor(() => expect(getUrl()).toMatch(/[?&]run=b0500000-0000-4000-8000-000000000005/));
-    expect(getUrl()).not.toMatch(/as_of=/);
+    await waitFor(async () => expect(await url()).toMatch(/[?&]run=b0500000-0000-4000-8000-000000000005/));
+    expect(await url()).not.toMatch(/as_of=/);
   });
 
-  it("shows the header, the score ring and the rule list, and a selected rule opens its tabs", async () => {
+  it("builds the four regions: hero, key figures, three charts, one rule grid", async () => {
+    const { container } = renderWithQuery(screenWithChat());
+    await ready();
+    expect(screen.getByTestId("score-hero").textContent).toMatch(/Measured/);
+    expect(screen.getByRole("img", { name: "Score of this object against the gates" })).toBeTruthy();
+    expect(container.querySelector("[data-mark='object']")).toBeTruthy();
+    expect(screen.getByText("Score by run")).toBeTruthy();
+    expect(screen.getByText("Dimensions")).toBeTruthy();
+    expect(screen.getByText("Failing records by severity")).toBeTruthy();
+    expect(screen.getAllByRole("group", { name: "Every measured rule" }).length).toBe(1);
+    expect(screen.getByRole("navigation", { name: "Object screens" })).toBeTruthy();
+    expect(screen.getByTestId("monitor-strip")).toBeTruthy();
+    expect(screen.getByTestId("score-receipt")).toBeTruthy();
+  });
+
+  it("a key figure filters the grid through the URL and the active chip removes it", async () => {
     renderWithQuery(screenWithChat());
-    expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Fix records" })).toBeTruthy();
-    const list = await screen.findByRole("list", { name: "Failing rules" });
-    const rows = within(list).getAllByRole("button");
-    expect(rows.length).toBeGreaterThan(0);
-    fireEvent.click(rows[0]);
+    await ready();
+    const all = rowCount();
+    fireEvent.click(screen.getAllByRole("button", { name: /^Failing records/ })[0]);
+    await waitFor(async () => expect(await url()).toMatch(/rules\.f\.state=failing/));
+    await waitFor(() => expect(rowCount()).toBeLessThanOrEqual(all));
+    fireEvent.click(screen.getByRole("button", { name: "Remove filter Failing" }));
+    await waitFor(async () => expect(await url()).not.toMatch(/rules\.f\.state/));
+    await waitFor(() => expect(rowCount()).toBe(all));
+  });
+
+  it("a severity tile filters and group by severity writes the URL", async () => {
+    renderWithQuery(screenWithChat());
+    await ready();
+    const sev = screen.getAllByRole("button").find((b) => /critical/i.test(b.textContent ?? "") && b.closest(".mx-card"));
+    expect(sev).toBeTruthy();
+    fireEvent.click(sev as HTMLElement);
+    await waitFor(async () => expect(await url()).toMatch(/rules\.f\.severity=critical/));
+    fireEvent.change(screen.getByRole("combobox", { name: /Group by/i }), { target: { value: "severity" } });
+    await waitFor(async () => expect(await url()).toMatch(/rules\.group=severity/));
+  });
+
+  it("the cap sentence names the capping rules and opens one in the side panel", async () => {
+    renderWithQuery(screenWithChat());
+    await ready();
+    const cap = await screen.findByTestId("cap-list");
+    const first = within(cap).getAllByRole("button")[0];
+    fireEvent.click(first);
+    await waitFor(async () => expect(await url()).toMatch(/rules\.open=/));
     expect(await screen.findByRole("tab", { name: "Overview" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: "Why" }));
-    expect(screen.getByRole("link", { name: "Open the rule" }).getAttribute("href")).toContain("/r/");
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    await waitFor(async () => expect(await url()).not.toMatch(/rules\.open=/));
   });
 
-  it("opens the Aletheia chat and answers a suggested prompt with evidence", async () => {
+  it("opens the panel from the URL and keeps it on reload", async () => {
+    window.history.replaceState(null, "", "/o/ecc-production/material-master?fixture=1&rules.f.state=failing");
+    const first = renderWithQuery(screenWithChat());
+    await ready();
+    fireEvent.click(within(screen.getByRole("group", { name: "Every measured rule" })).getAllByRole("row")[1]);
+    await screen.findByRole("tab", { name: "Overview" });
+    const saved = await url();
+    expect(saved).toMatch(/rules\.open=/);
+    first.unmount();
+    window.history.replaceState(null, "", saved);
     renderWithQuery(screenWithChat());
-    await screen.findByRole("list", { name: "Failing rules" });
-    // the screen can re-mount its header while the run settles, so click until the chat opens
-    await waitFor(() => { fireEvent.click(screen.getByRole("button", { name: "Ask Aletheia" })); expect(screen.getByRole("dialog")).toBeTruthy(); });
-    // an answer asked while the run is still settling says so, so ask again until the rule data is in
-    await waitFor(() => {
-      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Which rule hurts this object most?" }));
-      expect(within(screen.getByRole("dialog")).getByRole("link", { name: "Review fixes" })).toBeTruthy();
-    });
+    expect(await screen.findByRole("tab", { name: "Overview" })).toBeTruthy();
+    expect(await url()).toContain("rules.f.state=failing");
   });
 
-  it("lists the run number and the record count as separate meta items", async () => {
-    renderWithQuery(screenWithChat());
-    await screen.findByRole("list", { name: "Failing rules" });
-    const h = await screen.findByRole("heading", { level: 1 });
-    await waitFor(() => {
-      const items = Array.from(h.closest("header")?.querySelectorAll(".mx-head-meta li") ?? []).map((x) => x.textContent ?? "");
-      expect(items.some((x) => /^Run \S+/.test(x))).toBe(true);
-      expect(items.some((x) => /^\S+ records checked against \d+ rules/.test(x))).toBe(true);
-    });
-  });
-
-  it("on a stacked layout a selected rule opens its detail in a bottom sheet, not in the page", async () => {
-    const mm = vi.fn().mockImplementation(() => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} }));
-    vi.stubGlobal("matchMedia", mm);
-    window.matchMedia = mm as unknown as typeof window.matchMedia;
-    try {
-      renderWithQuery(screenWithChat());
-      const list = await screen.findByRole("list", { name: "Failing rules" });
-      expect(screen.queryByRole("tab", { name: "Overview" })).toBeNull();
-      fireEvent.click(within(list).getAllByRole("button")[0]);
-      const dialog = await screen.findByRole("dialog", { name: "Selected rule" });
-      expect(within(dialog).getByRole("tab", { name: "Overview" })).toBeTruthy();
-      fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
-      expect(screen.queryByRole("dialog")).toBeNull();
-    } finally {
-      vi.unstubAllGlobals();
-      // @ts-expect-error jsdom has no matchMedia by default
-      delete window.matchMedia;
-    }
-  });
-
-  it("explains how the score is made", async () => {
-    renderWithQuery(screenWithChat());
-    const receipt = await screen.findByTestId("score-receipt");
-    expect(receipt.querySelector("summary")?.textContent ?? "").toMatch(/^How [\d.]+ is made$/);
-    expect(within(receipt).getByText("Records checked")).toBeTruthy();
-  });
-
-  it("on an older run the actions are gated and point to the current run", async () => {
+  it("gates the actions on an older run and points to the current one", async () => {
     window.history.replaceState(null, "", "/o/ecc-production/material-master?fixture=1&run=b0500000-0000-4000-8000-000000000005");
     renderWithQuery(screenWithChat());
     const old = await screen.findByTestId("old-run");
@@ -131,42 +122,20 @@ describe("ObjectScreen", () => {
     expect(screen.queryByRole("link", { name: "Fix records" })).toBeNull();
   });
 
-  it("draws the score on the ruler, with no ring, and every sub-screen reachable from the strip", async () => {
-    const { container } = renderWithQuery(screenWithChat());
-    await screen.findByRole("list", { name: "Failing rules" });
-    expect(await screen.findByRole("img", { name: "Score of this object against the gates" })).toBeTruthy();
-    expect(container.querySelector("[data-mark='object']")).toBeTruthy();
-    expect(container.querySelector(".mx-ring")).toBeNull();
-    const nav = screen.getByRole("navigation", { name: "Object screens" });
-    const links = within(nav).getAllByRole("link");
-    expect(links.length).toBe(12);
-    expect(within(nav).getByRole("link", { name: "Processes" }).getAttribute("href")).toContain("/processes");
-    expect(within(nav).getByText("More")).toBeTruthy();
-  });
-
-  it("opens the Aletheia sheet scoped to this object and draws a chart", async () => {
+  it("opens the Aletheia chat scoped to this object and answers with evidence", async () => {
     renderWithQuery(screenWithChat());
-    await screen.findByRole("list", { name: "Failing rules" });
+    await ready();
     await waitFor(() => { fireEvent.click(screen.getByRole("button", { name: "Ask Aletheia" })); expect(screen.getByRole("dialog")).toBeTruthy(); });
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getAllByText(/^Asking about /).length).toBeGreaterThan(0);
+    expect(within(screen.getByRole("dialog")).getAllByText(/^Asking about /).length).toBeGreaterThan(0);
     await waitFor(() => {
       fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Which rule hurts this object most?" }));
-      expect(screen.getByRole("dialog").querySelector(".mx-ans-chart")).toBeTruthy();
+      expect(within(screen.getByRole("dialog")).getByRole("link", { name: "Review fixes" })).toBeTruthy();
     });
   });
 
-  it("builds the board: hero, zoned ruler, three cards, worst rules table", async () => {
+  it("shows a skeleton while loading", async () => {
     renderWithQuery(screenWithChat());
-    const hero = await screen.findByTestId("score-hero");
-    expect(hero.textContent).toMatch(/Measured/);
-    expect(await screen.findByText("Six dimensions")).toBeTruthy();
-    expect(screen.getByText("Holding the cap")).toBeTruthy();
-    expect(screen.getByText("Score by run")).toBeTruthy();
-    expect(screen.getAllByTestId("tonebar").length).toBeGreaterThan(0);
-    expect(screen.getByRole("link", { name: /^All \d+ rules$/ })).toBeTruthy();
-    expect(screen.getByRole("columnheader", { name: /Records affected/ })).toBeTruthy();
-    expect(screen.getAllByRole("button", { name: /critical/i }).length).toBeGreaterThan(0);
-    expect(screen.getByTestId("monitor-strip")).toBeTruthy();
+    expect(document.querySelector("[aria-busy='true']")).toBeTruthy();
+    await ready();
   });
 });

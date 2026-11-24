@@ -221,6 +221,14 @@ export interface RunList {
 export type WorkStatus = "to_fix" | "proposed" | "approved" | "awaiting_load" | "sent" | "not_an_issue" | "fixed";
 
 /** One row of GET /work/records. `value_at_risk` is the step 0 addition; absent on a server from before it. */
+export interface RowSuggestion {
+  value: string;
+  source: "rule" | "value_map" | "cleaning";
+  confidence: "high" | "medium" | null;
+  why: string | null;
+  safety: { verdict: string; reasons: string[]; source: string } | null;
+}
+
 export interface WorkRow {
   module: string;
   version_id?: string;
@@ -251,6 +259,11 @@ export interface WorkRow {
   possible_values?: { value: string; label: string | null }[] | null;
   possible_values_total?: number | null;
   field_description?: string | null;
+  /**
+   * Backend PR 791, absent until it is deployed: the proposal the engine made for this record. A row without it
+   * degrades to `suggested_value` and shows no source or confidence.
+   */
+  suggestion?: RowSuggestion | null;
   /** The value waiting in the user's draft fix batch for this record (status proposed). */
   new_value?: string | null;
   resolution?: "false_positive" | "accepted_risk" | null;
@@ -266,6 +279,8 @@ export interface WorkRow {
 }
 
 export interface WorkPage {
+  /** Backend PR 791, with `group_by`: the counts per group. */
+  groups?: { key: string; label: string; count: number }[];
   version_id: string | null;
   total: number;
   total_capped: boolean;

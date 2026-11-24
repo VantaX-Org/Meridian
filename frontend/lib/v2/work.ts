@@ -9,6 +9,7 @@ import { whole } from "./format";
 
 export type ChipId = "tofix" | "proposed" | "approvals" | "approved" | "sent" | "fixed" | "exceptions";
 export type SortKey = "value" | "due" | "age" | "owner";
+export type Seg = "proposed" | "manual";
 export type Density = "comfortable" | "compact";
 
 export interface ChipDef {
@@ -48,7 +49,10 @@ export interface LedgerState {
   /** Null: every open row. */
   chip: ChipId | null;
   module: string | null;
+  /** One rule id, or a comma list of them (the object screen links with every capping rule at once). */
   rule: string | null;
+  /** The fix screen's own split: records with a proposal, or the ones that need a hand-typed value. Null: both. */
+  seg: Seg | null;
   severity: string | null;
   assigned: string | null;
   due: string | null;
@@ -74,10 +78,10 @@ export interface LedgerState {
   density: Density | null;
 }
 
-export const DEFAULT_STATE: LedgerState = { chip: "tofix", module: null, rule: null, severity: null, assigned: null, due: null, batch: null, policy: null, system: null, asOf: null, version: null, since: null, wave: null, verdict: null, group: false, sort: "value", density: null };
+export const DEFAULT_STATE: LedgerState = { chip: "tofix", module: null, rule: null, seg: null, severity: null, assigned: null, due: null, batch: null, policy: null, system: null, asOf: null, version: null, since: null, wave: null, verdict: null, group: false, sort: "value", density: null };
 
 /** The query keys the ledger owns; everything else in the address (fixture, persona, open) is left alone. */
-export const MANAGED = ["filter", "status", "proposed", "module", "rule", "check_id", "severity", "assigned", "due", "batch", "policy", "system", "as_of_run", "version_id", "since", "wave", "verdict", "group", "sort", "density", "view"] as const;
+export const MANAGED = ["filter", "status", "proposed", "module", "rule", "check_id", "seg", "severity", "assigned", "due", "batch", "policy", "system", "as_of_run", "version_id", "since", "wave", "verdict", "group", "sort", "density", "view"] as const;
 
 function chipFrom(get: (k: string) => string | null, fallback: ChipId | null): ChipId | null {
   const filter = get("filter");
@@ -99,7 +103,9 @@ export function readState(params: URLSearchParams, view?: SavedView): LedgerStat
   const get = (k: string): string | null => params.get(k) ?? view?.filters[k] ?? null;
   const urlHasChip = params.has("filter") || params.has("status");
   // A batch lists its records in every open state, so it opens on "all open" unless a chip is asked for.
-  const chip = urlHasChip || view ? chipFrom(get, view ? null : "tofix") : get("batch") ? null : "tofix";
+  const seg = get("seg") === "proposed" || get("seg") === "manual" ? (get("seg") as Seg) : null;
+  // A seg link (from the object screen) opens on every open record; the seg is the narrowing.
+  const chip = urlHasChip || view ? chipFrom(get, view ? null : "tofix") : get("batch") || seg ? null : "tofix";
   const sort = get("sort");
   const density = params.get("density") ?? view?.density ?? view?.filters.density ?? null;
   // The API refuses since beside as_of_run, and since needs its run.
@@ -108,6 +114,7 @@ export function readState(params: URLSearchParams, view?: SavedView): LedgerStat
     chip,
     module: get("module"),
     rule: get("rule") ?? get("check_id"),
+    seg,
     severity: get("severity"),
     assigned: get("assigned"),
     due: get("due"),
@@ -128,9 +135,11 @@ export function readState(params: URLSearchParams, view?: SavedView): LedgerStat
 /** The API filters for a state: what GET /work/records, /work/summary and /work/export are asked. */
 export function filtersOf(s: LedgerState): WorkFilters {
   const c = s.chip ? chipDef(s.chip) : null;
+  const ids = ruleIds(s);
   return {
     module: s.module ?? undefined,
-    check_id: s.rule ?? undefined,
+    // The API takes one rule; with several the rows are narrowed on `checks` here (see inRules).
+    check_id: ids.length === 1 ? ids[0] : undefined,
     severity: s.severity ?? undefined,
     assigned: s.assigned ?? undefined,
     due: s.due ?? undefined,
@@ -143,8 +152,13 @@ export function filtersOf(s: LedgerState): WorkFilters {
     wave: s.wave ?? undefined,
     verdict: s.verdict ?? undefined,
     status: c ? c.status : "open",
-    proposed: c?.proposed ? true : undefined,
+    proposed: c?.proposed || s.seg === "proposed" ? true : undefined,
   };
+}
+
+/** The rule ids of a state, from `rule=A,B`. */
+export function ruleIds(s: Pick<LedgerState, "rule">): string[] {
+  return (s.rule ?? "").split(",").map((x) => x.trim()).filter(Boolean);
 }
 
 /** What the fix-sheet exports are asked: the ledger's filters (batch and policy included) and its order. */
@@ -158,6 +172,7 @@ export function toParams(s: LedgerState): Record<string, string> {
   if (s.chip !== "tofix") out.filter = s.chip ?? "open";
   if (s.module) out.module = s.module;
   if (s.rule) out.rule = s.rule;
+  if (s.seg) out.seg = s.seg;
   if (s.severity) out.severity = s.severity;
   if (s.assigned) out.assigned = s.assigned;
   if (s.due) out.due = s.due;

@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fix flow, market bar preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Token values copied from ui/tokens.css. New tokens proposed in market-bar-build.md are marked "new". */
+:root{
+  --mx-paper:#F4F5F7;--mx-sheet:#FFFFFF;--mx-well:#ECEEF2;--mx-line:#E1E4EA;--mx-line-strong:#C5CAD3;
+  --mx-ink:#0F1115;--mx-ink-2:#474D58;--mx-ink-3:#5E6572;
+  --mx-cobalt:#1D4FE0;--mx-cobalt-soft:#E7EDFF;
+  --mx-go:#157A47;--mx-go-soft:#E3F3EA;--mx-watch:#A86200;--mx-watch-soft:#FBEFD9;--mx-stop:#C4281F;--mx-stop-soft:#FBE6E4;
+  --mx-sev-critical:#C4281F;--mx-sev-high:#B84308;--mx-sev-medium:#8A6400;--mx-sev-low:#3D5BD9;
+  --mx-violet:#6A4BD8;--mx-violet-ink:#3A2890;--mx-violet-soft:#EFEBFF;--mx-violet-edge:#CABDF6;
+  --mx-on-solid:#FFFFFF;--mx-scrim:rgb(15 17 21 / 40%);--mx-glass:rgb(255 255 255 / 96%);
+  --mx-elev-1:0 1px 0 rgb(15 17 21 / 4%);
+  --mx-elev-2:0 4px 12px rgb(15 17 21 / 10%),0 0 0 1px rgb(15 17 21 / 6%);
+  --mx-elev-3:0 16px 48px rgb(15 17 21 / 18%),0 0 0 1px rgb(15 17 21 / 8%);
+  --mx-elev-dock:0 10px 30px rgb(58 40 144 / 18%);
+  --mx-s1:4px;--mx-s2:8px;--mx-s3:12px;--mx-s4:16px;--mx-s5:24px;--mx-s6:32px;--mx-s7:48px;/* s7 new */
+  --mx-h-control:32px;--mx-h-row:32px;--mx-h-bar:48px;--mx-h-subbar:40px;--mx-page-gutter:24px;--mx-page-max:105rem;
+  --mx-r-chip:4px;--mx-r-control:6px;--mx-r-card:8px;--mx-r-pill:999px;
+  --mx-font:"Geist",system-ui,sans-serif;--mx-mono:"Geist Mono",ui-monospace,monospace;
+  --mx-fs-micro:11px;--mx-fs-small:12px;--mx-fs-body:13px;--mx-fs-title:15px;--mx-fs-h1:22px;--mx-fs-display:28px;
+  --mx-dur-instant:80ms;--mx-dur:140ms;--mx-dur-panel:220ms;--mx-dur-value:600ms;/* instant, panel, value new */
+  --mx-ease:cubic-bezier(0.2,0,0,1);--mx-ease-exit:cubic-bezier(0.4,0,1,1);--mx-ease-value:cubic-bezier(0.3,0,0.2,1);/* exit, value new */
+}
+:root[data-theme="dark"]{
+  --mx-paper:#0C0D12;--mx-sheet:#15161D;--mx-well:#1D1F29;--mx-line:#2A2D3A;--mx-line-strong:#3C4052;
+  --mx-ink:#F1F2F6;--mx-ink-2:#B6BAC6;--mx-ink-3:#8D93A2;--mx-cobalt:#7D9CFF;--mx-cobalt-soft:#1C2750;
+  --mx-go:#4CC38A;--mx-go-soft:#14281F;--mx-watch:#E5A63A;--mx-watch-soft:#2D2410;--mx-stop:#F0685E;--mx-stop-soft:#331816;
+  --mx-sev-critical:#F0685E;--mx-sev-high:#FF8A4C;--mx-sev-medium:#E5A63A;--mx-sev-low:#7D9CFF;
+  --mx-violet:#A590FF;--mx-violet-ink:#D9CFFF;--mx-violet-soft:#231D45;--mx-violet-edge:#4F4388;--mx-on-solid:#0C0D12;
+  --mx-glass:rgb(21 22 29 / 96%);
+}
+@media (prefers-reduced-motion:reduce){:root{--mx-dur-instant:0ms;--mx-dur:0ms;--mx-dur-panel:0ms;--mx-dur-value:0ms}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--mx-paper);color:var(--mx-ink);font:400 var(--mx-fs-body)/20px var(--mx-font);font-variant-numeric:tabular-nums;padding-bottom:120px}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+:focus-visible{outline:2px solid var(--mx-cobalt);outline-offset:1px;border-radius:var(--mx-r-chip)}
+.mono{font-family:var(--mx-mono)}.muted{color:var(--mx-ink-3)}.ink2{color:var(--mx-ink-2)}.num{text-align:right}.grow{flex:1}
+kbd{font:500 var(--mx-fs-micro)/16px var(--mx-mono);border:1px solid var(--mx-line-strong);border-radius:var(--mx-r-chip);padding:0 4px;color:var(--mx-ink-2);background:var(--mx-sheet)}
+.topbar{position:sticky;top:0;z-index:30;height:var(--mx-h-bar);background:var(--mx-glass);box-shadow:var(--mx-elev-1);border-bottom:1px solid var(--mx-line);display:flex;align-items:center;gap:var(--mx-s5);padding:0 var(--mx-page-gutter)}
+.brand{font-weight:600;font-size:var(--mx-fs-title)}
+.nav{display:flex;gap:var(--mx-s1)}
+.nav a{color:var(--mx-ink-2);text-decoration:none;padding:6px 10px;border-radius:var(--mx-r-control);font-weight:500}
+.nav a[aria-current]{color:var(--mx-ink);background:var(--mx-well)}.nav a:hover{background:var(--mx-well)}
+.btn{height:var(--mx-h-control);padding:0 var(--mx-s3);border:1px solid var(--mx-line-strong);border-radius:var(--mx-r-control);background:var(--mx-sheet);font-weight:500;display:inline-flex;align-items:center;gap:var(--mx-s2);white-space:nowrap;transition:background var(--mx-dur-instant) var(--mx-ease)}
+.btn:hover{background:var(--mx-well)}
+.btn.primary{background:var(--mx-cobalt);border-color:var(--mx-cobalt);color:var(--mx-on-solid)}
+.btn.primary:hover{background:var(--mx-cobalt)}
+.btn.quiet{border-color:transparent;background:none}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.subbar{height:var(--mx-h-subbar);display:flex;align-items:center;gap:var(--mx-s4);padding:0 var(--mx-page-gutter);border-bottom:1px solid var(--mx-line);background:var(--mx-sheet);font-size:var(--mx-fs-small)}
+.crumbs a{color:var(--mx-ink-2);text-decoration:none}.crumbs b{font-weight:600}
+.stepper{display:flex;align-items:center;gap:var(--mx-s2);list-style:none;margin:0;padding:0}
+.stepper li{display:flex;align-items:center;gap:6px;color:var(--mx-ink-3)}
+.stepper li::before{content:attr(data-n);width:18px;height:18px;border-radius:var(--mx-r-pill);border:1px solid var(--mx-line-strong);display:grid;place-items:center;font-size:var(--mx-fs-micro);font-weight:600}
+.stepper li.done{color:var(--mx-ink-2)}.stepper li.done::before{background:var(--mx-go-soft);border-color:var(--mx-go);color:var(--mx-go);content:"\2713"}
+.stepper li.now{color:var(--mx-ink);font-weight:600}.stepper li.now::before{background:var(--mx-cobalt);border-color:var(--mx-cobalt);color:var(--mx-on-solid)}
+.stepper li+li{padding-left:var(--mx-s2);border-left:1px solid var(--mx-line)}
+
+/* pinned score strip: stays on screen for the whole flow */
+.strip{position:sticky;top:var(--mx-h-bar);z-index:20;background:var(--mx-sheet);border-bottom:1px solid var(--mx-line-strong);padding:var(--mx-s3) var(--mx-page-gutter);display:grid;grid-template-columns:auto minmax(320px,1fr) minmax(260px,auto) auto;gap:var(--mx-s5);align-items:center}
+.nums{display:flex;gap:var(--mx-s5)}
+.nums div span{display:block;font-size:var(--mx-fs-micro);color:var(--mx-ink-2)}
+.nums div b{font:600 var(--mx-fs-display)/32px var(--mx-font);letter-spacing:-0.01em;display:inline-block;border-radius:var(--mx-r-chip);padding:0 2px}
+.flash-up{animation:up var(--mx-dur-value) var(--mx-ease-value)}.flash-down{animation:down var(--mx-dur-value) var(--mx-ease-value)}
+@keyframes up{0%{background:var(--mx-go-soft)}100%{background:transparent}}
+@keyframes down{0%{background:var(--mx-stop-soft)}100%{background:transparent}}
+.ruler{position:relative;height:56px}
+.ruler .zones{position:absolute;inset:22px 0 auto 0;height:12px;display:flex;gap:2px;border-radius:var(--mx-r-chip);overflow:hidden}
+.ruler .zones i{display:block;height:100%}
+.ruler .gate{position:absolute;top:16px;height:24px;width:1.5px;background:var(--mx-ink)}
+.ruler .gate span{position:absolute;top:26px;left:50%;transform:translateX(-50%);font-size:var(--mx-fs-micro);color:var(--mx-ink-2);white-space:nowrap}
+.mk{position:absolute;top:20px;width:16px;height:16px;margin-left:-8px;border-radius:var(--mx-r-pill);transition:left var(--mx-dur-value) var(--mx-ease-value)}
+.mk.hollow{background:var(--mx-sheet);border:2px solid var(--mx-ink)}
+.mk.solid{background:var(--mx-ink);border:2px solid var(--mx-sheet)}
+.mk.proj{background:var(--mx-cobalt-soft);border:2px dashed var(--mx-cobalt);z-index:2}
+.mk.actual{background:var(--mx-go);border:2px solid var(--mx-sheet);z-index:3;display:none}
+.mk span{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);font-size:var(--mx-fs-micro);white-space:nowrap;color:var(--mx-ink-2);background:var(--mx-sheet);padding:0 2px}
+.say{font-size:var(--mx-fs-small);line-height:16px;max-width:38ch}
+.say b{font-weight:600}
+.legend{display:flex;gap:var(--mx-s3);font-size:var(--mx-fs-micro);color:var(--mx-ink-2);margin-top:2px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:var(--mx-r-pill);vertical-align:-1px;margin-right:3px}
+
+.work{max-width:var(--mx-page-max);margin:0 auto;padding:var(--mx-s4) var(--mx-page-gutter);display:grid;grid-template-columns:300px 1fr;gap:var(--mx-s4);align-items:start}
+.card{background:var(--mx-sheet);border:1px solid var(--mx-line);border-radius:var(--mx-r-card)}
+.rail{position:sticky;top:132px}
+.rail h2,.main h2{margin:0;padding:var(--mx-s3) var(--mx-s4);font:600 var(--mx-fs-body)/20px var(--mx-font);border-bottom:1px solid var(--mx-line);display:flex;align-items:baseline;gap:var(--mx-s2)}
+h2 small{font-weight:400;color:var(--mx-ink-3);font-size:var(--mx-fs-small)}
+.rule{display:grid;grid-template-columns:10px 1fr auto;gap:2px var(--mx-s2);align-items:center;width:100%;padding:var(--mx-s2) var(--mx-s4);border-bottom:1px solid var(--mx-line);transition:background var(--mx-dur-instant) var(--mx-ease)}
+.rule:hover{background:var(--mx-well)}.rule[aria-current="true"]{background:var(--mx-cobalt-soft);box-shadow:inset 2px 0 0 var(--mx-cobalt)}
+.rule .bar{grid-column:2 / 4;height:4px;background:var(--mx-well);border-radius:2px;overflow:hidden}
+.rule .bar i{display:block;height:100%;background:var(--mx-go);transition:width var(--mx-dur-value) var(--mx-ease-value)}
+.rule small{grid-column:2 / 4;font-size:var(--mx-fs-micro);color:var(--mx-ink-2)}
+.dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+.headline{padding:var(--mx-s3) var(--mx-s4);display:grid;gap:var(--mx-s1);border-bottom:1px solid var(--mx-line)}
+.headline h1{margin:0;font:600 var(--mx-fs-title)/22px var(--mx-font)}
+.cap{padding:var(--mx-s2) var(--mx-s3);border-left:3px solid var(--mx-stop);background:var(--mx-stop-soft);border-radius:0 var(--mx-r-control) var(--mx-r-control) 0;font-size:var(--mx-fs-small);margin-top:var(--mx-s1)}
+.toolbar{display:flex;align-items:center;gap:var(--mx-s2);padding:var(--mx-s2) var(--mx-s4);border-bottom:1px solid var(--mx-line);flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 var(--mx-s2);border-radius:var(--mx-r-chip);background:var(--mx-well);font-size:var(--mx-fs-small);font-weight:500}
+.chip[aria-pressed="true"]{background:var(--mx-cobalt-soft);box-shadow:inset 0 0 0 1px var(--mx-cobalt)}
+.preview{display:none;padding:var(--mx-s3) var(--mx-s4);background:var(--mx-violet-soft);border-bottom:1px solid var(--mx-violet-edge);align-items:center;gap:var(--mx-s3)}
+.preview.on{display:flex}
+.preview p{margin:0;flex:1}
+.btn.violet{background:var(--mx-violet);border-color:var(--mx-violet);color:var(--mx-on-solid)}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{text-align:left;font:500 var(--mx-fs-small)/16px var(--mx-font);color:var(--mx-ink-2);height:var(--mx-h-row);padding:0 var(--mx-s2);border-bottom:1px solid var(--mx-line-strong);white-space:nowrap}
+th.num{text-align:right}
+td{height:36px;padding:0 var(--mx-s2);border-bottom:1px solid var(--mx-line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td.pv{overflow:visible}
+tbody tr{transition:background var(--mx-dur-instant) var(--mx-ease)}
+tbody tr:hover{background:var(--mx-well)}
+tbody tr.focus{box-shadow:inset 2px 0 0 var(--mx-cobalt);background:var(--mx-cobalt-soft)}
+tbody tr.done td.cur{color:var(--mx-ink-3)}
+.old{text-decoration:line-through;color:var(--mx-ink-3)}
+.empty{color:var(--mx-ink-3);font-style:italic}
+.prop{position:relative;display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 var(--mx-s2);border-radius:var(--mx-r-chip);background:var(--mx-violet-soft);color:var(--mx-violet-ink);border:1px solid var(--mx-violet-edge);font-weight:500}
+.prop.rule{background:var(--mx-cobalt-soft);color:var(--mx-ink);border-color:var(--mx-cobalt)}
+.prop.set{background:var(--mx-go-soft);color:var(--mx-ink);border-color:var(--mx-go)}
+.prop small{font-weight:400;color:var(--mx-ink-2)}
+.ev{display:none;position:absolute;left:0;top:28px;z-index:25;width:320px;white-space:normal;background:var(--mx-sheet);color:var(--mx-ink);box-shadow:var(--mx-elev-2);border-radius:var(--mx-r-control);padding:var(--mx-s3);font-weight:400;font-size:var(--mx-fs-small);line-height:16px}
+.prop:hover .ev,.prop:focus .ev,.prop:focus-within .ev,tr.focus .prop.show .ev{display:grid;gap:var(--mx-s2)}
+.ev dl{display:grid;grid-template-columns:76px 1fr;gap:2px var(--mx-s2);margin:0}
+.ev dt{color:var(--mx-ink-2)}.ev dd{margin:0}
+.conf{display:inline-block;width:48px;height:6px;background:var(--mx-well);border-radius:2px;vertical-align:middle;margin-right:6px;overflow:hidden}
+.conf i{display:block;height:100%;background:var(--mx-violet)}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:var(--mx-fs-small);font-weight:500}
+.st i{width:8px;height:8px;border-radius:var(--mx-r-pill)}
+td input.edit{width:100%;height:26px;border:1px solid var(--mx-cobalt);border-radius:var(--mx-r-chip);padding:0 6px;font:inherit;background:var(--mx-sheet);color:inherit}
+.rowact{display:none;gap:var(--mx-s1)}
+tr:hover .rowact,tr.focus .rowact{display:inline-flex}
+.rowact button{height:24px;padding:0 6px;border:1px solid var(--mx-line-strong);border-radius:var(--mx-r-chip);background:var(--mx-sheet);font-size:var(--mx-fs-small);font-weight:500}
+.foot{display:flex;justify-content:space-between;gap:var(--mx-s4);padding:var(--mx-s3) var(--mx-s4);font-size:var(--mx-fs-small);color:var(--mx-ink-2);flex-wrap:wrap}
+.after{display:none;padding:var(--mx-s3) var(--mx-s4);border-top:1px solid var(--mx-line)}
+.after.on{display:block}
+.after table td{height:var(--mx-h-row)}
+
+.dock{position:fixed;left:50%;bottom:var(--mx-s4);transform:translateX(-50%);width:min(40rem,calc(100% - 48px));height:44px;background:var(--mx-sheet);border:1.5px solid var(--mx-violet-edge);border-radius:var(--mx-r-pill);box-shadow:var(--mx-elev-dock);display:flex;align-items:center;gap:var(--mx-s2);padding:0 6px 0 var(--mx-s3);z-index:35}
+.dock .scope{background:var(--mx-violet-soft);color:var(--mx-violet-ink);border-radius:var(--mx-r-pill);padding:2px 10px;font-size:var(--mx-fs-small);font-weight:500;white-space:nowrap}
+.dock input{flex:1;border:0;background:none;font:inherit;color:inherit;outline:none;min-width:0}
+.dock .go{background:var(--mx-violet);color:var(--mx-on-solid);border-radius:var(--mx-r-pill);height:32px;padding:0 var(--mx-s3);font-weight:500}
+.toasts{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:50;display:grid;gap:var(--mx-s2)}
+.toast{background:var(--mx-ink);color:var(--mx-sheet);border-radius:var(--mx-r-control);padding:var(--mx-s2) var(--mx-s3);display:flex;gap:var(--mx-s3);align-items:center;box-shadow:var(--mx-elev-2);position:relative;overflow:hidden}
+.toast button{color:var(--mx-sheet);font-weight:600;text-decoration:underline}
+.toast::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:100%;background:var(--mx-sheet);opacity:.5;animation:drain 8s linear forwards}
+@keyframes drain{to{width:0}}
+.scrim{position:fixed;inset:0;background:var(--mx-scrim);z-index:70;display:none;place-items:start center;padding-top:10vh}
+.scrim.open{display:grid}
+.modal{width:min(600px,calc(100% - 32px));background:var(--mx-sheet);border-radius:var(--mx-r-card);box-shadow:var(--mx-elev-3);overflow:hidden}
+.modal h4{margin:0;padding:var(--mx-s4) var(--mx-s4) var(--mx-s2);font:600 var(--mx-fs-title)/22px var(--mx-font)}
+.modal .pad{padding:0 var(--mx-s4) var(--mx-s4);display:grid;gap:var(--mx-s3)}
+.modal ul{list-style:none;margin:0;padding:var(--mx-s2)}
+.modal li{display:flex;justify-content:space-between;align-items:center;height:var(--mx-h-row);padding:0 var(--mx-s2);border-radius:var(--mx-r-control)}
+.modal footer{display:flex;gap:var(--mx-s2);justify-content:flex-end;padding:var(--mx-s3) var(--mx-s4);border-top:1px solid var(--mx-line)}
+.fmt{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--mx-s2)}
+.fmt label{border:1px solid var(--mx-line-strong);border-radius:var(--mx-r-control);padding:var(--mx-s2) var(--mx-s3);cursor:pointer;display:block}
+.fmt label:has(input:checked){border-color:var(--mx-cobalt);background:var(--mx-cobalt-soft)}
+.fmt input{position:absolute;opacity:0}
+.fmt small{display:block;color:var(--mx-ink-2);font-size:var(--mx-fs-micro)}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:var(--mx-s1) var(--mx-s3);margin:0}
+.kv dt{color:var(--mx-ink-2)}.kv dd{margin:0}
+.reasons{display:flex;gap:var(--mx-s2);flex-wrap:wrap}
+.panel{position:fixed;top:var(--mx-h-bar);right:0;bottom:0;width:400px;background:var(--mx-sheet);box-shadow:var(--mx-elev-3);z-index:40;transform:translateX(100%);transition:transform var(--mx-dur-panel) var(--mx-ease);padding:var(--mx-s4);display:grid;gap:var(--mx-s4);align-content:start;overflow:auto}
+.panel.open{transform:none}
+.panel h3{margin:0;font:600 var(--mx-fs-title)/22px var(--mx-font)}
+.label{font-size:var(--mx-fs-micro);font-weight:600;color:var(--mx-ink-2);margin-bottom:var(--mx-s1)}
+.previewbar{position:fixed;left:var(--mx-s4);bottom:var(--mx-s4);z-index:36;background:var(--mx-sheet);border:1px dashed var(--mx-line-strong);border-radius:var(--mx-r-control);padding:var(--mx-s1) var(--mx-s2);font-size:var(--mx-fs-micro);display:flex;gap:var(--mx-s2);align-items:center}
+.previewbar button{padding:2px 6px;border-radius:var(--mx-r-chip);background:var(--mx-well);font-weight:600}
+@media (max-width:1200px){.strip{grid-template-columns:1fr 1fr}.work{grid-template-columns:1fr}.rail{position:static}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="brand">Meridian</span>
+  <nav class="nav" aria-label="Main"><a href="#">Home</a><a href="object-detail.html">Objects</a><a href="#" aria-current="page">Clean</a><a href="#">Load</a><a href="#">Monitor</a><a href="#">More</a></nav>
+  <span class="grow"></span>
+  <button class="btn" id="openKeys">Shortcuts <kbd>?</kbd></button>
+  <button class="btn quiet" id="theme">Dark</button>
+</div>
+<div class="subbar">
+  <span class="crumbs"><a href="#">ECC production</a> <span class="muted">(ECC 6.0 EHP8, client 100)</span> / <a href="object-detail.html">Material master</a> / <b>Fix records</b></span>
+  <span class="muted">Run 8, 16 Oct 2026 05:17 UTC</span>
+  <span class="grow"></span>
+  <ol class="stepper" aria-label="Cleaning cycle"><li class="done" data-n="1">Pull</li><li class="now" data-n="2">Clean</li><li data-n="3" id="stUpload">Upload</li><li data-n="4" id="stScore">Score</li><li data-n="5">Compare</li></ol>
+</div>
+
+<!-- Pinned strip: the score moves as decisions are made, without leaving the screen -->
+<div class="strip">
+  <div class="nums">
+    <div><span>Shown now</span><b>70</b></div>
+    <div><span>Projected after load</span><b id="pShown">70</b></div>
+    <div id="actualBox" style="display:none"><span>Actual, run 9</span><b id="aShown"></b></div>
+  </div>
+  <div>
+    <div class="ruler" role="img" id="ruler" aria-label="Score ruler from 40 to 100 with gates at 70 and 85">
+      <div class="zones"><i style="width:50%;background:var(--mx-stop-soft)"></i><i style="width:25%;background:var(--mx-watch-soft)"></i><i style="width:25%;background:var(--mx-go-soft)"></i></div>
+      <div class="gate" style="left:50%"><span>70 gate</span></div><div class="gate" style="left:75%"><span>85 gate</span></div>
+      <div class="mk hollow" id="mkM" title="Measured score, before the cap"></div>
+      <div class="mk solid" id="mkS" title="Shown score in run 8"></div>
+      <div class="mk proj" id="mkP"><span id="mkPl"></span></div>
+      <div class="mk actual" id="mkA"></div>
+    </div>
+    <div class="legend"><span><i style="background:var(--mx-ink)"></i>Shown 70</span><span><i style="border:2px solid var(--mx-ink)"></i>Measured 71.8</span><span><i style="border:2px dashed var(--mx-cobalt);background:var(--mx-cobalt-soft)"></i>Projected</span><span id="lgA" style="display:none"><i style="background:var(--mx-go)"></i>Actual</span></div>
+  </div>
+  <div class="say" id="say" aria-live="polite"></div>
+  <div style="display:grid;gap:var(--mx-s1);justify-items:end">
+    <button class="btn primary" id="loadBtn" disabled>Create load file</button>
+    <span class="muted" style="font-size:var(--mx-fs-micro)" id="draftCount">No decisions yet</span>
+  </div>
+</div>
+
+<div class="work">
+  <aside class="card rail" aria-label="Rules to fix">
+    <h2>Rules over tolerance <small>by value at risk</small></h2>
+    <div id="rules"></div>
+  </aside>
+
+  <section class="card main">
+    <div class="headline" id="headline"></div>
+    <div class="toolbar">
+      <button class="chip" data-f="all" aria-pressed="true">All</button>
+      <button class="chip" data-f="prop">With a proposal</button>
+      <button class="chip" data-f="none">Needs a person</button>
+      <button class="chip" data-f="done">Decided</button>
+      <span class="grow"></span>
+      <button class="btn violet" id="bulkBtn">Apply all proposals</button>
+      <button class="btn" id="setBtn">Set one value for selected</button>
+      <button class="btn">Download as workbook</button>
+    </div>
+    <div class="preview" id="preview" role="alertdialog" aria-label="Bulk apply preview">
+      <p id="previewText"></p>
+      <button class="btn violet" id="previewGo">Apply as draft <kbd style="background:none;color:inherit;border-color:currentColor">Enter</kbd></button>
+      <button class="btn" id="previewNo">Cancel <kbd>Esc</kbd></button>
+    </div>
+    <table id="grid" aria-label="Failing records">
+      <colgroup><col style="width:32px"><col style="width:24%"><col style="width:11%"><col style="width:17%"><col style="width:15%"><col style="width:9%"><col style="width:9%"><col style="width:15%"></colgroup>
+      <thead><tr><th><input type="checkbox" id="all" aria-label="Select all records in view"></th><th>Material</th><th id="thCur">Current value</th><th>New value</th><th>Source</th><th class="num">Confidence</th><th class="num">Value at risk</th><th>Status</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="foot"><span id="footText"></span><span><kbd>J</kbd> <kbd>K</kbd> move, <kbd>A</kbd> accept, <kbd>E</kbd> edit, <kbd>N</kbd> reject, <kbd>X</kbd> select, <kbd>Space</kbd> evidence, <kbd>Enter</kbd> record, <kbd>Ctrl Z</kbd> undo</span></div>
+    <div class="after" id="after"></div>
+  </section>
+</div>
+
+<aside class="panel" id="panel" aria-label="Record detail"></aside>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="dock"><span class="scope" id="dockScope"></span><input placeholder="Ask Aletheia why these records fail" aria-label="Ask Aletheia"><button class="go">Ask</button></div>
+
+<div class="scrim" id="load"><div class="modal" role="dialog" aria-label="Create load file">
+  <h4>Create load file for SAP</h4>
+  <div class="pad">
+    <div class="fmt" id="fmt">
+      <label><input type="radio" name="f" checked><b>Excel workbook</b><small>xlsx, with an instruction sheet</small></label>
+      <label><input type="radio" name="f"><b>LSMW file</b><small>lsmw, tab separated</small></label>
+      <label><input type="radio" name="f"><b>BAPI call list</b><small>bapi, one call per record</small></label>
+      <label><input type="radio" name="f"><b>IDoc</b><small>idoc, flat file</small></label>
+      <label><input type="radio" name="f"><b>CSV</b><small>csv, one row per change</small></label>
+      <label><input type="radio" name="f"><b>SuccessFactors CSV</b><small>sf_csv, not used for materials</small></label>
+    </div>
+    <dl class="kv" id="loadKv"></dl>
+    <div class="cap" style="border-color:var(--mx-watch);background:var(--mx-watch-soft)" id="loadHeld"></div>
+  </div>
+  <footer><button class="btn" data-close>Cancel</button><button class="btn primary" id="loadGo">Send for approval and create file</button></footer>
+</div></div>
+
+<div class="scrim" id="reject"><div class="modal" role="dialog" aria-label="Reject proposal">
+  <h4>Why is this proposal wrong?</h4>
+  <div class="pad"><span class="ink2">Your answer trains the next proposal for this rule. It is saved with the decision.</span>
+    <div class="reasons"><button class="btn" data-why="Wrong value">Wrong value <kbd>1</kbd></button><button class="btn" data-why="Right value, wrong record">Right value, wrong record <kbd>2</kbd></button><button class="btn" data-why="Needs the business owner">Needs the business owner <kbd>3</kbd></button></div></div>
+</div></div>
+
+<div class="scrim" id="keys"><div class="modal" role="dialog" aria-label="Keyboard shortcuts"><h4>Shortcuts on this screen</h4><ul>
+  <li>Next and previous record <span><kbd>J</kbd> <kbd>K</kbd></span></li><li>Accept the proposal as a draft <kbd>A</kbd></li><li>Type a value <kbd>E</kbd></li><li>Reject the proposal <kbd>N</kbd></li>
+  <li>Select the record <kbd>X</kbd></li><li>Show the evidence <kbd>Space</kbd></li><li>Open the record <kbd>Enter</kbd></li><li>Apply all proposals <span><kbd>Shift</kbd> <kbd>A</kbd></span></li>
+  <li>Next and previous rule <span><kbd>]</kbd> <kbd>[</kbd></span></li><li>Create load file <kbd>L</kbd></li><li>Undo the last change <kbd>Ctrl Z</kbd></li><li>Close <kbd>Esc</kbd></li></ul></div></div>
+
+<div class="previewbar">Preview only <button id="simRun">Show the state after run 9</button></div>
+
+<script>
+// Content from lib/api/v2/fixtures: rule ids, names, fields, failing counts, work rows, suggested values, receipt
+// (measured 71.8, shown 70, cap 70, breaches MM003 and MM035, tolerance 25 rows or 0.1 %).
+// Illustrative, not fixture facts: current values (GET /work/records does not return them yet), confidence,
+// evidence text, "with proposal" counts, points per rule, and every figure shown for run 9.
+const RULES=[
+ {id:"MM142",sev:"high",field:"MARA.MEINS",fd:"Base unit of measure",aff:3640,prop:2184,pts:1.9,v:1184000,src:"value_map",name:"Base unit of measure must reference a valid entry in T006"},
+ {id:"MM003",sev:"critical",field:"MARA.MTART",fd:"Material type",aff:2904,prop:0,pts:1.5,v:902000,src:null,name:"Material type is mandatory, it determines procurement and storage behaviour"},
+ {id:"MM007",sev:"medium",field:"MARA.MATKL",fd:"Material group",aff:3118,prop:1730,pts:1.0,v:611000,src:"cleaning",name:"Material group is required for reporting and procurement"},
+ {id:"MM015",sev:"medium",field:"MARA.BRGEW",fd:"Gross weight",aff:2266,prop:0,pts:0.7,v:402000,src:null,name:"Gross weight is recommended for shipping and transportation planning"},
+ {id:"MM302",sev:"medium",field:"MARC.EKGRP",fd:"Purchasing group",aff:2712,prop:1990,pts:0.8,v:338000,src:"rule",name:"Externally procured, MRP-planned material has no purchasing group"},
+ {id:"MM023",sev:"high",field:"MARC.DISMM",fd:"MRP type",aff:1894,prop:0,pts:0.6,v:268000,src:null,name:"MRP type (plant level) must exist in T438A"},
+ {id:"MM035",sev:"critical",field:"MBEW.BKLAS",fd:"Valuation class",aff:1420,prop:1402,pts:0.7,v:241000,src:"rule",name:"Valuation class is mandatory for FI account determination"},
+ {id:"MM028",sev:"high",field:"MARC.BESKZ",fd:"Procurement type",aff:1260,prop:0,pts:0.4,v:198000,src:null,name:"Procurement type must be E (in-house), F (external), or X (both)"}];
+// key, name, rule, suggested value, value at risk, current value (illustrative), confidence (illustrative)
+const ROWS=[["232","Hydraulic hose 3/8 in","MM003",null,12390,"",0],["100","Hex bolt M8 zinc","MM142","EA",11120,"EACH",.97],["140","Hex bolt M8 zinc","MM142",null,10880,"BX1",0],["101","Hex bolt M8 zinc","MM142","EA",10530,"EACH",.97],["318","Pump seal kit KSB 80","MM003",null,9140,"",0],["370","Relay 24 V DC 2 CO","MM003",null,8850,"",0],["238","Pump seal kit KSB 80","MM142","EA",8000,"ea",.99],["296","Grease EP2 18 kg","MM142",null,7780,"TIN",0],["496","Grease EP2 18 kg","MM015",null,7420,"",0],["364","Oil filter 10 micron","MM007","0420",7070,"",.88],["892","Hydraulic hose 3/8 in","MM035","3000",6770,"",.94],["428","Circuit breaker 3P 32A","MM003",null,6720,"",0],["430","Relay 24 V DC 2 CO","MM142","EA",5740,"PC.",.91],["1024","Oil filter 10 micron","MM028",null,5670,"Z",0],["506","Gasket flange DN50","MM142",null,5560,"SET1",0],["582","Coupling jaw L100","MM015",null,5480,"",0],["628","Circuit breaker 3P 32A","MM302","P01",4740,"",.86],["634","Conveyor roller 89 mm","MM015",null,4130,"",0]];
+const DESC={EA:"Each"}; // only description the fixtures supply; the rest is a backend gap
+const SRC={value_map:["Aletheia, value map","prop"],cleaning:["Aletheia, cleaning","prop"],rule:["From rule","prop rule"]};
+const SEVC={critical:"var(--mx-sev-critical)",high:"var(--mx-sev-high)",medium:"var(--mx-sev-medium)"};
+const TOL=62; // 0.1 % of 61,816 records, above the 25 row floor
+const $=s=>document.querySelector(s),n=x=>Math.round(x).toLocaleString("en-US"),cap=s=>s[0].toUpperCase()+s.slice(1);
+const zar=x=>"ZAR "+(x>=1e6?(x/1e6).toFixed(1)+"M":x>=1e5?Math.round(x/1e3)+"k":n(x));
+const key=k=>k.padStart(18,"0");
+let S={rule:new URLSearchParams(location.search).get("rule")||"MM142",bulk:{},row:{},val:{},sel:new Set(),focus:0,filter:"all",ghost:null,after:false},undo=[],view=[],last={p:70};
+
+const rule=()=>RULES.find(r=>r.id===S.rule);
+const single=r=>ROWS.filter(x=>x[2]===r.id&&S.row[x[0]]==="draft"&&!(S.bulk[r.id]&&x[3])).length;
+const drafted=(r,g)=>Math.min(r.aff,(S.bulk[r.id]||(g===r.id?r.prop:0))+single(r));
+function project(g){
+  let m=71.8,over=0;RULES.forEach(r=>{const d=drafted(r,g);m+=r.pts*d/r.aff;if(r.sev==="critical"&&r.aff-d>TOL)over++});
+  const c=over>=2?70:over===1?85:100;return{m,cap:c,shown:Math.min(m,c)};
+}
+const pos=v=>Math.max(0,Math.min(100,(v-40)/60*100))+"%";
+const total=()=>RULES.reduce((s,r)=>s+drafted(r),0);
+
+function strip(){
+  const p=project(S.ghost),sh=Math.round(p.shown*10)/10,el=$("#pShown");
+  el.textContent=sh%1?sh.toFixed(1):sh;
+  if(sh!==last.p){el.classList.remove("flash-up","flash-down");void el.offsetWidth;el.classList.add(sh>last.p?"flash-up":"flash-down")}
+  $("#mkM").style.left=pos(71.8);$("#mkS").style.left=pos(70);$("#mkP").style.left=pos(p.shown);
+  $("#mkPl").textContent=(S.ghost?"if applied ":"projected ")+p.shown.toFixed(1);
+  const d=p.shown-70,t=total();let say;
+  if(!t&&!S.ghost)say=`<b>Held at the 70 gate.</b> Two critical rules are over tolerance: MM003 Material type and MM035 Valuation class. Bring one under 62 failing records and the cap moves to 85.`;
+  else if(p.cap===70)say=`<b>Measured score rises to ${p.m.toFixed(1)}, shown stays at 70.</b> The cap still holds: MM003 and MM035 are both over tolerance. Clear one to release ${(p.m-70).toFixed(1)} points.`;
+  else if(p.cap===85)say=`<b>Clears the 70 gate cap. Projected ${p.shown.toFixed(1)}, up ${d.toFixed(1)} points.</b> One critical rule is still over tolerance, so the score cannot pass 85 yet.`;
+  else say=`<b>No cap. Projected ${p.shown.toFixed(1)}, up ${d.toFixed(1)} points.</b> Both critical rules are within tolerance.`;
+  if(S.ghost)say=`<span class="muted">Preview, nothing is saved yet.</span> `+say;
+  $("#say").innerHTML=say;last.p=sh;
+  $("#loadBtn").disabled=!t;$("#loadBtn").textContent=t?`Create load file, ${n(t)} ${t===1?"record":"records"}`:"Create load file";
+  $("#draftCount").textContent=t?(k=>`${n(t)} draft ${t===1?"decision":"decisions"} in ${k} ${k===1?"rule":"rules"}, not in SAP yet`)(RULES.filter(r=>drafted(r)).length):"No decisions yet";
+}
+
+function rules(){
+  $("#rules").innerHTML=RULES.map(r=>{const d=drafted(r);return `<button class="rule" data-r="${r.id}" aria-current="${r.id===S.rule}"><i class="dot" style="background:${SEVC[r.sev]}" title="${cap(r.sev)}"></i><span><span class="mono">${r.id}</span> ${r.fd}</span><b>${n(r.aff-d)}</b>
+   <span class="bar"><i style="width:${d/r.aff*100}%"></i></span><small>${cap(r.sev)}, ${d?n(d)+" drafted, ":""}${r.prop?n(r.prop)+" with a proposal":"no proposals"}, ${zar(r.v)}</small></button>`}).join("");
+  document.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{S.rule=b.dataset.r;S.focus=0;S.sel.clear();S.ghost=null;$("#preview").classList.remove("on");render()});
+}
+
+function evidence(x,r){
+  const v=x[3],d=DESC[v],tbl=r.id==="MM142"?"T006":null;
+  const why=r.id==="MM142"?`${x[5]} is not an entry in T006. The value map for this system sends ${x[5]} to EA (Each).`:r.src==="rule"?`Derived by rule ${r.id} from other fields on the same record.`:`Matched from records with the same description that already hold this value.`;
+  return `<span class="ev" role="tooltip"><b>Why ${v}${d?" ("+d+")":""}</b><dl><dt>Source</dt><dd>${SRC[r.src][0]}</dd><dt>Confidence</dt><dd><span class="conf"><i style="width:${x[6]*100}%"></i></span>${(x[6]*100).toFixed(0)} %</dd><dt>Reason</dt><dd>${why}</dd><dt>SAP check</dt><dd><span class="st"><i style="background:var(--mx-go)"></i>Safe</span>${tbl?`, ${v} exists in ${tbl}`:", the value passes the dictionary check"}</dd></dl><span class="muted">Press A to accept, N to reject, E to type another value.</span></span>`;
+}
+function render(){
+  const r=rule();rules();
+  const crit=r.sev==="critical",left=r.aff-drafted(r);
+  $("#headline").innerHTML=`<h1><span class="mono">${r.id}</span> ${r.name}</h1><div class="ink2"><span class="mono">${r.field}</span> ${r.fd}, ${n(r.aff)} failing in run 8, ${n(left)} left after your drafts, ${zar(r.v)} at risk</div>
+   ${crit?`<div class="cap">${left>TOL?`This rule caps the score. ${n(left-TOL)} more records must be fixed to come under the tolerance of ${TOL}. Clearing ${r.id} lifts the cap from 70 to 85 and releases ${(project().m-70).toFixed(1)} points.`:`This rule is under tolerance in the projection. It no longer caps the score.`}</div>`:""}`;
+  $("#thCur").innerHTML=`Current value <span class="muted mono">${r.field.split(".")[1]}</span>`;
+  $("#dockScope").textContent=`${r.id} ${r.fd}, run 8`;
+  $("#bulkBtn").disabled=!r.prop||!!S.bulk[r.id];$("#bulkBtn").innerHTML=S.bulk[r.id]?`${n(r.prop)} proposals applied`:r.prop?`Apply all ${n(r.prop)} proposals <kbd style="background:none;color:inherit;border-color:currentColor">Shift A</kbd>`:"No proposals to apply";
+  const st=x=>S.row[x[0]]||(S.bulk[r.id]&&x[3]?"draft":"open");
+  view=ROWS.filter(x=>x[2]===r.id).filter(x=>S.filter==="all"||(S.filter==="prop"&&x[3]&&st(x)==="open")||(S.filter==="none"&&!x[3]&&st(x)==="open")||(S.filter==="done"&&st(x)!=="open"));
+  S.focus=Math.max(0,Math.min(S.focus,view.length-1));
+  $("#grid tbody").innerHTML=view.map((x,i)=>{const s=st(x),v=S.val[x[0]]||x[3],typed=!!S.val[x[0]],d=DESC[v];
+    const cur=x[5]?`<span class="mono ${s==="draft"?"old":""}">${x[5]}</span>`:`<span class="empty">empty</span>`;
+    let nv;
+    if(s==="edit")nv=`<input class="edit" list="vals" data-edit="${x[0]}" placeholder="Type or pick a value" aria-label="New value">`;
+    else if(s==="rejected")nv=`<span class="muted">Proposal rejected: ${S.val["why"+x[0]]}</span>`;
+    else if(v)nv=`<span class="prop ${typed?"set":SRC[r.src][1].split(" ")[1]||""}" tabindex="0"><span class="mono">${v}</span><small>${d||"description not in API"}</small>${typed?"":evidence(x,r)}</span>`;
+    else nv=`<span class="muted">No proposal</span>`;
+    const stt={open:["var(--mx-ink-3)","To fix"],draft:["var(--mx-go)","Draft"],rejected:["var(--mx-watch)","Needs a person"],edit:["var(--mx-cobalt)","Editing"]}[s];
+    return `<tr data-i="${i}" class="${i===S.focus?"focus":""} ${s==="draft"?"done":""}"><td><input type="checkbox" data-sel="${x[0]}" ${S.sel.has(x[0])?"checked":""} aria-label="Select ${x[1]}"></td>
+     <td><span class="mono">${key(x[0])}</span> <span class="ink2">${x[1]}</span></td><td class="cur">${cur}</td><td class="pv">${nv}</td>
+     <td class="ink2">${typed?"Typed by you":v&&s!=="rejected"?SRC[r.src][0]:""}</td><td class="num">${v&&!typed&&s!=="rejected"?(x[6]*100).toFixed(0)+" %":""}</td><td class="num">${zar(x[4])}</td>
+     <td><span class="st"><i style="background:${stt[0]}"></i>${stt[1]}</span> <span class="rowact">${s==="open"&&x[3]?`<button data-a="accept">Accept</button>`:""}${s==="open"?`<button data-a="edit">Edit</button>`:`<button data-a="reopen">Reopen</button>`}</span></td></tr>`}).join("")
+    ||`<tr><td colspan="8" style="height:96px;white-space:normal"><b>No record matches this filter.</b> <span class="ink2">${S.filter==="done"?"Accept a proposal with A, or type a value with E.":"Choose All to see every failing record."}</span></td></tr>`;
+  $("#footText").innerHTML=`Showing the ${view.length} highest value records of ${n(r.aff)}. <span class="muted">The full list scrolls here, 60 frames a second.</span>`;
+  document.querySelectorAll("[data-f]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.f===S.filter));
+  const inp=$("[data-edit]");if(inp){inp.focus();inp.onkeydown=e=>{e.stopPropagation();if(e.key==="Enter"&&inp.value.trim()){act(()=>{S.val[inp.dataset.edit]=inp.value.trim().toUpperCase();S.row[inp.dataset.edit]="draft"},`${r.fd} set to ${inp.value.trim().toUpperCase()} on 1 record`)}if(e.key==="Escape"){delete S.row[inp.dataset.edit];render()}}}
+  strip();after();
+}
+
+// every mutation is optimistic, returns one action, and can be undone
+function act(fn,msg){undo.push(JSON.stringify({bulk:S.bulk,row:S.row,val:S.val}));fn();render();toast(msg,"Undo",doUndo)}
+function doUndo(){const u=undo.pop();if(!u)return toast("Nothing to undo");Object.assign(S,JSON.parse(u));render();toast("Change undone. The projection is back where it was.")}
+function toast(msg,action,fn){$("#toasts").innerHTML="";const t=document.createElement("div");t.className="toast";t.innerHTML=`<span>${msg}</span>${action?`<button>${action} <kbd style="background:none;color:inherit;border-color:currentColor">Ctrl Z</kbd></button>`:""}`;$("#toasts").append(t);
+  if(action)t.querySelector("button").onclick=()=>{t.remove();fn()};setTimeout(()=>t.remove(),8000)}
+const cur=()=>view[S.focus];
+const status=x=>S.row[x[0]]||(S.bulk[S.rule]&&x[3]?"draft":"open");
+function accept(){const x=cur(),r=rule();if(!x)return;if(!x[3])return toast("This record has no proposal. Press E to type a value.");if(status(x)!=="open")return;
+  act(()=>{S.row[x[0]]="draft";S.focus=Math.min(view.length-1,S.focus+1)},`${r.fd} set to ${x[3]}${DESC[x[3]]?" ("+DESC[x[3]]+")":""} on ${x[1]}, as a draft`)}
+function edit(){const x=cur();if(!x)return;undo.push(JSON.stringify({bulk:S.bulk,row:S.row,val:S.val}));S.row[x[0]]="edit";render()}
+function reject(){const x=cur();if(!x||!x[3]||status(x)!=="open")return;$("#reject").classList.add("open")}
+document.querySelectorAll("[data-why]").forEach(b=>b.onclick=()=>{const x=cur();$("#reject").classList.remove("open");act(()=>{S.row[x[0]]="rejected";S.val["why"+x[0]]=b.dataset.why.toLowerCase()},`Proposal rejected: ${b.dataset.why.toLowerCase()}. Aletheia has the feedback.`)});
+function bulkPreview(){const r=rule();if(!r.prop||S.bulk[r.id])return;S.ghost=r.id;const p=project(r.id);
+  const eg=ROWS.find(x=>x[2]===r.id&&x[3]),v=eg?eg[3]:"";
+  $("#previewText").innerHTML=`<b>Set ${r.fd.toLowerCase()} ${r.id==="MM142"?`to ${v} (${DESC[v]})`:"to the proposed value"} on ${n(r.prop)} records.</b> ${n(r.aff-r.prop)} have no proposal and stay open. Projected score ${p.shown.toFixed(1)}${p.cap>70&&project().cap===70?", and the cap lifts from 70 to "+p.cap:""}. One action, one undo, one audit entry.`;
+  $("#preview").classList.add("on");strip()}
+function bulkGo(){const r=rule();S.ghost=null;$("#preview").classList.remove("on");act(()=>{S.bulk[r.id]=r.prop},`${n(r.prop)} proposals applied to ${r.id} as drafts`)}
+function bulkNo(){S.ghost=null;$("#preview").classList.remove("on");strip()}
+$("#bulkBtn").onclick=bulkPreview;$("#previewGo").onclick=bulkGo;$("#previewNo").onclick=bulkNo;
+$("#setBtn").onclick=()=>toast(S.sel.size?`Type one value for ${S.sel.size} selected records in the first selected row`:"Select records with X first");
+$("#all").onchange=e=>{view.forEach(x=>e.target.checked?S.sel.add(x[0]):S.sel.delete(x[0]));render()};
+document.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{S.filter=b.dataset.f;S.focus=0;render()});
+$("#grid").onclick=e=>{const tr=e.target.closest("tr[data-i]");if(!tr)return;const c=e.target.closest("[data-sel]");
+  if(c){c.checked?S.sel.add(c.dataset.sel):S.sel.delete(c.dataset.sel);return}
+  if(e.target.closest("[data-edit]"))return;
+  S.focus=+tr.dataset.i;const a=e.target.closest("[data-a]");
+  if(a){({accept,edit,reopen:()=>{const x=cur();act(()=>{if(S.bulk[S.rule]&&x[3])S.row[x[0]]="open";else delete S.row[x[0]];delete S.val[x[0]]},"Decision reopened")}})[a.dataset.a]();return}
+  render()};
+
+// record panel, in place
+function openRec(){const x=cur(),r=rule();if(!x)return;const others=ROWS.filter(y=>y[1]===x[1]&&y[0]!==x[0]);
+  $("#panel").innerHTML=`<div style="display:flex;align-items:start;gap:8px"><div class="grow"><h3>${x[1]}</h3><span class="mono ink2">${key(x[0])}</span></div><button class="btn quiet" id="closeP">Close <kbd>Esc</kbd></button></div>
+   <div><div class="label">This issue</div><span class="mono">${r.id}</span> ${r.name}<br><span class="mono">${r.field}</span> <span class="ink2">${r.fd}</span>: ${x[5]?`<span class="mono old">${x[5]}</span>`:`<span class="empty">empty</span>`} ${x[3]?`to <span class="mono">${x[3]}</span> ${DESC[x[3]]||""}`:""}</div>
+   <div><div class="label">Value at risk</div>${zar(x[4])}</div>
+   <div><div class="label">History</div><span class="ink2">First seen 14 Aug 2026. Failing in every run since.</span></div>
+   <div><div class="label">Records with the same description</div>${others.map(y=>`<div class="ink2"><span class="mono">${key(y[0])}</span> ${y[2]} ${RULES.find(q=>q.id===y[2]).fd}</div>`).join("")||`<span class="ink2">None in the top records.</span>`}</div>
+   <div><button class="btn">Open full record</button> <button class="btn">Assign</button> <button class="btn">Comment</button></div>`;
+  $("#panel").classList.add("open");$("#closeP").onclick=()=>$("#panel").classList.remove("open")}
+
+// load file, in place
+$("#loadBtn").onclick=openLoad;
+function openLoad(){const t=total();if(!t)return;const open=RULES.reduce((s,r)=>s+r.aff-drafted(r),0),p=project();
+  $("#loadKv").innerHTML=`<dt>Records in the file</dt><dd><b>${n(t)}</b> across ${RULES.filter(r=>drafted(r)).map(r=>r.id+" "+r.fd).join(", ")}</dd><dt>Target</dt><dd>ECC production, client 100</dd><dt>Projected score</dt><dd>${p.shown.toFixed(1)}, measured ${p.m.toFixed(1)}</dd><dt>Approval</dt><dd>A second person with sign-off rights must approve before the file can be sent. You cannot approve your own batch.</dd>`;
+  $("#loadHeld").innerHTML=`<b>${n(open)} failing records are not in this file.</b> They have no decision yet. Nothing is truncated: every drafted record is written.`;
+  $("#load").classList.add("open")}
+$("#loadGo").onclick=()=>{$("#load").classList.remove("open");$("#stUpload").className="now";document.querySelector(".stepper .now").className="done";$("#stUpload").className="now";
+  toast(`Batch sent for approval. The file is ready the moment it is approved.`,"Undo",()=>toast("Batch withdrawn. Your drafts are kept."))};
+document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>b.closest(".scrim").classList.remove("open"));
+document.querySelectorAll(".scrim").forEach(s=>s.onclick=e=>{if(e.target===s)s.classList.remove("open")});
+
+// after the next run: projected against actual, per rule, on the same screen
+function after(){const el=$("#after");el.classList.toggle("on",S.after);$("#mkA").style.display=$("#actualBox").style.display=S.after?"block":"none";$("#lgA").style.display=S.after?"inline":"none";if(!S.after)return;
+  const p=project(),rows=RULES.filter(r=>drafted(r)).map(r=>{const d=drafted(r),miss=Math.round(d*0.006);return{r,d,ok:d-miss,miss}});
+  const m=71.8+rows.reduce((s,q)=>s+q.r.pts*q.ok/q.r.aff,0),over=RULES.filter(r=>r.sev==="critical"&&r.aff-((rows.find(q=>q.r===r)||{}).ok||0)>TOL).length,a=Math.min(m,over>=2?70:over===1?85:100);
+  $("#mkA").style.left=pos(a);$("#aShown").textContent=a.toFixed(1);
+  el.innerHTML=`<div class="label">Run 9 measured the load. Projected against actual</div>${rows.length?`<table><thead><tr><th>Rule</th><th class="num">Projected to clear</th><th class="num">Cleared in SAP</th><th class="num">Still failing</th><th>Why they differ</th></tr></thead><tbody>${rows.map(q=>`<tr><td><span class="mono">${q.r.id}</span> <span class="ink2">${q.r.fd}</span></td><td class="num">${n(q.d)}</td><td class="num">${n(q.ok)}</td><td class="num">${q.miss?`<button class="chip">${n(q.miss)}</button>`:"0"}</td><td class="ink2">${q.miss?"Changed in SAP after the extract, or rejected by the load":"Matches the projection"}</td></tr>`).join("")}</tbody></table>
+   <p class="ink2" style="margin:8px 0 0">Projected ${p.shown.toFixed(1)}, actual ${a.toFixed(1)}. The difference of ${(p.shown-a).toFixed(1)} points is the records in the last column. Click a count to work them.</p>`:`<span class="ink2">No load went in before run 9, so there is nothing to compare. Draft decisions and create a load file first.</span>`}`}
+$("#simRun").onclick=e=>{S.after=!S.after;e.target.textContent=S.after?"Back to run 8":"Show the state after run 9";render()};
+
+$("#openKeys").onclick=()=>$("#keys").classList.add("open");
+$("#theme").onclick=e=>{const d=document.documentElement,dark=d.dataset.theme!=="dark";d.dataset.theme=dark?"dark":"light";e.target.textContent=dark?"Light":"Dark"};
+document.onkeydown=e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();doUndo();return}
+  if(e.key==="Escape"){document.querySelectorAll(".scrim.open").forEach(s=>s.classList.remove("open"));$("#panel").classList.remove("open");if(S.ghost)bulkNo();return}
+  if($("#reject").classList.contains("open")){const b=document.querySelectorAll("[data-why]")[+e.key-1];if(b)b.click();return}
+  if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||e.ctrlKey||e.metaKey)return;
+  if(S.ghost){if(e.key==="Enter")bulkGo();return}
+  const k=e.key.toLowerCase(),i=RULES.findIndex(r=>r.id===S.rule);
+  if(e.key==="?")$("#keys").classList.add("open");
+  else if(e.shiftKey&&k==="a")bulkPreview();
+  else if(k==="j"){S.focus=Math.min(view.length-1,S.focus+1);render()}else if(k==="k"){S.focus=Math.max(0,S.focus-1);render()}
+  else if(k==="a")accept();else if(k==="e"){e.preventDefault();edit()}else if(k==="n")reject();
+  else if(k==="x"&&cur()){const id=cur()[0];S.sel.has(id)?S.sel.delete(id):S.sel.add(id);render()}
+  else if(e.key===" "){e.preventDefault();const p=document.querySelector("tr.focus .prop");if(p)p.classList.toggle("show")}
+  else if(e.key==="Enter")openRec();
+  else if(e.key==="]"){S.rule=RULES[(i+1)%RULES.length].id;S.focus=0;render()}else if(e.key==="["){S.rule=RULES[(i+RULES.length-1)%RULES.length].id;S.focus=0;render()}
+  else if(k==="l")openLoad()};
+document.body.insertAdjacentHTML("beforeend",`<datalist id="vals"><option value="EA">Each</option></datalist>`);
+if(!rule())S.rule="MM142";
+render();
+</script>
+</body>
+</html>

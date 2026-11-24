@@ -115,7 +115,7 @@ export function People() {
       </dl>
       <Card title={t("Everyone")} sub={t("The first row is you. Select a row for the person.")}>
         {rows.length === 0 ? <EmptyState heading={t("No people yet")} body={t("Invite the first person.")} /> : (
-          <DataTable<Person>
+          <DataTable<Person> id="people-1" viewMenu
             label={t("People")}
             rows={rows}
             rowKey={(p) => p.id}

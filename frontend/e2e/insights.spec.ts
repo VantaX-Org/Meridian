@@ -20,9 +20,9 @@ const routes: [string, string][] = [
   ["/monitor?fixture=1&view=after-clean", "Monitor"],
   ["/monitor?fixture=1&view=learned", "Monitor"],
   ["/monitor?fixture=1&view=shifts", "Monitor"],
-  ["/monitor?fixture=1&view=config", "Monitor"],
-  ["/monitor?fixture=1&view=contracts", "Monitor"],
-  ["/monitor?fixture=1&view=gate", "Monitor"],
+  ["/monitor?fixture=1&view=config", "Controls"],
+  ["/monitor?fixture=1&view=contracts", "Controls"],
+  ["/monitor?fixture=1&view=gate", "Controls"],
   ["/monitor?fixture=1&open=schedule", "Monitor"],
 ];
 

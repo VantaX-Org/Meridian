@@ -51,6 +51,14 @@ const SAMPLE: [string, string][] = [
   ["/workbench?tab=batches&batch=B1", "/work?batch=B1&tab=batches"],
 ];
 
+/** Pages, not config: these three open a tool on the fix screen from the query, so the redirect is temporary and happens in the page. */
+const TOOL_PAGES: [string, string][] = [
+  ["/work/triage", "/work?open=triage"],
+  ["/work/exceptions", "/work?open=exceptions"],
+  ["/approvals", "/work?open=approvals"],
+  ["/approvals?rule=MM142", "/work?open=approvals&rule=MM142"],
+];
+
 /** The Location of a redirect as path and query, whether the server wrote it absolute or relative. */
 const where = (location: string | undefined): string => {
   if (!location) return "";
@@ -73,6 +81,14 @@ test.describe("old addresses", () => {
       expect(r.status(), from).toBe(308);
       const got = where(r.headers()["location"]);
       expect(same(got, to), `${from} went to ${got}`).toBe(true);
+    });
+  }
+
+  for (const [from, to] of TOOL_PAGES) {
+    // A page redirect streams, so the status can be 200 with a client redirect; the address the browser lands on is what counts.
+    test(`${from} lands on ${to}`, async ({ page }) => {
+      await page.goto(`${from}${from.includes("?") ? "&" : "?"}fixture=1`, { timeout: 90_000 });
+      await page.waitForURL((u) => same(`${u.pathname}${u.search.replace(/&?fixture=1/, "").replace(/^\?$/, "")}`, to), { timeout: 90_000 });
     });
   }
 

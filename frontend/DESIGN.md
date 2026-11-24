@@ -97,7 +97,8 @@ Geist Mono through `FieldChip`, always with their description beside them.
 
 ## Space, size and shape
 
-Spacing is a 4px grid: `--mx-s1` 4px, `--mx-s2` 8px, `--mx-s3` 12px, `--mx-s4` 16px, `--mx-s5` 24px, `--mx-s6` 32px.
+Spacing is a 4px grid: `--mx-s1` 4px, `--mx-s2` 8px, `--mx-s3` 12px, `--mx-s4` 16px, `--mx-s5` 24px, `--mx-s6` 32px, `--mx-s7` 48px.
+`--mx-s7` is the gap between page sections only. Grid rows are `--mx-row` (32px, compact) or `--mx-row-comfort` (40px).
 Inside a component use `s1` to `s3`; between components in a card use `s4`; between cards and sections use `s5` or
 `s6`. The page gutter is `--mx-gutter` (16px), the same on phone and desktop.
 
@@ -113,9 +114,14 @@ is for things that float above the page: sheets, menus, the command palette and 
 
 ## Motion
 
-One duration, `--mx-dur` (140ms), and one curve, `--mx-ease`. Motion explains a change of place: a sheet sliding in,
-a row expanding, a tab underline moving. It never decorates, never loops and never delays content. Under
-`prefers-reduced-motion: reduce`, `tokens.css` sets `--mx-dur` to zero and turns off the kit transitions, so a component that times its motion with `--mx-dur` needs no check of its own.
+Four durations and three curves, all in `tokens.css`. Hover, press, row focus and chip toggle use `--mx-dur-instant`
+(80ms). Popovers, menus and toast entry use `--mx-dur` (140ms). Side panels, sheets, the bulk bar and dialogs use
+`--mx-dur-panel` (220ms). A changing value (the score marker travelling, a bar growing, a number counting) uses
+`--mx-dur-value` (600ms). Entering uses `--mx-ease`, leaving uses `--mx-ease-exit` and runs at the next shorter
+duration, a changing value uses `--mx-ease-value`. Motion explains a change of place or value. It never decorates,
+never loops and never delays content. Under `prefers-reduced-motion: reduce`, `tokens.css` sets every duration to
+zero and turns off the kit transitions, so a component that times its motion with these tokens needs no check of
+its own.
 
 ## Choosing a component
 
