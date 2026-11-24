@@ -16130,4 +16130,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Block with a cross-plant status": "プラント横断ステータスでブロック",
   "Block orders": "受注をブロック",
   "Steward review": "スチュワードレビュー",
+  "{n} terms created": "{n} 件の用語を作成",
 };

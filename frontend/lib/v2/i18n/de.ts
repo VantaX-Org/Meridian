@@ -16130,4 +16130,5 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Block with a cross-plant status": "Mit werksübergreifendem Status sperren",
   "Block orders": "Aufträge sperren",
   "Steward review": "Prüfung durch Data Steward",
+  "{n} terms created": "{n} Begriffe angelegt",
 };

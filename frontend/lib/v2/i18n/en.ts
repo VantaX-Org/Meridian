@@ -16129,6 +16129,7 @@ export const en = {
   "Block with a cross-plant status": "Block with a cross-plant status",
   "Block orders": "Block orders",
   "Steward review": "Steward review",
+  "{n} terms created": "{n} terms created",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
