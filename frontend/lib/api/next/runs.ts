@@ -12,7 +12,6 @@ import { getTemplates, type TargetTemplate } from "@/lib/api/v2/migration";
 import type { DownloadScope } from "@/lib/api/system-objects";
 import { v2Get } from "@/lib/api/v2/client";
 import { fixtureActive, useFixture } from "@/lib/api/v2/fixture";
-import { downloadAuthenticated } from "@/lib/api/download";
 import type { VersionHead } from "@/lib/api/v2/runs";
 import { fixtureCycles, fixtureMultiCompare, fixtureTemplates, fixtureRun, fixtureRunsPage, fixtureSets, fixtureSummary } from "./runs-fixture";
 
@@ -117,10 +116,7 @@ export async function getObjectCycles(run: string | null): Promise<Record<string
 }
 
 /** The cleaning workbook of one object in one run: every failing record with the fix column beside each finding. */
-export function downloadCleaningWorkbook(runId: string, module: string): Promise<void> {
-  if (fixtureActive()) return Promise.resolve();
-  return downloadAuthenticated(`/api/v1/reports/${encodeURIComponent(runId)}/cleaning/${encodeURIComponent(module)}.xlsx`, `cleaning_${module}.xlsx`);
-}
+export { downloadCleaningWorkbook } from "@/lib/api/v2/roundtrip";
 
 export const nextRunKeys = {
   page: (fx: boolean, q: RunsQuery) => ["next", "runs", fx, q.system_id ?? null, q.module ?? null, q.status ?? null, q.limit ?? 50, q.offset ?? 0, q.sort ?? null, q.include_archived ?? false] as const,

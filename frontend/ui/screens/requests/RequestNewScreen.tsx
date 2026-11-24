@@ -10,6 +10,7 @@ import {
   type FormField, type Precheck, type RequestKind, type RequestObject,
 } from "@/lib/api/v2/requests";
 import { useFixture, withFixture } from "@/lib/api/v2/fixture";
+import { errorSentence } from "@/lib/api/v2/client";
 import { t } from "@/lib/v2/i18n";
 import { Button, Card, Code, DataTable, Field, Input, Select, Split, Tabs, useToast } from "@/ui/kit";
 import { Async, Empty, Head, useRead, useScreenScope, useSystemPick } from "../mdm/catalogue/shared";
@@ -156,14 +157,19 @@ export function RequestNewScreen() {
 
   const save = async (): Promise<string> => {
     const records = keys.split(/[\s,]+/).filter(Boolean);
-    if (draftId) { await updateRequest(draftId, { title, payload: vals }); return draftId; }
+    // a saved draft keeps the record, the records and the system edited after it, not only the title and values
+    if (draftId) {
+      await updateRequest(draftId, { title, payload: vals, object_key: kind === "change" ? key : undefined, record_keys: kind === "mass_change" ? records : undefined, target_system_id: sys.id || undefined });
+      return draftId;
+    }
     const r = await createRequest({ kind, object, target_system_id: sys.id || null, object_key: key || null, title: title || null, payload: vals, record_keys: kind === "mass_change" ? records : undefined });
     setDraftId(r.id);
     return r.id;
   };
   const act = async (fn: (id: string) => Promise<void>) => {
     setBusy(true);
-    try { await fn(await save()); } catch { toast(t("The request could not be saved"), "bad"); } finally { setBusy(false); }
+    // the API's reason (e.g. "Propose at least one field.") tells the person what to fix
+    try { await fn(await save()); } catch (e) { toast(errorSentence(e, t("The request could not be saved")), "bad"); } finally { setBusy(false); }
   };
 
   const left = (

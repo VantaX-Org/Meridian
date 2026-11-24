@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { exportBpmn, exportSignavio, getCase, getCases, getCatalogue, getConformance, getDfg, getDiscoveryRuns, getVariants, startDiscovery, type CaseRow, type CatalogueEntry, type NodeStats, type RunSummary, type Variant } from "@/lib/api/v2/discovery";
 import { t } from "@/lib/v2/i18n";
-import { Button, Card, Code, DataTable, DetailPanel, Split, Tabs, useToast, ExportMenu } from "@/ui/kit";
+import { Button, Card, Code, DataTable, DetailPanel, Split, TabPanel, Tabs, useToast, ExportMenu } from "@/ui/kit";
 import { Async, Empty, Head, num, useRead, useScreenScope, useSystemPick, when } from "./shared";
 import { FlowGraph } from "./FlowGraph";
 import { HealthCard, ModelView } from "./DiscoveryHealth";
@@ -132,6 +132,17 @@ function RunDetail({ runId }: { runId: string }) {
   );
 }
 
+const RUN_STATUS: Record<RunSummary["status"], () => string> = {
+  queued: () => t("Queued"),
+  waiting: () => t("Waiting"),
+  extracting: () => t("Extracting"),
+  building: () => t("Building the event log"),
+  mining: () => t("Mining"),
+  completed: () => t("Completed"),
+  failed: () => t("Failed"),
+};
+const runStatusText = (s: RunSummary["status"]): string => RUN_STATUS[s]?.() ?? s;
+
 export function ProcessesScreen() {
   const toast = useToast();
   const qc = useQueryClient();
@@ -161,6 +172,7 @@ export function ProcessesScreen() {
           <>
             {sys.control}
             <Tabs idBase="pdl" label={t("Process lists")} value={tab} onChange={setTab} items={[{ id: "catalogue", label: t("Systems catalogue") }, { id: "runs", label: t("Runs") }, { id: "health", label: t("Health") }]} />
+            <TabPanel idBase="pdl" value={tab} className="mx-col">
             {tab === "catalogue" ? (
               <Async q={cat}>
                 {() => rows.length ? (
@@ -182,11 +194,12 @@ export function ProcessesScreen() {
                     columns={[
                       { key: "s", label: t("Started"), sort: (r) => r.started_at ?? "", render: (r) => when(r.started_at) },
                       { key: "m", label: t("Mode"), render: (r) => (r.mode === "full" ? t("Full") : t("Incremental")) },
-                      { key: "st", label: t("Status"), render: (r) => r.status },
+                      { key: "st", label: t("Status"), render: (r) => runStatusText(r.status) },
                     ]} />
                 ) : <Empty heading={t("No runs yet")} />}
               </Async>
             )}
+            </TabPanel>
           </>
         }
         right={curRun ? <RunDetail key={curRun} runId={curRun} /> : <Empty heading={t("Pick a process with a run")} />} />

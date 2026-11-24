@@ -7,7 +7,7 @@ import {
 } from "@/lib/api/v2/insights";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { describeField } from "@/lib/v2/sap-fields";
-import { BarList, Button, Card, FieldChip, PageHeader, SeverityPill, StatTile, Tabs, TrendArea, useAletheiaScope, useToast } from "@/ui/kit";
+import { BarList, Button, Card, FieldChip, PageHeader, SeverityPill, StatTile, Tabs, TrendArea, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
 import { useCrumbs } from "@/ui/screens/flow";
 import { InsightsBoard } from "./InsightsBoard";
 import { Gate, InsightsNav, Mod, Tbl, day, money, n0, n1, pc, sevLabel, sevOf, useQ } from "./shared";
@@ -241,6 +241,8 @@ export function InsightsScreen({ set = "findings" }: { set?: InsightSet }) {
   const [tab, setTab] = useState<TabId>(items[0].id);
   const label = items.find((i) => i.id === tab)?.label ?? "";
   const ov = useQ("overview", getOverview);
+  const chat = useAletheia();
+  const ask = <Button variant="ghost" tone="aletheia" onClick={() => chat.setOpen(true)}>{t("Ask Aletheia")}</Button>;
   useAletheiaScope({
     key: `insights/${tab}`,
     label: t("Asking about insights, {tab}", { tab: label }),
@@ -250,8 +252,8 @@ export function InsightsScreen({ set = "findings" }: { set?: InsightSet }) {
   return (
     <div className="b8-page">
       {set === "findings"
-        ? <PageHeader crumbs={crumbs("insights")} title={t("Insights")} context={t("What Aletheia found in your data and where it is getting worse.")} actions={<InsightsNav here="insights" />} />
-        : <PageHeader crumbs={crumbs("insights", t("Cost and owners"))} title={t("Cost and owners")} context={t("What bad data costs, what cleaning saved and who owns the fix.")} actions={<InsightsNav here="money" />} />}
+        ? <PageHeader crumbs={crumbs("insights")} title={t("Insights")} context={t("What Aletheia found in your data and where it is getting worse.")} actions={<><InsightsNav here="insights" />{ask}</>} />
+        : <PageHeader crumbs={crumbs("insights", t("Cost and owners"))} title={t("Cost and owners")} context={t("What bad data costs, what cleaning saved and who owns the fix.")} actions={<><InsightsNav here="money" />{ask}</>} />}
       {set === "findings" && <InsightsBoard />}
       <Tabs idBase="b8-ins" label={t("Insight views")} items={items} value={tab} onChange={(id) => setTab(id as TabId)} />
       <div id={`b8-ins-panel-${tab}`} role="tabpanel" aria-labelledby={`b8-ins-tab-${tab}`} className="b8-stack">

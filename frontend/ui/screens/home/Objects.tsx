@@ -138,7 +138,7 @@ export function Objects() {
             onSelectedKeys={setKeys}
             bulkActions={[
               { id: "pull", label: t("Pull again"), run: (ks) => void run(() => startObjects(rows.filter((r) => ks.includes(key(r))).map((r) => r.module)), t("Pull queued.")) },
-              { id: "xlsx", label: t("Download workbooks"), run: (ks) => { const chosen = rows.filter((r) => ks.includes(key(r))); if (chosen.length <= SHOWN_MAX) void downloadWorkbooks(chosen); } },
+              { id: "xlsx", label: t("Download workbooks"), run: (ks) => { const chosen = rows.filter((r) => ks.includes(key(r))); if (chosen.length > SHOWN_MAX) toast(t("Narrow the list to {n} objects or fewer.", { n: SHOWN_MAX }), "bad"); else void downloadWorkbooks(chosen).catch(() => toast(t("That did not work. Try again."), "bad")); } },
             ]}
             selected={pick}
             onSelect={(r) => setPick(key(r))}

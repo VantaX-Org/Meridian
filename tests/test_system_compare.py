@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from api.services.system_compare import compare_table, explain, totals
+from api.services.system_compare import compare_table, config_summary, explain, totals
 from sap.ddic import get_dictionary
 
 D = get_dictionary("s4hana")
@@ -90,3 +90,13 @@ def test_difference_rows_filter_and_describe():
     assert len(rows) == 1 and rows[0]["field_text"] == "Material type" and rows[0]["table_text"]
     assert _rows(rec, None, None, None, "zhlb")[0]["target"] == "ZHLB"
     assert _rows(rec, "MARC", None, None, None) == []
+
+
+def test_config_summary_carries_object_description():
+    from types import SimpleNamespace as NS
+
+    rows = [NS(status="exists", as_dict=dict), NS(status="missing", as_dict=lambda: {"k": 1})]
+    out = config_summary({"MARA": rows}, {"MARA": 3}, describe=lambda o: D.table(o).description if D.table(o) else "")
+    assert out[0]["description"] == D.table("MARA").description != ""
+    assert out[0]["only_in_target"] == 2 and out[0]["missing"] == 1
+    assert config_summary({"ZZZ": rows}, {})[0]["description"] == ""

@@ -32,6 +32,13 @@ ACTIONS: dict[str, list[tuple[str, str, Optional[str], str]]] = {
 }
 
 
+def _sap_value(key: str) -> str:
+    """The SAP value of a one-part record key: ``MATNR=000000000000005001`` -> ``000000000000005001``.
+    BISMT holds a material number, not Meridian's ``FIELD=value`` key. A composite key stays as it is."""
+    name, sep, value = key.partition("=")
+    return value if sep and "|" not in key and name.isupper() else key
+
+
 def pack_rows(domain: str, merged: list[dict]) -> list[dict]:
     """``merged``: ``[{loser, survivor, merged_at}]`` -> one row per loser and action
     (one mapping-only row when the domain has no actions)."""
@@ -43,5 +50,5 @@ def pack_rows(domain: str, merged: list[dict]) -> list[dict]:
             out.append({**base, "table": None, "field": None, "value": None, "action": "map_to_survivor"})
         for table, field, value, why in actions:
             out.append({**base, "table": table, "field": field, "action": why,
-                        "value": m["survivor"] if value == "{survivor}" else value})
+                        "value": _sap_value(m["survivor"]) if value == "{survivor}" else value})
     return out

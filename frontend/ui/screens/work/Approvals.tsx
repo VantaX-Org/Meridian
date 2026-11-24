@@ -13,7 +13,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Sheet, Skeleton, StatTile, Tabs, useAletheia, useAletheiaScope, useStacked } from "@/ui/kit";
 import { ObjChip } from "./ObjChip";
 import { ExportPanel, RunRecords } from "./BatchSend";
-import { day, useDo } from "./shared";
+import { day, useDo, writebackOutcome } from "./shared";
 import { displayKey } from "@/lib/v2/work";
 import { useCrumbs, Flow } from "@/ui/screens/flow";
 
@@ -179,7 +179,7 @@ function Send() {
                 { key: "n", label: t("Records"), render: (p) => whole(p.records_updated), align: "end" },
                 { key: "u", label: t("Asked by"), value: (p) => p.requested_by_name ?? "", render: (p) => (
                   <span className="mx-row-end"><span>{p.requested_by_name ?? ""}</span>
-                    <span className="mx-row-acts"><Button variant="secondary" disabled={busy === p.id} onClick={(e) => { e.stopPropagation(); setBusy(p.id); void run(() => approveWriteback(p.id), (x) => t("{n} records are written.", { n: whole(x.applied) })).finally(() => setBusy(null)); }}>{t("Approve")}</Button></span>
+                    <span className="mx-row-acts"><Button variant="secondary" disabled={busy === p.id} onClick={(e) => { e.stopPropagation(); setBusy(p.id); void run(() => approveWriteback(p.id), writebackOutcome).finally(() => setBusy(null)); }}>{t("Approve")}</Button></span>
                   </span>) },
               ]} />
           )}

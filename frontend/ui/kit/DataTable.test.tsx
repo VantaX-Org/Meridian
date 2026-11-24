@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { DataTable, type Column } from "./DataTable";
+import type { GridApi } from "./useGridState";
 
 interface R { id: string; name: string; n: number }
 const cols: Column<R>[] = [{ key: "name", label: "Name", sort: (r) => r.name }, { key: "n", label: "Count", sort: (r) => r.n, align: "end" }];
@@ -47,5 +48,11 @@ describe("DataTable", () => {
     fireEvent.keyDown(box, { key: "Home" });
     fireEvent.keyDown(box, { key: " " });
     expect(on).toHaveBeenLastCalledWith("r0");
+  });
+  it("leaves a URL-backed sort alone when the column list changes, so the route is not replaced in a loop", () => {
+    const grid: GridApi = { sort: { key: "n", dir: "desc" }, filters: {}, groupBy: null, open: null, setSort: vi.fn(), setFilter: vi.fn(), clearFilters: vi.fn(), setGroupBy: vi.fn(), setOpen: vi.fn() };
+    const { rerender } = render(<DataTable id="loop" grid={grid} columns={[...cols]} rows={rows.slice(0, 3)} rowKey={(r) => r.id} label="Records" />);
+    rerender(<DataTable id="loop" grid={grid} columns={[...cols]} rows={rows.slice(0, 3)} rowKey={(r) => r.id} label="Records" />);
+    expect(grid.setSort).not.toHaveBeenCalled();
   });
 });

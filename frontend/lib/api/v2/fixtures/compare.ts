@@ -64,8 +64,8 @@ const comparison: Comparison = {
   config: {
     available: true, only_in_source: ["T001L"], only_in_target: [],
     objects: [
-      { object: "T134", exists: 14, key_match: 0, desc_match: 1, missing: 1, in_source: 16, in_target: 17, only_in_target: 2 },
-      { object: "T001W", exists: 8, key_match: 0, desc_match: 0, missing: 0, in_source: 8, in_target: 8, only_in_target: 0 },
+      { object: "T134", description: "Material Types", exists: 14, key_match: 0, desc_match: 1, missing: 1, in_source: 16, in_target: 17, only_in_target: 2 },
+      { object: "T001W", description: "Plants/Branches", exists: 8, key_match: 0, desc_match: 0, missing: 0, in_source: 8, in_target: 8, only_in_target: 0 },
     ],
   },
 };

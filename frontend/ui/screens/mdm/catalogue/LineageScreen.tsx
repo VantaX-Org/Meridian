@@ -4,11 +4,18 @@ import { useState } from "react";
 import { getFieldLineage } from "@/lib/api/v2/field-lineage";
 import { getGuards, getLineageModel, getRuleLineage, type GuardStep } from "@/lib/api/v2/lineage";
 import { t } from "@/lib/v2/i18n";
-import { Card, Code, DataTable, Field, Input, Select, StatTile, Tabs } from "@/ui/kit";
+import { moduleText } from "@/lib/v2/labels";
+import { Card, Code, DataTable, Field, Input, Select, StatTile, TabPanel, Tabs } from "@/ui/kit";
 import { Async, Empty, Head, num, useRead, useScreenScope } from "./shared";
 import { LineageGraph } from "./LineageGraph";
 
 const MODULES = ["material_master", "customer_master", "vendor_master"];
+
+/** Words for the node kinds of the lineage model, from api/services/lineage_graph. */
+const NODE_TEXT: Record<string, () => string> = {
+  config: () => t("Configuration"), object: () => t("Objects"), table: () => t("Tables"), check: () => t("Rules"), field: () => t("Fields"),
+  process: () => t("Processes"), step: () => t("Process steps"), feature: () => t("Features"), kpi: () => t("KPIs"),
+};
 
 export function LineageScreen() {
   const [tab, setTab] = useState("graph");
@@ -29,12 +36,13 @@ export function LineageScreen() {
       <Async q={model} lines={2}>
         {(m) => (
           <dl className="mx-tiles">
-            {Object.entries(m.node_counts).map(([k, v]) => <StatTile key={k} label={k} value={num(v)} />)}
+            {Object.entries(m.node_counts).map(([k, v]) => <StatTile key={k} label={NODE_TEXT[k]?.() ?? k} value={num(v)} />)}
           </dl>
         )}
       </Async>
       <Tabs idBase="lineage" label={t("Lineage views")} value={tab} onChange={setTab}
         items={[{ id: "graph", label: t("Rule graph") }, { id: "guards", label: t("Guards") }, { id: "fields", label: t("Fields") }]} />
+      <TabPanel idBase="lineage" value={tab} className="mx-col">
       {tab === "graph" ? (
         <Card title={t("What a rule touches")} sub={t("Upstream on the left, downstream on the right")}>
           <Field label={t("Rule")}><Input value={rule} onChange={(e) => setRule(e.target.value.trim())} /></Field>
@@ -61,7 +69,7 @@ export function LineageScreen() {
       ) : null}
       {tab === "fields" ? (
         <>
-          <Field label={t("Object")}><Select value={mod} onChange={(e) => setMod(e.target.value)} options={MODULES.map((m) => ({ value: m, label: m }))} /></Field>
+          <Field label={t("Object")}><Select value={mod} onChange={(e) => setMod(e.target.value)} options={MODULES.map((m) => ({ value: m, label: moduleText(m) }))} /></Field>
           <Async q={fields}>
             {(f) => {
               const rows = f.tables.flatMap((tb) => tb.fields.map((x) => ({ ...x, table: tb.table })));
@@ -78,6 +86,7 @@ export function LineageScreen() {
           </Async>
         </>
       ) : null}
+      </TabPanel>
     </>
   );
 }

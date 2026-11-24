@@ -36,6 +36,12 @@ describe("SheetHost ?open deep link", () => {
     expect(screen.getByText("term body t1")).toBeTruthy();
   });
 
+  it("drops ?open= on close so a reload does not reopen the sheet", () => {
+    land("?open=term:t1&fixture=1");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(window.location.search).toBe("?fixture=1");
+  });
+
   it("sends a kind that moved to its routed page, keeping other params", async () => {
     land("?open=user:u1&fixture=1");
     const { replace } = await import("@/ui/testing/nav-store");

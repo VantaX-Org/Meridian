@@ -140,7 +140,7 @@ export function Pair({ id }: { id: string }) {
                     rows={cmp.config.objects}
                     rowKey={(r) => r.object}
                     columns={[
-                      { key: "object", label: t("Object"), render: (r) => <code className="mx-code">{r.object}</code> },
+                      { key: "object", label: t("Object"), render: (r) => <FieldChip code={r.object} description={r.description} /> },
                       { key: "in_source", label: t("In source"), align: "end", render: (r) => String(r.in_source) },
                       { key: "in_target", label: t("In target"), align: "end", render: (r) => String(r.in_target) },
                       { key: "missing", label: t("Missing in target"), align: "end", render: (r) => String(r.missing) },

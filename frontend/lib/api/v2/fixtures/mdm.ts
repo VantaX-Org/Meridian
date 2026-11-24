@@ -326,7 +326,7 @@ function consolidationPack(domain: string): unknown {
   ] : [];
   const rows = merged.flatMap(([l, s]) => actions.map((a) => ({
     loser_key: `MATNR=${pad(l)}`, survivor_key: `MATNR=${pad(s)}`, table: a.table, field: a.field, action: a.action,
-    value: a.value === "{survivor}" ? `MATNR=${pad(s)}` : a.value, merged_at: iso(14 + (l % 3)),
+    value: a.value === "{survivor}" ? pad(s) : a.value, merged_at: iso(14 + (l % 3)),
   })));
   return { domain, merged: merged.length, survivors: new Set(merged.map(([, s]) => s)).size, actions, total_rows: rows.length, rows };
 }

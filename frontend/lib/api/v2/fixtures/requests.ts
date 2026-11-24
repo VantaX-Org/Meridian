@@ -353,8 +353,15 @@ export function requestsWrite(method: string, path: string, body: unknown): unkn
     const r = d.request;
     if (r.requester_id !== ME) fail(403, "Only the requester edits it.");
     if (r.status !== "draft") fail(409, `The request is ${r.status}. Only a draft is edited.`);
-    const b = (body ?? {}) as { title?: string; payload?: Record<string, string> };
-    d.request = { ...r, title: b.title ?? r.title, payload: b.payload ?? r.payload, precheck: null, validated_at: null, updated_at: NOW };
+    const b = (body ?? {}) as { title?: string; payload?: Record<string, string>; object_key?: string; target_system_id?: string; record_keys?: string[] };
+    let count = r.record_count;
+    if (b.record_keys !== undefined && r.kind === "mass_change") {
+      const keys = [...new Set(b.record_keys.map((k) => k.trim()).filter(Boolean))];
+      if (keys.length === 0) fail(422, "A mass change names the records it changes (record_keys).");
+      state.keys[r.id] = keys;
+      count = keys.length;
+    }
+    d.request = { ...r, title: b.title ?? r.title, payload: b.payload ?? r.payload, object_key: b.object_key ?? r.object_key, target_system_id: b.target_system_id ?? r.target_system_id, record_count: count, precheck: null, validated_at: null, updated_at: NOW };
     return clone(d.request);
   }
   if (method !== "POST") return NONE_REQ;

@@ -27,7 +27,7 @@ export function GlossaryScreen() {
     } },
   ]);
   const populate = () => void populateGlossary().then(
-    (r) => { toast(`${r.created} ${t("terms created")}`, "good"); void qc.invalidateQueries({ queryKey: ["b7b"] }); },
+    (r) => { toast(t("{n} terms created", { n: r.created }), "good"); void qc.invalidateQueries({ queryKey: ["b7b"] }); },
     () => toast(t("The glossary could not be filled"), "bad"));
   const terms = (q.data?.terms ?? []).filter((x) => !status || x.status === status);
   const cur = sel ?? terms[0]?.id ?? null;

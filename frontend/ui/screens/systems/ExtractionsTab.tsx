@@ -15,7 +15,7 @@ import { MODULE_LABELS, moduleDescription } from "@/lib/format";
 import type { ScopeKey, SystemVersion } from "@/lib/api/system-objects";
 import { t } from "@/lib/v2/i18n";
 import { whole } from "@/lib/v2/format";
-import { Button, Card, Chip, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, Select, Skeleton, Toggle, TrendArea, useToast, type Column } from "@/ui/kit";
+import { Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, Select, Skeleton, Toggle, TrendArea, useToast, type Column } from "@/ui/kit";
 import { errMsg, when } from "./shared";
 
 const label = (o: string): string => MODULE_LABELS[o] ?? moduleDescription(o) ?? "";
@@ -43,6 +43,7 @@ export function ExtractionsTab({ id, source }: { id: string; source: boolean }) 
   const [cron, setCron] = useState(PRESETS[1]?.value ?? "0 2 * * *");
   const [domain, setDomain] = useState("");
   const [mode, setMode] = useState<"full" | "delta">("full");
+  const [drop, setDrop] = useState<{ id: string; domain: string } | null>(null);
   const canRun = me.can("trigger_sync") || me.can("manage_systems");
   const canManage = me.can("manage_systems");
 
@@ -168,7 +169,7 @@ export function ExtractionsTab({ id, source }: { id: string; source: boolean }) 
             { key: "a", label: t("Actions"), render: (p) => canManage ? (
               <span className="mx-links">
                 <Button variant="ghost" onClick={() => void act(`p${p.id}`, async () => { await updateProfile(id, p.id, { active: !p.active }); return p.active ? t("Schedule paused.") : t("Schedule resumed."); })}>{p.active ? t("Pause") : t("Resume")}</Button>
-                <Button variant="ghost" onClick={() => void act(`d${p.id}`, async () => { await deleteProfile(id, p.id); return t("Schedule deleted."); })}>{t("Delete")}</Button>
+                <Button variant="ghost" onClick={() => setDrop({ id: p.id, domain: p.domain })}>{t("Delete")}</Button>
               </span>) : null },
           ] as Column<NonNullable<typeof profiles.data>[number]>[]} rows={profiles.data ?? []} rowKey={(p) => p.id} label={t("Schedules")} height={200} />
         )}
@@ -183,6 +184,10 @@ export function ExtractionsTab({ id, source }: { id: string; source: boolean }) 
           </div>
         ) : null}
       </Card>
+      <Confirm open={drop !== null} danger title={t("Delete the schedule of {domain}", { domain: drop ? label(drop.domain) || drop.domain : "" })} confirmLabel={t("Delete the schedule")} cancelLabel={t("Cancel")}
+        onConfirm={() => { const d = drop; setDrop(null); if (d) void act(`d${d.id}`, async () => { await deleteProfile(id, d.id); return t("Schedule deleted."); }); }} onCancel={() => setDrop(null)}>
+        <p>{t("The object is no longer extracted on a rhythm. Runs it already made stay.")}</p>
+      </Confirm>
     </div>
   );
 }

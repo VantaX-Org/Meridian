@@ -6,7 +6,8 @@ import { approveAnomalyRule, proposeAnomalyRule, type AnomalyRuleProposal } from
 import { getAnomalies, getDuplicates, getMiningOverview, getPatterns, getRelationships, runMining, LIMITS, type AnomalyItem, type DuplicatePair, type MiningPattern, type RelationshipItem } from "@/lib/api/v2/mining";
 import { getVersionsPage } from "@/lib/api/v2/runs";
 import { t } from "@/lib/v2/i18n";
-import { AletheiaMark, Button, Code, CodeView, DataTable, Sheet, StatTile, Tabs, useToast } from "@/ui/kit";
+import { moduleText } from "@/lib/v2/labels";
+import { AletheiaMark, Button, Code, CodeView, DataTable, Sheet, StatTile, TabPanel, Tabs, useToast } from "@/ui/kit";
 import { MiningByObject, MiningSteps } from "./MiningRun";
 import { Async, Empty, Head, num, Sev, useRead, useScreenScope, when } from "./shared";
 import { displayKey } from "@/lib/v2/work";
@@ -120,6 +121,7 @@ export function MiningScreen() {
           { id: "by-object", label: t("By object") },
           { id: "steps", label: t("Process steps") },
         ]} />
+      <TabPanel idBase="mining" value={tab} className="mx-col">
       {tab === "by-object" ? <MiningByObject /> : null}
       {tab === "steps" ? <MiningSteps /> : null}
       {tab === "duplicates" ? <Async q={dup}>{() => d.length ? (
@@ -127,7 +129,7 @@ export function MiningScreen() {
           columns={[
             { key: "a", label: t("Record A"), sort: (x) => x.record_a, render: (x) => x.record_a },
             { key: "b", label: t("Record B"), sort: (x) => x.record_b, render: (x) => x.record_b },
-            { key: "m", label: t("Object"), render: (x) => <Code code={x.module_id} /> },
+            { key: "m", label: t("Object"), render: (x) => <Code code={x.module_id} description={moduleText(x.module_id)} /> },
             { key: "f", label: t("Matched fields"), render: (x) => (x.matched_fields ?? []).map((f) => <Code key={f} code={f} description={x.field_texts?.[f]} />) },
             { key: "s", label: t("Match"), align: "end", sort: (x) => x.match_score, render: (x) => `${Math.round(x.match_score * 100)}%` },
           ]} />
@@ -156,13 +158,14 @@ export function MiningScreen() {
         <DataTable<MiningPattern> label={t("Patterns")} rows={p} rowKey={(x) => x.id} height={420}
           columns={[
             { key: "n", label: t("Pattern"), sort: (x) => x.name, render: (x) => <Code code={x.name} description={x.field_description ?? undefined} /> },
-            { key: "m", label: t("Object"), render: (x) => <Code code={x.module} /> },
+            { key: "m", label: t("Object"), render: (x) => <Code code={x.module} description={moduleText(x.module)} /> },
             { key: "ty", label: t("Kind"), render: (x) => (x.pattern_type === "anomaly" ? t("Anomaly") : t("Duplicate")) },
             { key: "o", label: t("Seen"), align: "end", sort: (x) => x.occurrences, render: (x) => num(x.occurrences) },
             { key: "l", label: t("Last seen"), render: (x) => when(x.last_seen) },
             { key: "sv", label: t("Severity"), render: (x) => <Sev s={x.severity} /> },
           ]} />
       ) : <Empty heading={t("No patterns yet")} />}</Async> : null}
+      </TabPanel>
       <ProposeSheet anomaly={proposing} onClose={() => setProposing(null)} />
     </>
   );

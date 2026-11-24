@@ -765,6 +765,7 @@ async def export_findings(
 
 class S4Check(BaseModel):
     check_id: str
+    name: str = ""  # the rule's message from its YAML pack
     module: str | None
     impact: str
     status: str

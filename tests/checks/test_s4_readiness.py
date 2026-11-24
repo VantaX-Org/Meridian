@@ -76,6 +76,15 @@ def test_rollup_statuses_and_counts():
     assert out["failing_records"] == 15 and out["blocking_failing"] == 1
 
 
+def test_rollup_check_rows_carry_rule_name():
+    from api.services.config_applicability import rule_titles
+
+    out = rollup([_f("S4R-BP-KNVK-NAME", 5, 99.0, "high")])
+    bp = next(a for a in out["areas"] if a["area"] == "business_partner")
+    row = next(c for c in bp["checks"] if c["check_id"] == "S4R-BP-KNVK-NAME")
+    assert row["name"] == rule_titles()["S4R-BP-KNVK-NAME"] != ""
+
+
 def test_rollup_ready_when_no_blocking_failure():
     # two rules pass, but most blocking rules were never evaluated: not ready, and it says how many
     out = rollup([_f("S4R-FI-CSKS-PRCTR", 1, 99.0, "low"), _f("S4-CVI-LFA1", 0, 100.0, "high")])
