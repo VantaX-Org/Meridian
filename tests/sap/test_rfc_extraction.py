@@ -303,3 +303,41 @@ def test_extract_sink_receives_each_data_table_and_keeps_it_out_of_frames(monkey
     assert "LFA1.LIFNR" in stored["LFA1"][0].columns and stored["LFA1"][1]["rows"] == 2
     assert not live_data & set(frames)  # data tables released; config tables still returned
     assert all(c.get("purpose") == "config" for c in coverage if c["table"] in frames)
+
+
+def test_a_failed_table_carries_its_reason_into_the_job_rows(monkeypatch):
+    """On the KMZ run ADRC failed and the reason was lost with the worker: the job row must keep it."""
+    from api.services import connectivity_manager as cm
+    from sap.base import SAPConnectorError
+
+    lfa1 = pd.DataFrame({"MANDT": ["100"], "LIFNR": ["V1"], "NAME1": ["A"], "KTOKK": ["KRED"]})
+    lfb1 = pd.DataFrame({"MANDT": ["100"], "LIFNR": ["V1"], "BUKRS": ["1000"], "AKONT": ["160000"]})
+    fake = FakeRFCConnector({"LFA1": lfa1, "LFB1": lfb1})
+    real = fake.read_table_full
+
+    def read(table, *a, **k):
+        if table == "LFB1":
+            raise SAPConnectorError("OPTION_NOT_VALID")
+        return real(table, *a, **k)
+
+    fake.read_table_full = read
+
+    class Mgr(cm.ConnectivityManager):
+        def __init__(self):
+            self.tenant_id, self.session = "t", None
+
+        def _load_system(self, sid):
+            return type("R", (), {"system_type": "ecc", "id": sid})()
+
+        def _build_connection_params(self, row):
+            return {"system_type": "ecc"}
+
+        def _get_connector(self, system_type, params):
+            return fake
+
+    monkeypatch.setattr("api.services.source_design.dictionary_for", lambda s, sid, st=None: get_dictionary("ecc6"))
+    reports = []
+    Mgr().extract("sys", ["accounts_payable"], progress=reports.append)
+    done = {t["table"]: t for t in reports[-1]["tables"]}
+    assert done["LFB1"]["status"] == "failed" and "OPTION_NOT_VALID" in done["LFB1"]["detail"]
+    assert "detail" not in done["LFA1"]

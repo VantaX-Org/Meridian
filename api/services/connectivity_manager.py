@@ -515,7 +515,8 @@ class ConnectivityManager:
                         return
                     for c in coverage:  # tables already read carry their final status and row count
                         if c["table"] in table_rows:
-                            table_rows[c["table"]].update(status=c["status"], rows=c.get("rows", 0))
+                            table_rows[c["table"]].update(status=c["status"], rows=c.get("rows", 0),
+                                                       **({"detail": c["detail"]} if c.get("detail") else {}))
                     if table is not None and table_rows[table]["status"] == "queued":
                         table_rows[table].update(status="running", rows=rows)
                     elif table is not None and table_rows[table]["status"] == "running":

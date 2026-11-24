@@ -588,7 +588,7 @@ class RFCConnector(SAPConnector):
                     max_rows: int, page_size: int, on_page: Callable[[int], None] = lambda rows: None,
                     conn: Optional[_Conn] = None) -> pd.DataFrame:
         conn = conn or self._conn
-        pages, skip = [], 0
+        pages, skip, drops = [], 0, 0
         while True:
             want = page_size if not max_rows else min(page_size, max_rows - skip)
             if want <= 0:
@@ -599,6 +599,17 @@ class RFCConnector(SAPConnector):
                     OPTIONS=where_options(where), ROWSKIPS=skip, ROWCOUNT=want,
                 )
             except Exception as e:
+                # A dropped session (RFC_CLOSED) on a read that has run for an hour should cost one
+                # page, not the table: reopen this connection and read the same page again, twice at most.
+                reopen = getattr(conn, "reopen", None)
+                if _dropped(e) and drops < _MAX_DROPS and callable(reopen):
+                    drops += 1
+                    logger.warning("%s: RFC connection dropped at row %d, reopening (%d/%d)", table, skip, drops, _MAX_DROPS)
+                    try:
+                        reopen()
+                        continue
+                    except Exception as e2:
+                        raise SAPConnectorError(self._mask_password(str(e2), self._password)) from e2
                 raise SAPConnectorError(self._mask_password(str(e), self._password)) from e
             page = _parse_rfc_result(result)
             if page.empty and not pages:
@@ -662,6 +673,15 @@ class RFCConnector(SAPConnector):
             return False
 
 
+_MAX_DROPS = 2
+
+
+def _dropped(e: Exception) -> bool:
+    """True for a broken RFC session (network drop, gateway timeout), not for an ABAP or logon error."""
+    m = str(e)
+    return type(e).__name__ == "CommunicationError" or "RFC_CLOSED" in m or "connection to partner" in m
+
+
 # ── RFC_READ_TABLE helpers ─────────────────────────────────────────────────────
 
 
@@ -713,7 +733,7 @@ def where_options(where: Optional[str]) -> list[dict]:
     """
     if not where:
         return []
-    tokens = re.findall(r"'[^']*'|[(),]|[^\s(),']+", where)
+    tokens = re.findall(r"'(?:[^']|'')*'|[(),]|[^\s(),']+", where)
     lines, cur = [], ""
     for tok in tokens:
         if len(tok) > 72:
