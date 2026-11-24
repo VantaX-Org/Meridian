@@ -178,7 +178,8 @@ export function fixtureWrite<T>(method: string, path: string, body: unknown, par
   if (pfw !== NONE_PORTFOLIO) return pfw as T;
   const wbApprove = /^\/writeback\/approve\/([^/]+)$/.exec(path);
   if (method === "POST" && wbApprove) {
-    return { applied: 0, errors: ["Live SAP write-back is off on this deployment. Deliver the fixes with the export."], status: "blocked" } as T;
+    // the API refuses with 409 and this detail while live write-back is off (api/routes/writeback.py approve_writeback)
+    throw new Error("Live SAP write-back is off on this deployment. Deliver the fixes with the export.");
   }
   const req = requestsWrite(method, path, body);
   if (req !== NONE_REQ) return req as T;

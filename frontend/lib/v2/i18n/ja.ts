@@ -16120,4 +16120,5 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Pick who takes it": "担当者を選択",
   "Share out across the team": "チーム全体に配分",
   "Hand over {n} items": "{n} 件を引き渡す",
+  "{n} problems reported: {first}": "{n} 件の問題が報告されました: {first}",
 };

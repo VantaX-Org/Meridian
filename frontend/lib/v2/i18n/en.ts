@@ -16119,6 +16119,7 @@ export const en = {
   "Pick who takes it": "Pick who takes it",
   "Share out across the team": "Share out across the team",
   "Hand over {n} items": "Hand over {n} items",
+  "{n} problems reported: {first}": "{n} problems reported: {first}",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

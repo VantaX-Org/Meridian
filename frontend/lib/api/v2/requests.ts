@@ -107,7 +107,7 @@ export const getRequestForm = (object: RequestObject, systemId?: string) =>
 export const createRequest = (body: RequestDraft) => v2Send<ChangeRequest>("POST", "/change-requests", body);
 export const validateRequest = (id: string) => v2Send<Precheck>("POST", `${cr(id)}/validate`);
 /** PATCH /change-requests/{id}: edits a draft (409 once submitted); only the requester. A payload replaces the proposed values. */
-export const updateRequest = (id: string, body: { title?: string; payload?: Record<string, string> }) => v2Send<ChangeRequest>("PATCH", cr(id), body);
+export const updateRequest = (id: string, body: { title?: string; payload?: Record<string, string>; object_key?: string; record_keys?: string[]; target_system_id?: string }) => v2Send<ChangeRequest>("PATCH", cr(id), body);
 export const submitRequest = (id: string) => v2Send<RequestDetail>("POST", `${cr(id)}/submit`);
 export const decideRequest = (id: string, decision: "approve" | "reject", comment?: string, task_id?: string) => v2Send<RequestDetail>("POST", `${cr(id)}/decide`, { decision, comment, task_id });
 export const cancelRequest = (id: string, reason?: string) => v2Send<ChangeRequest>("POST", `${cr(id)}/cancel`, { reason });
