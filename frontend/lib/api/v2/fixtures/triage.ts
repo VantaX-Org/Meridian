@@ -2,7 +2,8 @@
  * Triage fixture: the ranked work queue, bulk actions, SLA metrics, teams and assignment rules, shaped like
  * api/routes/triage.py. Bulk actions, team and rule changes change the rows in memory the way the routes do.
  */
-import type { AssignRule, QueueItem, Team, TriageMetrics } from "../triage";
+import type { AssignRule, QueueItem, Team, TeamLoad, TriageMetrics } from "../triage";
+import { assignableFixture } from "./approvals";
 
 export const NONE_TRIAGE = Symbol("not a triage path");
 
@@ -66,11 +67,33 @@ function refuse(detail: string, code = 400): never {
 
 const snoozed = (x: QueueItem) => x.snoozed_until !== null && x.snoozed_until > new Date().toISOString();
 
+// As the route: a team's work is what is queued to it plus what its members and lead hold.
+function onTeam(x: QueueItem, id: string): boolean {
+  const t = teamState().find((m) => m.id === id);
+  return x.assigned_team_id === id || (!!t && !!x.assigned_to && (t.member_ids.includes(x.assigned_to) || t.lead_user_id === x.assigned_to));
+}
+
+const openLoad = (uid: string) => itemState().filter((x) => x.assigned_to === uid && x.status === "open").length;
+
+function workload(id: string): TeamLoad[] {
+  const t = teamState().find((m) => m.id === id) ?? refuse("Team not found", 404);
+  const folk = assignableFixture();
+  const now = new Date().toISOString();
+  const ids = [...new Set([...(t.lead_user_id ? [t.lead_user_id] : []), ...t.member_ids])];
+  return ids.flatMap((uid) => {
+    const u = folk.find((p) => p.id === uid);
+    if (!u) return [];
+    const mine = itemState().filter((x) => x.assigned_to === uid && x.status === "open");
+    // the fixture keeps no resolved history, so nothing reads as resolved this week
+    return [{ user_id: uid, name: u.name, email: u.email, is_lead: uid === t.lead_user_id, open: mine.length, overdue: mine.filter((x) => String(x.due_at) <= now).length, resolved_7d: 0 }];
+  }).sort((a, b) => Number(b.is_lead) - Number(a.is_lead) || (a.name ?? a.email).localeCompare(b.name ?? b.email));
+}
+
 function queue(params: Record<string, unknown>) {
   const who = String(params.assignee ?? "me");
   const mine = (x: QueueItem) =>
     who === "all" ? true : who === "me" ? x.assigned_to === "u-me" : who === "unassigned" ? !x.assigned_to && !x.assigned_team_id
-      : who.startsWith("team:") ? x.assigned_team_id === who.slice(5) : x.assigned_to === who;
+      : who.startsWith("team:") ? onTeam(x, who.slice(5)) : x.assigned_to === who;
   const now = new Date().toISOString(), eod = endOfDay();
   const hit = itemState().filter((x) => mine(x) && (params.include_snoozed || !snoozed(x)))
     .sort((a, b) => (a.priority ?? 9) - (b.priority ?? 9) || b.rank_score - a.rank_score);
@@ -103,6 +126,8 @@ export function triageRead(path: string, params: Record<string, unknown>): unkno
   if (path === "/triage/queue") return queue(params);
   if (path === "/triage/metrics") return metrics();
   if (path === "/triage/teams") return teamState().map((t) => ({ ...t, open_items: itemState().filter((x) => x.assigned_team_id === t.id).length }));
+  const wl = /^\/triage\/teams\/([^/]+)\/workload$/.exec(path);
+  if (wl) return workload(decodeURIComponent(wl[1]));
   if (path === "/triage/rules") return [...ruleState()].sort((a, b) => a.position - b.position);
   return NONE_TRIAGE;
 }
@@ -115,7 +140,13 @@ export function triageWrite(method: string, path: string, body: unknown): unknow
     if ((b.action === "assign" || b.action === "reassign") && !b.user_id && !b.team_id) refuse("assign needs user_id or team_id", 422);
     if (b.action === "snooze" && (!b.reason || !b.until || String(b.until) <= new Date().toISOString())) refuse("snooze needs a reason and a future until", 422);
     for (const x of hit) {
-      if (b.action === "assign" || b.action === "reassign") { x.assigned_to = (b.user_id as string) ?? null; x.assigned_team_id = (b.team_id as string) ?? x.assigned_team_id; }
+      if (b.action === "assign" || b.action === "reassign") {
+        const team = b.team_id ? teamState().find((m) => m.id === b.team_id) : undefined;
+        // ponytail: sharing to a team picks the least-loaded person for both strategies; the route keeps a round-robin cursor
+        const pool = team ? [...new Set([...team.member_ids, ...(team.lead_user_id ? [team.lead_user_id] : [])])] : [];
+        x.assigned_to = (b.user_id as string) ?? (pool.sort((p, q) => openLoad(p) - openLoad(q))[0] ?? null);
+        x.assigned_team_id = (b.team_id as string) ?? x.assigned_team_id;
+      }
       if (b.action === "release") x.assigned_to = null;
       if (b.action === "snooze") { x.snoozed_until = String(b.until); x.snooze_reason = String(b.reason); }
       if (b.action === "unsnooze") { x.snoozed_until = null; x.snooze_reason = null; }
@@ -127,7 +158,7 @@ export function triageWrite(method: string, path: string, body: unknown): unknow
     return { action: b.action, updated: hit.length, sla: {} };
   }
   if (method === "POST" && path === "/triage/teams") {
-    const t: Team = { id: `tm-${teamState().length + 1}`, name: String(b.name), strategy: (b.strategy as Team["strategy"]) ?? "round_robin", lead_user_id: null, member_ids: (b.member_ids as string[]) ?? [], open_items: 0 };
+    const t: Team = { id: `tm-${teamState().length + 1}`, name: String(b.name), strategy: (b.strategy as Team["strategy"]) ?? "round_robin", lead_user_id: (b.lead_user_id as string) ?? "u-me", member_ids: (b.member_ids as string[]) ?? [], open_items: 0 };
     teamState().push(t);
     return t;
   }

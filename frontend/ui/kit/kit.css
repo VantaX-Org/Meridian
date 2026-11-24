@@ -7,6 +7,7 @@
 .mx-root .mx-muted { color: var(--mx-ink-3); font-size: var(--mx-fs-small); line-height: var(--mx-lh-small); }
 .mx-root .mx-num { font-variant-numeric: tabular-nums; }
 .mx-root .mx-code { font-family: var(--mx-font-mono); font-size: var(--mx-fs-small); }
+.mx-root .mx-code[data-wrap] { overflow-wrap: anywhere; min-inline-size: 0; }
 .mx-root .mx-h1 { font-size: var(--mx-fs-h1); line-height: var(--mx-lh-h1); font-weight: var(--mx-w-heading); }
 .mx-root .mx-big { font-size: var(--mx-fs-display); line-height: var(--mx-lh-h1); font-weight: var(--mx-w-heading); }
 .mx-root .mx-dot { display: inline-block; inline-size: var(--mx-s2); block-size: var(--mx-s2); border-radius: var(--mx-r-pill); background: currentColor; margin-inline-end: var(--mx-s1); }

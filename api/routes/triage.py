@@ -19,7 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.middleware.cache import cached_json
 from api.services import triage
-from api.services.rbac import current_user_id, current_user_label, require_any_permission, require_permission
+from api.services.rbac import (Scope, current_user_id, current_user_label, effective_actions, require_any_permission,
+                               require_permission)
 
 router = APIRouter(prefix="/api/v1/triage", tags=["triage"])
 
@@ -109,6 +110,16 @@ class TeamOut(BaseModel):
     lead_user_id: Optional[str]
     member_ids: list[str]
     open_items: int
+
+
+class WorkloadOut(BaseModel):
+    user_id: str
+    name: Optional[str]
+    email: str
+    is_lead: bool
+    open: int
+    overdue: int
+    resolved_7d: int
 
 
 class PolicyIn(BaseModel):
@@ -263,6 +274,25 @@ async def _team_exists(db: AsyncSession, tid: str, team_id: uuid.UUID) -> None:
 
 # ── teams ─────────────────────────────────────────────────────────────────────
 
+
+async def _lead_only(db: AsyncSession, tenant: Tenant, request: Request, role: str,
+                     team_id: Optional[uuid.UUID] = None) -> Optional[str]:
+    """None for an administrator (manage_users), who runs every team. Anyone else editing teams gets their own id
+    back and, with team_id, must be that team's lead (403 otherwise; 404 when the team does not exist)."""
+    uid = current_user_id(request)
+    if "manage_users" in await effective_actions(db, tenant.id, uid, role, Scope()):
+        return None
+    if not uid:
+        raise HTTPException(status_code=403, detail="Only a team's lead or an administrator may change a team")
+    if team_id is not None:
+        lead = (await db.execute(text("SELECT lead_user_id::text FROM triage_teams WHERE id = :id "
+                                      "AND tenant_id = :tid"), {"id": team_id, "tid": tenant.id})).fetchone()
+        if lead is None:
+            raise HTTPException(status_code=404, detail="Team not found")
+        if lead[0] != uid:
+            raise HTTPException(status_code=403, detail="Only the team's lead or an administrator may change it")
+    return uid
+
 _TEAMS_SQL = """
     SELECT t.id, t.name, t.strategy, t.lead_user_id,
            COALESCE((SELECT array_agg(m.user_id::text ORDER BY m.user_id) FROM triage_team_members m
@@ -297,9 +327,15 @@ async def list_teams(db: AsyncSession = Depends(get_db), tenant: Tenant = Depend
 
 
 @router.post("/teams", response_model=TeamOut, status_code=201)
-async def create_team(body: TeamIn, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
-                      _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
+async def create_team(body: TeamIn, request: Request, db: AsyncSession = Depends(get_db),
+                      tenant: Tenant = Depends(get_tenant), role: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
+    """An administrator names any lead; anyone else creating a team leads it themselves."""
     tid = await _rls(db, tenant)
+    me = await _lead_only(db, tenant, request, role)
+    if me:
+        if body.lead_user_id and str(body.lead_user_id) != me:
+            raise HTTPException(status_code=403, detail="Only an administrator may name another person as lead")
+        body.lead_user_id = uuid.UUID(me)
     await _active_users(db, tid, [body.lead_user_id])
     if (await db.execute(text("SELECT 1 FROM triage_teams WHERE tenant_id = CAST(:tid AS uuid) AND name = :n"),
                          {"tid": tid, "n": body.name})).scalar():
@@ -314,11 +350,14 @@ async def create_team(body: TeamIn, db: AsyncSession = Depends(get_db), tenant: 
 
 
 @router.patch("/teams/{team_id}", response_model=TeamOut)
-async def update_team(team_id: uuid.UUID, body: TeamPatch, db: AsyncSession = Depends(get_db),
-                      tenant: Tenant = Depends(get_tenant), _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
+async def update_team(team_id: uuid.UUID, body: TeamPatch, request: Request, db: AsyncSession = Depends(get_db),
+                      tenant: Tenant = Depends(get_tenant), role: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     tid = await _rls(db, tenant)
     await _team_exists(db, tid, team_id)
+    me = await _lead_only(db, tenant, request, role, team_id)
     fields = body.model_dump(exclude_unset=True)
+    if me and "lead_user_id" in fields and str(fields["lead_user_id"]) != me:
+        raise HTTPException(status_code=403, detail="Only an administrator may name another person as lead")
     await _active_users(db, tid, [fields.get("lead_user_id")])
     if "name" in fields and (await db.execute(text(
             "SELECT 1 FROM triage_teams WHERE tenant_id = CAST(:tid AS uuid) AND name = :n AND id <> :id"),
@@ -333,26 +372,55 @@ async def update_team(team_id: uuid.UUID, body: TeamPatch, db: AsyncSession = De
 
 
 @router.put("/teams/{team_id}/members", response_model=TeamOut)
-async def set_team_members(team_id: uuid.UUID, body: MembersIn, db: AsyncSession = Depends(get_db),
+async def set_team_members(team_id: uuid.UUID, body: MembersIn, request: Request, db: AsyncSession = Depends(get_db),
                            tenant: Tenant = Depends(get_tenant),
-                           _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
+                           role: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     tid = await _rls(db, tenant)
     await _team_exists(db, tid, team_id)
+    await _lead_only(db, tenant, request, role, team_id)
     await _set_members(db, tid, team_id, body.user_ids)
     await db.commit()
     return (await _team_out(db, tid, team_id))[0]
 
 
 @router.delete("/teams/{team_id}", status_code=204)
-async def delete_team(team_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
-                      _r: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
+async def delete_team(team_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db),
+                      tenant: Tenant = Depends(get_tenant), role: str = Depends(require_any_permission(*_EDIT_TRIAGE))):
     tid = await _rls(db, tenant)
+    await _lead_only(db, tenant, request, role, team_id)
     # rules pointing at the team are removed with it (FK cascade); items keep their owner
     res = await db.execute(text("DELETE FROM triage_teams WHERE id = :id AND tenant_id = CAST(:tid AS uuid)"),
                            {"id": team_id, "tid": tid})
     if not res.rowcount:
         raise HTTPException(status_code=404, detail="Team not found")
     await db.commit()
+
+
+@router.get("/teams/{team_id}/workload", response_model=list[WorkloadOut])
+async def team_workload(team_id: uuid.UUID, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
+                        _r: str = Depends(require_permission("view"))):
+    """Per person on the team (lead first, then members by name): open items, overdue (due date passed, the
+    queue's overdue bucket) and items resolved in the last 7 days, over issues and stewardship tasks."""
+    tid = await _rls(db, tenant)
+    await _team_exists(db, tid, team_id)
+    people = (await db.execute(text("""
+        SELECT DISTINCT ON (u.id) u.id::text AS user_id, u.name, u.email, p.is_lead
+          FROM (SELECT lead_user_id AS user_id, true AS is_lead FROM triage_teams WHERE id = :id
+                UNION ALL SELECT user_id, false FROM triage_team_members WHERE team_id = :id) p
+          JOIN users u ON u.id = p.user_id AND u.tenant_id = CAST(:tid AS uuid)
+         ORDER BY u.id, p.is_lead DESC"""), {"id": team_id, "tid": tid})).fetchall()
+    if not people:
+        return []
+    counts = {r[0]: r[1:] for r in (await db.execute(text(f"""{triage.METRICS_ITEMS_SQL}
+        SELECT q.assigned_to::text,
+               COUNT(*) FILTER (WHERE q.status NOT IN ('resolved', 'accepted')),
+               COUNT(*) FILTER (WHERE q.status NOT IN ('resolved', 'accepted') AND q.due_at <= now()),
+               COUNT(*) FILTER (WHERE q.resolved_at >= now() - interval '7 days')
+          FROM q WHERE q.assigned_to = ANY(CAST(:ids AS uuid[])) GROUP BY 1"""),
+        {"tid": tid, "ids": [p.user_id for p in people]})).fetchall()}
+    out = [WorkloadOut(**p._mapping, **dict(zip(("open", "overdue", "resolved_7d"), counts.get(p.user_id, (0, 0, 0)))))
+           for p in people]
+    return sorted(out, key=lambda w: (not w.is_lead, (w.name or w.email).lower()))
 
 
 # ── assignment rules ──────────────────────────────────────────────────────────
@@ -554,7 +622,10 @@ async def my_queue(
         where.append("assigned_to = CAST(:who AS uuid)")
         p["who"] = uid
     elif assignee.startswith("team:"):
-        where.append("assigned_team_id = CAST(:who AS uuid)")
+        # the team's work: items queued to the team and items held by its lead or a member
+        where.append("(assigned_team_id = CAST(:who AS uuid) OR assigned_to IN ("
+                     "SELECT user_id FROM triage_team_members WHERE team_id = CAST(:who AS uuid) UNION "
+                     "SELECT lead_user_id FROM triage_teams WHERE id = CAST(:who AS uuid)))")
         p["who"] = assignee[5:]
     elif assignee == "unassigned":
         where.append("assigned_to IS NULL")

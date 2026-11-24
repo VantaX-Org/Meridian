@@ -192,6 +192,7 @@ export const ROUTE_CHAPTERS: Readonly<Record<string, string>> = {
   "/s/new": "v2:systems",
   "/people": "v2:people",
   "/people/assignments": "v2:people",
+  "/people/team": "v2:people",
   "/people/contracts": "v2:people",
   "/people/digests": "v2:people",
   "/people/stewardship": "v2:people",

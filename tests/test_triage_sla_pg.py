@@ -331,22 +331,23 @@ def test_routes(engines):
     async def scenario():
         async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
             admin, steward, analyst = ({"X-User-Role": r} for r in ("admin", "steward", "analyst"))
-            # config: analyst can read, not write; steward manages rules, admin manages settings
+            # config: analyst can read, not write; steward manages rules, admin manages settings and
+            # teams (a steward without a signed-in user leads nothing, so team changes are an admin's here)
             assert (await c.post(f"{base}/teams", headers=analyst, json={"name": "AP"})).status_code == 403
-            team = (await c.post(f"{base}/teams", headers=steward, json={
+            team = (await c.post(f"{base}/teams", headers=admin, json={
                 "name": "AP", "strategy": "least_loaded", "lead_user_id": u["lead"],
                 "member_ids": [u["a"], u["b"]]})).json()
             assert sorted(team["member_ids"]) == sorted([u["a"], u["b"]])
-            bad = await c.post(f"{base}/teams", headers=steward,
+            bad = await c.post(f"{base}/teams", headers=admin,
                                json={"name": "X", "member_ids": [str(uuid.uuid4())]})
             assert bad.status_code == 422
             # renaming: own name is fine, another team's name is 409, an explicit null is 422
             ap = f"{base}/teams/{team['id']}"
-            other = (await c.post(f"{base}/teams", headers=steward, json={"name": "AR"})).json()
-            assert (await c.patch(ap, headers=steward, json={"name": "AP"})).status_code == 200
-            assert (await c.patch(ap, headers=steward, json={"name": "AR"})).status_code == 409
-            assert (await c.patch(ap, headers=steward, json={"name": None})).status_code == 422
-            assert (await c.delete(f"{base}/teams/{other['id']}", headers=steward)).status_code == 204
+            other = (await c.post(f"{base}/teams", headers=admin, json={"name": "AR"})).json()
+            assert (await c.patch(ap, headers=admin, json={"name": "AP"})).status_code == 200
+            assert (await c.patch(ap, headers=admin, json={"name": "AR"})).status_code == 409
+            assert (await c.patch(ap, headers=admin, json={"name": None})).status_code == 422
+            assert (await c.delete(f"{base}/teams/{other['id']}", headers=admin)).status_code == 204
             r1 = (await c.post(f"{base}/rules", headers=steward, json={
                 "name": "all to AP", "assign_team_id": team["id"]})).json()
             r0 = (await c.post(f"{base}/rules", headers=steward, json={
@@ -388,7 +389,7 @@ def test_routes(engines):
             assert crit["assigned_to"] == u["lead"]
             team_q = (await c.get(f"{base}/queue", headers=analyst,
                                   params={"assignee": f"team:{team['id']}"})).json()
-            assert total(team_q) == 3
+            assert total(team_q) == 4  # the three queued to the team and the critical one the lead holds
             assert (await c.get(f"{base}/queue", headers=analyst)).status_code == 400  # no signed-in user
             assert (await c.get(f"{base}/queue", headers=analyst,
                                 params={"assignee": "nope"})).status_code == 422
@@ -446,7 +447,7 @@ def test_routes(engines):
             assert len(m["weekly"]) >= 8 and sum(w["opened"] for w in m["weekly"]) == 4
 
             # deleting a team drops its rule; deleting a rule compacts positions
-            assert (await c.delete(f"{base}/teams/{team['id']}", headers=steward)).status_code == 204
+            assert (await c.delete(f"{base}/teams/{team['id']}", headers=admin)).status_code == 204
             assert [r["id"] for r in (await c.get(f"{base}/rules", headers=analyst)).json()] == [r0["id"]]
 
     async def main():

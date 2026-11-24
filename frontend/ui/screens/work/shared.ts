@@ -10,6 +10,9 @@ export const sevLabel = (s: string): string => (s === "critical" ? t("Critical")
 /** The plain-words description of a SAP field: the API's own text first, then the field dictionary. */
 export const fieldText = (code?: string | null, given?: string | null): string => given ?? (code ? describeField(code) ?? "" : "");
 export const day = (iso?: string | null): string => (iso ? iso.slice(0, 10) : "");
+/** A person's name for a picker, with the email beside it when someone else in the list has the same name. */
+export const personLabel = (p: { id: string; name: string; email?: string | null }, all: readonly { id: string; name: string }[]): string =>
+  p.email && all.some((o) => o.id !== p.id && o.name.trim().toLowerCase() === p.name.trim().toLowerCase()) ? `${p.name} (${p.email})` : p.name;
 
 /** Runs a write, refreshes every v2 read, and tells the person the outcome in a toast. Returns the result, or null on failure. */
 export function useDo() {

@@ -268,8 +268,13 @@ async def list_queue_items(
         where_clauses.append("sq.domain = :domain")
         params["domain"] = domain
     if assigned_to:
-        where_clauses.append("sq.assigned_to = :assigned_to")
-        params["assigned_to"] = assigned_to
+        where_clauses.append("sq.assigned_to = CAST(:assigned_to AS uuid)")
+        # "me" is the caller, the same word the Work queue takes
+        who = current_user_id(request) if assigned_to == "me" else assigned_to
+        try:
+            params["assigned_to"] = str(uuid_mod.UUID(str(who)))
+        except ValueError:
+            raise HTTPException(status_code=422, detail="assigned_to is a user id or me.") from None
     if priority is not None:
         where_clauses.append("sq.priority = :priority")
         params["priority"] = priority
@@ -417,26 +422,36 @@ async def get_stewardship_metrics(
         result = await db.execute(
             text("""
                 SELECT
-                    COALESCE(u.name, sq.assigned_to::text, 'Unassigned') as steward_name,
+                    sq.assigned_to::text as user_id,
+                    COALESCE(MAX(u.name), sq.assigned_to::text, 'Unassigned') as steward_name,
                     COUNT(*) FILTER (WHERE sq.status = 'resolved') as resolved,
                     COUNT(*) as total,
                     AVG(EXTRACT(EPOCH FROM (sq.updated_at - sq.created_at)) / 3600)
-                        FILTER (WHERE sq.status = 'resolved') as avg_hours
+                        FILTER (WHERE sq.status = 'resolved') as avg_hours,
+                    COUNT(*) FILTER (WHERE sq.status IN ('open', 'in_progress', 'escalated')) as open,
+                    COUNT(*) FILTER (WHERE sq.status IN ('open', 'in_progress', 'escalated')
+                        AND COALESCE(sq.due_at, sq.created_at + make_interval(hours => sq.sla_hours)) < now()) as overdue
                 FROM stewardship_queue sq
                 LEFT JOIN users u ON u.id = sq.assigned_to
                 WHERE sq.tenant_id = :tid
                   AND sq.created_at >= now() - interval '30 days'
-                GROUP BY COALESCE(u.name, sq.assigned_to::text, 'Unassigned')
+                GROUP BY sq.assigned_to
                 ORDER BY resolved DESC
             """),
             {"tid": tid},
         )
+        # user_id, name, open, resolved and overdue are what the Stewardship screen's By steward table reads;
+        # steward_name, total and avg_resolution_hours stay for older callers.
         steward_breakdown = [
             {
-                "steward_name": r[0],
-                "resolved": r[1],
-                "total": r[2],
-                "avg_resolution_hours": round(float(r[3]), 1) if r[3] else None,
+                "user_id": r[0] or "unassigned",
+                "name": r[1],
+                "steward_name": r[1],
+                "resolved": r[2],
+                "total": r[3],
+                "avg_resolution_hours": round(float(r[4]), 1) if r[4] else None,
+                "open": r[5],
+                "overdue": r[6],
             }
             for r in result.fetchall()
         ]

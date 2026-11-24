@@ -3,10 +3,13 @@
 import { useCrumbs } from "@/ui/screens/flow";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { applyTemplate, getStewardAssignments, getTemplate, getTemplateGaps, type ApplyPlan, type ApplyRow, type Gap, type StewardAssignment } from "@/lib/api/v2/roles";
+import { applyTemplate, getStewardAssignments, getTemplate, getTemplateGaps, putTemplate, type ApplyPlan, type ApplyRow, type Gap, type SliceKind, type StewardAssignment, type TemplateObject, type TemplateOut } from "@/lib/api/v2/roles";
+import { getAssignable, type AssignableUser } from "@/lib/api/v2/triage";
 import { t } from "@/lib/v2/i18n";
 import { moduleText } from "@/lib/v2/labels";
-import { Button, Card, DataTable, EmptyState, FieldChip, PageHeader, StatTile, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
+import { Button, Card, DataTable, EmptyState, Field, FieldChip, PageHeader, Select, Sheet, StatTile, useAletheia, useAletheiaScope, useToast } from "@/ui/kit";
+import { errorSentence } from "@/lib/api/v2/client";
+import { personLabel } from "@/ui/screens/work/shared";
 import { Gate, refreshV2, useQ } from "./common";
 
 const slice = (k: string | null | undefined, v: string | null | undefined, text?: string | null) =>
@@ -14,7 +17,7 @@ const slice = (k: string | null | undefined, v: string | null | undefined, text?
 
 function Plan({ plan, label }: { plan: ApplyPlan; label: string }) {
   const rows: (ApplyRow & { kind: string })[] = [...plan.owners.map((r) => ({ ...r, kind: t("Owner") })), ...plan.stewards.map((r) => ({ ...r, kind: t("Steward") }))].filter((r) => r.change !== "same");
-  if (!rows.length) return <EmptyState heading={t("Nothing to change")} body={t("Every assignment already matches the template.")} />;
+  if (!rows.length) return <EmptyState heading={t("The template names no people yet.")} body={t("Pick an owner and stewards for each object.")} />;
   return (
     <DataTable label={label} rows={rows} rowKey={(r) => `${r.kind}-${r.module}-${r.slice_value ?? ""}`} height={240} columns={[
       { key: "m", label: t("Object"), render: (r) => <FieldChip code={r.module} description={moduleText(r.module)} /> },
@@ -27,6 +30,54 @@ function Plan({ plan, label }: { plan: ApplyPlan; label: string }) {
   );
 }
 
+export const OWNER_ROLES: readonly string[] = ["data_owner", "admin", "platform_admin"];
+export const STEWARD_ROLES: readonly string[] = ["data_steward", "steward"];
+
+/** Who owns one object and who stewards it, as a whole or per slice value. Saves the template; Apply writes it to the live assignments. */
+function Picker({ module, focus, tpl, people, onClose }: { module: string; focus: string | null; tpl: TemplateOut; people: AssignableUser[]; onClose: () => void }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const cur: TemplateObject = tpl.template.objects[module] ?? { owner_role: "data_owner", slice: "none", stewards: "data_steward" };
+  const [owner, setOwner] = useState(cur.owner_user_id ?? "");
+  const [steward, setSteward] = useState(cur.steward_user_id ?? "");
+  const [per, setPer] = useState<Record<string, string>>(cur.slice_stewards ?? {});
+  const kind: SliceKind = cur.slice;
+  const vals = kind === "none" ? [] : [...new Set([...(tpl.active_slices[kind] ?? []), ...Object.keys(per), ...(focus && focus !== "*" ? [focus] : [])])].sort();
+  const owners = people.filter((p) => OWNER_ROLES.includes(p.role));
+  const stewards = people.filter((p) => STEWARD_ROLES.includes(p.role));
+  const opts = (list: AssignableUser[], none: string) => [{ value: "", label: none }, ...list.map((p) => ({ value: p.id, label: personLabel(p, list) }))];
+  const save = useMutation({
+    mutationFn: () => {
+      const slice_stewards = Object.fromEntries(Object.entries(per).filter(([, v]) => v));
+      const next: TemplateObject = { ...cur, owner_user_id: owner || null, steward_user_id: steward || null, slice_stewards };
+      return putTemplate({ ...tpl.template, objects: { ...tpl.template.objects, [module]: next } });
+    },
+    onSuccess: () => { toast(t("Saved. Preview the template to apply it."), "good"); void refreshV2(qc); onClose(); },
+    onError: (e) => toast(errorSentence(e, t("That did not work. Try again.")), "bad"),
+  });
+  const name = tpl.labels[module] ?? moduleText(module);
+  return (
+    <div className="mx-col">
+      <h2>{t("Assign people to {name}", { name })}</h2>
+      <Field label={t("Owner")} hint={owners.length ? undefined : t("No one has the data owner or admin role yet.")}>
+        <Select aria-label={t("Owner")} value={owner} onChange={(e) => setOwner(e.target.value)} options={opts(owners, t("Nobody"))} />
+      </Field>
+      <Field label={kind === "none" ? t("Steward") : t("Steward for every other slice")} hint={stewards.length ? undefined : t("No one has the data steward role yet.")}>
+        <Select aria-label={kind === "none" ? t("Steward") : t("Steward for every other slice")} value={steward} onChange={(e) => setSteward(e.target.value)} options={opts(stewards, t("Nobody"))} />
+      </Field>
+      {vals.map((v) => (
+        <Field key={v} label={t("Steward for {slice} {value}", { slice: kind.replace(/_/g, " "), value: v })}>
+          <Select aria-label={t("Steward for {slice} {value}", { slice: kind.replace(/_/g, " "), value: v })} value={per[v] ?? ""} onChange={(e) => setPer({ ...per, [v]: e.target.value })} options={opts(stewards, t("Same as every other slice"))} />
+        </Field>
+      ))}
+      <div className="mx-links">
+        <Button variant="primary" disabled={save.isPending} onClick={() => save.mutate()}>{t("Save to the template")}</Button>
+        <Button variant="ghost" onClick={onClose}>{t("Cancel")}</Button>
+      </div>
+    </div>
+  );
+}
+
 export function Assignments() {
   const crumbs = useCrumbs();
   const qc = useQueryClient();
@@ -35,7 +86,9 @@ export function Assignments() {
   const gaps = useQ(["gaps"], () => getTemplateGaps());
   const asg = useQ(["steward-assignments"], () => getStewardAssignments());
   const tpl = useQ(["assignment-template"], () => getTemplate());
+  const people = useQ(["assignable"], () => getAssignable());
   const [plan, setPlan] = useState<ApplyPlan | null>(null);
+  const [pick, setPick] = useState<{ module: string; focus: string | null } | null>(null);
   const preview = useMutation({ mutationFn: () => applyTemplate(true), onSuccess: setPlan });
   const apply = useMutation({
     mutationFn: () => applyTemplate(false),
@@ -78,6 +131,7 @@ export function Assignments() {
                 { key: "g", label: t("Missing"), render: (r) => (r.gap === "no_owner" ? t("Owner") : t("Steward")) },
                 { key: "s", label: t("Slice"), render: (r) => slice(r.slice_kind, r.slice_value) },
                 { key: "t", label: t("What to do"), render: (r) => r.sentence },
+                { key: "a", label: t("Assign"), render: (r) => <Button variant="secondary" disabled={!tpl.data} onClick={() => setPick({ module: r.module, focus: r.slice_value })}>{t("Assign")}</Button> },
               ]} />
             )}
           </Gate>
@@ -104,12 +158,22 @@ export function Assignments() {
                   { key: "o", label: t("Owner role"), render: (r) => r.owner_role },
                   { key: "s", label: t("Slice"), render: (r) => (r.slice === "none" ? t("Whole object") : r.slice.replace(/_/g, " ")) },
                   { key: "st", label: t("Stewards"), render: (r) => r.stewards },
+                  { key: "who", label: t("People"), render: (r) => {
+                    const folk = people.data ?? [];
+                    const nm = (id?: string | null) => { const p = folk.find((x) => x.id === id); return p ? personLabel(p, folk) : id ?? ""; };
+                    const named = [r.owner_user_id, r.steward_user_id, ...Object.values(r.slice_stewards ?? {})].filter(Boolean);
+                    return named.length ? t("Owner {owner}, steward {steward}", { owner: nm(r.owner_user_id) || t("Nobody"), steward: nm(r.steward_user_id) || t("Nobody") }) : <span className="mx-muted">{t("Nobody named")}</span>;
+                  } },
+                  { key: "a", label: t("Assign"), render: (r) => <Button variant="secondary" onClick={() => setPick({ module: r.module, focus: null })}>{t("Assign")}</Button> },
                 ]} />
               );
             }}
           </Gate>
         </Card>
       </div>
+      <Sheet open={!!pick && !!tpl.data} onClose={() => setPick(null)} label={t("Assign people")} closeLabel={t("Close")}>
+        {pick && tpl.data ? <Picker key={pick.module} module={pick.module} focus={pick.focus} tpl={tpl.data} people={people.data ?? []} onClose={() => setPick(null)} /> : null}
+      </Sheet>
     </>
   );
 }

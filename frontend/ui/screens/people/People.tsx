@@ -18,6 +18,7 @@ const SECTIONS = [
   { href: "/people/contracts", label: () => t("Contracts") },
   { href: "/people/digests", label: () => t("Digests") },
   { href: "/people/assignments", label: () => t("Assignments") },
+  { href: "/people/team", label: () => t("My team") },
 ];
 
 function ShareCard() {

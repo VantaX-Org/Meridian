@@ -279,7 +279,10 @@ def weekly_cleaning_batch():
                           AND approved_by IS NOT NULL
                           AND detected_at >= now() - interval '7 days'
                         GROUP BY approved_by
-                        ON CONFLICT DO NOTHING
+                        ON CONFLICT (tenant_id, user_id, period) DO UPDATE SET
+                            items_processed = EXCLUDED.items_processed,
+                            items_approved = EXCLUDED.items_approved,
+                            items_rejected = EXCLUDED.items_rejected
                     """),
                     {"tid": tid, "period": today},
                 )

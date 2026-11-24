@@ -82,6 +82,11 @@ def test_080_dedups_then_on_conflict_holds():
         eng.dispose()
 
 
+def _rollup_sql(scheduler) -> str:
+    src = inspect.getsource(scheduler.weekly_cleaning_batch)
+    return re.search(r"(INSERT INTO steward_metrics.*?items_rejected = EXCLUDED.items_rejected)", src, re.S).group(1)
+
+
 @pg
 def test_steward_rollup_runs_on_postgres():
     from sqlalchemy import create_engine, text
@@ -90,8 +95,7 @@ def test_steward_rollup_runs_on_postgres():
 
     url = os.environ["MERIDIAN_TEST_DB_URL"]
     _alembic(url, "upgrade", "head")
-    src = inspect.getsource(scheduler.weekly_cleaning_batch)
-    sql = re.search(r'(INSERT INTO steward_metrics.*?ON CONFLICT DO NOTHING)', src, re.S).group(1)
+    sql = _rollup_sql(scheduler)
     eng = create_engine(url)
     t = str(uuid.uuid4())
     try:
@@ -101,5 +105,43 @@ def test_steward_rollup_runs_on_postgres():
     finally:
         with eng.begin() as c:
             c.execute(text("DELETE FROM steward_metrics WHERE tenant_id = :t"), {"t": t})
+            c.execute(text("DELETE FROM tenants WHERE id = :t"), {"t": t})
+        eng.dispose()
+
+
+@pg
+def test_steward_rollup_refreshes_current_period():
+    """A second run in the same period updates the one row instead of adding another.
+
+    The old ON CONFLICT DO NOTHING had no unique key to conflict on, so this test saw two
+    rows with the first run's counts.
+    """
+    from sqlalchemy import create_engine, text
+
+    from workers import scheduler
+
+    url = os.environ["MERIDIAN_TEST_DB_URL"]
+    _alembic(url, "upgrade", "head")
+    sql = _rollup_sql(scheduler)
+    eng = create_engine(url)
+    t, u = str(uuid.uuid4()), str(uuid.uuid4())
+    q = ("INSERT INTO cleaning_queue (id, tenant_id, object_type, status, record_key, approved_by)"
+         " VALUES (gen_random_uuid(), :t, 'material', :s, :k, :u)")
+    try:
+        with eng.begin() as c:
+            c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, :t)"), {"t": t})
+            c.execute(text(q), {"t": t, "s": "approved", "k": "M1", "u": u})
+            c.execute(text(sql), {"tid": t, "period": "2026-11-24"})
+            c.execute(text(q), {"t": t, "s": "rejected", "k": "M2", "u": u})
+            c.execute(text(q), {"t": t, "s": "applied", "k": "M3", "u": u})
+            c.execute(text(sql), {"tid": t, "period": "2026-11-24"})
+            rows = c.execute(text("SELECT items_processed, items_approved, items_rejected FROM steward_metrics"
+                                  " WHERE tenant_id = :t AND user_id = :u AND period = '2026-11-24'"),
+                             {"t": t, "u": u}).fetchall()
+            assert [tuple(r) for r in rows] == [(3, 2, 1)]
+    finally:
+        with eng.begin() as c:
+            c.execute(text("DELETE FROM steward_metrics WHERE tenant_id = :t"), {"t": t})
+            c.execute(text("DELETE FROM cleaning_queue WHERE tenant_id = :t"), {"t": t})
             c.execute(text("DELETE FROM tenants WHERE id = :t"), {"t": t})
         eng.dispose()

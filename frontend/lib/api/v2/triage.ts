@@ -117,11 +117,16 @@ export const getTriageMetrics = (weeks = 8): Promise<TriageMetrics> => v2Get("/t
 
 export interface Team { id: string; name: string; strategy: "round_robin" | "least_loaded"; lead_user_id: string | null; member_ids: string[]; open_items: number }
 export const getTeams = (): Promise<Team[]> => v2Get("/triage/teams");
-export const createTeam = (b: { name: string; strategy: Team["strategy"]; member_ids: string[] }): Promise<Team> => v2Send("POST", "/triage/teams", b);
+/** POST /triage/teams: an administrator may name any lead; anyone else leads the team they create. */
+export const createTeam = (b: { name: string; strategy: Team["strategy"]; member_ids: string[]; lead_user_id?: string }): Promise<Team> => v2Send("POST", "/triage/teams", b);
 /** PATCH /triage/teams/{id}: rename, change how work is shared, or set the lead. 409 when the name is taken. */
 export const updateTeam = (id: string, b: Partial<Pick<Team, "name" | "strategy" | "lead_user_id">>): Promise<Team> => v2Send("PATCH", `/triage/teams/${encodeURIComponent(id)}`, b);
 export const setTeamMembers = (id: string, user_ids: string[]): Promise<Team> => v2Send("PUT", `/triage/teams/${encodeURIComponent(id)}/members`, { user_ids });
 export const deleteTeam = (id: string): Promise<unknown> => v2Send("DELETE", `/triage/teams/${encodeURIComponent(id)}`);
+/** One person on a team: open items, overdue (due date passed) and items resolved in the last 7 days. */
+export interface TeamLoad { user_id: string; name: string | null; email: string; is_lead: boolean; open: number; overdue: number; resolved_7d: number }
+/** GET /triage/teams/{id}/workload: the lead first, then members by name. */
+export const getTeamWorkload = (id: string): Promise<TeamLoad[]> => v2Get(`/triage/teams/${encodeURIComponent(id)}/workload`);
 
 export interface AssignRule {
   id: string;
