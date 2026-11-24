@@ -22,7 +22,8 @@ def _page(rows: list[str]) -> dict:
 
 class FakeConn:
     def __init__(self, script: list):
-        self.script, self.reopens, self.skips = list(script), 0, []
+        self.script, self.reopens = list(script), 0
+        self.skips: list[int] = []
 
     def call(self, _fm: str, **params) -> dict:
         self.skips.append(params["ROWSKIPS"])
