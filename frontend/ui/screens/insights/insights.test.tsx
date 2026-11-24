@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { renderWithQuery } from "@/__tests__/render";
 import { stubLayout } from "@/ui/testing/layout-stub";
-import { AletheiaProvider } from "@/ui/kit";
+import { AletheiaProvider, ToastHost } from "@/ui/kit";
 import { Forecast } from "./Forecast";
 import { InsightsScreen } from "./InsightsScreen";
 import { Monitor } from "./Monitor";
@@ -48,6 +48,14 @@ describe("forecast engine cards", () => {
     expect(reason).toBeTruthy();
     expect(await screen.findByTestId("reason-risk-evidence")).toBeTruthy();
   });
+
+  it("names each object in the picker instead of showing its module id", async () => {
+    renderWithQuery(wrap(<Forecast />));
+    const pick = (await screen.findByRole("combobox", { name: "Object" }, { timeout: 5000 })) as HTMLSelectElement;
+    const labels = Array.from(pick.options).map((o) => o.textContent ?? "");
+    expect(labels.length).toBeGreaterThan(0);
+    for (const l of labels) expect(l).not.toMatch(/_/);
+  });
 });
 
 describe("monitor after a clean", () => {
@@ -84,6 +92,16 @@ describe("old monitor links", () => {
     renderWithQuery(wrap(<Monitor />));
     await screen.findByRole("heading", { level: 1, name: "Monitor" });
     expect(replace).toHaveBeenCalledWith("/monitor/controls?view=schedule");
+  });
+});
+
+describe("insight feedback", () => {
+  it("saves a vote once and thanks the user", async () => {
+    renderWithQuery(<AletheiaProvider><ToastHost><InsightsScreen /></ToastHost></AletheiaProvider>);
+    const yes = (await screen.findByRole("button", { name: "Yes" }, { timeout: 5000 })) as HTMLButtonElement;
+    fireEvent.click(yes);
+    expect(await screen.findByText("Thanks, your feedback is saved.")).toBeTruthy();
+    expect(yes.disabled).toBe(true);
   });
 });
 
