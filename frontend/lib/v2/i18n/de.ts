@@ -16131,4 +16131,6 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Block orders": "Aufträge sperren",
   "Steward review": "Prüfung durch Data Steward",
   "{n} terms created": "{n} Begriffe angelegt",
+  "Building the event log": "Ereignisprotokoll wird erstellt",
+  "The rule id, such as MM142. To test a new rule, draft it beside this and try it on the data.": "Die Regel-ID, etwa MM142. Um eine neue Regel zu testen, entwerfen Sie sie daneben und probieren Sie sie an den Daten aus.",
 };

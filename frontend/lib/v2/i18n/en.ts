@@ -16130,6 +16130,8 @@ export const en = {
   "Block orders": "Block orders",
   "Steward review": "Steward review",
   "{n} terms created": "{n} terms created",
+  "Building the event log": "Building the event log",
+  "The rule id, such as MM142. To test a new rule, draft it beside this and try it on the data.": "The rule id, such as MM142. To test a new rule, draft it beside this and try it on the data.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -16131,4 +16131,6 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "Block orders": "受注をブロック",
   "Steward review": "スチュワードレビュー",
   "{n} terms created": "{n} 件の用語を作成",
+  "Building the event log": "イベントログを作成中",
+  "The rule id, such as MM142. To test a new rule, draft it beside this and try it on the data.": "MM142 などのルール ID。新しいルールを試すには、隣で下書きしてデータで試してください。",
 };

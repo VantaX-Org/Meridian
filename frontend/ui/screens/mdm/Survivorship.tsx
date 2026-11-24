@@ -10,7 +10,7 @@ import { describeField } from "@/lib/v2/sap-fields";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useSurvivorship } from "@/lib/v2/mdm-queries";
 import { moveBy, needsSources, RULE_TYPES, toInput, typeLabel, validateRules, type DraftRule } from "@/lib/v2/survivorship";
-import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, SeverityPill, Skeleton, StatTile, Tabs, Toggle, useAletheia, useAletheiaScope } from "@/ui/kit";
+import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, SeverityPill, Skeleton, StatTile, TabPanel, Tabs, Toggle, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { SurvivorshipSave } from "./SurvivorshipSave";
 import { DEFAULT_DOMAIN, DomainSelect, pct, useAct, useHref } from "./shared";
 
@@ -97,6 +97,7 @@ export function Survivorship() {
           onChange={(v) => setTab(v as Tab)}
           items={[{ id: "rules", label: t("Rules"), badge: String(list.length) }, { id: "decisions", label: t("Aletheia decisions"), badge: String(waiting.length) }]}
         />
+        <TabPanel idBase="mdm-surv" value={tab} className="mx-col">
         {tab === "rules" && (
           rules.isLoading || draft === null ? (rules.isError ? <ErrorState heading={t("Survivorship rules could not be loaded")} retryLabel={t("Try again")} onRetry={() => void rules.refetch()} /> : <Skeleton lines={6} label={t("Loading survivorship rules")} />) : (
             <Card
@@ -198,6 +199,7 @@ export function Survivorship() {
             )}
           </>
         )}
+        </TabPanel>
       </div>
       <Confirm
         open={mode !== null}

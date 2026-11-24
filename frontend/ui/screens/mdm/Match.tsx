@@ -10,7 +10,7 @@ import { bulkMergePairs, clearPairConstraint, getPairConstraints, matchTuningDry
 import { describeField, describeTable } from "@/lib/v2/sap-fields";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useAcrossSystems, useConsolidationPack, useMatchCalibration, useMatchPairs } from "@/lib/v2/mdm-queries";
-import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, SeverityPill, Skeleton, StatTile, Tabs, useAletheia, useAletheiaScope, ExportMenu } from "@/ui/kit";
+import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, SeverityPill, Skeleton, StatTile, TabPanel, Tabs, useAletheia, useAletheiaScope, ExportMenu } from "@/ui/kit";
 import { DEFAULT_DOMAIN, DomainSelect, codeText, day, pct, useAct, useHref } from "./shared";
 
 type Tab = "review" | "clusters" | "constraints" | "tuning" | "pack";
@@ -99,6 +99,7 @@ export function Match() {
             { id: "pack", label: t("Consolidation pack") },
           ]}
         />
+        <TabPanel idBase="mdm-match" value={tab} className="mx-col">
         {tab === "review" && (
           pairs.isLoading ? <Skeleton lines={8} label={t("Loading match pairs")} /> : pairs.isError ? <ErrorState heading={t("Match pairs could not be loaded")} retryLabel={t("Try again")} onRetry={() => void pairs.refetch()} /> : list.length === 0 ? (
             <EmptyState heading={t("No pairs waiting")} body={t("Every candidate pair has a decision.")} />
@@ -256,6 +257,7 @@ export function Match() {
             )}
           </Card>
         )}
+        </TabPanel>
       </div>
       <Confirm
         open={pending !== null}

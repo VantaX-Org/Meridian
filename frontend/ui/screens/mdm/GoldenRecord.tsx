@@ -9,7 +9,7 @@ import { revertMergeEvent, setStewardOverrides, undoLastMerge } from "@/lib/api/
 import { describeField } from "@/lib/v2/sap-fields";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useGoldenEvents, useGoldenExplain, useGoldenHistory, useGoldenRecord, useWritebackPreview, useWritebackRequests } from "@/lib/v2/mdm-queries";
-import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Skeleton, Tabs, useAletheia, useAletheiaScope } from "@/ui/kit";
+import { Button, Card, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Skeleton, TabPanel, Tabs, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { codeText, day, pct, show, statusLabel, useAct, useHref } from "./shared";
 
 type Tab = "fields" | "sources" | "history" | "writeback" | "events";
@@ -114,6 +114,7 @@ export function GoldenRecord({ id }: { id: string }) {
             { id: "events", label: t("Merge events"), badge: String(events.data?.length ?? 0) },
           ]}
         />
+        <TabPanel idBase="mdm-golden" value={tab} className="mx-col">
         {tab === "fields" && (
           <Card title={t("Golden fields")} sub={t("The value that survived for each field and the rule that chose it.")}>
             {fieldRows.length === 0 ? <EmptyState heading={t("No golden fields")} body={t("Golden fields appear after matching merges the source records of this cluster.")} /> : (
@@ -248,6 +249,7 @@ export function GoldenRecord({ id }: { id: string }) {
             )}
           </Card>
         )}
+        </TabPanel>
       </div>
       <Confirm
         open={pending !== null}
