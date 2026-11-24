@@ -356,8 +356,8 @@ export function browserTimezone(): string {
   }
 }
 
-/** The one date style: "2 Oct 2026" or "2 Oct 2026, 05:09", in the user's chosen zone, else the tenant's, else
- * UTC. With an explicit IANA `tz` (schedule and sign-off times, read in the tenant's zone) the time is shown in
+/** The one date style: "2 Oct 2026" or "2 Oct 2026, 05:09", in the user's chosen zone, else the tenant's, else the
+ * browser's (the zone the header clock shows). With an explicit IANA `tz` (schedule and sign-off times, read in the tenant's zone) the time is shown in
  * that zone and labelled with it: "2 Oct 2026, 07:09 GMT+2", unless `zoneLabel` is false (a table that names the zone
  * in its header, `zoneName`). An unparseable value is an em dash. */
 export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" | "seconds" | "day" | "time" = "date", tz?: string, zoneLabel = true): string {
@@ -365,7 +365,7 @@ export function formatDate(iso: string | number | Date | null | undefined, kind:
   const d = iso instanceof Date ? iso : new Date(typeof iso === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(iso) ? `${iso}Z` : iso);
   if (Number.isNaN(d.getTime())) return "—";
   const opts = kind === "date" ? DATE_OPTS : kind === "seconds" ? SECONDS_OPTS : kind === "day" ? DAY_OPTS : kind === "time" ? TIME_OPTS : DATETIME_OPTS;
-  if (!tz) return intl(opts, formatPrefs.timezone ?? tenantZone ?? "UTC").format(d);
+  if (!tz) return intl(opts, formatPrefs.timezone ?? tenantZone ?? browserTimezone()).format(d);
   const text = intl(opts, tz).format(d);
   if (kind === "date" || kind === "day" || !zoneLabel) return text;
   const zone = intl({ timeZoneName: "short" }, tz).formatToParts(d).find((p) => p.type === "timeZoneName")?.value;
