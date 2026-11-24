@@ -218,7 +218,7 @@ async def _config_missing(c: _Ctx) -> list[Item]:
 
     return [_item("config_missing", severity="medium", title=f"The configuration of {s['name']} is not loaded",
                   detail="Load it so Meridian can check your data against how SAP is set up.",
-                  href=app_links.system(s["id"], "configuration"), system_id=s["id"], system_name=s["name"], since=s["created_at"])
+                  href=app_links.system(s["id"], "config"), system_id=s["id"], system_name=s["name"], since=s["created_at"])
             for s in c.systems.values()
             if s["is_active"] and not s["has_config"] and not no_config_api(s["system_type"])]
 
@@ -233,7 +233,7 @@ async def _config_drift(c: _Ctx) -> list[Item]:
                   title=f"{_n(r.n, 'configuration change')} detected"
                         + (f" on {c.name(r.system_id)}" if c.name(r.system_id) else ""),
                   detail="Found in the last 7 days. Check that they were intended.",
-                  href=app_links.system(r.system_id, "changes") if r.system_id else app_links.LANDSCAPE, since=r.since)
+                  href=app_links.system(r.system_id, "config") if r.system_id else app_links.LANDSCAPE, since=r.since)
             for r in rows]
 
 
@@ -281,7 +281,7 @@ async def _schedules(c: _Ctx) -> list[Item]:
                          system_name=c.name(r.system_id), since=r.since,
                          title=f"The scheduled check of {module_label(r.module)} did not start",
                          detail=f"It was due {_ago(r.since, c.now)}. Check that the schedule is running.",
-                         href=app_links.system(r.system_id, "schedules")))
+                         href=app_links.system(r.system_id, "extractions")))
     groups: dict[tuple, list] = {}
     for r in await c.q("""
             SELECT sp.system_id::text AS system_id, sp.domain AS module, l.id::text AS run_id, l.started_at
@@ -454,7 +454,7 @@ async def _discovery(c: _Ctx) -> list[Item]:
         out.append(_item("fitness_drop", severity="medium", count=len(ds), system_id=sid, system_name=c.name(sid),
                          title=f"Process fitness dropped on {c.name(sid) or 'a system'}",
                          detail=f"{l1.upper()} fell from {before * 100:.0f}% to {after * 100:.0f}% between the last two runs.",
-                         href=app_links.LANDSCAPE))
+                         href=app_links.PROCESSES))
     return out
 
 
@@ -490,7 +490,7 @@ async def _discovery_due(c: _Ctx) -> list[Item]:
                          since=rs[0].done_at,
                          title=f"Process discovery on {c.name(sid) or 'a system'} has not run on schedule",
                          detail=f"The last run for {names} was {_ago(rs[0].done_at, c.now)}. Run it again.",
-                         href=app_links.system(sid, "schedules")))
+                         href=app_links.system(sid, "extractions")))
     return out
 
 
