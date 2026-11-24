@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { t, useInterfaceLang } from "@/lib/v2/i18n";
-import { addFieldMapping, decideValueEntry, deleteFieldMapping, deleteValueEntry, seedFieldMap, updateFieldMapping, type FieldMapping, type ValueEntry } from "@/lib/api/v2/migration";
+import { addFieldMapping, decideValueEntry, deleteFieldMapping, deleteValueEntry, saveValueMap, seedFieldMap, updateFieldMapping, type FieldMapping, type ValueEntry } from "@/lib/api/v2/migration";
 import { Button, Card, DataTable, EmptyState, Field, FieldChip, Input, PageHeader, Select, Tabs, Toggle, useAletheiaScope, useToast } from "@/ui/kit";
 import { AskButton, Gate, humanize, when, useBack } from "./common";
 import { invalidateLoad, useFieldMap, useLoadPlan, useValueMap } from "./hooks";
@@ -25,6 +25,7 @@ export function Maps() {
   const [tab, setTab] = useState("fields");
   const [vf, setVf] = useState("MARA.MTART");
   const [add, setAdd] = useState({ source: "", table: "", field: "" });
+  const [vadd, setVadd] = useState({ source: "", target: "", note: "" });
   const fm = useFieldMap(mod, dest);
   const vm = useValueMap(mod, vf);
   const bad = () => toast(t("The action failed"), "bad");
@@ -34,6 +35,7 @@ export function Maps() {
   const seed = useMutation({ mutationFn: () => seedFieldMap(mod, dest), onSuccess: done(t("Map proposed from the dictionary")), onError: bad });
   const create = useMutation({ mutationFn: () => addFieldMapping({ module: mod, dest_system_type: dest, source_field: add.source, dest_table: add.table, dest_field: add.field }), onSuccess: () => { setAdd({ source: "", table: "", field: "" }); done(t("Mapping added"))(); }, onError: bad });
   const decide = useMutation({ mutationFn: (x: { id: string; d: "approve" | "reject" }) => decideValueEntry(x.id, x.d), onSuccess: done(t("Decision saved")), onError: bad });
+  const addV = useMutation({ mutationFn: () => saveValueMap(mod, vf, [{ source_value: vadd.source, target_value: vadd.target, note: vadd.note || undefined }]), onSuccess: () => { setVadd({ source: "", target: "", note: "" }); done(t("Value mapping proposed. A second person approves it."))(); }, onError: bad });
   const dropV = useMutation({ mutationFn: (id: string) => deleteValueEntry(id), onSuccess: done(t("Value deleted")), onError: bad });
   const maps = fm.data?.mappings ?? [];
   const values = vm.data?.entries ?? [];
@@ -106,6 +108,12 @@ export function Maps() {
                   ]}
                 />
               ) : <EmptyState heading={t("No value mappings for this field")} body={t("Add a value mapping when the source and target values differ.")} />}
+              <div className="mx-links">
+                <Input aria-label={t("Source value")} value={vadd.source} onChange={(e) => setVadd({ ...vadd, source: e.target.value })} />
+                <Input aria-label={t("Target value")} value={vadd.target} onChange={(e) => setVadd({ ...vadd, target: e.target.value })} />
+                <Input aria-label={t("Note")} value={vadd.note} onChange={(e) => setVadd({ ...vadd, note: e.target.value })} />
+                <Button variant="primary" onClick={() => addV.mutate()} disabled={!vadd.source || !vadd.target || addV.isPending}>{t("Add value mapping")}</Button>
+              </div>
             </Gate>
           )}
         </div>

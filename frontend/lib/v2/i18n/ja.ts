@@ -13976,6 +13976,8 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "No mappings yet. Propose them from the dictionary.": "マッピングはまだありません。ディクショナリから提案してください。",
   "Target table": "ターゲットテーブル",
   "Add mapping": "マッピングを追加",
+  "Add value mapping": "値マッピングを追加",
+  "Value mapping proposed. A second person approves it.": "値マッピングを提案しました。別の担当者が承認します。",
   "the value map": "値マップ",
   "Delete value {v}": "値 {v} を削除",
   "No value mappings for this field": "この項目の値マッピングはありません",

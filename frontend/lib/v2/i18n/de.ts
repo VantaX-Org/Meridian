@@ -13976,6 +13976,8 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "No mappings yet. Propose them from the dictionary.": "Noch keine Zuordnungen. Aus dem Dictionary vorschlagen.",
   "Target table": "Zieltabelle",
   "Add mapping": "Zuordnung hinzufügen",
+  "Add value mapping": "Wertzuordnung hinzufügen",
+  "Value mapping proposed. A second person approves it.": "Wertzuordnung vorgeschlagen. Eine zweite Person genehmigt sie.",
   "the value map": "das Wertemapping",
   "Delete value {v}": "Wert {v} löschen",
   "No value mappings for this field": "Keine Wertezuordnungen für dieses Feld",

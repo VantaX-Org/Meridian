@@ -205,7 +205,8 @@ def totals(tables: list[dict]) -> dict:
             "transformed_fields": sum(sum(f["transformed"].values()) for t in ok for f in t["fields"])}
 
 
-def config_summary(by_object: dict[str, list], target_counts: dict[str, int], cap: int = 50) -> list[dict]:
+def config_summary(by_object: dict[str, list], target_counts: dict[str, int], cap: int = 50,
+                   describe=lambda obj: "") -> list[dict]:
     """Per config object (org units, value lists, check tables): source keys found in the target exactly, by
     normalised key, by description, or missing; and how many keys only the target has. ``by_object`` is
     ``config_pairing.compare_object`` output per object."""
@@ -213,7 +214,7 @@ def config_summary(by_object: dict[str, list], target_counts: dict[str, int], ca
     for obj in sorted(by_object):
         rows = by_object[obj]
         counts = {st: sum(r.status == st for r in rows) for st in ("exists", "key_match", "desc_match", "missing")}
-        out.append({"object": obj, **counts, "in_source": len(rows), "in_target": target_counts.get(obj, 0),
+        out.append({"object": obj, "description": describe(obj) or "", **counts, "in_source": len(rows), "in_target": target_counts.get(obj, 0),
                     "only_in_target": max(target_counts.get(obj, 0) - counts["exists"] - counts["key_match"]
                                           - counts["desc_match"], 0),
                     "rows": [r.as_dict() for r in rows if r.status != "exists"][:cap]})

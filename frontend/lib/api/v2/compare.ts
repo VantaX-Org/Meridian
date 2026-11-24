@@ -59,7 +59,7 @@ export interface TableCompare {
 }
 
 export interface ConfigObject {
-  object: string; exists: number; key_match: number; desc_match: number; missing: number;
+  object: string; description?: string; exists: number; key_match: number; desc_match: number; missing: number;
   in_source: number; in_target: number; only_in_target: number;
 }
 

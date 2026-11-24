@@ -367,7 +367,8 @@ async def export(cid: uuid.UUID, format: Literal["xlsx", "csv"] = "xlsx", table:
                 ColumnSpec("differing", "Differing", kind="int")], rows=fields),
             SheetSpec(title="Records", columns=rec_cols, rows=rows,
                       note="Record rows are capped per table and kind at comparison time."),
-            SheetSpec(title="Config", columns=[ColumnSpec("object", "Object", kind="mono")] + [
+            SheetSpec(title="Config", columns=[ColumnSpec("object", "Object", kind="mono"),
+                                               ColumnSpec("description", "Description")] + [
                 ColumnSpec(k, k.replace("_", " ").capitalize(), kind="int")
                 for k in ("in_source", "in_target", "exists", "key_match", "desc_match", "missing", "only_in_target")],
                 rows=cfg),

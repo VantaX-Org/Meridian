@@ -13975,6 +13975,8 @@ export const en = {
   "No mappings yet. Propose them from the dictionary.": "No mappings yet. Propose them from the dictionary.",
   "Target table": "Target table",
   "Add mapping": "Add mapping",
+  "Add value mapping": "Add value mapping",
+  "Value mapping proposed. A second person approves it.": "Value mapping proposed. A second person approves it.",
   "the value map": "the value map",
   "Delete value {v}": "Delete value {v}",
   "No value mappings for this field": "No value mappings for this field",

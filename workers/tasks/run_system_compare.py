@@ -51,7 +51,7 @@ def _frames(session, meta, dictionary, tables):
         {c["table"] for c in cov if c.get("partial")}
 
 
-def _config(session, source_id, target_id) -> dict:
+def _config(session, source_id, target_id, describe=lambda obj: "") -> dict:
     from api.services import config_pairing as cp
     from api.services.system_compare import config_summary
 
@@ -61,7 +61,8 @@ def _config(session, source_id, target_id) -> dict:
     src, tgt = cp._by_object(cp.load_items(session, s[0])), cp._by_object(cp.load_items(session, t[0]))
     common = sorted(set(src) & set(tgt))
     return {"available": True, "objects": config_summary(
-        {o: cp.compare_object(o, src[o], tgt[o]) for o in common}, {o: len(tgt[o]) for o in common}),
+        {o: cp.compare_object(o, src[o], tgt[o]) for o in common}, {o: len(tgt[o]) for o in common},
+        describe=describe),
         "only_in_source": sorted(set(src) - set(tgt)), "only_in_target": sorted(set(tgt) - set(src))}
 
 
@@ -133,7 +134,10 @@ def run_system_compare(self, tenant_id, comparison_id):
                 tables.append(r)
                 _progress(session, comparison_id, {"stage": "tables", "done": i, "total": len(names), "table": t})
             _progress(session, comparison_id, {"stage": "config", "done": len(names), "total": len(names)})
-            config = _config(session, src_id, tgt_id)
+            def _describe(obj):
+                d = tdict.table(obj) or sdict.table(obj)
+                return d.description if d else ""
+            config = _config(session, src_id, tgt_id, _describe)
             scores = _scores(session, tenant_id, pair, sv, tv)
             _progress(session, comparison_id, {"stage": "done", "done": len(names), "total": len(names)})
             return _finish(session, comparison_id, "done", None, source_version_id=sv, target_version_id=tv,

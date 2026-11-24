@@ -11,6 +11,7 @@ from typing import Any
 
 import yaml
 
+from api.services.config_applicability import rule_titles
 from api.services.process_writer import _classify_finding, _worst_status
 from checks.runner import _find_module_yaml
 
@@ -81,7 +82,8 @@ def rollup(findings: list[dict[str, Any]]) -> dict[str, Any]:
             a["failing_records"] += int(f["affected_count"])
             a[f"{impact}_failing"] += 1
         a["status"] = _worst_status(a["status"], status)
-        a["checks"].append({"check_id": f["check_id"], "module": f.get("module"), "impact": impact,
+        a["checks"].append({"check_id": f["check_id"], "name": rule_titles().get(f["check_id"], ""),
+                            "module": f.get("module"), "impact": impact,
                             "status": status, "affected_count": int(f.get("affected_count") or 0),
                             "pass_rate": None if f.get("pass_rate") is None else float(f["pass_rate"])})
     rows = list(areas.values())
