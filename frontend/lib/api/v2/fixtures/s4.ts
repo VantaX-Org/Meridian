@@ -1,8 +1,19 @@
 /** S/4HANA readiness fixture, shaped like GET /findings/s4-readiness?scope=current: one red, one amber, one green and one unmeasured area. */
 export const NONE_S4 = Symbol("not an S/4 readiness path");
 
+/** Each rule's message from its YAML pack, as rollup returns it in name. */
+const NAMES: Record<string, string> = {
+  "S4R-BP-KNVK-NAME": "S/4HANA readiness: contact person has no last name (KNVK.NAME1) - simplification item S4TWL Business Partner Approach, SAP Note 2265093",
+  MM007: "Material group is required for reporting and procurement",
+  "S4R-BP-KNA1-ADRNR": "S/4HANA readiness: active customer has no central address (KNA1.ADRNR) - simplification item S4TWL Business Partner Approach, SAP Note 2265093",
+  "S4R-BP-DUP-TAX": "S/4HANA readiness: vendor has the same country and tax number as an unlinked customer and should become one Business Partner - simplification item Business Partner Approach (SAP Note 2265093)",
+  MM003: "Material type is mandatory - determines procurement and storage behaviour",
+  MM035: "Valuation class is mandatory for FI account determination",
+  MM142: "Base unit of measure MEINS must reference a valid entry in T006",
+};
+
 const check = (check_id: string, module: string, impact: "blocking" | "warning", status: string, affected_count: number, pass_rate: number | null) =>
-  ({ check_id, module, impact, status, affected_count, pass_rate });
+  ({ check_id, name: NAMES[check_id] ?? "", module, impact, status, affected_count, pass_rate });
 
 const areas = [
   {

@@ -50,7 +50,7 @@ export function S4() {
           rows={cur.checks}
           rowKey={(c) => c.check_id}
           columns={[
-            { key: "id", label: t("Rule"), sort: (c) => c.check_id, render: (c) => <FieldChip code={c.check_id} description={humanize(c.module ?? "")} /> },
+            { key: "id", label: t("Rule"), sort: (c) => c.check_id, render: (c) => <FieldChip code={c.check_id} description={c.name || humanize(c.module ?? "")} /> },
             { key: "i", label: t("Impact"), render: (c) => (c.impact === "blocking" ? t("Blocking") : t("Warning")) },
             { key: "s", label: t("Status"), render: (c) => <SeverityPill sev={sevOf(c.status)} label={statusLabel(c.status)} /> },
             { key: "a", label: t("Records affected"), align: "end", sort: (c) => c.affected_count, render: (c) => c.affected_count },

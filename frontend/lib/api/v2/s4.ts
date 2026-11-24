@@ -15,6 +15,8 @@ export type S4Assessment = "complete" | "incomplete" | "not_assessed";
 
 export interface S4Check {
   check_id: string;
+  /** The rule's message from its YAML pack; empty when the rule is unknown. */
+  name?: string;
   module: string | null;
   impact: "blocking" | "warning";
   status: S4Status;
