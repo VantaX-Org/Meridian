@@ -12663,6 +12663,7 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "Write one dataset to a file.": "Einen Datensatz in eine Datei schreiben.",
   "Dataset": "Datensatz",
   "Export queued.": "Export eingereiht.",
+  "Export queued. The file appears under Built files when it is ready.": "Export eingereiht. Die Datei erscheint unter Erstellte Dateien, sobald sie fertig ist.",
   "Start export": "Export starten",
   "Loading licence": "Lizenz wird geladen",
   "{n} days left": "Noch {n} Tage",
