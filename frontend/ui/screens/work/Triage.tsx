@@ -8,7 +8,7 @@ import { t, useInterfaceLang } from "@/lib/v2/i18n";
 import { useWorkGroups } from "@/lib/v2/work-queries";
 import { Button, Card, Chip, Confirm, DataTable, EmptyState, ErrorState, Field, FieldChip, Input, PageHeader, Select, Skeleton, StatTile, useAletheia, useAletheiaScope } from "@/ui/kit";
 import { ObjChip } from "./ObjChip";
-import { day, sevLabel, useDo } from "./shared";
+import { day, personLabel, sevLabel, useDo } from "./shared";
 import { useCrumbs } from "@/ui/screens/flow";
 
 const ACTIONS: { value: BulkAction; label: () => string }[] = [
@@ -37,10 +37,15 @@ export function Triage() {
   const [now, setNow] = useState(() => Date.now());
   const [prio, setPrio] = useState("1");
   const [ask, setAsk] = useState(false);
+  // rows the last Apply moved out of this view, hidden at once so the list never shows them stale
+  const [gone, setGone] = useState<Set<string>>(new Set());
+  const [said, setSaid] = useState("");
   const q = useQuery({ queryKey: ["v2", "triage", fx, who, snoozed], queryFn: () => getTriageQueue(who, snoozed), retry: false });
   const people = useQuery({ queryKey: ["v2", "triage-people", fx], queryFn: getAssignable, retry: false });
   const met = useQuery({ queryKey: ["v2", "triage-metrics", fx], queryFn: () => getTriageMetrics(8), retry: false });
-  const items = q.data?.[bucket].items ?? [];
+  const items = (q.data?.[bucket].items ?? []).filter((i) => !gone.has(i.id));
+  const folk = people.data ?? [];
+  const nameOf = (id: string): string => { const p = folk.find((x) => x.id === id); return p ? personLabel(p, folk) : id; };
   const groups = useWorkGroups({});
   const ruleText = new Map((groups.data?.groups ?? []).map((g) => [g.check_id, g.message ?? undefined]));
   const m = met.data;
@@ -63,16 +68,27 @@ export function Triage() {
     : action === "snooze" && !reason.trim() ? t("Say why to snooze.")
     : action === "snooze" && (!until || !(new Date(until).getTime() > now)) ? t("Pick a time in the future.")
     : action === "priority" && need ? t("Pick a priority from 1 to 5.") : "";
+  // an action takes a row out of this view when it assigns it away, releases it from a named queue, or snoozes it while snoozed rows are hidden
+  const leaves = (a: BulkAction): boolean => (a === "assign" ? who !== "all" && who !== user : a === "release" ? who !== "all" && who !== "unassigned" : a === "snooze" ? !snoozed : false);
+  const doneText = (n: number): string => (action === "assign" ? t("{n} items assigned to {name}.", { n, name: nameOf(user) }) : t("{n} items updated.", { n }));
   const apply = async () => {
     setAsk(false);
+    let n = 0;
+    const done = new Set<string>();
     for (const kind of ["issue", "queue"] as const) {
       const ids = chosen.filter((i) => i.kind === kind).map((i) => i.id);
       if (!ids.length) continue;
-      const r = await run(() => bulkTriage({ kind, ids, action, user_id: action === "assign" ? user : undefined, reason: action === "snooze" ? reason : undefined, until: action === "snooze" ? new Date(until).toISOString() : undefined, priority: action === "priority" ? Number(prio) : undefined }), (r) => t("{n} items updated.", { n: r.updated }));
-      if (!r) return;
+      const r = await run(() => bulkTriage({ kind, ids, action, user_id: action === "assign" ? user : undefined, reason: action === "snooze" ? reason : undefined, until: action === "snooze" ? new Date(until).toISOString() : undefined, priority: action === "priority" ? Number(prio) : undefined }), (r) => doneText(r.updated));
+      if (!r) break;
+      n += r.updated;
+      for (const id of ids) done.add(id);
     }
-    setPicked(new Set());
+    if (done.size && leaves(action)) setGone((g) => new Set([...g, ...done]));
+    // a failed kind keeps its rows picked so the person can try again; the rest are done
+    setPicked((p) => new Set([...p].filter((id) => !done.has(id))));
+    setSaid(n ? doneText(n) : "");
   };
+  const refilter = () => { setPicked(new Set()); setGone(new Set()); setSaid(""); };
 
   const crumbs = useCrumbs();
   return (
@@ -88,9 +104,9 @@ export function Triage() {
         </dl>
       ) : null}
       <div className="mx-links">
-        <Select aria-label={t("Whose queue")} value={who} onChange={(e) => { setWho(e.target.value); setPicked(new Set()); }}
-          options={[{ value: "me", label: t("Mine") }, { value: "unassigned", label: t("Unassigned") }, { value: "all", label: t("Everyone") }, ...(people.data ?? []).map((p) => ({ value: p.id, label: p.name }))]} />
-        <Chip selected={snoozed} onClick={() => setSnoozed(!snoozed)}>{t("Show snoozed")}</Chip>
+        <Select aria-label={t("Whose queue")} value={who} onChange={(e) => { setWho(e.target.value); refilter(); }}
+          options={[{ value: "me", label: t("Mine") }, { value: "unassigned", label: t("Unassigned") }, { value: "all", label: t("Everyone") }, ...folk.map((p) => ({ value: p.id, label: personLabel(p, folk) }))]} />
+        <Chip selected={snoozed} onClick={() => { setSnoozed(!snoozed); refilter(); }}>{t("Show snoozed")}</Chip>
       </div>
       <div className="mx-chips" role="group" aria-label={t("Buckets")}>
         {(["overdue", "due_today", "later"] as const).map((b) => (
@@ -117,7 +133,7 @@ export function Triage() {
       </Card>
       <Card title={t("Bulk action")} sub={t("Applies to the picked items.")}>
         <Field label={t("Action")}><Select value={action} onChange={(e) => setAction(e.target.value as BulkAction)} options={ACTIONS.map((a) => ({ value: a.value, label: a.label() }))} /></Field>
-        {action === "assign" ? <Field label={t("Assign to")}><Select value={user} onChange={(e) => setUser(e.target.value)} options={[{ value: "", label: t("Pick a person") }, ...(people.data ?? []).map((p) => ({ value: p.id, label: p.name }))]} /></Field> : null}
+        {action === "assign" ? <Field label={t("Assign to")}><Select value={user} onChange={(e) => setUser(e.target.value)} options={[{ value: "", label: t("Pick a person") }, ...folk.map((p) => ({ value: p.id, label: personLabel(p, folk) }))]} /></Field> : null}
         {action === "snooze" ? (
           <>
             <Field label={t("Why snooze")}><Input value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
@@ -127,6 +143,7 @@ export function Triage() {
         {action === "priority" ? <Field label={t("Priority (1 is highest)")}><Input type="number" min={1} max={5} value={prio} onChange={(e) => setPrio(e.target.value)} /></Field> : null}
         <Button variant="primary" disabled={!chosen.length || need} onClick={() => setAsk(true)}>{t("Apply to {n} items", { n: chosen.length })}</Button>
         {why ? <span role="status" className="mx-muted"> {why}</span> : null}
+        {said ? <p role="status" aria-live="polite">{said}</p> : null}
       </Card>
       <Confirm open={ask} title={t("Apply this action?")} confirmLabel={t("Apply")} cancelLabel={t("Cancel")} onConfirm={() => void apply()} onCancel={() => setAsk(false)}>
         {t("{n} items change.", { n: chosen.length })}

@@ -260,11 +260,23 @@ _OWNERS = """ARRAY(SELECT v.u::text FROM data_owners d
                  WHERE d.tenant_id = {t}.tenant_id AND v.u IS NOT NULL AND ({match})
                  ORDER BY d.kind = 'rule' DESC, v.o)"""
 
+# The steward the assignment template (or an admin) named for the item's object and slice
+# (steward_assignments, migration 105): the slice that matches the record key first, then the whole object ('*').
+# Queue items carry no record key, so only a whole-object steward routes them.
+_SLICE_STEWARDS = """ARRAY(SELECT sa.steward_user_id::text FROM steward_assignments sa
+                 WHERE sa.tenant_id = {t}.tenant_id AND sa.module = {mod} AND sa.steward_user_id IS NOT NULL
+                   AND (sa.slice_value = '*' {key})
+                 ORDER BY sa.slice_value = '*', sa.slice_value)"""
+_KEY_MATCH = ("OR ('|' || COALESCE(ri.record_key, '') || '|') LIKE ('%|' || CASE sa.slice_kind "
+              "WHEN 'company_code' THEN 'BUKRS' WHEN 'plant' THEN 'WERKS' WHEN 'sales_org' THEN 'VKORG' "
+              "WHEN 'purchasing_org' THEN 'EKORG' END || '=' || sa.slice_value || '|%')")
+
 _CANDIDATES = {
     "issue": f"""
         SELECT ri.id::text AS id, ri.module, ri.check_id, ri.severity, f.dimension, ri.record_key,
-               {_OWNERS.format(t="ri", match="(d.kind = 'rule' AND d.ref = ri.check_id) "
-                                             "OR (d.kind = 'object' AND d.ref = ri.module)")} AS owners,
+               {_OWNERS.format(t="ri", match="d.kind = 'rule' AND d.ref = ri.check_id")}
+               || {_SLICE_STEWARDS.format(t="ri", mod="ri.module", key=_KEY_MATCH)}
+               || {_OWNERS.format(t="ri", match="d.kind = 'object' AND d.ref = ri.module")} AS owners,
                (SELECT gt.data_steward_id::text FROM glossary_term_rules gtr
                   JOIN glossary_terms gt ON gt.id = gtr.term_id
                  WHERE gtr.tenant_id = ri.tenant_id AND gtr.rule_id = ri.check_id
@@ -279,7 +291,8 @@ _CANDIDATES = {
     "queue": f"""
         SELECT sq.id::text AS id, sq.domain AS module, sq.item_type AS check_id, {_QUEUE_SEV} AS severity,
                NULL AS dimension, NULL AS record_key,
-               {_OWNERS.format(t="sq", match="d.kind = 'object' AND d.ref = sq.domain")} AS owners,
+               {_SLICE_STEWARDS.format(t="sq", mod="sq.domain", key="")}
+               || {_OWNERS.format(t="sq", match="d.kind = 'object' AND d.ref = sq.domain")} AS owners,
                NULL AS glossary_steward
           FROM stewardship_queue sq
          WHERE sq.tenant_id = CAST(:tid AS uuid) AND sq.status NOT IN {_TERM_SQL}
@@ -289,6 +302,7 @@ _CANDIDATES = {
 
 _HAS_OWNERS = """
     SELECT EXISTS (SELECT 1 FROM data_owners WHERE tenant_id = CAST(:tid AS uuid))
+        OR EXISTS (SELECT 1 FROM steward_assignments WHERE tenant_id = CAST(:tid AS uuid))
         OR EXISTS (SELECT 1 FROM glossary_terms WHERE tenant_id = CAST(:tid AS uuid)
                     AND data_steward_id IS NOT NULL)"""
 

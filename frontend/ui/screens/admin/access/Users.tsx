@@ -12,6 +12,7 @@ import type { ImportPreview } from "@/lib/api/users";
 import { STATUS_LABEL, USER_STATUSES, inviteAttention, seatsFull, seatsNearlyFull, userStatus } from "@/lib/users";
 import { inviteAttentionText, labelText, moduleText, roleText, seatsText, userStatusText } from "@/lib/v2/labels";
 import { t, tx } from "@/lib/v2/i18n";
+import { writeClipboard } from "@/lib/browser";
 
 const SEV: Record<UserStatus, "info" | "medium" | "low" | "high" | "critical"> = {
   invited: "info", invite_expired: "medium", active: "low", locked: "critical", suspended: "high",
@@ -234,6 +235,7 @@ function Person({ user, editable, all, onClose, onAsk }: { user: User | null; ed
   const [system, setSystem] = useState("");
   const [module, setModule] = useState("");
   const [shown, setShown] = useState<string | null>(null);
+  const [copied, setCopied] = useState("");
   const [boss, setBoss] = useState<string | undefined>(undefined);
   const preview = useGrantPreview(id, role, system, module);
   const s = user ? userStatus(user) : "active";
@@ -258,7 +260,13 @@ function Person({ user, editable, all, onClose, onAsk }: { user: User | null; ed
           [t("Last sign-in"), day(user.last_login)],
           [t("Effective actions"), String(eff.data?.actions.length ?? 0)],
         ]} />
-        {shown && <p><code className="mx-code">{shown}</code></p>}
+        {shown && (
+          <div className="mx-links">
+            <code className="mx-code" data-wrap="">{shown}</code>
+            <Button variant="secondary" type="button" onClick={async () => setCopied((await writeClipboard(shown)) ? t("Invite link copied.") : t("Could not copy. Select the link and copy it by hand."))}>{t("Copy")}</Button>
+            {copied ? <span role="status" className="mx-muted">{copied}</span> : null}
+          </div>
+        )}
         {editable && (
           <div className="mx-links">
             {pending && <Button variant="secondary" type="button" disabled={busy} onClick={() => void run(() => resendInvite(id), t("Invitation sent again."), ["users"])}>{t("Resend invite")}</Button>}

@@ -16057,6 +16057,22 @@ export const en = {
   "Accept {code}": "Accept {code}",
   "Reject {code}": "Reject {code}",
   "Edit {code}": "Edit {code}",
+  "Invite link copied.": "Invite link copied.",
+  "Could not copy. Select the link and copy it by hand.": "Could not copy. Select the link and copy it by hand.",
+  "The template names no people yet.": "The template names no people yet.",
+  "Pick an owner and stewards for each object.": "Pick an owner and stewards for each object.",
+  "Saved. Preview the template to apply it.": "Saved. Preview the template to apply it.",
+  "Assign people to {name}": "Assign people to {name}",
+  "No one has the data owner or admin role yet.": "No one has the data owner or admin role yet.",
+  "Steward for every other slice": "Steward for every other slice",
+  "No one has the data steward role yet.": "No one has the data steward role yet.",
+  "Steward for {slice} {value}": "Steward for {slice} {value}",
+  "Same as every other slice": "Same as every other slice",
+  "Save to the template": "Save to the template",
+  "Owner {owner}, steward {steward}": "Owner {owner}, steward {steward}",
+  "Nobody named": "Nobody named",
+  "Assign people": "Assign people",
+  "{n} items assigned to {name}.": "{n} items assigned to {name}.",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

@@ -206,6 +206,25 @@ describe("Triage validation", () => {
   });
 });
 
+describe("Triage apply feedback", () => {
+  it("says who got the items, clears the picks and drops rows that left the view", async () => {
+    m.bulkTriage.mockImplementation(async (b: { ids: string[] }) => ({ updated: b.ids.length }));
+    mount("/work/triage?fixture=1", <Triage />);
+    const before = await screen.findAllByRole("checkbox", { name: /^Pick / }, { timeout: 5000 });
+    const gone = before[0].getAttribute("aria-label") ?? "";
+    fireEvent.click(before[0]);
+    fireEvent.change(screen.getByRole("combobox", { name: "Action" }), { target: { value: "assign" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Assign to" }), { target: { value: "u-an" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Apply to 1/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Apply" }));
+    expect(await screen.findByText("1 items assigned to A. Naidoo.", { selector: "p" }, { timeout: 5000 })).toBeTruthy();
+    expect(m.bulkTriage).toHaveBeenCalledWith(expect.objectContaining({ action: "assign", user_id: "u-an" }));
+    await waitFor(() => expect(screen.queryByRole("checkbox", { name: gone })).toBeNull());
+    for (const r of screen.queryAllByRole("checkbox", { name: /^Pick / })) expect((r as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByText("Pick at least one item.")).toBeTruthy();
+  });
+});
+
 describe("Triage select all and reason", () => {
   it("selects every shown row and says why Apply is off", async () => {
     mount("/work/triage?fixture=1", <Triage />);

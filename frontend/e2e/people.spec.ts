@@ -37,3 +37,22 @@ for (const [url, title] of ROUTES) {
     expect(await page.locator("body").innerText()).not.toContain(String.fromCharCode(0xb7));
   });
 }
+
+test("an admin names an owner and steward for an object, previews the template and applies it", async ({ page }) => {
+  await page.goto("/people/assignments?fixture=1", NAV);
+  await expect(page.getByRole("heading", { level: 1, name: "Assignments" })).toBeVisible(NAV);
+  const assign = page.getByRole("group", { name: "Gaps" }).getByRole("button", { name: "Assign" }).first();
+  await expect(assign).toBeEnabled(NAV);
+  await assign.click();
+  const owner = page.getByRole("combobox", { name: "Owner" });
+  await expect(owner).toBeVisible(NAV);
+  await owner.selectOption({ index: 1 });
+  await page.getByRole("combobox", { name: /^Steward/ }).first().selectOption({ index: 1 });
+  await page.getByRole("button", { name: "Save to the template" }).click();
+  await expect(page.getByText("Saved. Preview the template to apply it.")).toBeVisible(NAV);
+  await page.getByRole("button", { name: "Preview the template" }).click();
+  const apply = page.getByRole("button", { name: "Apply the template" });
+  await expect(apply).toBeEnabled(NAV);
+  await apply.click();
+  await expect(page.getByText(/^Template applied: \d+ changes/)).toBeVisible(NAV);
+});

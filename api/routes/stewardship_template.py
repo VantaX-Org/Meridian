@@ -86,6 +86,7 @@ class ApplyOut(BaseModel):
     owners: list[OwnerPlanRow]
     stewards: list[StewardPlanRow]
     totals: dict[str, int]
+    routed: dict[str, int] | None = None  # open items the new assignments routed right away (issue, queue)
 
 
 class GapRow(BaseModel):
@@ -216,6 +217,15 @@ async def put_template(body: TemplateIn, request: Request, db: AsyncSession = De
     import json
 
     t = await _rls(db, tenant)
+    named = {str(v) for o in body.template["objects"].values()
+             for v in (o.get("owner_user_id"), o.get("steward_user_id"), *(o.get("slice_stewards") or {}).values()) if v}
+    if named:
+        known = {r[0] for r in await db.execute(text(
+            "SELECT id::text FROM users WHERE tenant_id = CAST(:t AS uuid) AND is_active AND id::text = ANY(:ids)"),
+            {"t": t, "ids": sorted(named)})}
+        if named - known:
+            raise HTTPException(status_code=422, detail="The template names people who are not active users here: "
+                                                        + ", ".join(sorted(named - known)[:5]))
     await db.execute(text("""
         INSERT INTO assignment_templates (tenant_id, template, updated_by, updated_at)
         VALUES (CAST(:t AS uuid), CAST(:j AS jsonb), :by, now())
@@ -269,10 +279,15 @@ async def apply_template(body: ApplyIn, request: Request, db: AsyncSession = Dep
             ON CONFLICT (tenant_id, module, slice_kind, slice_value) DO UPDATE SET steward_user_id = EXCLUDED.steward_user_id,
                    source = 'template', updated_at = now()"""),
             {"t": t, "m": r["module"], "k": r["slice_kind"], "v": r["slice_value"], "u": r["after"]})
+    from api.services.triage import auto_assign
+
+    # Route the open items nobody holds yet to the people just named; the 5-minute SLA sweep and every check run
+    # keep routing new items the same way.
+    routed = await db.run_sync(lambda s: auto_assign(s, t))
     await write_audit(db, tenant.id, request, "assignment_template.apply", "tenant", t, None,
-                      {"totals": plan["totals"], "modules": modules})
+                      {"totals": plan["totals"], "modules": modules, "routed": routed})
     await db.commit()
-    return {"dry_run": False, **plan}
+    return {"dry_run": False, **plan, "routed": routed}
 
 
 @router.get("/admin/assignment-template/gaps", response_model=GapsOut, dependencies=[Depends(require_permission("view"))])
