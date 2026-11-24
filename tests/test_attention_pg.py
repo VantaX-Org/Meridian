@@ -302,7 +302,7 @@ def test_every_kind_fires_from_its_fixture(owner, full):
     assert "3 days ago" in stale["detail"] and "daily" in stale["detail"]
 
     (missed,) = k["schedule_missed"]
-    assert missed["module"] == "fi_gl" and missed["href"].endswith("?tab=schedules")
+    assert missed["module"] == "fi_gl" and missed["href"].endswith("?tab=extractions")
     (failed,) = k["schedule_failed"]
     assert failed["module"] == "accounts_payable" and failed["href"].startswith("/runs?view=jobs&open=job:")
     assert not any(i["module"] == "controlling" for i in items)  # paused: a decision, nothing raised
@@ -312,9 +312,9 @@ def test_every_kind_fires_from_its_fixture(owner, full):
     assert job["required_action"] == "trigger_sync"
 
     (cm,) = k["config_missing"]
-    assert cm["system_name"] == "Cloud HR" and cm["href"].startswith("/s/") and cm["href"].endswith("?tab=configuration")
+    assert cm["system_name"] == "Cloud HR" and cm["href"].startswith("/s/") and cm["href"].endswith("?tab=config")
     (cd,) = k["config_drift"]
-    assert (cd["count"], cd["system_id"], cd["href"]) == (3, full["mm"], f"/s/{full['mm']}?tab=changes")  # not the 30-day-old one
+    assert (cd["count"], cd["system_id"], cd["href"]) == (3, full["mm"], f"/s/{full['mm']}?tab=config")  # not the 30-day-old one
 
     (ap_batch,) = [i for i in k["approvals"] if i["module"]]
     (ap_gold,) = [i for i in k["approvals"] if not i["module"]]
