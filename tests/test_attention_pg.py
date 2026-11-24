@@ -332,7 +332,7 @@ def test_every_kind_fires_from_its_fixture(owner, full):
     (df,) = k["discovery_failed"]
     assert df["system_name"] == "ERP prod" and df["href"] == "/runs?view=jobs" and "PTP" in df["detail"]
     (fd,) = k["fitness_drop"]
-    assert fd["system_name"] == "Plant OK" and fd["href"] == "/"
+    assert fd["system_name"] == "Plant OK" and fd["href"] == "/mdm/processes"
     assert "92%" in fd["detail"] and "80%" in fd["detail"]
 
     assert k["rule_review"][0]["count"] == 2 and k["rule_review"][0]["href"] == "/rules?view=drafts"

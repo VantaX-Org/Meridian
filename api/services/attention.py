@@ -454,7 +454,7 @@ async def _discovery(c: _Ctx) -> list[Item]:
         out.append(_item("fitness_drop", severity="medium", count=len(ds), system_id=sid, system_name=c.name(sid),
                          title=f"Process fitness dropped on {c.name(sid) or 'a system'}",
                          detail=f"{l1.upper()} fell from {before * 100:.0f}% to {after * 100:.0f}% between the last two runs.",
-                         href=app_links.LANDSCAPE))
+                         href=app_links.PROCESSES))
     return out
 
 
