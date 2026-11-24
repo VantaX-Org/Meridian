@@ -62,11 +62,13 @@ export function retryPermission(kind: JobKind): string {
   return kind === "analysis" ? "analyse" : kind === "process_discovery" ? "run_process_discovery" : "trigger_sync";
 }
 
-/** Failed jobs worth a line in the status strip: the newest failure per system that no later success replaced. */
+/** Failed jobs worth a line in the status strip: the newest failure per system that no later success replaced and no later retry is working on. */
 export function openFailures(jobs: readonly Job[]): Job[] {
   const failed = jobs.filter((j) => j.status === "failed");
   return failed
-    .filter((f) => !jobs.some((j) => j.id !== f.id && j.status === "completed" && j.system_id === f.system_id && j.kind === f.kind && (j.finished_at ?? 0) > (f.finished_at ?? f.started_at)))
+    .filter((f) => !jobs.some((j) => j.id !== f.id && j.system_id === f.system_id && j.kind === f.kind && (
+      j.status === "completed" ? (j.finished_at ?? 0) > (f.finished_at ?? f.started_at)
+        : (j.status === "running" || j.status === "queued") && j.started_at > f.started_at)))
     .sort((a, b) => (b.finished_at ?? b.started_at) - (a.finished_at ?? a.started_at));
 }
 

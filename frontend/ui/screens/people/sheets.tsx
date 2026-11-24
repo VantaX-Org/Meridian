@@ -63,17 +63,19 @@ export function InviteSheet() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
+  // Legacy roles cannot be granted (the API refuses them), so they are never offered.
+  const list = (roles.data ?? []).filter((r) => !r.legacy);
+  const picked = role || (list.some((r) => r.key === "viewer") ? "viewer" : list[0]?.key ?? "viewer");
   const send = useMutation({
-    mutationFn: () => inviteUser({ email: email.trim(), name: name.trim() || undefined, grants: [{ role_key: role || roles.data?.[0]?.key || "viewer" }] }),
+    mutationFn: () => inviteUser({ email: email.trim(), name: name.trim() || undefined, grants: [{ role_key: picked }] }),
     onSuccess: () => { toast(t("Invitation sent to {email}", { email }), "good"); void refreshV2(qc); sheet.close(); },
   });
-  const list = roles.data ?? [];
   return (
     <form className="mx-col" onSubmit={(e) => { e.preventDefault(); if (email.trim()) send.mutate(); }}>
       <Field label={t("Email")}><Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
       <Field label={t("Name")} hint={t("Optional")}><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
       <Field label={t("Role")}>
-        <Select value={role || list[0]?.key || ""} onChange={(e) => setRole(e.target.value)} options={list.map((r) => ({ value: r.key, label: `${r.name}${r.description ? `, ${r.description}` : ""}` }))} />
+        <Select value={picked} onChange={(e) => setRole(e.target.value)} options={list.map((r) => ({ value: r.key, label: `${r.name}${r.description ? `, ${r.description}` : ""}` }))} />
       </Field>
       {send.isError ? <p role="alert" className="mx-muted">{t("The invitation could not be sent")}</p> : null}
       <Button variant="primary" disabled={send.isPending || !email.trim()} onClick={() => { if (email.trim()) send.mutate(); }}>{t("Send invitation")}</Button>

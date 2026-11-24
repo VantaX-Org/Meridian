@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { buildCsp } from "./lib/csp";
+import { isPublicRoute } from "./lib/public-routes";
 
 /**
  * Signed-out users never receive the app shell. The session is an httponly cookie
  * the API sets, so the auth context sets a plain marker cookie on login; every API
  * call still carries and verifies the real session.
  */
-const PUBLIC = ["/sign-in", "/sign-up", "/login", "/accept-invite", "/forgot-password", "/reset-password",
-  "/licence-error", "/api", "/health", "/status", "/share"];
 
 /** Continue to the page with a fresh nonce: the request header lets the layout and Next read it, the response header enforces it. */
 function withCsp(req: NextRequest, extra?: (res: NextResponse) => void) {
@@ -25,7 +24,7 @@ function withCsp(req: NextRequest, extra?: (res: NextResponse) => void) {
 
 export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (PUBLIC.some((p) => pathname === p || pathname.startsWith(p + "/")) || req.cookies.has("mn_session")) {
+  if (isPublicRoute(pathname) || req.cookies.has("mn_session")) {
     return withCsp(req);
   }
   // Local convenience only: `next dev` with MERIDIAN_DEV_AUTOLOGIN=1 skips the sign-in redirect.
