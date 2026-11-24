@@ -6,6 +6,8 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -16,7 +18,21 @@ ENV_TEXT = "CREDENTIAL_MASTER_KEY=not-a-real-key-0123456789\n"
 pytestmark = pytest.mark.skipif(shutil.which("gpg") is None, reason="needs gpg")
 
 
-def _host(tmp_path: Path) -> tuple[Path, dict[str, str]]:
+@pytest.fixture(autouse=True)
+def _gnupghome() -> Iterator[Path]:
+    """A short GNUPGHOME: gpg-agent's socket lives in it, and a unix socket path over ~104 bytes (macOS) fails
+    with "File name too long", which pytest's tmp_path under a long TMPDIR exceeds."""
+    try:
+        home = Path(tempfile.mkdtemp(prefix="gpg", dir="/tmp"))
+    except OSError:  # no /tmp, or not writable (a sandbox): the system temp dir is short on CI and macOS too
+        home = Path(tempfile.mkdtemp(prefix="gpg"))
+    yield home
+    subprocess.run(["gpgconf", "--kill", "gpg-agent"], env={**os.environ, "GNUPGHOME": str(home)},
+                   capture_output=True, check=False)
+    shutil.rmtree(home, ignore_errors=True)
+
+
+def _host(tmp_path: Path, gnupg: Path) -> tuple[Path, dict[str, str]]:
     host = tmp_path / "host"
     (host / "scripts").mkdir(parents=True)
     shutil.copy(ROOT / "scripts" / "backup.sh", host / "scripts" / "backup.sh")
@@ -28,8 +44,6 @@ def _host(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     stub.write_text("#!/usr/bin/env bash\n"
                     'case "$*" in *pg_dump*) echo "PGDMP-stub";; *alembic_version*) echo "117";; esac\n')
     stub.chmod(0o755)
-    gnupg = tmp_path / "gnupg"
-    gnupg.mkdir(mode=0o700)
     env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "GNUPGHOME": str(gnupg)}
     env.pop("MERIDIAN_BACKUP_PASSPHRASE_FILE", None)
     return host, env
@@ -45,8 +59,8 @@ def _bundle(host: Path) -> Path:
     return bundle
 
 
-def test_encrypts_env_with_a_passphrase_file(tmp_path: Path) -> None:
-    host, env = _host(tmp_path)
+def test_encrypts_env_with_a_passphrase_file(tmp_path: Path, _gnupghome: Path) -> None:
+    host, env = _host(tmp_path, _gnupghome)
     pw = tmp_path / "pass"
     pw.write_text("correct horse battery staple\n")
     r = _run(host, env, "--passphrase-file", str(pw))
@@ -60,16 +74,16 @@ def test_encrypts_env_with_a_passphrase_file(tmp_path: Path) -> None:
     assert '"encrypted_env": true' in (bundle / "manifest.json").read_text()
 
 
-def test_unattended_without_a_passphrase_fails_before_dumping(tmp_path: Path) -> None:
-    host, env = _host(tmp_path)
+def test_unattended_without_a_passphrase_fails_before_dumping(tmp_path: Path, _gnupghome: Path) -> None:
+    host, env = _host(tmp_path, _gnupghome)
     r = _run(host, env)
     assert r.returncode == 1
     assert "--plain-env" in r.stderr
     assert not (host / "out").exists() or not any((host / "out").iterdir())
 
 
-def test_plain_env_opts_out(tmp_path: Path) -> None:
-    host, env = _host(tmp_path)
+def test_plain_env_opts_out(tmp_path: Path, _gnupghome: Path) -> None:
+    host, env = _host(tmp_path, _gnupghome)
     r = _run(host, env, "--plain-env")
     assert r.returncode == 0, r.stdout + r.stderr
     bundle = _bundle(host)
