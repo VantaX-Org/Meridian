@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useRouter } from "next/navigation";
 import { t } from "@/lib/v2/i18n";
 import { useAletheiaIfAny } from "./aletheia";
-import { openRoute } from "./openRedirect";
+import { dropOpenParam, openRoute } from "./openRedirect";
 import { Confirm } from "./Confirm";
 import { Sheet } from "./Sheet";
 import { useToast } from "./Toast";
@@ -20,7 +20,11 @@ export function SheetHost({ sheets, closeLabel, children }: { sheets: Record<str
   const dirty = useRef(false);
   const [ask, setAsk] = useState(false);
   const guard = useCallback((d: boolean) => { dirty.current = d; }, []);
-  const close = useCallback(() => { dirty.current = false; setCur(null); }, []);
+  const close = useCallback(() => {
+    dirty.current = false;
+    setCur(null);
+    dropOpenParam();
+  }, []);
   // The close button, Escape and the backdrop ask first while a sheet reports unsaved work.
   const tryClose = useCallback(() => { if (dirty.current) setAsk(true); else close(); }, [close]);
   const router = useRouter();

@@ -42,3 +42,11 @@ export function openRoute(kind: string, id: string | undefined): string | null {
   if (d) return e ? d[0] + e : d[1];
   return Object.prototype.hasOwnProperty.call(LIST, kind) ? LIST[kind] : null;
 }
+
+/** Drops `?open=` from the address without a navigation, so closing a deep-linked sheet does not reopen it on reload. */
+export function dropOpenParam(): void {
+  const q = new URLSearchParams(window.location.search);
+  if (!q.has("open")) return;
+  q.delete("open");
+  window.history.replaceState(window.history.state, "", q.size ? `${window.location.pathname}?${q}` : window.location.pathname);
+}

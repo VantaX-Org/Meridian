@@ -16,6 +16,7 @@ import {
   useSheet,
 } from "@/ui/kit";
 import { useAletheiaScope } from "@/ui/kit/aletheia";
+import { dropOpenParam } from "@/ui/kit/openRedirect";
 import { usePaletteContext } from "@/ui/kit/paletteContext";
 import { CleanBoard } from "../CleanBoard";
 import { CleaningQueue } from "../CleaningQueue";
@@ -196,7 +197,7 @@ export function FixScreen({ scope }: { scope?: string }) {
         </div>
       </div>
       <LoadFileDialog open={load} onClose={() => setLoad(false)} count={drafts.length} batchId={batchId} />
-      <Sheet open={tool !== null} onClose={() => setTool(null)} label={tool ? TOOL_LABEL[tool]() : ""} closeLabel={t("Close")}>
+      <Sheet open={tool !== null} onClose={() => { setTool(null); dropOpenParam(); }} label={tool ? TOOL_LABEL[tool]() : ""} closeLabel={t("Close")}>
         {tool === "cleaning" ? <CleaningQueue /> : tool === "approvals" ? <Approvals /> : tool === "triage" ? <Triage /> : tool === "exceptions" ? <Exceptions /> : null}
       </Sheet>
       <Confirm open={naming} title={t("Name this view")} confirmLabel={t("Save this view")} cancelLabel={t("Cancel")} onConfirm={saveView} onCancel={() => { setNaming(false); setViewName(""); }}>
