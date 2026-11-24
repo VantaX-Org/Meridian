@@ -83,6 +83,7 @@ def test_manage_triage_is_in_the_matrix_as_stewardship_admin() -> None:
 # ── routes ───────────────────────────────────────────────────────────────────
 
 
+@_pg
 def test_roles_matrix_route(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
     tid, u = _tenant(owner, {"padmin": "platform_admin", "viewer": "viewer"})
     _grant(owner, tid, u["padmin"], "platform_admin")
@@ -115,6 +116,7 @@ def test_roles_matrix_route(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> N
     _serve(owner, monkeypatch, tid, scenario)
 
 
+@_pg
 def test_effective_with_grant_previews_without_writing(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
     from sqlalchemy import text
 
