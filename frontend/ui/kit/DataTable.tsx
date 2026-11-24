@@ -113,7 +113,9 @@ export function DataTable<T>({ columns: allColumns, rows, rowKey, label, selecte
     const hit = named ? vs.find((v) => v.name === named) : undefined;
     const p = hit ? hit.prefs : read<Prefs>(`mx.table.${id}`, base);
     setPrefs({ ...base, ...p });
-    setSort(p.sort ?? null);
+    // Only a saved sort that differs is written: a URL-backed grid would otherwise replace the route on every new column list and loop.
+    const next = p.sort ?? null;
+    if (next ? next.key !== sort?.key || next.dir !== sort?.dir : sort && !gridApi) setSort(next);
     setView(hit ? hit.name : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, base]);
