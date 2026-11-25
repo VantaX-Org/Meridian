@@ -205,6 +205,10 @@ class RFCConnector(SAPConnector):
         self._extra: Optional[list[_Conn]] = None  # extra connections; None = not opened yet
         self._read_setting = ""          # SAPConnectionParams.read_function, else MERIDIAN_RFC_READ_FUNCTION
         self._read_function = READ_TABLE  # resolved on first read
+        # Page size SAP's memory quota allowed per table, learned from TSV_TNEW_PAGE_ALLOC_FAILED.
+        # Kept for the connection's lifetime so the probe, each field group and the pool do not
+        # each rediscover it with a slow failed call.
+        self._page_size: dict[str, int] = {}
 
     # ── Table reader selection ─────────────────────────────────────────────────
 
@@ -391,6 +395,7 @@ class RFCConnector(SAPConnector):
         groups = self._groups(table, keys, rest)
         merged: Optional[pd.DataFrame] = None
         report = on_progress or (lambda done, n, rows: None)
+        page_size = self._page_size.get(table, page_size)
         # Extra SAP sessions cost a logon each and are worth it only once a read
         # is big enough to split: probe group 1's open range on the primary
         # first, and open the pool only if that came back full.
@@ -403,6 +408,7 @@ class RFCConnector(SAPConnector):
                 if not _out_of_memory(e) or page_size <= 1000:
                     raise
                 probe, full = None, True  # SAP is already short on memory for one page: worth parallelising
+                page_size = self._learn(table, page_size // 2)
         if full and len(conns := self._pool()) > 1:
             n = len(groups)
             merged, ranges = self._read_ranges_pool(table, [keys + groups[0]], keys[0], where, page_size,
@@ -414,7 +420,8 @@ class RFCConnector(SAPConnector):
                 report(g, n, rows - (g - 1) * per)
             if n > 1:
                 for part, _ in self._read_ranges_pool(table, [keys + g for g in groups[1:]], keys[0], where,
-                                                      page_size, report_rest, ranges, 0, conns):
+                                                      self._page_size.get(table, page_size), report_rest,
+                                                      ranges, 0, conns):
                     merged = merged.merge(part, on=keys, how="outer")
             return merged
         ranges = None  # found by the first group, reused by the others
@@ -424,14 +431,20 @@ class RFCConnector(SAPConnector):
                 part, ranges = probe, [(">=", None, None)]  # the whole table: already read by the probe above
                 on_page(len(part))
             elif keys:
-                part, ranges = self._read_ranges(table, keys + group, keys[0], where, page_size, on_page, ranges,
-                                                 max_rows)
+                part, ranges = self._read_ranges(table, keys + group, keys[0], where,
+                                                 self._page_size.get(table, page_size), on_page, ranges, max_rows)
             else:
                 part = self._read_paged(table, keys + group, where, max_rows, page_size, on_page)
             merged = part if merged is None else _join_group(merged, part, keys)
         if merged is None:
             merged = self._read_paged(table, keys, where, max_rows, page_size)
         return merged
+
+    def _learn(self, table: str, page_size: int) -> int:
+        """Record a smaller page size for ``table`` after SAP ran out of memory, and log it."""
+        logger.warning("%s: SAP out of memory, page size now %d", table, page_size)
+        self._page_size[table] = page_size
+        return page_size
 
     def _groups(self, table: str, keys: list[str], rest: list[str]) -> list[list[str]]:
         """Split non-key fields into groups whose RFC work area fits 512 bytes.
@@ -489,8 +502,7 @@ class RFCConnector(SAPConnector):
                 # SAP's memory quota per call can hold fewer rows than page_size
                 if not _out_of_memory(e) or page_size <= 1000:
                     raise
-                page_size //= 2
-                logger.warning("%s: SAP out of memory, page size now %d", table, page_size)
+                page_size = self._learn(table, page_size // 2)
                 todo.insert(0, (op, lo, hi))
                 continue
             if op != "=" and len(page) >= page_size:
@@ -553,8 +565,7 @@ class RFCConnector(SAPConnector):
                             if not _out_of_memory(e) or (size == page_size and page_size <= 1000):
                                 raise
                             if size == page_size:  # not already halved by another read
-                                page_size //= 2
-                                logger.warning("%s: SAP out of memory, page size now %d", table, page_size)
+                                page_size = self._learn(table, page_size // 2)
                             heapq.heappush(todo, entry(g, r))
                             continue
                         if r[0] != "=" and len(page) >= size:
