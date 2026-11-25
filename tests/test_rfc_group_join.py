@@ -91,7 +91,7 @@ def test_the_join_checks_memory_before_the_fallback_copy(monkeypatch):
 
     monkeypatch.setattr("sap.rfc.available_memory_bytes", lambda: 1)  # nothing available
     left = pd.DataFrame({"K": ["a", "b"], "X": [1, 2]})
-    right = pd.DataFrame({"K": ["b", "a"], "Y": [20, 10]})  # misaligned -> fallback path
+    right = pd.DataFrame({"K": ["a", "c"], "Y": [10, 30]})  # different keys -> fallback path
     with pytest.raises(ExtractionMemoryError):
         _join_group(left, right, ["K"])
 
