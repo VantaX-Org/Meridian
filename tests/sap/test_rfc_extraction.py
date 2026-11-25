@@ -97,6 +97,22 @@ def test_read_table_full_halves_page_size_when_sap_runs_out_of_memory():
     assert len(out) == len(df) and not out.duplicated(["MATNR", "WERKS"]).any()
 
 
+def test_read_table_full_halves_page_size_on_a_database_error():
+    # HANA statement memory: RFC_READ_TABLE answers OPTION_NOT_VALID with a SAIS DB_Error
+    df = pd.DataFrame({"ADDRNUMBER": [f"{i:010d}" for i in range(30)], "DATE_FROM": "00010101", "CITY1": "X"})
+    conn = FakeRFCConnector({"ADRC": df.sample(frac=1, random_state=1)})
+    call = conn._conn.call
+
+    def limited(fm, **p):
+        if fm == "RFC_READ_TABLE" and p.get("ROWCOUNT", 0) > 2000:
+            raise FakeRFCError("OPTION_NOT_VALID: DB_Error on ADRC: Database returned the SQL code 4.")
+        return call(fm, **p)
+    conn._conn.call = limited
+    out = conn.read_table_full("ADRC", ["ADDRNUMBER", "DATE_FROM", "CITY1"], ["ADDRNUMBER", "DATE_FROM"],
+                               page_size=8000)
+    assert len(out) == len(df)
+
+
 def test_live_snapshot_reads_dictionary_and_customer_tables():
     tadir = pd.DataFrame({"PGMID": ["R3TR", "R3TR"], "OBJECT": ["TABL", "TABL"], "OBJ_NAME": ["ZMM_EXT", "LFA1"]})
     dd02l = pd.DataFrame({"TABNAME": ["ZMM_EXT", "LFA1"], "AS4LOCAL": ["A", "A"], "TABCLASS": ["TRANSP", "TRANSP"],

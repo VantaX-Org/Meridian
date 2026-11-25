@@ -400,7 +400,7 @@ class RFCConnector(SAPConnector):
                 probe = self._read_paged(table, keys + groups[0], where, page_size, page_size)
                 full = len(probe) >= page_size
             except SAPConnectorError as e:
-                if "TSV_TNEW_PAGE_ALLOC_FAILED" not in str(e) or page_size <= 1000:
+                if not _out_of_memory(e) or page_size <= 1000:
                     raise
                 probe, full = None, True  # SAP is already short on memory for one page: worth parallelising
         if full and len(conns := self._pool()) > 1:
@@ -487,7 +487,7 @@ class RFCConnector(SAPConnector):
                                         0 if op == "=" else page_size, page_size)
             except SAPConnectorError as e:
                 # SAP's memory quota per call can hold fewer rows than page_size
-                if "TSV_TNEW_PAGE_ALLOC_FAILED" not in str(e) or page_size <= 1000:
+                if not _out_of_memory(e) or page_size <= 1000:
                     raise
                 page_size //= 2
                 logger.warning("%s: SAP out of memory, page size now %d", table, page_size)
@@ -550,7 +550,7 @@ class RFCConnector(SAPConnector):
                             page = f.result()
                         except SAPConnectorError as e:
                             # SAP's memory quota per call can hold fewer rows than page_size
-                            if "TSV_TNEW_PAGE_ALLOC_FAILED" not in str(e) or (size == page_size and page_size <= 1000):
+                            if not _out_of_memory(e) or (size == page_size and page_size <= 1000):
                                 raise
                             if size == page_size:  # not already halved by another read
                                 page_size //= 2
@@ -680,6 +680,17 @@ def _dropped(e: Exception) -> bool:
     """True for a broken RFC session (network drop, gateway timeout), not for an ABAP or logon error."""
     m = str(e)
     return type(e).__name__ == "CommunicationError" or "RFC_CLOSED" in m or "connection to partner" in m
+
+
+def _out_of_memory(e: Exception) -> bool:
+    """True when SAP could not hold one page: the ABAP heap, or the database under it.
+
+    On HANA a page too big for the statement memory comes back from RFC_READ_TABLE as
+    OPTION_NOT_VALID with a SAIS DB_Error (SQL code 4 out of memory, 129 transaction
+    rolled back, 1024 and others seen on ADRC, AUSP and EORD). A smaller page reads.
+    """
+    m = str(e)
+    return "TSV_TNEW_PAGE_ALLOC_FAILED" in m or "DB_Error" in m
 
 
 # ── RFC_READ_TABLE helpers ─────────────────────────────────────────────────────
