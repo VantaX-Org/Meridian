@@ -145,27 +145,25 @@ def _join_group(merged, part, keys: list[str]):
     groups and merged - at ~18 GB a frame that is ~36 GB peak, which is an OOM kill on a 30 GB
     box even when the read itself succeeded.
 
-    Every group is read over the same key ranges in the same order, so when the keys line up
-    row-for-row the columns can simply be attached. The key comparison is the guard: if the rows
-    do not correspond exactly, fall back to the merge, which is correct for any order.
+    RFC_READ_TABLE returns rows in no defined order, so every group is sorted by the key (the
+    caller sorts the first one the same way); with unique keys the rows then line up and the
+    columns can simply be attached. The key comparison is the guard: if the rows still do not
+    correspond exactly, fall back to the merge, which is correct for any order.
     """
+    if keys:
+        part = part.sort_values(keys, ignore_index=True, kind="stable")
     if keys and len(part) == len(merged):
         try:
-            same = (part[keys].to_numpy() == merged[keys].to_numpy()).all()
+            same = all(part[k].reset_index(drop=True).equals(merged[k].reset_index(drop=True)) for k in keys)
         except Exception:
             same = False
         if same:
-            # Build the combined frame in ONE allocation from the underlying arrays, which are
-            # views - no copy of the data. Assigning the columns one at a time
-            # (`merged[col] = part[col].to_numpy()`) instead makes pandas consolidate blocks on
-            # every assignment, copying the whole frame repeatedly: on MARC (18.3M rows, 98
-            # fields in groups) that is what pushed an 18 GB frame past 30 GB and got the worker
-            # OOM-killed, with the store() guard never reached because the crash came first.
-            data = {c: merged[c].to_numpy() for c in merged.columns}
-            for col in part.columns:
-                if col not in data:
-                    data[col] = part[col].to_numpy()
-            return pd.DataFrame(data, copy=False)
+            # Attach part's columns side by side. Comparing and joining column by column keeps
+            # pandas' Arrow-backed strings as they are: ``to_numpy()`` on them builds a Python
+            # object per cell, and on MARC (18.47M rows, 166 fields) that, or the outer merge
+            # it replaced, is what took the worker past its 48 GiB limit and got it OOM-killed.
+            extra = part.drop(columns=[c for c in part.columns if c in merged.columns])
+            return pd.concat([merged.reset_index(drop=True), extra.reset_index(drop=True)], axis=1)
     # The fallback allocates a second whole frame. Check before doing it rather than being killed
     # mid-allocation, which would leave the SAP sessions dangling.
     require_memory(int(merged.memory_usage(deep=True).sum()) + int(part.memory_usage(deep=True).sum()),
@@ -414,6 +412,8 @@ class RFCConnector(SAPConnector):
             merged, ranges = self._read_ranges_pool(table, [keys + groups[0]], keys[0], where, page_size,
                                                     lambda rows: report(0, n, rows), None, max_rows, conns)[0]
             per = max(len(merged), 1)
+            if n > 1:  # sorted like every later group, so _join_group can attach them side by side
+                merged = merged.sort_values(keys, ignore_index=True, kind="stable")
 
             def report_rest(rows: int) -> None:  # groups 2..n read at once: report in group-sized steps
                 g = min(n - 1, 1 + rows // per)
@@ -422,7 +422,7 @@ class RFCConnector(SAPConnector):
                 for part, _ in self._read_ranges_pool(table, [keys + g for g in groups[1:]], keys[0], where,
                                                       self._page_size.get(table, page_size), report_rest,
                                                       ranges, 0, conns):
-                    merged = merged.merge(part, on=keys, how="outer")
+                    merged = _join_group(merged, part, keys)
             return merged
         ranges = None  # found by the first group, reused by the others
         for i, group in enumerate(groups):
@@ -435,7 +435,10 @@ class RFCConnector(SAPConnector):
                                                  self._page_size.get(table, page_size), on_page, ranges, max_rows)
             else:
                 part = self._read_paged(table, keys + group, where, max_rows, page_size, on_page)
-            merged = part if merged is None else _join_group(merged, part, keys)
+            if merged is None:  # sorted like every later group, so _join_group can attach them side by side
+                merged = part.sort_values(keys, ignore_index=True, kind="stable") if keys and len(groups) > 1 else part
+            else:
+                merged = _join_group(merged, part, keys)
         if merged is None:
             merged = self._read_paged(table, keys, where, max_rows, page_size)
         return merged
