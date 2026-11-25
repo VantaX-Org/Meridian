@@ -16137,4 +16137,13 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{n} terms created": "{n} Begriffe angelegt",
   "Building the event log": "Ereignisprotokoll wird erstellt",
   "The rule id, such as MM142. To test a new rule, draft it beside this and try it on the data.": "Die Regel-ID, etwa MM142. Um eine neue Regel zu testen, entwerfen Sie sie daneben und probieren Sie sie an den Daten aus.",
+  "The steps could not be loaded": "Die Schritte konnten nicht geladen werden",
+  "No steps recorded yet": "Noch keine Schritte erfasst",
+  "This run only pulled the data. Analyse it to score it and record its steps.": "Dieser Lauf hat nur die Daten abgerufen. Analysieren Sie ihn, um ihn zu bewerten und seine Schritte zu erfassen.",
+  "This run finished before steps were recorded.": "Dieser Lauf wurde beendet, bevor Schritte erfasst wurden.",
+  "Waiting for events": "Warten auf Ereignisse",
+  "The run has finished": "Der Lauf ist beendet",
+  "{status}, {when}. Live events show only while a run works; the steps above record what it did.": "{status}, {when}. Live-Ereignisse erscheinen nur während ein Lauf arbeitet; die Schritte oben zeigen, was er getan hat.",
+  "Extracted, not scored": "Extrahiert, nicht bewertet",
+  "Agents failed": "Agenten fehlgeschlagen",
 };

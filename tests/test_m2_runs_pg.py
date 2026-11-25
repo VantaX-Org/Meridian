@@ -264,3 +264,14 @@ def test_multi_rules():
     assert by["C"]["failing"] == [None, None, 7] and by["C"]["change"] == [None, None]
     assert steps == [{"a": "r1", "b": "r2", "newly_failing": 1, "fixed": 0, "worse": 1, "better": 0},
                      {"a": "r2", "b": "r3", "newly_failing": 0, "fixed": 1, "worse": 0, "better": 0}]
+
+
+@needs_db
+@pytest.mark.anyio
+async def test_rule_trend_answers_for_a_system(owner, monkeypatch):
+    s = seed_m2(owner)
+    client = await start(monkeypatch, s["tid"])
+    async with client:
+        r = await client.get("/api/v1/runs/rule-trend", params={"system_id": s["ecc"]}, headers=headers())
+        assert r.status_code == 200, r.text
+        assert [x["id"] for x in r.json()["runs"]] == [s["run0"], s["run_mid"], s["run"]]

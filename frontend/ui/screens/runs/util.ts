@@ -39,12 +39,17 @@ export function statusLabel(s: string): string {
     case "running": case "analysing": case "active": return t("Running");
     case "queued": case "pending": return t("Queued");
     case "cancelled": return t("Cancelled");
-    default: return s;
+    case "agents_complete": case "analysed": case "scored": return t("Scored");
+    case "agents_running": case "extracting": return t("Running");
+    case "agents_failed": return t("Agents failed");
+    case "extracted": case "profiled": return t("Extracted, not scored");
+    default: return s.replace(/_/g, " ");
   }
 }
 
-export const statusTone = (s: string): "good" | "bad" | "info" => (s === "complete" || s === "completed" ? "good" : s === "failed" || s === "cancelled" ? "bad" : "info");
+export const statusTone = (s: string): "good" | "bad" | "info" =>
+  ["complete", "completed", "agents_complete", "analysed", "scored"].includes(s) ? "good" : ["failed", "cancelled", "agents_failed"].includes(s) ? "bad" : "info";
 
 export const when = (iso: string | number | null | undefined) => formatDate(iso, "datetime");
 
-export const isLive = (s: string) => ["running", "analysing", "active", "queued", "pending"].includes(s);
+export const isLive = (s: string) => ["running", "analysing", "active", "queued", "pending", "agents_running", "extracting"].includes(s);

@@ -25,7 +25,7 @@ import {
 import { answer } from "./answers";
 import { JobHairline } from "./JobHairline";
 import { Modules, StatusPill } from "./Runs";
-import { modulesOf, runPath, runScore, runTitle, scoreText, sourceLabel, when } from "./util";
+import { isLive, modulesOf, runPath, runScore, runTitle, scoreText, sourceLabel, statusLabel, when } from "./util";
 import "./runs.css";
 import { useCrumbs } from "@/ui/screens/flow";
 
@@ -41,11 +41,14 @@ function Cycle({ id, module }: { id: string; module: string }) {
   return <CycleStepper label={t("Cycle steps")} step={cycle?.step ?? null} labels={{ pull: t("Pull"), clean: t("Clean"), upload: t("Upload"), score: t("Re-score"), compare: t("Compare") }} />;
 }
 
-function Steps({ id }: { id: string }) {
+function Steps({ id, status }: { id: string; status: string }) {
   const q = useQuery({ queryKey: ["next", "run", id, "steps", useFixture()], queryFn: () => getRunSteps(id) });
   if (q.isLoading) return <Skeleton lines={4} label={t("Loading the steps")} />;
   const steps = q.data?.steps ?? [];
-  if (!steps.length) return <EmptyState heading={t("No steps recorded")} body={t("The steps appear when the run starts working.")} />;
+  if (q.isError) return <ErrorState heading={t("The steps could not be loaded")} retryLabel={t("Try again")} onRetry={() => void q.refetch()} />;
+  if (!steps.length) return isLive(status)
+    ? <EmptyState heading={t("No steps recorded yet")} body={t("The steps appear when the run starts working.")} />
+    : <EmptyState heading={t("No steps recorded")} body={status === "extracted" ? t("This run only pulled the data. Analyse it to score it and record its steps.") : t("This run finished before steps were recorded.")} />;
   const cols: Column<(typeof steps)[number]>[] = [
     { key: "n", label: t("Step"), render: (s) => <span className="rn-num">{s.step_number}</span> },
     { key: "name", label: t("What it did"), render: (s) => s.step_name },
@@ -74,7 +77,8 @@ function Trend({ systemId }: { systemId: string }) {
   }, [q.data]);
   return (
     <Card title={t("Failing records over the last runs")} sub={t("Added up across every rule of this system.")}>
-      <TrendArea points={points} label={t("Failing records per run")} emptyLabel={t("No earlier runs to trend yet.")} />
+      <TrendArea points={points} label={t("Failing records per run")} emptyLabel={t("No earlier runs to trend yet.")}
+        state={q.isLoading ? "loading" : q.isError ? "error" : undefined} errorText={t("The trend could not be loaded.")} onRetry={() => void q.refetch()} />
       {top.length ? <div className="mx-links">{top.map((r) => <span key={r.check_id}><FieldChip code={r.check_id} description={moduleText(r.module)} /> <span className="rn-num">{r.now}</span></span>)}</div> : null}
     </Card>
   );
@@ -99,12 +103,14 @@ function Predict({ systemId, modules }: { systemId: string; modules: string[] })
   );
 }
 
-function Activity({ id }: { id: string }) {
+function Activity({ id, status, at }: { id: string; status: string; at: string | null }) {
   const [events, setEvents] = useState<RunEvent[]>([]);
   useEffect(() => streamRunEvents(id, (e) => setEvents((x) => [...x.slice(-49), e]), () => undefined), [id]);
   return (
     <Card title={t("Activity")} sub={t("Live while the run works.")}>
-      {events.length === 0 ? <EmptyState heading={t("Nothing happening")} body={t("Events show here as the run works.")} /> : (
+      {events.length === 0 ? (isLive(status)
+        ? <EmptyState heading={t("Waiting for events")} body={t("Events show here as the run works.")} />
+        : <EmptyState heading={t("The run has finished")} body={t("{status}, {when}. Live events show only while a run works; the steps above record what it did.", { status: statusLabel(status), when: when(at) })} />) : (
         <ul className="rn-list">{events.map((e, i) => <li key={i}><code className="mx-code">{e.type}</code> {typeof e.data === "string" ? e.data : ""}</li>)}</ul>
       )}
     </Card>
@@ -270,12 +276,12 @@ export function Run({ id }: { id: string }) {
                 <Button variant="ghost" onClick={() => { setText(""); setDlg("delete"); }}>{t("Delete this run")}</Button>
               </div>
             </Card>
-            <Steps id={id} />
+            <Steps id={id} status={h.status} />
             <div className="mx-split">
               {systemId ? <Trend systemId={systemId} /> : null}
               <Predict systemId={systemId} modules={modules} />
             </div>
-            <Activity id={id} />
+            <Activity id={id} status={h.status} at={h.run_at ?? null} />
           </>
         ) : tab === "profile" ? <ProfileTab id={id} systemId={systemId} modules={modules} /> : <ConfigTab id={id} />}
       </div>
