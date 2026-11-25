@@ -16137,4 +16137,13 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{n} terms created": "{n} 件の用語を作成",
   "Building the event log": "イベントログを作成中",
   "The rule id, such as MM142. To test a new rule, draft it beside this and try it on the data.": "MM142 などのルール ID。新しいルールを試すには、隣で下書きしてデータで試してください。",
+  "The steps could not be loaded": "ステップを読み込めませんでした",
+  "No steps recorded yet": "まだステップは記録されていません",
+  "This run only pulled the data. Analyse it to score it and record its steps.": "この実行はデータの取得のみ行いました。分析するとスコアが付き、ステップが記録されます。",
+  "This run finished before steps were recorded.": "この実行はステップが記録される前に終了しました。",
+  "Waiting for events": "イベントを待っています",
+  "The run has finished": "実行は終了しました",
+  "{status}, {when}. Live events show only while a run works; the steps above record what it did.": "{status}、{when}。ライブイベントは実行中のみ表示されます。上のステップに実行内容が記録されています。",
+  "Extracted, not scored": "抽出済み、未スコア",
+  "Agents failed": "エージェントが失敗しました",
 };

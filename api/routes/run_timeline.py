@@ -285,7 +285,7 @@ async def rule_trend(system_id: uuid.UUID = Query(...), limit: int = Query(8, ge
     only, because a rule's counts from two systems are not one trend."""
     await _rls(db, tenant)
     t = str(tenant.id)
-    rows = (await db.execute(text(_RUNS_SQL), {"t": t, "sid": str(system_id), "mod": None, "n": limit})).mappings().all()
+    rows = (await db.execute(text(_RUNS_SQL), {"t": t, "sid": str(system_id), "vid": None, "mod": None, "n": limit})).mappings().all()
     runs = list(reversed(rows))
     ids = [r["id"] for r in runs]
     found = (await db.execute(text(_FINDINGS_SQL), {"t": t, "ids": ids})).fetchall() if ids else []

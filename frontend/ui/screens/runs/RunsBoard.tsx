@@ -104,7 +104,7 @@ export function RunsBoard() {
                 <tr key={h.id} data-testid="runs-board-row">
                   <th scope="row"><a href={withFixture(runPath(h.id), fx)}>{num(h)}</a></th>
                   <td>{(h.run_at ?? "").slice(0, 10)}</td>
-                  <td>{shown !== null && measured !== null ? <MiniRuler shown={shown} measured={measured} name={t("{run}: shown {shown}, measured {measured}", { run: num(h), shown: score(shown), measured: score(measured) })} /> : null}</td>
+                  <td>{shown !== null && measured !== null ? <MiniRuler shown={shown} measured={measured} name={t("{run}: shown {shown}, measured {measured}", { run: num(h), shown: score(shown), measured: score(measured) })} /> : <span className="mx-muted">{t("Extracted, not scored")}</span>}</td>
                   <td className="rn-num">{shown !== null ? score(shown) : ""}</td>
                   <td className="rn-num">{measured !== null ? score(measured) : ""}</td>
                   <td className="rn-num" data-tone={change === null ? undefined : change >= 0 ? "good" : "bad"}>{change !== null ? signed(change) : ""}</td>

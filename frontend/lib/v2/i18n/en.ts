@@ -13502,7 +13502,7 @@ export const en = {
   "Object screens": "Object screens",
   "Which rules got worse?": "Which rules got worse?",
   "There is no score for this object yet.": "There is no score for this object yet.",
-  "The score is {now}; the run before had {was}.": "The score is {now}; the run before had {was}.",
+  "The score is {now}; the run before had {was}.": "The score is {now; the run before had {was}.",
   "Loading the trend": "Loading the trend",
   "The trend could not be loaded.": "The trend could not be loaded.",
   "Records before": "Records before",
@@ -16136,6 +16136,15 @@ export const en = {
   "{n} terms created": "{n} terms created",
   "Building the event log": "Building the event log",
   "The rule id, such as MM142. To test a new rule, draft it beside this and try it on the data.": "The rule id, such as MM142. To test a new rule, draft it beside this and try it on the data.",
+  "The steps could not be loaded": "The steps could not be loaded",
+  "No steps recorded yet": "No steps recorded yet",
+  "This run only pulled the data. Analyse it to score it and record its steps.": "This run only pulled the data. Analyse it to score it and record its steps.",
+  "This run finished before steps were recorded.": "This run finished before steps were recorded.",
+  "Waiting for events": "Waiting for events",
+  "The run has finished": "The run has finished",
+  "{status}, {when}. Live events show only while a run works; the steps above record what it did.": "{status}, {when}. Live events show only while a run works; the steps above record what it did.",
+  "Extracted, not scored": "Extracted, not scored",
+  "Agents failed": "Agents failed",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;
