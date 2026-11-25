@@ -169,3 +169,47 @@ def test_parallel_one_reads_over_the_primary_connection_only(monkeypatch):
     # 2, not 4: every extra session is another logon for the same SAP user and a surplus one is
     # refused; with worker concurrency 4 this caps a system at 8 sessions instead of 16.
     assert RFCConnector()._parallel == 2
+
+
+def _oom_over(fake, limit):
+    """Make ``fake`` fail like SAP when a read asks for more than ``limit`` rows; returns the failure count."""
+    call, fails = fake.call, []
+
+    def limited(fm, **p):
+        if fm == "RFC_READ_TABLE" and p.get("NO_DATA") != "X" and p.get("ROWCOUNT", 0) > limit:
+            fails.append(p["ROWCOUNT"])
+            raise FakeRFCError("TSV_TNEW_PAGE_ALLOC_FAILED")
+        return call(fm, **p)
+    fake.call = limited
+    return fails
+
+
+@pytest.mark.parametrize("parallel", [1, 4])
+def test_learned_page_size_carries_across_field_groups(parallel):
+    """SAP's memory limit is found once per table, not again for every field group."""
+    d = get_dictionary("ecc6")
+    cols = [f for f in d.table("MARA").fields if f != "MANDT"]
+    df = pd.DataFrame({c: [f"V{i}"[: d.field("MARA", c).length] for i in range(3000)] for c in cols})
+    df["MATNR"] = [f"{i:018d}" for i in range(3000)]
+    serial = FakeRFCConnector({"MARA": df}).read_table_full("MARA", cols, ["MATNR"], page_size=4000)
+    c = _parallel({"MARA": df}, delay=0) if parallel > 1 else FakeRFCConnector({"MARA": df})
+    fails = [_oom_over(f, 1500) for f in c.fakes]
+    out = c.read_table_full("MARA", cols, ["MATNR"], page_size=4000)
+    _same(out, serial, ["MATNR"])
+    assert c._page_size["MARA"] == 1000
+    # 4000 and 2000 fail once each; the later groups and connections start at 1000
+    assert sorted(n for f in fails for n in f) == [2000, 4000]
+
+
+def test_join_group_attaches_shuffled_groups_without_merge(monkeypatch):
+    """Groups that come back in a different row order are sorted and attached, never merged."""
+    import pandas as pd
+    from sap import rfc
+
+    keys = ["MATNR", "WERKS"]
+    first = pd.DataFrame({"MATNR": ["2", "1", "1"], "WERKS": ["A", "B", "A"], "X": ["x2A", "x1B", "x1A"]})
+    second = pd.DataFrame({"MATNR": ["1", "2", "1"], "WERKS": ["A", "A", "B"], "Y": ["y1A", "y2A", "y1B"]})
+    monkeypatch.setattr(pd.DataFrame, "merge", lambda *a, **k: (_ for _ in ()).throw(AssertionError("merged")))
+    out = rfc._join_group(first.sort_values(keys, ignore_index=True), second, keys)
+    assert list(out.columns) == ["MATNR", "WERKS", "X", "Y"]
+    assert [x[1:] == y[1:] for x, y in zip(out["X"], out["Y"])] == [True, True, True]
