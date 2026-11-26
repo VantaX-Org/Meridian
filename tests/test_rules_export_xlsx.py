@@ -56,7 +56,7 @@ def test_export_rules_builds_real_workbook() -> None:
         rules_module.list_rules = original
 
     wb = openpyxl.load_workbook(io.BytesIO(response.body))
-    assert wb.sheetnames == ["Cover", "Rules"]
+    assert wb.sheetnames == ["Cover", "Instructions", "Rules"]
     ws = wb["Rules"]
     headers = [c.value for c in ws[1]]
     assert headers == [

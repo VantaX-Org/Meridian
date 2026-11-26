@@ -68,7 +68,7 @@ def test_export_audit_entries_builds_real_workbook() -> None:
     ))
 
     wb = openpyxl.load_workbook(io.BytesIO(response.body))
-    assert wb.sheetnames == ["Cover", "Audit log"]
+    assert wb.sheetnames == ["Cover", "Instructions", "Audit log"]
     ws = wb["Audit log"]
     headers = [c.value for c in ws[1]]
     assert headers == cols

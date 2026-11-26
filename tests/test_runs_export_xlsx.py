@@ -57,7 +57,7 @@ def test_export_runs_builds_real_workbook() -> None:
     assert filename.startswith("meridian-")
 
     wb = openpyxl.load_workbook(io.BytesIO(response.body))
-    assert wb.sheetnames == ["Cover", "Runs"]
+    assert wb.sheetnames == ["Cover", "Instructions", "Runs"]
     ws = wb["Runs"]
     headers = [c.value for c in ws[1]]
     assert headers == ["Run ID", "Run at", "Label", "Status", "System", "Finished", "Duration (ms)", "Baseline"]

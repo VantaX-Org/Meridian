@@ -193,6 +193,78 @@ async def list_issues(
     return {"total": int(total), "counts": counts, "items": [_row(r) for r in rows.fetchall()]}
 
 
+_MONO = ("id", "check_id", "record_key", "grain", "field")
+# (key, header, help) for the work-list export: what the record holds now, what Meridian suggests, and the work state
+_EXPORT_COLUMNS = [
+    ("check_id", "Rule", "The rule the record fails."),
+    ("message", "What is wrong", "The rule's message."),
+    ("severity", "Severity", "Critical, high, medium or low."),
+    ("module", "Object", "The data object the rule belongs to."),
+    ("grain", "Table", "The SAP table the record sits in."),
+    ("record_key", "Record key", "The SAP key of the failing record; keep unchanged."),
+    ("field", "Field", "The field the rule checks."),
+    ("current_value", "Current value", "The value the source system held at the last run that found the issue."),
+    ("country", "Country", "The record's country, read from its own codes; blank when no code names it."),
+    ("record_context", "Record context", "The record's own codes (country, company, plant, pay scale) to pick the right value."),
+    ("how_to_fix", "How to fix", "The rule's instruction for this record or value."),
+    ("why", "Why it matters", "What breaks in SAP while the record stays wrong."),
+    ("suggested_value", "Suggested value", "Meridian's proposed correction, blank when none can be derived."),
+    ("suggestion_source", "Suggestion source", "Run proposal or value suggestion."),
+    ("confidence", "Confidence", "How sure the proposal is, where the run gave one."),
+    ("status", "Status", "Open, in progress, resolved or accepted."),
+    ("priority", "Priority", "The work priority."),
+    ("assignee_email", "Assigned to", "Who works the issue."),
+    ("due_at", "Due", "When the fix is due."),
+    ("sla_state", "SLA", "On track, at risk or breached."),
+    ("first_seen_at", "First seen", "When a run first found the issue."),
+    ("last_seen_at", "Last seen", "When a run last found the issue."),
+    ("reopened_count", "Reopened", "How many times the issue came back after a fix."),
+    ("resolution", "Resolution", "How the issue was closed."),
+    ("scope", "System", "The system the record comes from."),
+    ("id", "Issue ID", "Meridian's issue ID; keep unchanged."),
+]
+
+
+async def _fixes(db: AsyncSession, pairs: set) -> dict:
+    """value_fix_map and record_fixes per (version, check) the export touches, read once each, not per row."""
+    out: dict = {}
+    for vid, cid in pairs:
+        row = (await db.execute(text("SELECT value_fix_map, record_fixes, rule_context FROM findings WHERE version_id = CAST(:v AS uuid) "
+                                     "AND check_id = :c LIMIT 1"), {"v": vid, "c": cid})).fetchone()
+        if row:
+            stored = {x.get("record_key"): x for x in (row.record_fixes or []) if isinstance(x, dict)}
+            out[(vid, cid)] = (row.value_fix_map or {}, stored, getattr(row, "rule_context", None) or {})
+    return out
+
+
+def _values(d: dict, fix: Optional[tuple]) -> dict:
+    """Current value from the stored failing record; suggestion from the run's proposal, else its value map."""
+    from api.services.cleaning_workbook import current_value
+
+    fv = d.pop("field_values", None) or {}
+    cur = current_value(d.get("field"), fv) if fv else ""
+    vfm, stored = (fix or ({}, {}))[:2]
+    st = stored.get(d.get("record_key")) or {}
+    if st.get("proposed_value") not in (None, ""):
+        sv, src, conf = str(st["proposed_value"]), "Run proposal", str(st.get("confidence") or "")
+    else:
+        raw = ((vfm.get(cur) or {}) if isinstance(vfm, dict) else {}).get("suggested_value")
+        sv, src, conf = ("", "", "") if raw in (None, "") else (str(raw), "Value suggestion", "")
+    return {"current_value": cur, "suggested_value": sv, "suggestion_source": src, "confidence": conf}
+
+
+def _detail(d: dict, fix: Optional[tuple]) -> dict:
+    """Country, record context, how to fix and why for one export row, as the fix sheet gives them
+    (api/routes/work.py _sheet_detail): the finding's own rule text first, else the rule's YAML."""
+    from api.routes.work import _sheet_detail
+
+    rc = fix[2] if fix and len(fix) > 2 and isinstance(fix[2], dict) else {}
+    out = _sheet_detail({"check_id": d.get("check_id"), "current_value": d.get("current_value"),
+                         "context": d.pop("context", None), "rule_fix": rc.get("fix_instruction"),
+                         "why_it_matters": rc.get("why_it_matters"), "sap_impact": rc.get("sap_impact")})
+    return {k: out[k] for k in ("country", "record_context", "how_to_fix", "why")}
+
+
 @router.get("/export")
 async def export_issues(
     request: Request,
@@ -214,14 +286,22 @@ async def export_issues(
     where, p = _where(status, module, check_id, severity, assigned_to, scope, search, request, version_id)
     # Cap the source query at ROW_CAP + 1 so build_workbook's own truncation
     # detection fires and adds the cover note; the +1 row itself is never rendered.
-    rows = (await db.execute(text(f"{_SELECT} WHERE {where} {_ORDER} LIMIT :limit"), {**p, "limit": ROW_CAP + 1})).fetchall()
+    select = _SELECT.replace(
+        "FROM record_issues ri",
+        ", fr.field_values, fr.context FROM record_issues ri").replace(
+        "LEFT JOIN users u",
+        "LEFT JOIN finding_records fr ON fr.version_id = ri.last_seen_version AND fr.check_id = ri.check_id "
+        "AND fr.record_key = ri.record_key\n      LEFT JOIN users u")
+    rows = (await db.execute(text(f"{select} WHERE {where} {_ORDER} LIMIT :limit"), {**p, "limit": ROW_CAP + 1})).fetchall()
     dicts = [_row(r) for r in rows]
+    fixes = await _fixes(db, {(d["last_seen_version"], d["check_id"]) for d in dicts if d.get("last_seen_version")})
+    for d in dicts:
+        fix = fixes.get((d.get("last_seen_version"), d["check_id"]))
+        d.update(_values(d, fix))
+        d.update(_detail(d, fix))
 
-    keys = list(dicts[0].keys()) if dicts else _SELECT_KEYS
-    columns = [
-        ColumnSpec(key=k, header=k, kind="mono" if k in ("id", "check_id", "record_key") else "text")
-        for k in keys
-    ]
+    columns = [ColumnSpec(key=k, header=h, kind="mono" if k in _MONO else "text", muted=k in _MONO, help=hp)
+               for k, h, hp in _EXPORT_COLUMNS]
     if format == "csv":
         return csv_response(dicts, columns, "issues", None)
 

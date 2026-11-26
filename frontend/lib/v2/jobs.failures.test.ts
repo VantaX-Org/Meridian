@@ -21,4 +21,10 @@ describe("openFailures", () => {
   it("drops a failure a later success replaced", () => {
     expect(openFailures([job("f", "failed", 100, 200), job("c", "completed", 250, 400)])).toEqual([]);
   });
+  it("keeps only the newest failure per system, so a dismiss does not surface an older one", () => {
+    expect(openFailures([job("old", "failed", 100, 200), job("new", "failed", 300, 400)]).map((j) => j.id)).toEqual(["new"]);
+  });
+  it("drops a failure a later cancel closed", () => {
+    expect(openFailures([job("f", "failed", 100, 200), job("x", "cancelled", 300, 350)])).toEqual([]);
+  });
 });

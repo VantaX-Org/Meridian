@@ -180,6 +180,10 @@ export interface WorkRecordDetail {
   currency?: string | null;
   /** TABLE.FIELD to its catalogue description, for every field in values. */
   field_descriptions?: Record<string, string> | null;
+  /** The record's context codes (country, company, legal entity) that tell a steward where it sits. */
+  context?: { field: string; label: string | null; value: string }[] | null;
+  /** The record's country, read from its context codes; null when none names it. */
+  country?: string | null;
   can: { fix: boolean; sign_off: boolean; assign: boolean; comment: boolean };
 }
 

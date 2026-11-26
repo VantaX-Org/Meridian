@@ -16146,4 +16146,9 @@ export const de: Readonly<Record<MessageKey, string>> = {
   "{status}, {when}. Live events show only while a run works; the steps above record what it did.": "{status}, {when}. Live-Ereignisse erscheinen nur während ein Lauf arbeitet; die Schritte oben zeigen, was er getan hat.",
   "Extracted, not scored": "Extrahiert, nicht bewertet",
   "Agents failed": "Agenten fehlgeschlagen",
+  "Record context": "Datensatzkontext",
+  "Country": "Land",
+  "Country not known from the record": "Land aus dem Datensatz nicht bekannt",
+  "How to fix": "So beheben",
+  "SAP impact": "Auswirkung in SAP",
 };

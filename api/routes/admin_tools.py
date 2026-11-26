@@ -293,7 +293,7 @@ def parse_bulk(fmt: str, content: str, module: str | None) -> list[dict[str, Any
         wb = load_workbook(io.BytesIO(base64.b64decode(content)), read_only=True, data_only=True)
     except (ValueError, OSError, KeyError, zipfile.BadZipFile, binascii.Error):
         raise HTTPException(status_code=422, detail="The file is not an Excel workbook.")
-    ws = next((s for s in wb.worksheets if s.title != "Cover"), wb.worksheets[0])
+    ws = next((s for s in wb.worksheets if s.title not in ("Cover", "Instructions")), wb.worksheets[0])
     rows = list(ws.iter_rows(values_only=True))
     head_at = next((i for i, r in enumerate(rows) if r and "rule_yaml" in [str(c).strip() if c else "" for c in r]), None)
     if head_at is None:

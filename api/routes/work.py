@@ -17,6 +17,7 @@ import base64
 import json
 import re
 import uuid
+from functools import lru_cache
 from typing import Literal, NamedTuple, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -1074,7 +1075,7 @@ async def record(
          WHERE w.tenant_id = :t AND w.version_id = CAST(:v AS uuid) AND w.module = :m AND w.record_key = :k"""),
         p)).fetchone()
     rows = (await db.execute(text("""
-        SELECT fr.check_id, fr.field_values, fr.grain, f.severity, f.dimension, f.details->>'message' AS message,
+        SELECT fr.check_id, fr.field_values, fr.grain, fr.context, f.severity, f.dimension, f.details->>'message' AS message,
                f.details->>'field_checked' AS field, f.remediation_text, f.value_fix_map,
                f.rule_context->>'why_it_matters' AS why, f.rule_context->>'sap_impact' AS impact,
                (SELECT e FROM jsonb_array_elements(CASE WHEN jsonb_typeof(f.record_fixes) = 'array' THEN f.record_fixes ELSE '[]'::jsonb END) e
@@ -1114,7 +1115,9 @@ async def record(
     values: dict = {}
     issues = []
     described: dict[str, str] = {}  # TABLE.FIELD -> the field's description
+    context: dict = {}  # the record's context codes (checks/record_context.py), same on every row
     for r in rows:
+        context.update(r["context"] if isinstance(r["context"], dict) else {})
         fv = r["field_values"] or {}
         for name in [*fv, r["field"]]:
             if name:
@@ -1151,8 +1154,11 @@ async def record(
             "allowed_values": _allowed_values(r["valid_values"], r["rule_module"], r["check_id"]),
             "check_id": r["check_id"], "severity": r["severity"], "dimension": r["dimension"],
             "message": r["message"] or r["check_id"], "field": field, "current_value": current,
-            "instruction": rf.get("fix_instruction") or (vf or {}).get("fix_instruction") or r["remediation_text"],
-            "why_it_matters": r["why"], "sap_impact": r["impact"], "suggestion": suggestion, "status": status,
+            "instruction": (rf.get("fix_instruction") or (vf or {}).get("fix_instruction") or r["remediation_text"]
+                            or _sheet_detail({"check_id": r["check_id"], "current_value": current})["how_to_fix"]),
+            "why_it_matters": r["why"] or _rule_yaml(r["check_id"]).get("why_it_matters"),
+            "sap_impact": r["impact"] or _rule_yaml(r["check_id"]).get("sap_impact"),
+            "suggestion": suggestion, "status": status,
             "issue_id": str(r["issue_id"]) if r["issue_id"] else None, "resolution": r["resolution"],
             "first_seen_at": r["first_seen_at"].isoformat() if r["first_seen_at"] else None,
             "reopened_count": r["reopened_count"] or 0,
@@ -1181,6 +1187,9 @@ async def record(
         "assignee_email": head.assignee_email if head else None,
         "values": {k: (None if v is None else str(v)) for k, v in values.items()},
         "field_descriptions": described,
+        # codes that say which country, company and pay scale the record sits in, so the fix can be picked right
+        "context": [{"field": k, "label": fs_field_label(k), "value": str(v)} for k, v in context.items() if v not in (None, "")],
+        "country": _record_context(context)[1],
         "issues": issues, "events": events,
         "other_runs": await _previous_run(db, tenant, vid, scope, module, record_key, [i["check_id"] for i in issues]),
         **(await _mdm_links(db, tenant, module, record_key)),
@@ -1731,6 +1740,21 @@ MAX_IMPORT = 5000
 MAX_IMPORT_BYTES = 25 * 1024 * 1024
 
 
+# What a steward needs beside the value to clean a row correctly: the record's own context codes (country, company,
+# pay scale: checks/record_context.py), how to fix it, why it matters, and where the suggestion came from.
+_SHEET_DETAIL_SQL = """fr.context AS context,
+               f.rule_context->>'why_it_matters' AS why_it_matters, f.rule_context->>'sap_impact' AS sap_impact,
+               f.rule_context->>'rule_authority' AS rule_authority, f.rule_context->>'fix_instruction' AS rule_fix,
+               f.remediation_text AS remediation_text, a.conf AS confidence, a.fix_instruction AS record_fix,
+               CASE WHEN jsonb_typeof(f.value_fix_map) = 'object' THEN
+                    f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'fix_instruction' END
+                 AS value_fix,
+               CASE WHEN a.value IS NOT NULL THEN 'rule'
+                    WHEN jsonb_typeof(f.value_fix_map) = 'object' AND f.value_fix_map -> (fr.field_values ->>
+                         (f.details->>'field_checked')) ->> 'suggested_value' IS NOT NULL THEN 'value_map' END
+                 AS suggestion_source"""
+
+
 @router.get("/export")
 async def export_sheet(
     request: Request,
@@ -1775,7 +1799,8 @@ async def export_sheet(
     check_filter = "AND fr.check_id = :c" if check_id else ""
     rows = (await db.execute(text(f"""
         WITH auto AS (
-            SELECT f.version_id, f.check_id, e->>'record_key' AS record_key, e->>'proposed_value' AS value
+            SELECT f.version_id, f.check_id, e->>'record_key' AS record_key, e->>'proposed_value' AS value,
+                   e->>'confidence' AS conf, e->>'fix_instruction' AS fix_instruction
               FROM findings f, jsonb_array_elements(CASE WHEN jsonb_typeof(f.record_fixes) = 'array'
                                                          THEN f.record_fixes ELSE '[]'::jsonb END) e
              WHERE {_auto_runs(sel)} AND e->>'proposed_value' IS NOT NULL)
@@ -1785,7 +1810,8 @@ async def export_sheet(
                fr.field_values ->> (f.details->>'field_checked') AS current_value,
                COALESCE(a.value, CASE WHEN jsonb_typeof(f.value_fix_map) = 'object' THEN
                         f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END)
-                 AS suggested_value
+                 AS suggested_value,
+               {_SHEET_DETAIL_SQL}
           FROM work_records w
           JOIN finding_records fr ON fr.version_id = w.version_id AND fr.module = w.module AND fr.record_key = w.record_key
           JOIN findings f ON f.version_id = fr.version_id AND f.check_id = fr.check_id
@@ -1797,7 +1823,7 @@ async def export_sheet(
     columns, items = _readable(rows)
     data = build_workbook(
         tenant_name=tenant.name, run_label=None, run_id=vid, title="Fix sheet",
-        sheets=[SheetSpec(title=SHEET, rows=items, columns=columns, note=_FILL_NOTE)],
+        sheets=[SheetSpec(title=SHEET, rows=items, columns=columns, note=_FILL_NOTE)], instructions=_CLEAN_STEPS,
     )
     return xlsx_response(data, xlsx_filename("fix-sheet", vid))
 
@@ -1890,8 +1916,77 @@ async def export_exceptions(
                     headers=headers)
 
 
-_FILL_NOTE = ("Fill in New value (one of the Possible values, its code only), or pick a Decision (fix, not an issue, "
-              "accept risk) with a Reason, then import the workbook back. Keep the grey columns as they are.")
+_FILL_NOTE = ("Read Record context, Country, How to fix and Why it matters first. Then fill in New value (one of the "
+              "Possible values, its code only), or pick a Decision (fix, not an issue, accept risk) with a Reason, then "
+              "import the workbook back. Keep the grey columns as they are.")
+
+# The step-by-step clean on the Instructions sheet, after the generic how-to-use steps.
+_CLEAN_STEPS = [
+    "Each row is one record and one failing rule. A record that fails several rules has several rows.",
+    "Read Problem and How to fix first: How to fix is the rule's own instruction for this record or value.",
+    "Use Record context and Country to pick the right value for this record. Example: a missing currency on a "
+    "legal entity in country ZAF is ZAR. The context holds the record's own codes as the source system had them.",
+    "Possible values lists the codes the rule accepts, with their meaning. Type the code only, not the meaning.",
+    "Suggested value is Meridian's proposal. Suggestion basis says where it came from (the rule's fix for this "
+    "record, or the value map for this current value) and how sure the rule is. Check it before you use it.",
+    "To take the suggestion, copy it into New value (code only). To use another value, type it in New value.",
+    "If the value is right as it is, set Decision to not an issue and write why in Reason. If you cannot fix it "
+    "now and the business accepts it, set Decision to accept risk with a Reason.",
+    "Why it matters and SAP impact say what breaks in SAP when the row stays wrong; fix critical and high first.",
+    "Import the sheet back on the Clean screen. Meridian checks every New value against the rule before it is "
+    "queued for approval and load; rows it refuses are listed with the reason.",
+]
+
+_CONTEXT_COUNTRY_FIELDS = ("COUNTRY", "LAND1", "COUNTRY_OF_COMPANY")
+
+
+def _record_context(context: object) -> tuple[Optional[str], Optional[str]]:
+    """The record's context codes as "Field description: code" lines, and its country: a country field's code, else
+    the country prefix of a SuccessFactors pay scale code (BWA/01). Only values the record holds; nothing guessed."""
+    from api.services import fix_sheet as fs
+
+    if not isinstance(context, dict) or not context:
+        return None, None
+    lines = [f"{fs.field_label(k) or k}: {v}" for k, v in context.items() if v not in (None, "")]
+    country = next((str(v) for k, v in context.items()
+                    if v and k.rpartition(".")[2] in _CONTEXT_COUNTRY_FIELDS), None)
+    if not country:
+        country = next((str(v).split("/", 1)[0] for k, v in context.items()
+                        if v and "PAY_SCALE" in k and "/" in str(v) and len(str(v).split("/", 1)[0]) == 3), None)
+    return ("; ".join(lines) or None), country
+
+
+@lru_cache(maxsize=4096)
+def _rule_yaml(check_id: str) -> dict:
+    """The rule's own YAML entry, for findings stored without the rule's text (older runs, SF modules)."""
+    from checks.rule_files import files_with, rules_in_file
+
+    return next((r for p in files_with(check_id) for r in rules_in_file(p, check_id)), {})
+
+
+def _sheet_detail(r: dict) -> dict:
+    """How to fix, why, and the suggestion's basis for one fix-sheet row (see _SHEET_DETAIL_SQL). Text missing
+    on the finding comes from the rule's YAML: its fix for this value (fix_map), why it matters, SAP impact."""
+    from checks.fix_generator import FixGenerator
+
+    ctx, country = _record_context(r.get("context"))
+    rule = _rule_yaml(str(r.get("check_id") or "")) if r.get("check_id") else {}
+    how = r.get("record_fix") or r.get("value_fix") or r.get("rule_fix") or r.get("remediation_text")
+    if not how and rule.get("fix_map"):
+        how = FixGenerator().get_fix_instruction(str(r.get("current_value") or ""), rule["fix_map"])
+        if how.endswith("Refer to rule documentation."):  # no entry for this value: the rule's one fix, if it has one
+            how = (str(next(iter(rule["fix_map"].values()))).replace("{invalid_value}", str(r.get("current_value") or ""))
+                   if len(rule["fix_map"]) == 1 else None)
+    why_text = r.get("why_it_matters") or rule.get("why_it_matters")
+    impact = r.get("sap_impact") or rule.get("sap_impact")
+    why = " ".join(x for x in (why_text, impact and f"SAP impact: {impact}") if x)
+    basis = None
+    if r.get("suggested_value") not in (None, "") and r.get("suggestion_source"):
+        basis = SOURCE_LABELS.get(r["suggestion_source"], r["suggestion_source"])
+        if r.get("confidence"):
+            basis += f", {r['confidence']} confidence"
+    return {"record_context": ctx, "country": country, "how_to_fix": how, "why": why or None,
+            "authority": r.get("rule_authority") or rule.get("rule_authority"), "suggestion_basis": basis}
 
 
 def _readable(rows, value_at_risk: bool = False) -> tuple[list, list[dict]]:
@@ -1909,20 +2004,30 @@ def _readable(rows, value_at_risk: bool = False) -> tuple[list, list[dict]]:
         r.update({f"key:{k}": parts.get(k) for k in keys})
         r.update(object_name=module_label(r["module"]), record_text=fs.readable_key(r["record_key"]),
                  field_name=fs.field_label(r["field"]), sap_field=fs.sap_field(r["field"]), current_text=fs.with_meaning(r["current_value"], allowed),
-                 suggested_text=fs.with_meaning(r["suggested_value"], allowed), possible=fs.possible_values(allowed))
+                 suggested_text=fs.with_meaning(r["suggested_value"], allowed), possible=fs.possible_values(allowed),
+                 **_sheet_detail(r))
     first = [f for f, _ in fs.split_key(rows[0]["record_key"])] if rows else []
     cols = [ColumnSpec(key="object_name", header="Object name")] if len({r["module"] for r in rows}) > 1 else []
     cols += ([ColumnSpec(key=f"key:{k}", header=fs.key_header(k), kind="mono") for k in keys] if keys
              else [ColumnSpec(key="record_text", header="Key")])
     cols += [
         ColumnSpec(key="name", header=fs.name_header(keys or first)),
+        ColumnSpec(key="country", header="Country", kind="mono",
+                   help="The record's country code, from its country field or its pay scale code."),
+        ColumnSpec(key="record_context", header="Record context",
+                   help="The record's own codes (company, country, status, type) to pick the right value."),
         ColumnSpec(key="field_name", header="Field description"),
         ColumnSpec(key="sap_field", header="SAP field", kind="mono"),
         ColumnSpec(key="message", header="Problem"),
         ColumnSpec(key="severity", header="Severity"),
+        ColumnSpec(key="how_to_fix", header="How to fix", help="The rule's instruction for this record or value."),
+        ColumnSpec(key="why", header="Why it matters", help="What breaks in SAP while the value stays wrong."),
+        ColumnSpec(key="authority", header="Rule source", help="The standard or SAP note the rule follows."),
         ColumnSpec(key="current_text", header="Current value"),
         ColumnSpec(key="possible", header="Possible values"),
         ColumnSpec(key="suggested_text", header="Suggested value"),
+        ColumnSpec(key="suggestion_basis", header="Suggestion basis",
+                   help="Where the suggestion came from and how sure the rule is."),
     ]
     if value_at_risk:
         cols.append(ColumnSpec(key="value_at_risk", header="Value at risk", kind="money"))
@@ -1988,7 +2093,8 @@ async def export_per_object(
     check_filter = "AND fr.check_id = :c" if check_id else ""
     rows = (await db.execute(text(f"""
         WITH auto AS (
-            SELECT f.version_id, f.check_id, e->>'record_key' AS record_key, e->>'proposed_value' AS value
+            SELECT f.version_id, f.check_id, e->>'record_key' AS record_key, e->>'proposed_value' AS value,
+                   e->>'confidence' AS conf, e->>'fix_instruction' AS fix_instruction
               FROM findings f, jsonb_array_elements(CASE WHEN jsonb_typeof(f.record_fixes) = 'array'
                                                          THEN f.record_fixes ELSE '[]'::jsonb END) e
              WHERE {_auto_runs(sel)} AND e->>'proposed_value' IS NOT NULL)
@@ -1999,6 +2105,7 @@ async def export_per_object(
                COALESCE(a.value, CASE WHEN jsonb_typeof(f.value_fix_map) = 'object' THEN
                         f.value_fix_map -> (fr.field_values ->> (f.details->>'field_checked')) ->> 'suggested_value' END)
                  AS suggested_value,
+               {_SHEET_DETAIL_SQL},
                CASE WHEN COALESCE(f.affected_count, 0) > 0
                     THEN ROUND(COALESCE(f.cost_at_risk, 0)::numeric / f.affected_count, 2) ELSE 0 END
                  AS value_at_risk
@@ -2035,7 +2142,7 @@ async def export_per_object(
         columns, readable = _readable(items, value_at_risk=True)
         sheets.append(SheetSpec(title=module_label(mod), rows=readable, columns=columns, note=_FILL_NOTE))
     data = build_workbook(tenant_name=tenant.name, run_label=None, run_id=vid,
-                          title="Records to fix by object", sheets=sheets)
+                          title="Records to fix by object", sheets=sheets, instructions=_CLEAN_STEPS)
     return xlsx_response(data, xlsx_filename("records-to-fix-by-object", vid))
 
 

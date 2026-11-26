@@ -66,7 +66,7 @@ def test_export_findings_builds_real_workbook() -> None:
     response = asyncio.run(export_findings(version_id=str(uuid.uuid4()), db=db, tenant=tenant))
 
     wb = openpyxl.load_workbook(io.BytesIO(response.body))
-    assert wb.sheetnames == ["Cover", "Summary", "Findings"]
+    assert wb.sheetnames == ["Cover", "Instructions", "Summary", "Findings"]
 
     ws = wb["Findings"]
     headers = [c.value for c in ws[1]]

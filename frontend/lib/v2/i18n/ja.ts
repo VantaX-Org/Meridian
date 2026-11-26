@@ -16146,4 +16146,9 @@ export const ja: Readonly<Record<MessageKey, string>> = {
   "{status}, {when}. Live events show only while a run works; the steps above record what it did.": "{status}、{when}。ライブイベントは実行中のみ表示されます。上のステップに実行内容が記録されています。",
   "Extracted, not scored": "抽出済み、未スコア",
   "Agents failed": "エージェントが失敗しました",
+  "Record context": "レコードのコンテキスト",
+  "Country": "国",
+  "Country not known from the record": "レコードから国を特定できません",
+  "How to fix": "修正方法",
+  "SAP impact": "SAP への影響",
 };

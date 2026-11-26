@@ -175,7 +175,7 @@ def test_sheet_titles_truncated_to_31_chars_and_unique():
             ],
         )
     )
-    data_titles = [t for t in wb.sheetnames if t != "Cover"]
+    data_titles = [t for t in wb.sheetnames if t not in ("Cover", "Instructions")]
     assert all(len(t) <= 31 for t in data_titles)
     assert len(set(data_titles)) == 2
 
@@ -282,3 +282,39 @@ def test_control_characters_in_sap_text_are_dropped_not_fatal(kind):
                      rows=[{"name": "Hex\x0bbolt\x00 M8"}])
     data = build_workbook(tenant_name="T", run_label=None, run_id="r", title="Fix sheet", sheets=[spec])
     assert _load(data)["Records"]["A2"].value == "Hexbolt M8"
+
+
+def test_every_workbook_gets_an_instructions_sheet_from_its_column_metadata() -> None:
+    import io
+    from openpyxl import load_workbook
+    from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook
+
+    sheet = SheetSpec("Fix", [
+        ColumnSpec("key", "Record key", muted=True),
+        ColumnSpec("cur", "Current value"),
+        ColumnSpec("sug", "Suggested value"),
+        ColumnSpec("new", "New value", editable=True, help="Type the corrected value.", choices=("A", "B")),
+    ], [{"key": "1", "cur": "x", "sug": "A", "new": ""}])
+    data = build_workbook(tenant_name="T", run_label=None, run_id=None, title="Fix sheet", sheets=[sheet])
+    wb = load_workbook(io.BytesIO(data))
+    assert wb.sheetnames == ["Cover", "Instructions", "Fix"]
+    text = [tuple(r) for r in wb["Instructions"].iter_rows(values_only=True)]
+    flat = " ".join(str(c) for r in text for c in r if c)
+    assert "Fill in only the green columns" in flat
+    assert "Current value is what the source system holds now." in flat
+    assert "Suggested value is Meridian's proposed correction" in flat
+    new_row = next(r for r in text if r[1] == "New value")
+    assert new_row[2:5] == ("Type the corrected value.", "Yes", "A, B")
+    assert next(r for r in text if r[1] == "Record key")[2] == "Record key or ID; keep unchanged."
+
+
+def test_a_workbook_with_its_own_guide_sheet_gets_no_second_one() -> None:
+    import io
+    from openpyxl import load_workbook
+    from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook
+
+    sheets = [SheetSpec("How to use", [ColumnSpec("s", "Step")], [{"s": "1"}]),
+              SheetSpec("Data", [ColumnSpec("v", "Value")], [{"v": "1"}])]
+    wb = load_workbook(io.BytesIO(build_workbook(tenant_name="T", run_label=None, run_id=None,
+                                                 title="x", sheets=sheets)))
+    assert wb.sheetnames == ["Cover", "How to use", "Data"]

@@ -55,11 +55,24 @@ export function RecordDetail({ module, recordKey, version }: { module: string; r
           </>
         ) : tab === "fix" ? (
           !d.issues.length ? <EmptyState heading={t("Nothing to fix here")} body={t("This record passes every rule. Pick another record from the list.")} /> : (
+            <>
+            <section className="mx-section" aria-label={t("Record context")}>
+              <p className="mx-cap">{t("Record context")}</p>
+              <p>{t("Country")}: {d.country ?? t("Country not known from the record")}</p>
+              {d.context?.length ? (
+                <ul className="mx-list">
+                  {d.context.map((c) => <li key={c.field}><FieldChip code={c.field} description={fieldText(c.field, c.label)} /> {c.value}</li>)}
+                </ul>
+              ) : null}
+            </section>
             <ul className="mx-list" aria-label={t("Issues")}>
               {d.issues.map((i) => (
                 <li key={i.check_id} className="mx-section">
                   <p>{i.field ? <FieldChip code={i.field} description={fieldText(i.field, d.field_descriptions?.[i.field])} /> : null} {i.message}</p>
                   <p className="mx-muted">{t("Now")}: {i.current_value ?? t("empty")} {i.suggestion ? `${t("Proposed")}: ${i.suggestion.value}` : ""}</p>
+                  {i.instruction ? <p>{t("How to fix")}: {i.instruction}</p> : null}
+                  {i.suggestion?.why ? <p className="mx-muted">{t("Basis")}: {i.suggestion.why}{i.suggestion.confidence ? ` (${t("Confidence")}: ${i.suggestion.confidence})` : ""}</p> : null}
+                  {i.allowed_values?.length ? <p className="mx-muted">{t("Allowed values")}: {i.allowed_values.slice(0, 12).map((a) => a.label ? `${a.value} ${a.label}` : a.value).join(", ")}</p> : null}
                   <div className="mx-links">
                     {i.suggestion ? <Button variant="primary" disabled={!d.can.fix} onClick={() => void decide(i.check_id, "accept")}>{t("Accept the proposed value")}</Button> : null}
                     <Button disabled={!d.can.fix} onClick={() => void decide(i.check_id, "not_an_issue")}>{t("Not an issue")}</Button>
@@ -72,6 +85,7 @@ export function RecordDetail({ module, recordKey, version }: { module: string; r
                 </li>
               ))}
             </ul>
+            </>
           )
         ) : (
           <ul className="mx-list" aria-label={t("Why it matters")}>
@@ -79,7 +93,7 @@ export function RecordDetail({ module, recordKey, version }: { module: string; r
               <li key={i.check_id} className="mx-section">
                 {i.field ? <p><FieldChip code={i.field} description={fieldText(i.field, d.field_descriptions?.[i.field])} /></p> : null}
                 <p>{i.why_it_matters}</p>
-                {i.sap_impact ? <p className="mx-muted">{i.sap_impact}</p> : null}
+                {i.sap_impact ? <p className="mx-muted">{t("SAP impact")}: {i.sap_impact}</p> : null}
                 {i.instruction ? <p className="mx-muted">{i.instruction}</p> : null}
               </li>
             ))}

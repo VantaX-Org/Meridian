@@ -487,6 +487,56 @@ def _write_cover_sheet(
     footer.font = Font(name=BODY_FONT, size=9, color=_INK3)
 
 
+# A workbook that already carries its own guide sheet keeps it and gets no generated one.
+GUIDE_TITLES = frozenset({"Instructions", "How to use", "Start here"})
+INSTRUCTIONS_TITLE = "Instructions"
+
+
+def instructions_sheet(sheets: list[SheetSpec], extra_steps: Optional[list[str]] = None) -> SheetSpec:
+    """An "Instructions" sheet built only from the sheet specs: how to use the file, then one row per
+    column with what it holds, whether the reader fills it in, and its allowed values."""
+    visible = [s for s in sheets if not s.hidden]
+    cols = [c for s in visible for c in s.columns]
+    editable = any(c.editable for c in cols)
+    headers = {c.header.strip().lower() for c in cols}
+    steps = ["The Cover lists every sheet; click a sheet name to open it."]
+    if editable:
+        steps += [
+            "Fill in only the green columns. Every other column is locked or for reference.",
+            "Keep the grey columns (record keys and IDs) unchanged: they match each row on re-upload.",
+            "Where a cell has a drop-down, pick one of its values; the allowed values are listed below.",
+            "Keep the sheet names, column headers and column order. Save as .xlsx and upload the file "
+            "back to Meridian on the screen you exported it from.",
+        ]
+    else:
+        steps.append("This is a read-only export of the values Meridian held when it was generated.")
+    if "current value" in headers:
+        steps.append("Current value is what the source system holds now.")
+    if "suggested value" in headers:
+        steps.append("Suggested value is Meridian's proposed correction; use it, or type your own value.")
+    steps += list(extra_steps or [])
+    rows: list[dict[str, object]] = [
+        {"sheet": f"Step {n}", "column": "", "what": text, "fill": "", "allowed": ""}
+        for n, text in enumerate(steps, start=1)
+    ]
+    for s in visible:
+        for c in s.columns:
+            rows.append({
+                "sheet": s.title, "column": c.header,
+                "what": c.help or ("Record key or ID; keep unchanged." if c.muted else ""),
+                "fill": "Yes" if c.editable else "No",
+                "allowed": ", ".join(c.choices) if c.choices
+                else ("A drop-down per row" if c.row_choices_key else ""),
+            })
+    return SheetSpec(INSTRUCTIONS_TITLE, [
+        ColumnSpec("sheet", "Sheet or step", width=28),
+        ColumnSpec("column", "Column", width=30),
+        ColumnSpec("what", "What it holds", width=90),
+        ColumnSpec("fill", "You fill in?", width=12),
+        ColumnSpec("allowed", "Allowed values", width=50),
+    ], rows, note="How to read and fill in this workbook, column by column.")
+
+
 def build_workbook(
     *,
     tenant_name: str,
@@ -495,10 +545,14 @@ def build_workbook(
     title: str,
     sheets: list[SheetSpec],
     generated_at: Optional[datetime] = None,
+    instructions: Optional[list[str]] = None,
 ) -> bytes:
-    """Build a branded workbook: a "Cover" sheet first (active on open) plus one
-    styled, data sheet per entry in ``sheets``. See module docstring."""
+    """Build a branded workbook: a "Cover" sheet first (active on open), an "Instructions" sheet
+    (unless a spec already is a guide sheet), plus one styled data sheet per entry in ``sheets``.
+    ``instructions`` adds workbook-specific steps to the generated guide. See module docstring."""
     generated_at = generated_at or datetime.now(timezone.utc)
+    if not any(s.title in GUIDE_TITLES for s in sheets):
+        sheets = [instructions_sheet(sheets, instructions), *sheets]
 
     wb = Workbook()
     cover_ws = wb.active

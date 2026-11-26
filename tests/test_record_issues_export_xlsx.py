@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import openpyxl
 
-from api.routes.record_issues import _SELECT, _SELECT_KEYS, export_issues
+from api.routes.record_issues import _EXPORT_COLUMNS, _SELECT, _SELECT_KEYS, export_issues
 
 
 def test_export_endpoint_still_supports_csv_and_xlsx() -> None:
@@ -39,6 +39,10 @@ def test_export_issues_builds_real_workbook() -> None:
         "status": "open",
         "first_seen_at": datetime(2026, 1, 1, 0, 0),
         "message": "Bad field",
+        "last_seen_version": "v1",
+        "field": "MARA.MATKL",
+        "field_values": {"MARA.MATKL": "X1"},
+        "context": {"T001W.LAND1": "ZA", "MARC.WERKS": "3000"},
     })
     row = MagicMock()
     row._mapping = row_dict
@@ -47,17 +51,22 @@ def test_export_issues_builds_real_workbook() -> None:
     db.execute = AsyncMock(side_effect=[
         MagicMock(),  # _rls SET config
         MagicMock(fetchall=lambda: [row]),
+        MagicMock(fetchone=lambda: SimpleNamespace(value_fix_map={"X1": {"suggested_value": "X2"}}, record_fixes=[])),
     ])
     tenant = SimpleNamespace(id=uuid.uuid4(), name="=1+1")
 
     response = asyncio.run(export_issues(request=None, db=db, tenant=tenant))
 
     wb = openpyxl.load_workbook(io.BytesIO(response.body))
-    assert wb.sheetnames == ["Cover", "Record issues"]
+    assert wb.sheetnames == ["Cover", "Instructions", "Record issues"]
     ws = wb["Record issues"]
     headers = [c.value for c in ws[1]]
-    assert headers == _SELECT_KEYS
-    assert ws.cell(row=2, column=_SELECT_KEYS.index("record_key") + 1).value == "REC-1"
+    assert headers == [h for _, h, _ in _EXPORT_COLUMNS]
+    vals = dict(zip(headers, [c.value for c in ws[2]]))
+    assert vals["Record key"] == "REC-1"
+    assert vals["Current value"] == "X1"
+    assert vals["Suggested value"] == "X2" and vals["Suggestion source"] == "Value suggestion"
+    assert vals["Country"] == "ZA" and "3000" in vals["Record context"]  # the steward sees where the record sits
 
     cover = wb["Cover"]
     assert cover.cell(row=6, column=2).value.startswith("'=")

@@ -952,6 +952,7 @@ async def export_cleaning_data(
     # field mapping per row. When the caller specifies object_type the groups
     # collapse to a single entry.
     records_by_type: dict[str, list[dict]] = {}
+    changes: list[dict] = []
     for r in rows:
         row = _row_to_dict(r)
         row_object_type = row.get("object_type")
@@ -959,6 +960,11 @@ async def export_cleaning_data(
             continue
         after = row.get("record_data_after") or row.get("record_data_before") or {}
         record = {k: v for k, v in after.items() if k not in ("issue", "error")}
+        before = row.get("record_data_before") or {}
+        for k, v in record.items():
+            if k in before and before.get(k) != v:
+                changes.append({"record_key": row.get("record_key"), "object_type": row_object_type,
+                                "field": k, "current_value": before.get(k), "suggested_value": v})
         # every format carries the SAP record key: none of them is a load file (see export_engine.REVIEW_ONLY)
         record = {"RECORD_KEY": row.get("record_key"), **record}
         records_by_type.setdefault(row_object_type, []).append(record)
@@ -977,7 +983,7 @@ async def export_cleaning_data(
     if export_format == "xlsx":
         from api.services.branded_xlsx import xlsx_filename, xlsx_response
 
-        content_bytes = engine.export_xlsx_multi(records_by_type, tenant_name=tenant.name)
+        content_bytes = engine.export_xlsx_multi(records_by_type, tenant_name=tenant.name, changes=changes)
         filename_suffix = object_type if object_type else "all"
         return xlsx_response(content_bytes, xlsx_filename(f"cleaning-{status}", filename_suffix))
 
