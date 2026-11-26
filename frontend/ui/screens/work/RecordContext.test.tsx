@@ -15,7 +15,7 @@ const rec: WorkRecordDetail = {
     current_value: null, instruction: "Set the legal entity currency.", why_it_matters: null, sap_impact: null,
     suggestion: { value: "BWP", source: "rule", confidence: "high", why: "Country BWA uses BWP" },
     allowed_values: [{ value: "BWP", label: "Pula" }], status: "to_fix", issue_id: null, resolution: null, first_seen_at: null,
-    reopened_count: 0, due_at: null, sla_state: null }],
+    reopened_count: 0, due_at: null, sla_state: null, decision: null }],
 };
 vi.mock("@/lib/v2/work-queries", () => ({ useWorkRecord: () => ({ isLoading: false, isError: false, data: rec, refetch: vi.fn() }) }));
 
