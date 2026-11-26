@@ -170,7 +170,7 @@ def test_drilldown_routes(app_engine):
             csv = await c.get("/api/v1/issues/export", headers={"X-User-Role": "steward"},
                               params={"format": "csv", "version_id": v2})
             assert csv.status_code == 200
-            assert sorted(line.split(",")[4] for line in csv.text.strip().splitlines()[1:]) == ["LIFNR=2", "LIFNR=5"]
+            assert sorted(line.split(",")[5] for line in csv.text.strip().splitlines()[1:]) == ["LIFNR=2", "LIFNR=5"]
 
             # compare: per-object DQS + dimension deltas, checks newly failing / fixed
             cmp = (await c.get("/api/v1/versions/compare", headers=h, params={"v1": v1, "v2": v2})).json()

@@ -3,7 +3,7 @@
 import csv
 import io
 import json
-from typing import Any
+from typing import Any, Optional
 
 from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, guard_sap_reimport_cell
 
@@ -384,7 +384,9 @@ class ExportEngine:
             sheets=[self._sheet_spec(object_type, records)],
         )
 
-    def export_xlsx_multi(self, records_by_type: dict[str, list[dict]], tenant_name: str = "Export") -> bytes:
+    def export_xlsx_multi(
+        self, records_by_type: dict[str, list[dict]], tenant_name: str = "Export", changes: Optional[list[dict]] = None
+    ) -> bytes:
         """Branded Excel workbook with one sheet per object type.
 
         Used when a single cleaning export spans multiple object types —
@@ -395,6 +397,20 @@ class ExportEngine:
         if not sheets:
             # build_workbook requires at least one sheet; use an empty one.
             sheets = [SheetSpec(title="empty", columns=[], rows=[])]
+        if changes is not None:
+            # review sheet: one row per changed field, the value before cleaning beside the cleaned one
+            sheets.insert(0, SheetSpec(
+                title="Changes",
+                columns=[
+                    ColumnSpec("record_key", "Record key", muted=True, help="SAP key of the record."),
+                    ColumnSpec("object_type", "Object", help="Object the record belongs to."),
+                    ColumnSpec("field", "Field", help="Field the cleaning changed."),
+                    ColumnSpec("current_value", "Current value", kind="raw", help="Value in SAP before cleaning."),
+                    ColumnSpec("suggested_value", "Suggested value", kind="raw", help="Cleaned value to load."),
+                ],
+                rows=changes,
+                note="Review sheet only; the object sheets after it hold the cleaned records.",
+            ))
         return build_workbook(
             tenant_name=tenant_name,
             run_label=None,

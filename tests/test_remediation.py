@@ -133,3 +133,7 @@ def test_export_batch_cockpit_xlsx_builds_real_workbook():
     assert headers == ["LIFNR", "BUKRS", "ZTERM"]
     # N3: a leading "-" on a proposed value must survive unguarded for SAP reimport.
     assert ws.cell(row=2, column=3).value == "-5"
+    # the review sheet shows the current value beside the suggested one
+    ch = wb["Changes"]
+    row = dict(zip([c.value for c in ch[1]], [c.value for c in ch[2]]))
+    assert row["Current value"] == "0001" and row["Suggested value"] == "-5" and row["Field"] == "LFB1.ZTERM"

@@ -57,7 +57,7 @@ def test_export_cleaning_xlsx_builds_real_workbook_and_filters_by_batch():
     assert filename.startswith("meridian-")
 
     wb = openpyxl.load_workbook(io.BytesIO(response.body))
-    sheet_name = next(s for s in wb.sheetnames if s != "Cover")
+    sheet_name = next(s for s in wb.sheetnames if s not in ("Cover", "Instructions", "Changes"))
     assert "business_partner" in sheet_name
     ws = wb[sheet_name]
     headers = [c.value for c in ws[1]]

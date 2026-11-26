@@ -321,6 +321,16 @@ class TestExportXLSX:
         assert "MATNR" in headers
         assert "MAKTX" in headers
 
+    def test_xlsx_multi_changes_sheet_shows_current_and_suggested(self, engine: ExportEngine):
+        change = {"record_key": "1", "object_type": "material", "field": "MATKL",
+                  "current_value": "-5", "suggested_value": "001"}
+        wb = openpyxl.load_workbook(io.BytesIO(engine.export_xlsx_multi(
+            {"material": MATERIAL_RECORDS}, tenant_name="Acme", changes=[change])))
+        assert wb.sheetnames[:3] == ["Cover", "Instructions", "Changes"]
+        ws = wb["Changes"]
+        row = dict(zip([c.value for c in ws[1]], [c.value for c in ws[2]]))
+        assert row["Current value"] == "-5" and row["Suggested value"] == "001"
+
     def test_xlsx_multi_empty_still_builds(self, engine: ExportEngine):
         result = engine.export_xlsx_multi({})
         wb = openpyxl.load_workbook(io.BytesIO(result))

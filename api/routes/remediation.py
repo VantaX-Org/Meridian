@@ -721,8 +721,18 @@ async def export_batch(
                 # rather than opened by a human. See N3 in the re-review.
                 columns = [ColumnSpec(col, col, kind="raw") for col in df.columns]
                 sheet_specs.append(SheetSpec(title=table[:31], columns=columns, rows=df.to_dict("records")))
-            if not sheet_specs:
-                sheet_specs = [SheetSpec(title="EMPTY", columns=[], rows=[])]
+            # human review sheet first: what SAP holds now beside what the load writes, per changed field
+            changes = [ColumnSpec("record_key", "Record key", kind="mono", muted=True, help="The SAP record the change writes to."),
+                       ColumnSpec("module", "Object", help="The data object."),
+                       ColumnSpec("check_id", "Rule", kind="mono", help="The rule the current value fails."),
+                       ColumnSpec("field", "Field", kind="mono", help="The SAP field the change writes."),
+                       ColumnSpec("current_value", "Current value", kind="raw", help="The value SAP held when the batch was built."),
+                       ColumnSpec("proposed_value", "Suggested value", kind="raw", help="The approved value the load writes."),
+                       ColumnSpec("proposal_source", "Suggestion source", help="Where the suggested value came from."),
+                       ColumnSpec("confidence", "Confidence", help="How sure the proposal is.")]
+            sheet_specs.insert(0, SheetSpec(title="Changes", columns=changes,
+                                            rows=[i for i in items if not i["no_value"]],
+                                            note="Review sheet only; the table sheets after it are the load file."))
             data = build_workbook(
                 tenant_name=tenant.name,
                 run_label=str(batch_id),

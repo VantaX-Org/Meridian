@@ -65,7 +65,7 @@ def test_export_findings_builds_real_workbook() -> None:
         migration_module._stream = original
 
     wb = openpyxl.load_workbook(io.BytesIO(captured["data"]))
-    assert wb.sheetnames == ["Cover", "Gap findings"]
+    assert wb.sheetnames == ["Cover", "Instructions", "Gap findings"]
     ws = wb["Gap findings"]
     headers = [c.value for c in ws[1]]
     assert headers == [

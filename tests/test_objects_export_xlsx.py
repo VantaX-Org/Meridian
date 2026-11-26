@@ -51,7 +51,7 @@ def test_export_objects_builds_real_workbook() -> None:
         objects_module.list_objects = original
 
     wb = openpyxl.load_workbook(io.BytesIO(response.body))
-    assert wb.sheetnames == ["Cover", "Objects"]
+    assert wb.sheetnames == ["Cover", "Instructions", "Objects"]
     ws = wb["Objects"]
     headers = [c.value for c in ws[1]]
     assert headers == ["Module", "Label", "Composite score", "Readiness", "Failing checks", "Rule failures"]
