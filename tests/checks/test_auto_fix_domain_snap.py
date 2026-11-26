@@ -35,3 +35,21 @@ def test_snap_proposals_are_self_verified():
     df = pd.DataFrame({"T.F": ["Y", "n", "x"]})
     ev = DomainValueCheck(RULE).evaluate(df)
     assert auto_fix.proposals(RULE, df, ev.failing, evaluate=DomainValueCheck(RULE).evaluate) == {1: ("N", "high")}
+
+
+def test_runner_attaches_snap_fix_using_the_live_reference():
+    """End to end: run_rule takes the live check-table values and the failing row gets the snapped code."""
+    import pandas as pd
+
+    from checks.frames import TableFrames
+    from checks.runner import run_rule
+    from sap.ddic import get_dictionary
+
+    rule = {"id": "T_SNAP", "check_class": "domain_value_check", "field": "MARA.MTART",
+            "severity": "medium", "dimension": "validity", "message": "x"}
+    mara = pd.DataFrame({"MARA.MATNR": ["1", "2", "3"], "MARA.MTART": ["FERT", "fert ", "QQQQ"]})
+    frames = TableFrames({"MARA": mara}, get_dictionary("ecc"), module="material_master")
+    _, res = run_rule(rule, frames, {"T134.MTART": {"FERT", "HALB"}})
+    assert res is not None and res.affected_count == 2
+    fixes = res.record_fixes or []
+    assert [f["proposed_value"] for f in fixes] == ["FERT"], fixes
