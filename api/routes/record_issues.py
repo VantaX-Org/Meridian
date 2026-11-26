@@ -204,6 +204,10 @@ _EXPORT_COLUMNS = [
     ("record_key", "Record key", "The SAP key of the failing record; keep unchanged."),
     ("field", "Field", "The field the rule checks."),
     ("current_value", "Current value", "The value the source system held at the last run that found the issue."),
+    ("country", "Country", "The record's country, read from its own codes; blank when no code names it."),
+    ("record_context", "Record context", "The record's own codes (country, company, plant, pay scale) to pick the right value."),
+    ("how_to_fix", "How to fix", "The rule's instruction for this record or value."),
+    ("why", "Why it matters", "What breaks in SAP while the record stays wrong."),
     ("suggested_value", "Suggested value", "Meridian's proposed correction, blank when none can be derived."),
     ("suggestion_source", "Suggestion source", "Run proposal or value suggestion."),
     ("confidence", "Confidence", "How sure the proposal is, where the run gave one."),
@@ -225,11 +229,11 @@ async def _fixes(db: AsyncSession, pairs: set) -> dict:
     """value_fix_map and record_fixes per (version, check) the export touches, read once each, not per row."""
     out: dict = {}
     for vid, cid in pairs:
-        row = (await db.execute(text("SELECT value_fix_map, record_fixes FROM findings WHERE version_id = CAST(:v AS uuid) "
+        row = (await db.execute(text("SELECT value_fix_map, record_fixes, rule_context FROM findings WHERE version_id = CAST(:v AS uuid) "
                                      "AND check_id = :c LIMIT 1"), {"v": vid, "c": cid})).fetchone()
         if row:
             stored = {x.get("record_key"): x for x in (row.record_fixes or []) if isinstance(x, dict)}
-            out[(vid, cid)] = (row.value_fix_map or {}, stored)
+            out[(vid, cid)] = (row.value_fix_map or {}, stored, getattr(row, "rule_context", None) or {})
     return out
 
 
@@ -239,7 +243,7 @@ def _values(d: dict, fix: Optional[tuple]) -> dict:
 
     fv = d.pop("field_values", None) or {}
     cur = current_value(d.get("field"), fv) if fv else ""
-    vfm, stored = fix or ({}, {})
+    vfm, stored = (fix or ({}, {}))[:2]
     st = stored.get(d.get("record_key")) or {}
     if st.get("proposed_value") not in (None, ""):
         sv, src, conf = str(st["proposed_value"]), "Run proposal", str(st.get("confidence") or "")
@@ -247,6 +251,18 @@ def _values(d: dict, fix: Optional[tuple]) -> dict:
         sv = ((vfm.get(cur) or {}) if isinstance(vfm, dict) else {}).get("suggested_value")
         sv, src, conf = ("", "", "") if sv in (None, "") else (str(sv), "Value suggestion", "")
     return {"current_value": cur, "suggested_value": sv, "suggestion_source": src, "confidence": conf}
+
+
+def _detail(d: dict, fix: Optional[tuple]) -> dict:
+    """Country, record context, how to fix and why for one export row, as the fix sheet gives them
+    (api/routes/work.py _sheet_detail): the finding's own rule text first, else the rule's YAML."""
+    from api.routes.work import _sheet_detail
+
+    rc = fix[2] if fix and len(fix) > 2 and isinstance(fix[2], dict) else {}
+    out = _sheet_detail({"check_id": d.get("check_id"), "current_value": d.get("current_value"),
+                         "context": d.pop("context", None), "rule_fix": rc.get("fix_instruction"),
+                         "why_it_matters": rc.get("why_it_matters"), "sap_impact": rc.get("sap_impact")})
+    return {k: out[k] for k in ("country", "record_context", "how_to_fix", "why")}
 
 
 @router.get("/export")
@@ -272,7 +288,7 @@ async def export_issues(
     # detection fires and adds the cover note; the +1 row itself is never rendered.
     select = _SELECT.replace(
         "FROM record_issues ri",
-        ", fr.field_values FROM record_issues ri").replace(
+        ", fr.field_values, fr.context FROM record_issues ri").replace(
         "LEFT JOIN users u",
         "LEFT JOIN finding_records fr ON fr.version_id = ri.last_seen_version AND fr.check_id = ri.check_id "
         "AND fr.record_key = ri.record_key\n      LEFT JOIN users u")
@@ -280,7 +296,9 @@ async def export_issues(
     dicts = [_row(r) for r in rows]
     fixes = await _fixes(db, {(d["last_seen_version"], d["check_id"]) for d in dicts if d.get("last_seen_version")})
     for d in dicts:
-        d.update(_values(d, fixes.get((d.get("last_seen_version"), d["check_id"]))))
+        fix = fixes.get((d.get("last_seen_version"), d["check_id"]))
+        d.update(_values(d, fix))
+        d.update(_detail(d, fix))
 
     columns = [ColumnSpec(key=k, header=h, kind="mono" if k in _MONO else "text", muted=k in _MONO, help=hp)
                for k, h, hp in _EXPORT_COLUMNS]

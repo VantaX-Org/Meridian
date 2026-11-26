@@ -42,6 +42,7 @@ def test_export_issues_builds_real_workbook() -> None:
         "last_seen_version": "v1",
         "field": "MARA.MATKL",
         "field_values": {"MARA.MATKL": "X1"},
+        "context": {"T001W.LAND1": "ZA", "MARC.WERKS": "3000"},
     })
     row = MagicMock()
     row._mapping = row_dict
@@ -65,6 +66,7 @@ def test_export_issues_builds_real_workbook() -> None:
     assert vals["Record key"] == "REC-1"
     assert vals["Current value"] == "X1"
     assert vals["Suggested value"] == "X2" and vals["Suggestion source"] == "Value suggestion"
+    assert vals["Country"] == "ZA" and "3000" in vals["Record context"]  # the steward sees where the record sits
 
     cover = wb["Cover"]
     assert cover.cell(row=6, column=2).value.startswith("'=")

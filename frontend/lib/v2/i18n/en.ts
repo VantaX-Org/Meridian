@@ -16145,6 +16145,11 @@ export const en = {
   "{status}, {when}. Live events show only while a run works; the steps above record what it did.": "{status}, {when}. Live events show only while a run works; the steps above record what it did.",
   "Extracted, not scored": "Extracted, not scored",
   "Agents failed": "Agents failed",
+  "Record context": "Record context",
+  "Country": "Country",
+  "Country not known from the record": "Country not known from the record",
+  "How to fix": "How to fix",
+  "SAP impact": "SAP impact",
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof en;

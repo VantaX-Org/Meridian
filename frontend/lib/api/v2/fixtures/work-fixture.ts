@@ -637,6 +637,8 @@ export function workRecord(module: string, key: string): WorkRecordDetail {
     issues,
     events: [],
     other_runs: null,
+    context: key.includes("WERKS=") ? [{ field: "T001W.LAND1", label: "Country key", value: "ZA" }, { field: "MARC.WERKS", label: "Plant", value: key.split("WERKS=")[1] }] : [],
+    country: key.includes("WERKS=") ? "ZA" : null,
     currency: "ZAR",
     can: { fix: true, sign_off: true, assign: true, comment: true },
   };

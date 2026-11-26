@@ -52,9 +52,10 @@ CODES: dict[str, tuple[str, ...]] = {
     "interface_health": ("EDIDC.DIRECT", "EDIDC.STATUS", "EDIDC.MESTYP"),
     "cross_system_integration": ("XSYS.OBJECT_TYPE",),
     # EMPEMPLOYMENT is a sensitive table (checks.profiling), so its codes are read from EMPJOBHIST.
-    "employee_central": ("EMPJOBHIST.STATUS", "EMPJOBHIST.COMPANY", "EMPJOBHIST.EMPLOYEE_CLASS",
+    "employee_central": ("EMPJOBHIST.COUNTRY_OF_COMPANY", "FOCOMPANY.COUNTRY", "FO_LEGAL_ENTITY_LOCAL.COUNTRY",
+                         "EMPJOBHIST.STATUS", "EMPJOBHIST.COMPANY", "EMPJOBHIST.EMPLOYEE_CLASS",
                          "EMPJOBHIST.EMPLOYMENT_TYPE", "POSITION.EFFECTIVE_STATUS"),
-    "compensation": ("COMPINFO.PAY_COMPONENT_TYPE", "COMPINFO.PAY_TYPE", "COMPINFO.PAY_SCALE_TYPE",
+    "compensation": ("COMPINFO.PAY_SCALE_AREA", "COMPINFO.PAY_COMPONENT_TYPE", "COMPINFO.PAY_TYPE", "COMPINFO.PAY_SCALE_TYPE",
                      "COMPINFO.COMP_FREQUENCY"),
     "learning_management": ("LEARNINGASSIGNMENT.STATUS", "LEARNINGASSIGNMENT.ITEM_TYPE",
                             "LEARNINGASSIGNMENT.REQUIRED"),
