@@ -37,6 +37,8 @@ OPS: dict[str, dict[str, tuple[type | tuple, bool]]] = {
     "gtin_check_digit": {},
     # the country's standard postcode layout (api/services/contact_verify)
     "postcode": {"country_field": (str, True)},
+    # the one allowed code equal to the value ignoring case and surrounding space
+    "snap": {"values": (list, True)},
 }
 
 # ponytail: per-rule cap on proposals computed in one run; raise with findings.record_fixes storage
@@ -56,9 +58,20 @@ def _spec(rule: dict) -> Optional[dict]:
         return rule["auto_fix"]
     fv = rule.get("fix_value")
     if fv is None:
-        return None
+        return _domain_snap(rule)
     step = {"op": "map", "values": fv} if isinstance(fv, dict) else {"op": "set", "value": fv}
     return {"steps": [step], "confidence": LEGACY_CONFIDENCE}
+
+
+def _domain_snap(rule: dict) -> Optional[dict]:
+    """Implicit fix for a domain rule: snap a case or spacing variant onto its allowed code."""
+    if rule.get("check_class") != "domain_value_check":
+        return None
+    live = rule.get("_live_reference")
+    allowed = live if live is not None else rule.get("allowed_values") or rule.get("_ddic_fixed")
+    if not allowed:
+        return None
+    return {"steps": [{"op": "snap", "values": sorted(str(v).strip() for v in allowed)}], "confidence": "high"}
 
 
 def enabled(rule: dict) -> bool:
@@ -256,6 +269,9 @@ def _apply(step: dict, v: str, record: dict, refs: dict) -> Optional[str]:
         return _date(v, step["to"])
     if op == "gtin_check_digit":
         return gtin_check_digit(v)
+    if op == "snap":
+        hits = {a for a in step["values"] if a.casefold() == v.strip().casefold()}
+        return next(iter(hits)) if len(hits) == 1 else None  # unknown or ambiguous: no proposal
     if op == "postcode":
         from api.services import contact_verify as cv
 
