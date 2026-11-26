@@ -248,8 +248,8 @@ def _values(d: dict, fix: Optional[tuple]) -> dict:
     if st.get("proposed_value") not in (None, ""):
         sv, src, conf = str(st["proposed_value"]), "Run proposal", str(st.get("confidence") or "")
     else:
-        sv = ((vfm.get(cur) or {}) if isinstance(vfm, dict) else {}).get("suggested_value")
-        sv, src, conf = ("", "", "") if sv in (None, "") else (str(sv), "Value suggestion", "")
+        raw = ((vfm.get(cur) or {}) if isinstance(vfm, dict) else {}).get("suggested_value")
+        sv, src, conf = ("", "", "") if raw in (None, "") else (str(raw), "Value suggestion", "")
     return {"current_value": cur, "suggested_value": sv, "suggestion_source": src, "confidence": conf}
 
 
