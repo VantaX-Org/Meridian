@@ -37,6 +37,11 @@ OPS: dict[str, dict[str, tuple[type | tuple, bool]]] = {
     "gtin_check_digit": {},
     # the country's standard postcode layout (api/services/contact_verify)
     "postcode": {"country_field": (str, True)},
+    # the one allowed code equal to the value ignoring case and surrounding space,
+    # else (digits only) ignoring SAP leading zeros (ALPHA conversion)
+    "snap": {"values": (list, True)},
+    # the first safe reshaping (case, inner spaces, separators, zero padding) matching the pattern
+    "conform": {"pattern": (str, True)},
 }
 
 # ponytail: per-rule cap on proposals computed in one run; raise with findings.record_fixes storage
@@ -56,9 +61,53 @@ def _spec(rule: dict) -> Optional[dict]:
         return rule["auto_fix"]
     fv = rule.get("fix_value")
     if fv is None:
-        return None
+        return _domain_snap(rule) or _regex_conform(rule)
     step = {"op": "map", "values": fv} if isinstance(fv, dict) else {"op": "set", "value": fv}
     return {"steps": [step], "confidence": LEGACY_CONFIDENCE}
+
+
+def _domain_snap(rule: dict) -> Optional[dict]:
+    """Implicit fix for a domain or referential rule: snap a case, spacing or
+    leading-zero variant onto its one allowed code."""
+    live = rule.get("_live_reference")
+    if rule.get("check_class") == "domain_value_check":
+        allowed = live if live is not None else rule.get("allowed_values") or rule.get("_ddic_fixed")
+    elif rule.get("check_class") == "referential_check" and rule.get("multi_value") != "chars":
+        allowed = live if live is not None else rule.get("reference_values")
+    else:
+        return None
+    if not allowed:
+        return None
+    return {"steps": [{"op": "snap", "values": sorted(str(v).strip() for v in allowed)}], "confidence": "high"}
+
+
+def _regex_conform(rule: dict) -> Optional[dict]:
+    """Implicit fix for a regex rule: reshape case, spacing, separators or zero padding to match."""
+    if rule.get("check_class") != "regex_check" or not isinstance(rule.get("pattern"), str):
+        return None
+    return {"steps": [{"op": "conform", "pattern": rule["pattern"]}], "confidence": "medium"}
+
+
+_SEPARATORS = re.compile(r"[\s\-./_]+")
+
+
+def _conform(pattern: str, v: str) -> Optional[str]:
+    try:
+        rx = re.compile(pattern)
+    except re.error:
+        return None
+    v = v.strip()
+    bases = list(dict.fromkeys([v, re.sub(r"\s+", "", v), _SEPARATORS.sub("", v)]))
+    for b in bases:
+        for c in (b, b.upper(), b.lower()):
+            if c != v and rx.match(c):
+                return c
+    digits = _SEPARATORS.sub("", v)
+    if digits.isdigit():
+        for width in range(len(digits) + 1, 19):
+            if rx.match(digits.zfill(width)):
+                return digits.zfill(width)
+    return None
 
 
 def enabled(rule: dict) -> bool:
@@ -228,6 +277,19 @@ def _lookup(step: dict, record: dict, refs: dict) -> Optional[str]:
     return next(iter(vals)) if len(vals) == 1 else None  # absent or ambiguous: no proposal
 
 
+def _snap_index(step: dict) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+    """Casefold and digits-without-leading-zeros indexes of a snap step's codes, built once per step."""
+    if "_index" not in step:
+        exact: dict[str, set[str]] = {}
+        zero: dict[str, set[str]] = {}
+        for a in step["values"]:
+            exact.setdefault(a.casefold(), set()).add(a)
+            if a.isdigit():
+                zero.setdefault(a.lstrip("0"), set()).add(a)
+        step["_index"] = (exact, zero)
+    return step["_index"]
+
+
 def _apply(step: dict, v: str, record: dict, refs: dict) -> Optional[str]:
     op = step["op"]
     if op == "strip":
@@ -256,6 +318,13 @@ def _apply(step: dict, v: str, record: dict, refs: dict) -> Optional[str]:
         return _date(v, step["to"])
     if op == "gtin_check_digit":
         return gtin_check_digit(v)
+    if op == "conform":
+        return _conform(step["pattern"], v)
+    if op == "snap":
+        exact, zero = _snap_index(step)
+        key = v.strip().casefold()
+        hits = exact.get(key) or (zero.get(key.lstrip("0")) if key.isdigit() else None) or ()
+        return next(iter(hits)) if len(hits) == 1 else None  # unknown or ambiguous: no proposal
     if op == "postcode":
         from api.services import contact_verify as cv
 
