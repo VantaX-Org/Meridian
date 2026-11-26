@@ -96,7 +96,7 @@ async def test_reconciliation_workbook(owner, monkeypatch):
         ranked = [x[0] for x in (owner.connect().execute(text(
             "SELECT check_id FROM findings WHERE tenant_id = :t AND version_id = :v AND affected_count > 0 "
             "ORDER BY affected_count DESC, check_id LIMIT 2"), {"t": s["tid"], "v": s["run"]})).fetchall()]
-        assert wb.sheetnames == ["Cover", "Summary", *ranked]
+        assert wb.sheetnames == ["Cover", "Instructions", "Summary", *ranked]
         summary = list(wb["Summary"].iter_rows(values_only=True))
         assert summary[0] == ("Rule", "Object", "Table (grain)", "SE16 selection", "SE16 alone", "Population (Meridian)",
                               "Failing (Meridian)", "SE16 count", "Match", "Note")
@@ -114,7 +114,7 @@ async def test_reconciliation_workbook(owner, monkeypatch):
         led = await client.get(f"/api/v1/runs/{s['run']}/reconciliation.xlsx",
                                params={"top": 2, "rules": f"{ranked[1]},NOPE,{ranked[1]}"}, headers=headers("analyst"))
         assert led.status_code == 200, led.text  # the proved rule leads, unknown ids drop, no repeats
-        assert load_workbook(io.BytesIO(led.content)).sheetnames[1:] == ["Summary", ranked[1], ranked[0], *(
+        assert load_workbook(io.BytesIO(led.content)).sheetnames[1:] == ["Instructions", "Summary", ranked[1], ranked[0], *(
             [x[0] for x in owner.connect().execute(text(
                 "SELECT check_id FROM findings WHERE tenant_id = :t AND version_id = :v AND affected_count > 0 "
                 "AND check_id <> :c ORDER BY affected_count DESC, check_id OFFSET 1 LIMIT 1"),
