@@ -31,5 +31,18 @@ RUN ollama serve & \
     ollama list | grep -qF "${MODEL_NAME}" && \
     pkill ollama
 
+# Internal obfuscation: the ollama/ollama base stamps OCI labels
+# (org.opencontainers.image.*) that name the runtime, which `docker inspect`
+# surfaces to anyone with host access. Override them to a neutral inference
+# service so the baked image does not advertise what it runs.
+# ponytail: labels only; the service/port still fingerprint to host-root — not
+# defeatable in software, and the compose file names it anyway. See air-gap test.
+LABEL org.opencontainers.image.title="meridian-inference" \
+      org.opencontainers.image.description="Meridian bundled inference service" \
+      org.opencontainers.image.vendor="VantaX" \
+      org.opencontainers.image.source="" \
+      org.opencontainers.image.url="" \
+      com.docker.compose.service=""
+
 EXPOSE 11434
 CMD ["serve"]

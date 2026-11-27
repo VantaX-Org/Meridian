@@ -12,10 +12,13 @@ services:
         max-size: "50m"
         max-file: "5"
     image: ghcr.io/vantax-org/meridian-ollama:{{MODEL_TAG}}
-    volumes:
-      - ollama_data:/root/.ollama
+    # No volume over /root/.ollama: the model is baked into the image, and a named
+    # volume would mask it (Docker seeds a fresh volume from the image only once,
+    # so the baked blobs went missing — "total blobs: 0" — forcing a runtime pull).
+    # With the baked model always present, Ollama needs no pull and no internet.
     networks:
-      - meridian-net
+      # Air-gapped: internal: true, no egress. Ollama cannot reach the internet.
+      - meridian-llm
     restart: unless-stopped
     environment:
       # The API pins its configured model with a long keep_alive, so any other
@@ -55,5 +58,5 @@ services:
     #           count: all
     #           capabilities: [gpu]
 
-volumes:
-  ollama_data:
+# meridian-llm (internal: true) is declared in docker-compose.customer.yml, with
+# which this overlay is always merged (scripts/meridian-deploy.sh COMPOSE_FILES).

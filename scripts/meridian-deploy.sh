@@ -869,41 +869,30 @@ docker compose "${COMPOSE_FILES[@]}" up -d \
 log "All containers started"
 
 # =============================================================================
-# Tier 2: ensure the Ollama model is present
+# Tier 2: confirm the baked Ollama model is present
 # =============================================================================
 # The per-model image (ghcr.io/vantax-org/meridian-ollama:<tag>) bakes the
-# model in at build time (see docker/Dockerfile.ollama) — but the ollama_data
-# volume mounts over that same path (/root/.ollama), and Docker only seeds a
-# brand-new volume from the image once. In practice that seeding has been
-# observed NOT to happen (Ollama logs "total blobs: 0" on a supposedly
-# pre-baked image), so `ollama pull` here is load-bearing, not just a safety
-# net — it's a no-op if the model is already present, a real fix otherwise.
-#
-# Previously this waited up to 60s for a SEPARATE /api/version check to pass
-# before even attempting the pull, and skipped the pull entirely if that
-# check didn't succeed in time. On a slow first boot (volume/image
-# materializing, small instance) that readiness check can outlast its own
-# budget for reasons unrelated to whether a pull would actually succeed —
-# so the one thing meant to guarantee the model is present would silently
-# never run. Retry the pull itself instead, directly, with its own much
-# longer budget — no separate readiness gate to expire early.
+# model in at build time (see docker/Dockerfile.ollama). No volume mounts over
+# /root/.ollama any more (that mask was what used to force a runtime pull), so
+# the baked model is always present. Ollama also runs on an internal: true
+# network with no internet route, so a pull could not reach the registry even
+# if we wanted one. Verify the model is listed; never pull.
 if [[ "${TIER:-}" == "2" && -n "${OLLAMA_MODEL:-}" ]]; then
     section "Verifying Ollama model"
-    echo "  Pulling ${OLLAMA_MODEL} (retries while the container finishes starting; no-op if already present)..."
-    _OLLAMA_PULLED=false
-    for i in $(seq 1 60); do
-        if docker compose "${COMPOSE_FILES[@]}" exec -T ollama ollama pull "${OLLAMA_MODEL}" 2>/dev/null; then
-            _OLLAMA_PULLED=true
+    _OLLAMA_PRESENT=false
+    for i in $(seq 1 24); do  # up to 2 min while the container finishes starting
+        if docker compose "${COMPOSE_FILES[@]}" exec -T ollama ollama list 2>/dev/null | grep -q "${OLLAMA_MODEL}"; then
+            _OLLAMA_PRESENT=true
             break
         fi
         echo -n "."; sleep 5
     done
     echo ""
-    if [[ "$_OLLAMA_PULLED" == "true" ]]; then
-        log "Model ready: ${OLLAMA_MODEL}"
+    if [[ "$_OLLAMA_PRESENT" == "true" ]]; then
+        log "Model ready (baked): ${OLLAMA_MODEL}"
     else
-        warn "Could not pull ${OLLAMA_MODEL} after 5 minutes of retries — check manually:"
-        warn "  docker compose exec ollama ollama pull ${OLLAMA_MODEL}"
+        warn "Baked model ${OLLAMA_MODEL} not listed — the ollama image may be wrong or still starting:"
+        warn "  docker compose exec ollama ollama list"
         warn "  docker compose logs ollama"
     fi
 fi
