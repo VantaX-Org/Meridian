@@ -68,6 +68,7 @@ services:
         condition: service_healthy
     networks:
       - meridian-net
+      - meridian-llm
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -97,6 +98,7 @@ services:
         condition: service_healthy
     networks:
       - meridian-net
+      - meridian-llm
     # A runaway job is OOM-killed inside this limit instead of the host killing Postgres.
     # Size it in .env (MERIDIAN_WORKER_MEM_LIMIT, e.g. 12g) to leave room for db, api and the OS.
     mem_limit: ${MERIDIAN_WORKER_MEM_LIMIT:-8g}
@@ -237,3 +239,10 @@ volumes:
 networks:
   meridian-net:
     driver: bridge
+  # Air-gapped network for the bundled Tier-2 Ollama: internal: true gives it no
+  # NAT/egress, so the model can never reach the internet and the deployment cannot
+  # be fingerprinted by outbound traffic. Only api and worker (the LLM callers) are
+  # dual-homed onto it; Ollama sits here alone (see docker-compose.customer.ollama.yml).
+  meridian-llm:
+    driver: bridge
+    internal: true

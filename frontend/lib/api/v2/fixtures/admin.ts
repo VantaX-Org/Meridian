@@ -648,7 +648,7 @@ export function adminFixtureResponse(path: string, params: Record<string, unknow
       { id: "storage", label: "File storage", status: "ok", detail: "Garage reachable, 41 percent used" },
     ] };
   }
-  if (path === "/health") return { status: "ok", version: s.update.current_version, llm_provider: "ollama", llm_connected: true, licence: "valid", email_backend: null, timestamp: NOW };
+  if (path === "/health") return { status: "ok", version: s.update.current_version, licence: "valid", email_backend: null, timestamp: NOW };
   if (path === "/schedules") return { schedules: clone(s.runSchedules) };
   const rsGet = /^\/schedules\/([^/]+)$/.exec(path);
   if (rsGet) {

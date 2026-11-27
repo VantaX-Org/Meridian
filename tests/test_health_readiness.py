@@ -40,7 +40,7 @@ def test_ready_when_both_answer(monkeypatch: pytest.MonkeyPatch) -> None:
     assert body["status"] == "ok"  # scripts/update.sh greps for "status":"ok"
     assert body["components"] == {"db": UP, "redis": UP, "workers": UP, "beat": UP, "disk": UP}
     assert body["degraded"] == []
-    assert {"version", "llm_provider", "licence", "email_backend", "timestamp"} <= set(body)
+    assert {"version", "licence", "email_backend", "timestamp"} <= set(body)
 
 
 @pytest.mark.parametrize("db,redis,down", [(DOWN, UP, "db"), (UP, DOWN, "redis"), (DOWN, DOWN, None)])
@@ -117,3 +117,15 @@ def test_beat_and_disk_are_degraded_when_stale_or_low(monkeypatch: pytest.Monkey
     assert health_probe.probe_disk().status == "degraded"
     monkeypatch.setenv("MERIDIAN_DISK_WARN_GB", "0")
     assert health_probe.probe_disk().status == "up"
+
+
+def test_health_leaks_no_llm_fingerprint(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Unauthenticated /health must not name the LLM provider/model or expose llm_* keys.
+
+    Server scans hit /health anonymously; the deployment must not be identifiable as running
+    a particular LLM. Connectivity stays on the authed /health/llm (bool + reason, no name)."""
+    body = _client(monkeypatch, UP, UP).get("/health").json()
+    assert not ({"llm_provider", "llm_source", "llm_connected"} & set(body)), body.keys()
+    blob = str(body).lower()
+    for mark in ("anthropic", "claude", "openai", "gpt", "ollama", "azure"):
+        assert mark not in blob, f"/health leaks LLM fingerprint: {mark!r}"

@@ -253,8 +253,6 @@ export type EmailBackend = "graph" | "smtp" | "resend";
 export interface HealthResponse {
   status: string;
   version: string;
-  llm_provider: string;
-  llm_connected: boolean;
   licence: LicenceStatus;
   email_backend: EmailBackend | null;
   timestamp: string;
