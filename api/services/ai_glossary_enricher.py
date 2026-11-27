@@ -29,6 +29,27 @@ MAX_LEN = {"business_definition": 400, "why_it_matters_business": 250}
 _CODE = re.compile(r"\b[A-Z0-9]{2,}\.[A-Z0-9_]+\b|\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b|\b(?=[A-Z0-9]*\d)(?=[A-Z0-9]*[A-Z])[A-Z0-9]{3,}\b")
 
 
+def deterministic_enrichment(
+    technical_name: str, sap_table: str, sap_field: str, why_it_matters: str, sap_impact: str
+) -> dict:
+    """Business prose built straight from the field metadata, no LLM. Used when no model is
+    available (bundled Ollama dropped) or the model call fails, so the glossary never goes empty.
+    Names only the given table/field (space-separated, never dotted) so normalise() keeps it."""
+    name = (technical_name or sap_field or "This field").strip()
+    why = " ".join((why_it_matters or "").split())
+    impact = " ".join((sap_impact or "").split())
+    definition = f"{name} (SAP table {sap_table}, field {sap_field})."
+    if why:
+        definition = f"{definition} {why}"
+    return normalise(
+        {
+            "business_definition": definition[:MAX_LEN["business_definition"]],
+            "why_it_matters_business": (impact or why)[:MAX_LEN["why_it_matters_business"]],
+        },
+        f"{sap_table} {sap_field} {name} {why} {impact}",
+    )
+
+
 def normalise(result: object, source_text: str) -> dict:
     """Strict schema for the model answer: exactly the two keys, strings, trimmed, length-capped, citing no code
     that is not in `source_text` (what we sent). A failing entry is emptied and the reason recorded."""
@@ -119,9 +140,10 @@ def enrich_term(
         from llm.provider import safe_invoke
         response = safe_invoke(llm, prompt_str, timeout_seconds=35)
         if response is None:
-            logger.warning(f"Glossary enricher LLM timeout for {sap_table}.{sap_field}")
-            # Fallback: return empty enrichment so the glossary remains usable without AI
-            return {"business_definition": "", "why_it_matters_business": ""}
+            logger.warning(f"Glossary enricher: no LLM response for {sap_table}.{sap_field}, using deterministic prose")
+            # Fallback: build real business prose from the metadata so the glossary stays populated
+            # without a model (bundled Ollama dropped, timeout, or circuit open).
+            return deterministic_enrichment(technical_name, sap_table, sap_field, why_it_matters, sap_impact)
         latency = int((time.time() - t_start) * 1000)
         model_version = getattr(llm, "model", "unknown")
         success = True

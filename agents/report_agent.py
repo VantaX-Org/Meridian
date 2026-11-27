@@ -66,10 +66,31 @@ def _count_findings_by_severity(findings: list[dict]) -> dict:
 _DETERMINISTIC_SUMMARY = "Data quality assessment complete. Review the detailed findings below for remediation priorities."
 
 
+def deterministic_executive_summary(state: AgentState) -> str:
+    """Executive summary built from the run's own numbers, no LLM. Used when no model is
+    available (bundled Ollama dropped) or the call fails, so the summary never collapses to a
+    generic sentence that ignores the actual status, score and finding counts."""
+    sev = _count_findings_by_severity(state.get("findings_summary", []))
+    readiness = state.get("readiness_scores", {})
+    status = _compute_overall_status(readiness)
+    score = _compute_overall_score(readiness)
+    n_mod = len(state.get("module_names", []))
+    mod_word = "module" if n_mod == 1 else "modules"
+    find_word = "finding" if sev["total"] == 1 else "findings"
+    parts = [
+        f"Data quality assessment covered {n_mod} {mod_word} and raised {sev['total']} {find_word} "
+        f"({sev['critical']} critical, {sev['high']} high, {sev['medium']} medium).",
+        _compute_migration_summary(status, score),
+    ]
+    if sev["critical"]:
+        parts.append("Resolve the critical findings first; they cap the achievable score.")
+    return " ".join(parts)
+
+
 def _generate_executive_summary(llm, state: AgentState) -> str:
     """Use LLM to write a 2-3 sentence executive summary."""
     if llm is None:
-        return _DETERMINISTIC_SUMMARY
+        return deterministic_executive_summary(state)
 
     context = {
         "dqs_scores": state.get("dqs_scores", {}),
@@ -85,7 +106,7 @@ def _generate_executive_summary(llm, state: AgentState) -> str:
 
     content = safe_invoke(llm, messages, timeout_seconds=60)
     if content is None:
-        return _DETERMINISTIC_SUMMARY
+        return deterministic_executive_summary(state)
 
     summary = content.strip()
     # Strip any JSON wrapper or code fences
